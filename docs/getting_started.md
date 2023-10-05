@@ -6,13 +6,13 @@ A simple tool to perform Federated Learning on various models and datasets. Buil
 You have two ways of using Hibiscus. Either by cloning the repo and installing (via Poetry) all dependencies, and working on the code itself; or by just downloading the wheel and installing as a package.
 
 ### User Mode
-The wheel in `dist/hibiscus-0.3.0-py3-none-any.whl` is the packaged version of Hibiscus. You can download it and do
+The wheel in `dist/hibiscus-0.3.2-py3-none-any.whl` is the packaged version of Hibiscus. You can download it and do
 ```bash
 pyenv local 3.9.12
 python -m pip install virtualenv
 python -m virtualenv .venv
 source .venv/bin/activate
-(.venv) pip install dist/hibiscus-0.3.0-py3-none-any.whl
+(.venv) pip install dist/hibiscus-0.3.2-py3-none-any.whl
 ```
 The Hibiscus project comes with an handy app, dubbed hibiscus_app. You can test it directly as it is installed in your virtual env:
 ```bash
@@ -55,7 +55,7 @@ and you are good to go! We suggest to create a directory `experiments` to hold c
 To build the image (which is quite heavy as of now), do the following
 ```bash
 cd container
-docker build . -t hibiscus:app.v0.3.0
+docker build . -t hibiscus:app.v0.3.2
 ```
 
 
@@ -68,7 +68,7 @@ docker build \
 --build-arg http_proxy=$HTTP_PROXY \
 --build-arg https_proxy=$HTTPS_PROXY \
 --build-arg no_proxy=$NO_PROXY \
-. -t hibiscus:app.v0.3.0
+. -t hibiscus:app.v0.3.2
 ```
 
 Then, again only if you have to go through a proxy for internet access, then to download the data the different containers will need and internet access.
