@@ -1,0 +1,20 @@
+fabric:
+  accelerator: gpu
+root_dir: ${oc.env:PWD}
+model:
+  name: cifar
+  config:
+    input_shape: 3
+    mid_shape: 6
+    n_classes: 10
+    lr: 0.001
+data:
+  name: cifar
+  config:
+    data_dir_test: ${root_dir}/datasets/global_test/
+    batch_size: 1
+server_adress: "[::]:22222"
+num_rounds: 10
+client_configs:
+  - ${root_dir}/configs/client_1.yml
+  - ${root_dir}/configs/client_2.yml

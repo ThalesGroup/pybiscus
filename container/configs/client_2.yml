@@ -1,0 +1,18 @@
+cid: 2
+fabric:
+  accelerator: gpu
+root_dir: ${oc.env:PWD}
+model:
+  name: cifar
+  config:
+    input_shape: 3
+    mid_shape: 6
+    n_classes: 10
+    lr: 0.001
+data:
+  name: cifar
+  config:
+    data_dir_train: ${root_dir}/datasets/client2/train/
+    data_dir_val: ${root_dir}/datasets/client2/val/
+    batch_size: 1
+server_adress: server:22222

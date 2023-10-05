@@ -1,0 +1,34 @@
+[tool.poetry]
+name = "hibiscus"
+version = "0.3.2"
+description = "Implementation of a simple app for Federated Learning"
+authors = ["Baptiste MORISSE <baptiste.morisse@thalesgroup.com>"]
+packages = [
+    {include = "src"}
+]
+
+[tool.poetry.scripts]
+hibiscus_app = "src.main:app"
+
+[tool.poetry.dependencies]
+python = ">=3.9, <3.10, !=3.9.7"
+flwr = ">=1.0, <2.0"
+numpy = ">=1.24.1,<1.26.0"
+typing_extensions = "^4.0"
+rich = "^13.4.2"
+typer = {extras = ["all"], version = "^0.9.0"}
+torch = "==2.0.0"
+torchmetrics = "^0.10"
+lightning = {extras = ["all"], version = "^2.0.6"}
+torchvision = "<0.15.2"
+einops = "^0.6.1"
+
+[tool.poetry.group.dev-dependencies.dependencies]
+black = "<23.0"
+ruff = "^0.0.278"
+sphinx = "^7.1.2"
+isort = "^5.12.0"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
