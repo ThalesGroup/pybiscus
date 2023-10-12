@@ -1,4 +1,4 @@
-# Thales Open Source Template Project
+# Pybiscus: a flexible Federated Learning Framework
 
 Template for creating a new project in the [Thales GitHub organization](https://github.com/ThalesGroup).
 
@@ -34,7 +34,7 @@ See an example here : https://github.com/ThalesGroup/ThalesGroup.github.io
 
 ## Contributing
 
-If you are interested in contributing to the Hibiscus project, start by reading the [Contributing guide](/CONTRIBUTING.md).
+If you are interested in contributing to the Pybiscus project, start by reading the [Contributing guide](/CONTRIBUTING.md).
 
 ## License
 

@@ -78,7 +78,7 @@ app = typer.Typer(pretty_exceptions_show_locals=False, rich_markup_mode="markdow
 
 @app.callback()
 def server():
-    """The server part of Hibiscus.
+    """The server part of Pybiscus.
 
     Launch the server!
     """

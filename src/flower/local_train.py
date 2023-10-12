@@ -16,7 +16,7 @@ app = typer.Typer(pretty_exceptions_show_locals=False)
 
 @app.callback()
 def local():
-    """The local part of Hibiscus.
+    """The local part of Pybiscus.
 
     Train locally the model.
     """

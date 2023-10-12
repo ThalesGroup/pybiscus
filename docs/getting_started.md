@@ -1,22 +1,22 @@
-# Hibiscus
+# Pybiscus
 
 A simple tool to perform Federated Learning on various models and datasets. Build on top of Flower (FL part), Typer (script and CLI parts) and Lightning/Fabric (ML part).
 
-## Uses of Hibiscus
-You have two ways of using Hibiscus. Either by cloning the repo and installing (via Poetry) all dependencies, and working on the code itself; or by just downloading the wheel and installing as a package.
+## Uses of Pybiscus
+You have two ways of using Pybiscus. Either by cloning the repo and installing (via Poetry) all dependencies, and working on the code itself; or by just downloading the wheel and installing as a package.
 
 ### User Mode
-The wheel in `dist/hibiscus-0.3.2-py3-none-any.whl` is the packaged version of Hibiscus. You can download it and do
+The wheel in `dist/pybiscus-0.3.2-py3-none-any.whl` is the packaged version of Pybiscus. You can download it and do
 ```bash
 pyenv local 3.9.12
 python -m pip install virtualenv
 python -m virtualenv .venv
 source .venv/bin/activate
-(.venv) pip install dist/hibiscus-0.3.2-py3-none-any.whl
+(.venv) pip install dist/pybiscus-0.3.2-py3-none-any.whl
 ```
-The Hibiscus project comes with an handy app, dubbed hibiscus_app. You can test it directly as it is installed in your virtual env:
+The Pybiscus project comes with an handy app, dubbed pybiscus_app. You can test it directly as it is installed in your virtual env:
 ```bash
-(.venv) hibiscus_app --help
+(.venv) pybiscus_app --help
 ```
 
 this command will show you some documentation on how to use the app. There are three main commands:
@@ -29,9 +29,9 @@ Note that the package is still actively under development, and even if we try as
 To work, the app needs only config files for the server and the clients. Any number of clients can be launched, using the same command `client launch-config`.
 or, now with config files (examples are provided in `configs/`):
 ```bash
-hibiscus_app server launch-config path-to-config/server.yml
-hibiscus_app client launch-config path-to-config/client_1.yml
-hibiscus_app client launch-config path-to-config/client_2.yml
+pybiscus_app server launch-config path-to-config/server.yml
+pybiscus_app client launch-config path-to-config/client_1.yml
+pybiscus_app client launch-config path-to-config/client_2.yml
 ```
 
 ### Dev Mode
@@ -55,7 +55,7 @@ and you are good to go! We suggest to create a directory `experiments` to hold c
 To build the image (which is quite heavy as of now), do the following
 ```bash
 cd container
-docker build . -t hibiscus:app.v0.3.2
+docker build . -t pybiscus:app.v0.3.2
 ```
 
 
@@ -68,7 +68,7 @@ docker build \
 --build-arg http_proxy=$HTTP_PROXY \
 --build-arg https_proxy=$HTTPS_PROXY \
 --build-arg no_proxy=$NO_PROXY \
-. -t hibiscus:app.v0.3.2
+. -t pybiscus:app.v0.3.2
 ```
 
 Then, again only if you have to go through a proxy for internet access, then to download the data the different containers will need and internet access.
@@ -89,17 +89,17 @@ to ne noProxy config.
 }
 ```
 
-and voila! The docker image is aimed at running only the hibiscus_app itself. In order to facilitate the use of docker (which can be quite verbose), some scripts are available in container/scripts. To launch a local training, you just need to update `container/scripts/launch_local_train.sh` and `container/configs/local_train.yml` according to where are located your datasets and such. Then, simply run
+and voila! The docker image is aimed at running only the pybiscus_app itself. In order to facilitate the use of docker (which can be quite verbose), some scripts are available in container/scripts. To launch a local training, you just need to update `container/scripts/launch_local_train.sh` and `container/configs/local_train.yml` according to where are located your datasets and such. Then, simply run
 ```bash
 bash container/scripts/launch_local_train.sh
 ``` 
 
 It is as simple as running
 ```bash
-docker run -t --gpus device=(some_device) -v "$(pwd)":/app/datasets hibiscus:app --help
+docker run -t --gpus device=(some_device) -v "$(pwd)":/app/datasets pybiscus:app --help
 ```
 
-to get the help of the app. The short version is, `docker run -t hibiscus:app` is equivalent to running `hibiscus_app`. As for the app itself, the docker image can launch either client, server or local components.
+to get the help of the app. The short version is, `docker run -t pybiscus:app` is equivalent to running `pybiscus_app`. As for the app itself, the docker image can launch either client, server or local components.
 
 To launch a "true" Federated learning, you need first to create a docker network for the containers to communicate:
 ```bash
@@ -132,4 +132,4 @@ bash container/scripts/launch_client_2.sh
 
  ## Road Map
 
- Here is a list of more mid/long term ideas to implement in Hibiscus for Federated Learning.
+ Here is a list of more mid/long term ideas to implement in Pybiscus for Federated Learning.

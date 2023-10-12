@@ -14,7 +14,7 @@ app.add_typer(local_train.app, name="local")
 def explain():
     """
 
-    **The Hibiscus app is made of three commands:**
+    **The Pybiscus app is made of three commands:**
 
     * server
 

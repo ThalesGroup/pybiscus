@@ -1,7 +1,7 @@
 docker run \
     -t \
     --rm \
-    --name "hibiscus-server" \
+    --name "pybiscus-server" \
     --gpus device=0 \
     -v ${PWD}/datasets/:/app/datasets/ \
     -v ${PWD}/experiments:/app/experiments \
@@ -10,4 +10,4 @@ docker run \
     --net-alias server \
     --user $uid:$gid \
     --shm-size 50G \
-    hibiscus:app.v0.3.2 server launch-config configs/server.yml
+    pybiscus:app.v0.3.2 server launch-config configs/server.yml

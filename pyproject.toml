@@ -1,14 +1,14 @@
 [tool.poetry]
-name = "hibiscus"
+name = "pybiscus"
 version = "0.3.2"
-description = "Implementation of a simple app for Federated Learning"
+description = "A flexible Federated Learning framework"
 authors = ["Baptiste MORISSE <baptiste.morisse@thalesgroup.com>"]
 packages = [
     {include = "src"}
 ]
 
 [tool.poetry.scripts]
-hibiscus_app = "src.main:app"
+pybiscus_app = "src.main:app"
 
 [tool.poetry.dependencies]
 python = ">=3.9, <3.10, !=3.9.7"

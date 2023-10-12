@@ -61,7 +61,7 @@ WORKDIR "${HOME}/app"
 COPY ./ ./
 # RUN poetry build
 RUN pip install -U pip wheel setuptools
-RUN pip install --no-cache-dir hibiscus-0.3.2-py3-none-any.whl
+RUN pip install --no-cache-dir pybiscus-0.3.2-py3-none-any.whl
 
 ##############################################################################
 
@@ -93,7 +93,7 @@ RUN adduser --disabled-password --home $HOME --gecos "" appuser
 WORKDIR $HOME
 USER appuser
 
-ENTRYPOINT ["/usr/bin/tini", "-g", "-s", "--", "hibiscus_app"]
+ENTRYPOINT ["/usr/bin/tini", "-g", "-s", "--", "pybiscus_app"]
 
 # See https://github.com/opencontainers/image-spec/blob/main/annotations.md
 ARG LABEL_BASE_NAME="${BASE_REGISTRY}/${BASE_IMAGE}:${BASE_IMAGE_TAG}"
