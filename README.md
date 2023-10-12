@@ -1,30 +1,17 @@
 # Pybiscus: a flexible Federated Learning Framework
 
-Template for creating a new project in the [Thales GitHub organization](https://github.com/ThalesGroup).
-
-Each Thales OSS project repository **MUST** contain the following files at the root:
-
-- a `LICENSE` which has been chosen in accordance with legal department depending on your needs
-
-- a `README.md` outlining the project goals, sponsoring sig, and community contact information, [GitHub tips about README.md](https://docs.github.com/en/github/creating-cloning-and-archiving-repositories/about-readmes)
-
-- a `CONTRIBUTING.md` outlining how to contribute to the project, how to submit a pull request and an issue
-
-- a `SECURITY.md` outlining how the security concerns are handled, [GitHub tips about SECURITY.md](https://docs.github.com/en/github/managing-security-vulnerabilities/adding-a-security-policy-to-your-repository)
-
-Below is an example of the common structure and information expected in a README.
-
-**Please keep this structure as is and only fill the content for each section according to your project.**
-
-If you need assistance or have question, please contact oss@thalesgroup.com
-
 ## Get started
 
-A simple tool to perform Federated Learning on various models and datasets. Built on top of Flower (FL part), Typer (script and CLI parts) and Lightning/Fabric (ML part).
+Pybiscus is a simple tool to perform Federated Learning on various models and datasets. 
+It aims at automated as much as possible the FL pipeline, and allows to add virtually any kind of dataset and model.
+
+Pybiscus is built on top of Flower, a mature Federated Learning framework; Typer (script and CLI parts) and Lightning/Fabric for all the Machine Learning machinery.
+
+You can simply test Pybiscus by dowmloading the latest wheel available and isntall it.
 
 ## Documentation
 
-Documentation is available at [xxx/docs](https://xxx/docs/).
+Documentation is available at [docs](docs/).
 
 You can use [GitHub pages](https://guides.github.com/features/pages/) to create your documentation.
 
