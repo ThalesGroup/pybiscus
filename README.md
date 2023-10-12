@@ -7,17 +7,11 @@ It aims at automated as much as possible the FL pipeline, and allows to add virt
 
 Pybiscus is built on top of Flower, a mature Federated Learning framework; Typer (script and CLI parts) and Lightning/Fabric for all the Machine Learning machinery.
 
-You can simply test Pybiscus by dowmloading the latest wheel available and isntall it.
+You can simply test Pybiscus by downloading the latest wheel available and install it.
 
 ## Documentation
 
 Documentation is available at [docs](docs/).
-
-You can use [GitHub pages](https://guides.github.com/features/pages/) to create your documentation.
-
-See an example here : https://github.com/ThalesGroup/ThalesGroup.github.io
-
-**Please also add the documentation URL into the About section (Website field)**
 
 ## Contributing
 
