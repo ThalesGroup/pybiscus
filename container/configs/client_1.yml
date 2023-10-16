@@ -12,7 +12,8 @@ model:
 data:
   name: cifar
   config:
-    data_dir_train: ${root_dir}/datasets/client1/train/
-    data_dir_val: ${root_dir}/datasets/client1/val/
-    batch_size: 1
+    dir_train: ${root_dir}/datasets/client1/train/
+    dir_val: ${root_dir}/datasets/client1/val/
+    dir_test: None
+    batch_size: 32
 server_adress: server:22222

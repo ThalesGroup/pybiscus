@@ -3,8 +3,6 @@ from logging import WARNING
 from typing import Dict, List, Optional, Tuple, Union
 
 import flwr as fl
-import numpy as np
-import torch
 from flwr.common import (EvaluateRes, FitRes, Parameters, Scalar,
                          ndarrays_to_parameters, parameters_to_ndarrays)
 from flwr.common.logger import log
@@ -12,6 +10,9 @@ from flwr.server.client_proxy import ClientProxy
 from flwr.server.strategy.aggregate import aggregate, weighted_loss_avg
 from lightning.fabric import Fabric
 from lightning.pytorch import LightningModule
+import torch
+import numpy as np
+from src.console import console
 
 WARNING_MIN_AVAILABLE_CLIENTS_TOO_LOW = """
 Setting `min_available_clients` lower than `min_fit_clients` or
@@ -56,6 +57,23 @@ class FabricStrategy(fl.server.strategy.FedAvg):
 
         self.model = model
         self.fabric = fabric
+
+    def evaluate(
+        self, server_round: int, parameters: Parameters
+    ) -> Optional[Tuple[float, Dict[str, Scalar]]]:
+        """Evaluate model parameters using an evaluation function."""
+        if self.evaluate_fn is None:
+            # No evaluation function provided
+            return None
+        parameters_ndarrays = parameters_to_ndarrays(parameters)
+        eval_res = self.evaluate_fn(server_round, parameters_ndarrays, {})
+        if eval_res is None:
+            return None
+        loss, metrics = eval_res
+        for key, value in metrics.items():
+            console.log(f"Test at round {server_round}, {key} is {value:.3f}")
+            self.fabric.log(f"val_{key}_glob", value, step=server_round)
+        return loss, metrics
 
     def aggregate_fit(
         self,

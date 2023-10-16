@@ -2,7 +2,7 @@ cid: 2
 fabric:
   accelerator: gpu
   devices:
-    - 5
+    - 0
 root_dir: ${oc.env:PWD}
 model:
   name: cifar
@@ -14,7 +14,8 @@ model:
 data:
   name: cifar
   config:
-    data_dir_train: ${root_dir}/datasets/client2/train/
-    data_dir_val: ${root_dir}/datasets/client2/val/
-    batch_size: 1
+    dir_train: ${root_dir}/datasets/client2/train/
+    dir_val: ${root_dir}/datasets/client2/val/
+    dir_test: None
+    batch_size: 32
 server_adress: localhost:22222

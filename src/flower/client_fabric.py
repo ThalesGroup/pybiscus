@@ -10,8 +10,8 @@ from omegaconf import OmegaConf
 from typing_extensions import Annotated
 
 from src.console import console
-from src.flower.loops_fabric import test_loop, train_loop
-from src.ml.registry import data_registry, model_registry
+from src.ml.loops_fabric import test_loop, train_loop
+from src.ml.registry import datamodule_registry, model_registry
 
 torch.backends.cudnn.enabled = True
 
@@ -52,14 +52,15 @@ class FlowerClient(fl.client.NumPyClient):
         console.log(f"[Client {self.cid}] fit, config: {config}")
         self.set_parameters(parameters)
         console.log(f"Round {config['server_round']}, training Started...")
-        self.fabric.launch()
-        _model, _optimizer = self.fabric.setup(self.model, self.optimizer)
-        _train_dataloader = self.fabric.setup_dataloaders(self.train_dataloader)
+        if config['server_round'] == 1:
+            self.fabric.launch()
+            self._model, self._optimizer = self.fabric.setup(self.model, self.optimizer)
+            self._train_dataloader = self.fabric.setup_dataloaders(self.data.train_dataloader())
         loss, accuracy = train_loop(
             self.fabric,
-            _model,
-            _train_dataloader,
-            _optimizer,
+            self._model,
+            self._train_dataloader,
+            self._optimizer,
             epochs=config["local_epochs"],
         )
         console.log(f"Training Finished! Loss is {loss}")
@@ -70,10 +71,9 @@ class FlowerClient(fl.client.NumPyClient):
         console.log(f"[Client {self.cid}] evaluate, config: {config}")
         self.set_parameters(parameters)
         console.log(f"Round {config['server_round']}, evaluation Started...")
-        self.fabric.launch()
         _model = self.fabric.setup_module(self.model)
         _validation_dataloader = self.fabric.setup_dataloaders(
-            self.validation_dataloader
+            self.data.val_dataloader()
         )
         loss, accuracy = test_loop(self.fabric, _model, _validation_dataloader)
         console.log(f"Evaluation finished! Loss is {loss}, accuracy is {accuracy}")
@@ -88,7 +88,6 @@ app = typer.Typer(pretty_exceptions_show_locals=False)
 def launch_config(
     config: Annotated[Path, typer.Argument()],
     cid: int = None,
-    device_num: int = None,
     root_dir: str = None,
     server_adress: str = None,
 ):
@@ -96,15 +95,11 @@ def launch_config(
 
     **Args:**
 
-        * device_num (int): the GPU index on which to run the client
+        * cid (int): the identifier of the client
 
         * root_dir (str): absolute path to all datasets
 
-        * data_dir_train (str, optional): relative path to training data.
-        Defaults to "/home/T0254685/code_unet/datasets/preprocessed_client1/train/".
-
-        * data_dir_val (str, optional): relative path to validation data.
-        Defaults to "/home/T0254685/code_unet/datasets/preprocessed_client1/val/".
+        * server_adress (str): the Flower server adress
     """
 
     if config is None:
@@ -121,25 +116,26 @@ def launch_config(
 
     if cid is not None:
         conf["cid"] = cid
-    if device_num is not None:
-        conf["device_num"] = device_num
     if root_dir is not None:
         conf["root_dir"] = root_dir
     if server_adress is not None:
         conf["server_adress"] = server_adress
-
-    trainloader, testloader, num_examples = data_registry[conf["data"]["name"]](
-        **conf["data"]["config"]
-    )
-    console.log(f"Conf specified: {conf}")
+    console.log(f"Conf specified: {dict(conf)}")
     warnings.filterwarnings("ignore", category=UserWarning)
+
+    data = datamodule_registry[conf["data"]["name"]](**conf["data"]["config"])
+    data.setup(stage="fit")
+    num_examples = {
+        "trainset": len(data.train_dataloader()),
+        "valset": len(data.val_dataloader()),
+    }
 
     net = model_registry[conf["model"]["name"]](**conf["model"]["config"])
     client = FlowerClient(
         cid=conf["cid"],
         model=net,
-        train_dataloader=trainloader,
-        validation_dataloader=testloader,
+        train_dataloader=data.train_dataloader(),
+        validation_dataloader=data.val_dataloader(),
         num_examples=num_examples,
         conf_fabric=conf["fabric"],
     )

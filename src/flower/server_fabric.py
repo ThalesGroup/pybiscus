@@ -13,9 +13,9 @@ from omegaconf import OmegaConf
 from typing_extensions import Annotated
 
 from src.console import console
-from src.flower.loops_fabric import test_loop
+from src.ml.loops_fabric import test_loop
 from src.flower.strategies import FabricStrategy
-from src.ml.registry import data_registry, model_registry
+from src.ml.registry import datamodule_registry, model_registry
 
 
 def set_params(model: torch.nn.ModuleList, params: List[np.ndarray]):
@@ -53,9 +53,6 @@ def get_evaluate_fn(
         set_params(model, parameters)
 
         loss, accuracy = test_loop(fabric=fabric, net=model, testloader=testset)
-        console.log(f"Test loss: {loss}, Test accuracy: {accuracy}")
-        fabric.log("val_loss_glob", loss, step=server_round)
-        fabric.log("val_acc_glob", accuracy, step=server_round)
         return loss, {"Test loss": loss, "Test accuracy": accuracy}
 
     return evaluate
@@ -88,15 +85,13 @@ def server():
 def launch_config(
     config: Annotated[Path, typer.Argument()],
     num_rounds: int = None,
-    device_num: int = None,
-    data_dir_test: str = None,
     server_adress: str = None,
 ):
     """Launch a Flower Server.
 
     Args:
         num_rounds (int): number of rounds of FL
-        device_num (int): the GPU index on which to run the server
+        server_adress (str): Flower server adress
     """
     if config is None:
         print("No config file")
@@ -113,25 +108,21 @@ def launch_config(
 
     if num_rounds is not None:
         conf["num_rounds"] = num_rounds
-    if device_num is not None:
-        conf["device_num"] = device_num
-    if data_dir_test is not None:
-        conf["data_dir_test"] = data_dir_test
     if server_adress is not None:
         conf["server_adress"] = server_adress
 
     console.log(f"Conf specified: {dict(conf)}")
 
     logger = TensorBoardLogger(
-        root_dir=conf["root_dir"] + "/experiments/federated/" + "test_1/"
+        root_dir=conf["root_dir"] + conf["logger"]["subdir"]
     )
     fabric = Fabric(**conf["fabric"], loggers=logger)
     fabric.launch()
     _net = model_registry[conf["model"]["name"]](**conf["model"]["config"])
     net = fabric.setup_module(_net)
-    _test_set = data_registry[conf["data"]["name"]](
-        **conf["data"]["config"], stage="test"
-    )
+    data = datamodule_registry[conf["data"]["name"]](**conf["data"]["config"])
+    data.setup(stage="test")
+    _test_set = data.test_dataloader()
     test_set = fabric._setup_dataloader(_test_set)
 
     strategy = FabricStrategy(

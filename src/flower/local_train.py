@@ -32,8 +32,11 @@ def train_config(config: Annotated[Path, typer.Argument()] = None):
         console.log(conf)
     elif config.is_dir():
         print("Config is a directory, will use all its config files")
+        raise typer.Abort()
     elif not config.exists():
         print("The config doesn't exist")
+        raise typer.Abort()
+
     model = model_registry[conf["model"]["name"]](**conf["model"]["config"])
     data = datamodule_registry[conf["data"]["name"]](**conf["data"]["config"])
 
@@ -41,13 +44,12 @@ def train_config(config: Annotated[Path, typer.Argument()] = None):
         default_root_dir=Path(conf["root_dir"]) / "experiments/local/",
         enable_checkpointing=True,
         logger=True,
-        max_epochs=conf["epochs"],
+        # max_epochs=conf["epochs"],
         callbacks=[
             RichModelSummary(),
             RichProgressBar(theme=RichProgressBarTheme(metrics="blue")),
         ],
-        accelerator="gpu",
-        devices=[conf["gpu"]],
+        **conf["trainer"],
     )
 
     trainer.fit(model, data)

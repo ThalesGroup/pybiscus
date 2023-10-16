@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "pybiscus"
-version = "0.3.2"
+version = "0.3.3"
 description = "A flexible Federated Learning framework"
 authors = ["Baptiste MORISSE <baptiste.morisse@thalesgroup.com>"]
 packages = [
@@ -22,6 +22,8 @@ torchmetrics = "^0.10"
 lightning = {extras = ["all"], version = "^2.0.6"}
 torchvision = "<0.15.2"
 einops = "^0.6.1"
+tensorboard = "^2.14.1"
+deepspeed = "==0.9.0"
 
 [tool.poetry.group.dev-dependencies.dependencies]
 black = "<23.0"

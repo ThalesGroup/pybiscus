@@ -1,6 +1,8 @@
 fabric:
   accelerator: gpu
 root_dir: ${oc.env:PWD}
+logger:
+  subdir: /experiments/federated/test_1/
 model:
   name: cifar
   config:
@@ -11,8 +13,10 @@ model:
 data:
   name: cifar
   config:
-    data_dir_test: ${root_dir}/datasets/global_test/
-    batch_size: 1
+    dir_train: None
+    dir_val: None
+    dir_test: ${root_dir}/datasets/global_test/
+    batch_size: 32
 server_adress: "[::]:22222"
 num_rounds: 10
 client_configs:

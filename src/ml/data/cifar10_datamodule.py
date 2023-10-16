@@ -14,7 +14,7 @@ class CifarLitDataModule(pl.LightningDataModule):
         dir_val,
         dir_test,
         batch_size,
-        num_workers: int = 8,
+        num_workers: int = 0,
     ):
         super().__init__()
         self.data_dir_train = dir_train
