@@ -61,7 +61,7 @@ WORKDIR "${HOME}/app"
 COPY ./ ./
 # RUN poetry build
 RUN pip install -U pip wheel setuptools
-RUN pip install --no-cache-dir pybiscus-0.3.2-py3-none-any.whl
+RUN pip install --no-cache-dir pybiscus-0.3.3-py3-none-any.whl
 
 ##############################################################################
 

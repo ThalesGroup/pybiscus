@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [Version 0.3.3]
+
 * moving loops_fabric.py into ml directory (a better place)
 * getting rid of load_data_paroma, amd replaces it by direct use of LightningDataModule.
 * updating config files accordingly
