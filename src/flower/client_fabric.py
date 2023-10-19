@@ -8,6 +8,7 @@ import typer
 from lightning.fabric import Fabric
 from omegaconf import OmegaConf
 from typing_extensions import Annotated
+from lightning.pytorch import LightningModule, LightningDataModule
 
 from src.console import console
 from src.ml.loops_fabric import test_loop, train_loop
@@ -19,18 +20,16 @@ torch.backends.cudnn.enabled = True
 class FlowerClient(fl.client.NumPyClient):
     def __init__(
         self,
-        cid,
-        model,
-        train_dataloader,
-        validation_dataloader,
-        num_examples,
-        conf_fabric,
+        cid: int,
+        model: LightningModule,
+        data: LightningDataModule,
+        num_examples: dict[str, int],
+        conf_fabric: dict,
     ) -> None:
         super().__init__()
         self.cid = cid
         self.model = model
-        self.train_dataloader = train_dataloader
-        self.validation_dataloader = validation_dataloader
+        self.data = data
         self.conf_fabric = conf_fabric
         self.num_examples = num_examples
 
@@ -52,10 +51,12 @@ class FlowerClient(fl.client.NumPyClient):
         console.log(f"[Client {self.cid}] fit, config: {config}")
         self.set_parameters(parameters)
         console.log(f"Round {config['server_round']}, training Started...")
-        if config['server_round'] == 1:
+        if config["server_round"] == 1:
             self.fabric.launch()
             self._model, self._optimizer = self.fabric.setup(self.model, self.optimizer)
-            self._train_dataloader = self.fabric.setup_dataloaders(self.data.train_dataloader())
+            self._train_dataloader = self.fabric.setup_dataloaders(
+                self.data.train_dataloader()
+            )
         loss, accuracy = train_loop(
             self.fabric,
             self._model,
@@ -83,6 +84,17 @@ class FlowerClient(fl.client.NumPyClient):
 
 app = typer.Typer(pretty_exceptions_show_locals=False)
 
+@app.callback()
+def client():
+    """
+    
+    **The client part of Pybiscus!**
+
+    ---
+
+    The command launch-config launches a client with a specified config file, to participate to a Federated Learning.
+    """
+
 
 @app.command()
 def launch_config(
@@ -91,7 +103,7 @@ def launch_config(
     root_dir: str = None,
     server_adress: str = None,
 ):
-    """Launch a FlowerClient
+    """Launch a FlowerClient.
 
     **Args:**
 
@@ -134,8 +146,7 @@ def launch_config(
     client = FlowerClient(
         cid=conf["cid"],
         model=net,
-        train_dataloader=data.train_dataloader(),
-        validation_dataloader=data.val_dataloader(),
+        data=data,
         num_examples=num_examples,
         conf_fabric=conf["fabric"],
     )

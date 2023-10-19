@@ -3,6 +3,8 @@ from logging import WARNING
 from typing import Dict, List, Optional, Tuple, Union
 
 import flwr as fl
+import numpy as np
+import torch
 from flwr.common import (EvaluateRes, FitRes, Parameters, Scalar,
                          ndarrays_to_parameters, parameters_to_ndarrays)
 from flwr.common.logger import log
@@ -10,8 +12,7 @@ from flwr.server.client_proxy import ClientProxy
 from flwr.server.strategy.aggregate import aggregate, weighted_loss_avg
 from lightning.fabric import Fabric
 from lightning.pytorch import LightningModule
-import torch
-import numpy as np
+
 from src.console import console
 
 WARNING_MIN_AVAILABLE_CLIENTS_TOO_LOW = """
@@ -23,9 +24,19 @@ than or equal to the values of `min_fit_clients` and `min_evaluate_clients`.
 
 
 class FabricStrategy(fl.server.strategy.FedAvg):
-    # Alice: le nom de la classe me semble lié à la fonction de sauvegarde qui a été commentée.
-    # Meme si cela revient plus ou moins à copier/coller la doc de Flower
-    # je serais pour ajouter une explication des arguments.
+    """A reimplementation of the FedAvg Strategy using Fabric.
+
+    FabricStrategy replaces the base version of Flower by a Fabric-powered version.
+    Fabric allows to abstract the use of CPU/GPU, multiple hardwares, Float32/Float16 precision, and so on.
+    A Fabric instance comes with a (TensorBoard) logger, allowing to log metrics and losses from the clients,
+    using their cid as a marker.
+
+    Args:
+        model (LightningModule): the model learnt the Federated way
+        fabric (Fabric): a fabric instance, set up by the server
+        evaluate_fn (Callable):
+    """
+
     def __init__(
         self,
         *,

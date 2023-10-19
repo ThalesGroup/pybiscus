@@ -13,8 +13,8 @@ from omegaconf import OmegaConf
 from typing_extensions import Annotated
 
 from src.console import console
-from src.ml.loops_fabric import test_loop
 from src.flower.strategies import FabricStrategy
+from src.ml.loops_fabric import test_loop
 from src.ml.registry import datamodule_registry, model_registry
 
 
@@ -73,11 +73,16 @@ def weighted_average(metrics: List[Tuple[int, Metrics]]) -> Metrics:
 app = typer.Typer(pretty_exceptions_show_locals=False, rich_markup_mode="markdown")
 
 
+
 @app.callback()
 def server():
-    """The server part of Pybiscus.
+    """
+    
+    **The server part of Pybiscus.**
 
-    Launch the server!
+    ---
+
+    The command launch-config launches a server for a Federated Learning, using the given config file.
     """
 
 
@@ -113,9 +118,7 @@ def launch_config(
 
     console.log(f"Conf specified: {dict(conf)}")
 
-    logger = TensorBoardLogger(
-        root_dir=conf["root_dir"] + conf["logger"]["subdir"]
-    )
+    logger = TensorBoardLogger(root_dir=conf["root_dir"] + conf["logger"]["subdir"])
     fabric = Fabric(**conf["fabric"], loggers=logger)
     fabric.launch()
     _net = model_registry[conf["model"]["name"]](**conf["model"]["config"])
