@@ -30,6 +30,15 @@ The keyword `devices` is left intentionnaly commented, as Fabric will automatica
 
 ## Models
 
+Please look at 
+::: src.flower.server_fabric.evaluate_config
+    options:
+      heading_level: 3
+
+and 
+
+::: src.flower.server_fabric.launch_config
+
 ## Data
 
 ## Others
