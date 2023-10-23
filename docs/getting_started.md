@@ -12,7 +12,7 @@ pyenv local 3.9.12
 python -m pip install virtualenv
 python -m virtualenv .venv
 source .venv/bin/activate
-(.venv) pip install dist/pybiscus-0.3.2-py3-none-any.whl
+(.venv) pip install dist/pybiscus-0.3.3-py3-none-any.whl
 ```
 The Pybiscus project comes with an handy app, dubbed pybiscus_app. You can test it directly as it is installed in your virtual env:
 ```bash
@@ -20,8 +20,11 @@ The Pybiscus project comes with an handy app, dubbed pybiscus_app. You can test 
 ```
 
 this command will show you some documentation on how to use the app. There are three main commands:
+
  - server is dedicated to the server side;
+
  - client, to the client side;
+
  - local is for local, classical training as a way to compare to the Federated version (if need be)
 
 Note that the package is still actively under development, and even if we try as much as possible to not break things, it could happen!
@@ -34,6 +37,9 @@ pybiscus_app client launch-config path-to-config/client_1.yml
 pybiscus_app client launch-config path-to-config/client_2.yml
 ```
 
+Here is the API for the server, for instance:
+::: src.flower.server_fabric.launch_config
+
 ### Dev Mode
 
 We strongly suggest the use of both pyenv and poetry. 
@@ -42,7 +48,7 @@ We strongly suggest the use of both pyenv and poetry.
 
 * Poetry is a dependency tool, way better than the usual "pip install -r requirements.txt" paradigm, and manages virtual environments too. It is easy to use, well documented, and the install instructions are here https://python-poetry.org/docs/#installation.
 
-Once those tools are installed, clone the all repo, and do
+Once those tools are installed, clone the whole repo, and do
 ```bash
 pyenv local 3.9.12  # the code has only been tested for this python version
 poetry install
@@ -68,7 +74,7 @@ docker build \
 --build-arg http_proxy=$HTTP_PROXY \
 --build-arg https_proxy=$HTTPS_PROXY \
 --build-arg no_proxy=$NO_PROXY \
-. -t pybiscus:app.v0.3.2
+. -t pybiscus:app.v0.3.3
 ```
 
 Then, again only if you have to go through a proxy for internet access, then to download the data the different containers will need and internet access.
@@ -124,10 +130,15 @@ bash container/scripts/launch_client_2.sh
 ## Work in Progress
 
 - [ ] Improving the Documentation part (Sphinx ?) and docstrings of the code.
+
 - [ ] Implementation of the Simulation part of Flower.
+
 - [ ] Organizing dependencies in pyproject.toml: dep from Typer/Flower/Fabric part (the core), dep from Paroma, dep from next data/model.
+
 - [ ] Integration of Differential Privacy.
+
 - [ ] Using only LightningDataModule, and getting rid of load_data.
+
 - [x] Logging with tensorboard.
 
  ## Road Map

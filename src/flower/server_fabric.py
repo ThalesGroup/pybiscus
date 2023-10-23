@@ -1,6 +1,6 @@
 from collections import OrderedDict
 from pathlib import Path
-from typing import Callable, Dict, List, Optional, Tuple
+from typing import Annotated, Callable, Optional
 
 import flwr as fl
 import numpy as np
@@ -9,16 +9,67 @@ import typer
 from flwr.common import Metrics, Scalar
 from lightning.fabric import Fabric
 from lightning.fabric.loggers import TensorBoardLogger
+from lightning.pytorch import LightningModule
 from omegaconf import OmegaConf
-from typing_extensions import Annotated
+from pydantic import BaseModel, ConfigDict
 
 from src.console import console
+from src.flower.client_fabric import ConfigFabric
+from src.flower.strategies import ConfigFabricStrategy, FabricStrategy
+from src.ml.data.cifar10.cifar10_datamodule import ConfigData_Cifar10
 from src.ml.loops_fabric import test_loop
-from src.flower.strategies import FabricStrategy
+from src.ml.models.cnn.lit_cnn import ConfigModel_Cifar10
 from src.ml.registry import datamodule_registry, model_registry
 
 
-def set_params(model: torch.nn.ModuleList, params: List[np.ndarray]):
+class ConfigStrategy(BaseModel):
+    name: str
+    config: ConfigFabricStrategy
+
+    model_config = ConfigDict(extra="forbid")
+
+
+class ConfigServer(BaseModel):
+    """A Pydantic Model to validate the Server configuration given by the user.
+
+    Attributes
+    ----------
+    num_rounds:
+        the number of rounds for the FL session.
+    server_adress:
+        the server adress and port
+    root_dir:
+        the path to a "root" directory, relatively to which can be found Data, Experiments and other useful directories
+    logger:
+        a doctionnary holding the config for the logger.
+    strategy:
+        a dictionnary holding (partial) arguments for the needed Strategy
+    fabric:
+        a dictionnary holding all necessary keywords for the Fabric instance
+    model:
+        a dictionnary holding all necessary keywords for the LightningModule used
+    data:
+        a dictionnary holding all necessary keywords for the LightningDataModule used.
+    clients_configs:
+        a list of paths to the configuration files used by all clients.
+    """
+
+    num_rounds: int
+    server_adress: str
+    root_dir: str
+    logger: dict
+    strategy: ConfigStrategy
+    fabric: ConfigFabric
+    model: ConfigModel_Cifar10
+    data: ConfigData_Cifar10
+    # model: Union[ConfigModel_Cifar10] = Field(discriminator="name")
+    # data: Union[ConfigData_Cifar10] = Field(discriminator="name")
+    client_configs: list[str] = None
+
+    model_config = ConfigDict(extra="forbid")
+
+
+def set_params(model: torch.nn.ModuleList, params: list[np.ndarray]):
     params_dict = zip(model.state_dict().keys(), params)
     state_dict = OrderedDict({k: torch.from_numpy(np.copy(v)) for k, v in params_dict})
     model.load_state_dict(state_dict, strict=True)
@@ -43,13 +94,13 @@ def evaluate_config(server_round: int):
 
 
 def get_evaluate_fn(
-    testset,
-    model,
-    fabric,
-) -> Callable[[fl.common.NDArrays], Optional[Tuple[float, float]]]:
+    testset: torch.utils.data.DataLoader,
+    model: LightningModule,
+    fabric: Fabric,
+) -> Callable[[fl.common.NDArrays], Optional[tuple[float, float]]]:
     def evaluate(
-        server_round: int, parameters: fl.common.NDArrays, config: Dict[str, Scalar]
-    ) -> Optional[Tuple[float, float]]:
+        server_round: int, parameters: fl.common.NDArrays, config: dict[str, Scalar]
+    ) -> Optional[tuple[float, float]]:
         set_params(model, parameters)
 
         loss, accuracy = test_loop(fabric=fabric, net=model, testloader=testset)
@@ -58,7 +109,7 @@ def get_evaluate_fn(
     return evaluate
 
 
-def weighted_average(metrics: List[Tuple[int, Metrics]]) -> Metrics:
+def weighted_average(metrics: list[tuple[int, Metrics]]) -> Metrics:
     losses = [num_examples * m["loss"] for num_examples, m in metrics]
     accuracies = [num_examples * m["accuracy"] for num_examples, m in metrics]
     examples = [num_examples for num_examples, _ in metrics]
@@ -75,9 +126,13 @@ app = typer.Typer(pretty_exceptions_show_locals=False, rich_markup_mode="markdow
 
 @app.callback()
 def server():
-    """The server part of Pybiscus.
+    """
 
-    Launch the server!
+    **The server part of Pybiscus.**
+
+    ---
+
+    The command launch-config launches a server for a Federated Learning, using the given config file.
     """
 
 
@@ -89,15 +144,23 @@ def launch_config(
 ):
     """Launch a Flower Server.
 
-    Args:
-        num_rounds (int): number of rounds of FL
-        server_adress (str): Flower server adress
+    This is a Typer command to launch a Flower Server, using the configuration given by config.
+    Apart from the config parameter, other parameters are optional and, if given, override the associated parameter given by the parameter config.
+
+    Parameters
+    ----------
+    config:
+        path to a config file
+    num_rounds: optional
+        the number of Federated rounds
+    server_adress: optional
+        the IP adress and port of the Flower Server.
     """
     if config is None:
         print("No config file")
         raise typer.Abort()
     if config.is_file():
-        conf = OmegaConf.load(config)
+        conf_loaded = OmegaConf.load(config)
         # console.log(conf)
     elif config.is_dir():
         print("Config is a directory, will use all its config files")
@@ -107,27 +170,29 @@ def launch_config(
         raise typer.Abort()
 
     if num_rounds is not None:
-        conf["num_rounds"] = num_rounds
+        conf_loaded["num_rounds"] = num_rounds
     if server_adress is not None:
-        conf["server_adress"] = server_adress
+        conf_loaded["server_adress"] = server_adress
 
-    console.log(f"Conf specified: {dict(conf)}")
+    _conf = ConfigServer(**conf_loaded)
+    console.log(_conf)
+    conf = dict(_conf)
+    conf_fabric = dict(conf["fabric"])
+    conf_data = dict(conf["data"].config)
+    conf_model = dict(conf["model"].config)
+    conf_strategy = dict(conf["strategy"].config)
 
-    logger = TensorBoardLogger(
-        root_dir=conf["root_dir"] + conf["logger"]["subdir"]
-    )
-    fabric = Fabric(**conf["fabric"], loggers=logger)
+    logger = TensorBoardLogger(root_dir=conf["root_dir"] + conf["logger"]["subdir"])
+    fabric = Fabric(**conf_fabric, loggers=logger)
     fabric.launch()
-    _net = model_registry[conf["model"]["name"]](**conf["model"]["config"])
+    _net = model_registry[conf["model"].name](**conf_model)
     net = fabric.setup_module(_net)
-    data = datamodule_registry[conf["data"]["name"]](**conf["data"]["config"])
+    data = datamodule_registry[conf["data"].name](**conf_data)
     data.setup(stage="test")
     _test_set = data.test_dataloader()
     test_set = fabric._setup_dataloader(_test_set)
 
     strategy = FabricStrategy(
-        fraction_fit=1.0,
-        fraction_evaluate=1.0,
         fit_metrics_aggregation_fn=weighted_average,
         evaluate_metrics_aggregation_fn=weighted_average,
         model=net,
@@ -135,6 +200,7 @@ def launch_config(
         evaluate_fn=get_evaluate_fn(testset=test_set, model=net, fabric=fabric),
         on_fit_config_fn=fit_config,
         on_evaluate_config_fn=evaluate_config,
+        **conf_strategy,
     )
 
     fl.server.start_server(
@@ -144,7 +210,7 @@ def launch_config(
     )
 
     with open(fabric.logger.log_dir + "/config_server_launch.yml", "w") as file:
-        OmegaConf.save(config=conf, f=file)
+        OmegaConf.save(config=conf_loaded, f=file)
     if conf["client_configs"] is not None:
         for client_conf in conf["client_configs"]:
             console.log(client_conf)

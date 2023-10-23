@@ -1,0 +1,986 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+      
+        <link rel="prev" href="../configuration/">
+      
+      
+        <link rel="next" href="../how-to/">
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.5.3, mkdocs-material-9.4.6">
+    
+    
+      
+        <title>Pybiscus - Documentation of Pybiscus</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.35e1ed30.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/_mkdocstrings.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce((e,_)=>(e<<5)-e+_.charCodeAt(0),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+    
+  </head>
+  
+  
+    <body dir="ltr">
+  
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&"object"==typeof palette.color)for(var key of Object.keys(palette.color))document.body.setAttribute("data-md-color-"+key,palette.color[key])</script>
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#pybiscus" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="Documentation of Pybiscus" class="md-header__button md-logo" aria-label="Documentation of Pybiscus" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3V6m0 5h18v2H3v-2m0 5h18v2H3v-2Z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Documentation of Pybiscus
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Pybiscus
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+    
+    
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="Documentation of Pybiscus" class="md-nav__button md-logo" aria-label="Documentation of Pybiscus" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
+
+    </a>
+    Documentation of Pybiscus
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Welcome to MkDocs
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../configuration/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    How to use config files
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  <span class="md-ellipsis">
+    Pybiscus
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  <span class="md-ellipsis">
+    Pybiscus
+  </span>
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#uses-of-pybiscus" class="md-nav__link">
+    Uses of Pybiscus
+  </a>
+  
+    <nav class="md-nav" aria-label="Uses of Pybiscus">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#user-mode" class="md-nav__link">
+    User Mode
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#src.flower.server_fabric" class="md-nav__link">
+    server_fabric
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#src.flower.server_fabric.evaluate_config" class="md-nav__link">
+    evaluate_config()
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#src.flower.server_fabric.fit_config" class="md-nav__link">
+    fit_config()
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#src.flower.server_fabric.launch_config" class="md-nav__link">
+    launch_config()
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#src.flower.server_fabric.server" class="md-nav__link">
+    server()
+  </a>
+  
+    <nav class="md-nav" aria-label="server()">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#dev-mode" class="md-nav__link">
+    Dev Mode
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#docker" class="md-nav__link">
+    Docker
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#features" class="md-nav__link">
+    Features
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#work-in-progress" class="md-nav__link">
+    Work in Progress
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../how-to/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    How-tos
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#uses-of-pybiscus" class="md-nav__link">
+    Uses of Pybiscus
+  </a>
+  
+    <nav class="md-nav" aria-label="Uses of Pybiscus">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#user-mode" class="md-nav__link">
+    User Mode
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#src.flower.server_fabric" class="md-nav__link">
+    server_fabric
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#src.flower.server_fabric.evaluate_config" class="md-nav__link">
+    evaluate_config()
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#src.flower.server_fabric.fit_config" class="md-nav__link">
+    fit_config()
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#src.flower.server_fabric.launch_config" class="md-nav__link">
+    launch_config()
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#src.flower.server_fabric.server" class="md-nav__link">
+    server()
+  </a>
+  
+    <nav class="md-nav" aria-label="server()">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#dev-mode" class="md-nav__link">
+    Dev Mode
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#docker" class="md-nav__link">
+    Docker
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#features" class="md-nav__link">
+    Features
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#work-in-progress" class="md-nav__link">
+    Work in Progress
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+<h1 id="pybiscus">Pybiscus</h1>
+<p>A simple tool to perform Federated Learning on various models and datasets. Build on top of Flower (FL part), Typer (script and CLI parts) and Lightning/Fabric (ML part).</p>
+<h2 id="uses-of-pybiscus">Uses of Pybiscus</h2>
+<p>You have two ways of using Pybiscus. Either by cloning the repo and installing (via Poetry) all dependencies, and working on the code itself; or by just downloading the wheel and installing as a package.</p>
+<h3 id="user-mode">User Mode</h3>
+<p>The wheel in <code>dist/pybiscus-0.3.2-py3-none-any.whl</code> is the packaged version of Pybiscus. You can download it and do</p>
+<pre><code class="language-bash">pyenv local 3.9.12
+python -m pip install virtualenv
+python -m virtualenv .venv
+source .venv/bin/activate
+(.venv) pip install dist/pybiscus-0.3.2-py3-none-any.whl
+</code></pre>
+<p>The Pybiscus project comes with an handy app, dubbed pybiscus_app. You can test it directly as it is installed in your virtual env:</p>
+<pre><code class="language-bash">(.venv) pybiscus_app --help
+</code></pre>
+<p>this command will show you some documentation on how to use the app. There are three main commands:
+ - server is dedicated to the server side;
+ - client, to the client side;
+ - local is for local, classical training as a way to compare to the Federated version (if need be)</p>
+<p>Note that the package is still actively under development, and even if we try as much as possible to not break things, it could happen!</p>
+<p>To work, the app needs only config files for the server and the clients. Any number of clients can be launched, using the same command <code>client launch-config</code>.
+or, now with config files (examples are provided in <code>configs/</code>):</p>
+<pre><code class="language-bash">pybiscus_app server launch-config path-to-config/server.yml
+pybiscus_app client launch-config path-to-config/client_1.yml
+pybiscus_app client launch-config path-to-config/client_2.yml
+</code></pre>
+<p>Here is the API for the server, for instance:
+</p>
+
+
+<div class="doc doc-object doc-module">
+
+
+
+<a id="src.flower.server_fabric"></a>
+  <div class="doc doc-contents first">
+
+  
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+
+
+<h2 id="src.flower.server_fabric.evaluate_config" class="doc doc-heading">
+          <code class="highlight language-python"><span class="n">evaluate_config</span><span class="p">(</span><span class="n">server_round</span><span class="p">)</span></code>
+
+</h2>
+
+
+  <div class="doc doc-contents ">
+  
+      <p>Return training configuration dict for each round.</p>
+
+          <details class="quote">
+            <summary>Source code in <code>src/flower/server_fabric.py</code></summary>
+            <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">36</span>
+<span class="normal">37</span>
+<span class="normal">38</span>
+<span class="normal">39</span>
+<span class="normal">40</span>
+<span class="normal">41</span>
+<span class="normal">42</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">evaluate_config</span><span class="p">(</span><span class="n">server_round</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return training configuration dict for each round.&quot;&quot;&quot;</span>
+    <span class="n">config</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s2">&quot;server_round&quot;</span><span class="p">:</span> <span class="n">server_round</span><span class="p">,</span>  <span class="c1"># The current round of federated learning</span>
+        <span class="c1"># &quot;local_epochs&quot;: 1,  # if server_round &lt; 2 else 2,  #</span>
+    <span class="p">}</span>
+    <span class="k">return</span> <span class="n">config</span>
+</code></pre></div></td></tr></table></div>
+          </details>
+  </div>
+
+</div>
+
+
+<div class="doc doc-object doc-function">
+
+
+
+
+<h2 id="src.flower.server_fabric.fit_config" class="doc doc-heading">
+          <code class="highlight language-python"><span class="n">fit_config</span><span class="p">(</span><span class="n">server_round</span><span class="p">)</span></code>
+
+</h2>
+
+
+  <div class="doc doc-contents ">
+  
+      <p>Return training configuration dict for each round.</p>
+
+          <details class="quote">
+            <summary>Source code in <code>src/flower/server_fabric.py</code></summary>
+            <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">27</span>
+<span class="normal">28</span>
+<span class="normal">29</span>
+<span class="normal">30</span>
+<span class="normal">31</span>
+<span class="normal">32</span>
+<span class="normal">33</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">fit_config</span><span class="p">(</span><span class="n">server_round</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return training configuration dict for each round.&quot;&quot;&quot;</span>
+    <span class="n">config</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s2">&quot;server_round&quot;</span><span class="p">:</span> <span class="n">server_round</span><span class="p">,</span>  <span class="c1"># The current round of federated learning</span>
+        <span class="s2">&quot;local_epochs&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>  <span class="c1"># if server_round &lt; 2 else 2,  #</span>
+    <span class="p">}</span>
+    <span class="k">return</span> <span class="n">config</span>
+</code></pre></div></td></tr></table></div>
+          </details>
+  </div>
+
+</div>
+
+
+<div class="doc doc-object doc-function">
+
+
+
+
+<h2 id="src.flower.server_fabric.launch_config" class="doc doc-heading">
+          <code class="highlight language-python"><span class="n">launch_config</span><span class="p">(</span><span class="n">config</span><span class="p">,</span> <span class="n">num_rounds</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">server_adress</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>
+
+</h2>
+
+
+  <div class="doc doc-contents ">
+  
+      <p>Launch a Flower Server.</p>
+
+
+
+  <p><strong>Parameters:</strong></p>
+  <table>
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Type</th>
+        <th>Description</th>
+        <th>Default</th>
+      </tr>
+    </thead>
+    <tbody>
+        <tr>
+          <td><code>num_rounds</code></td>
+          <td>
+                <code>int</code>
+          </td>
+          <td>
+            <div class="doc-md-description">
+              <p>number of rounds of FL</p>
+            </div>
+          </td>
+          <td>
+                <code>None</code>
+          </td>
+        </tr>
+        <tr>
+          <td><code>server_adress</code></td>
+          <td>
+                <code>str</code>
+          </td>
+          <td>
+            <div class="doc-md-description">
+              <p>Flower server adress</p>
+            </div>
+          </td>
+          <td>
+                <code>None</code>
+          </td>
+        </tr>
+    </tbody>
+  </table>
+
+          <details class="quote">
+            <summary>Source code in <code>src/flower/server_fabric.py</code></summary>
+            <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 89</span>
+<span class="normal"> 90</span>
+<span class="normal"> 91</span>
+<span class="normal"> 92</span>
+<span class="normal"> 93</span>
+<span class="normal"> 94</span>
+<span class="normal"> 95</span>
+<span class="normal"> 96</span>
+<span class="normal"> 97</span>
+<span class="normal"> 98</span>
+<span class="normal"> 99</span>
+<span class="normal">100</span>
+<span class="normal">101</span>
+<span class="normal">102</span>
+<span class="normal">103</span>
+<span class="normal">104</span>
+<span class="normal">105</span>
+<span class="normal">106</span>
+<span class="normal">107</span>
+<span class="normal">108</span>
+<span class="normal">109</span>
+<span class="normal">110</span>
+<span class="normal">111</span>
+<span class="normal">112</span>
+<span class="normal">113</span>
+<span class="normal">114</span>
+<span class="normal">115</span>
+<span class="normal">116</span>
+<span class="normal">117</span>
+<span class="normal">118</span>
+<span class="normal">119</span>
+<span class="normal">120</span>
+<span class="normal">121</span>
+<span class="normal">122</span>
+<span class="normal">123</span>
+<span class="normal">124</span>
+<span class="normal">125</span>
+<span class="normal">126</span>
+<span class="normal">127</span>
+<span class="normal">128</span>
+<span class="normal">129</span>
+<span class="normal">130</span>
+<span class="normal">131</span>
+<span class="normal">132</span>
+<span class="normal">133</span>
+<span class="normal">134</span>
+<span class="normal">135</span>
+<span class="normal">136</span>
+<span class="normal">137</span>
+<span class="normal">138</span>
+<span class="normal">139</span>
+<span class="normal">140</span>
+<span class="normal">141</span>
+<span class="normal">142</span>
+<span class="normal">143</span>
+<span class="normal">144</span>
+<span class="normal">145</span>
+<span class="normal">146</span>
+<span class="normal">147</span>
+<span class="normal">148</span>
+<span class="normal">149</span>
+<span class="normal">150</span>
+<span class="normal">151</span>
+<span class="normal">152</span>
+<span class="normal">153</span>
+<span class="normal">154</span>
+<span class="normal">155</span>
+<span class="normal">156</span>
+<span class="normal">157</span>
+<span class="normal">158</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@app</span><span class="o">.</span><span class="n">command</span><span class="p">()</span>
+<span class="k">def</span> <span class="nf">launch_config</span><span class="p">(</span>
+    <span class="n">config</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="n">Path</span><span class="p">,</span> <span class="n">typer</span><span class="o">.</span><span class="n">Argument</span><span class="p">()],</span>
+    <span class="n">num_rounds</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">server_adress</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Launch a Flower Server.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        num_rounds (int): number of rounds of FL</span>
+<span class="sd">        server_adress (str): Flower server adress</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">config</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;No config file&quot;</span><span class="p">)</span>
+        <span class="k">raise</span> <span class="n">typer</span><span class="o">.</span><span class="n">Abort</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">config</span><span class="o">.</span><span class="n">is_file</span><span class="p">():</span>
+        <span class="n">conf</span> <span class="o">=</span> <span class="n">OmegaConf</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">config</span><span class="p">)</span>
+        <span class="c1"># console.log(conf)</span>
+    <span class="k">elif</span> <span class="n">config</span><span class="o">.</span><span class="n">is_dir</span><span class="p">():</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Config is a directory, will use all its config files&quot;</span><span class="p">)</span>
+        <span class="k">raise</span> <span class="n">typer</span><span class="o">.</span><span class="n">Abort</span><span class="p">()</span>
+    <span class="k">elif</span> <span class="ow">not</span> <span class="n">config</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;The config doesn&#39;t exist&quot;</span><span class="p">)</span>
+        <span class="k">raise</span> <span class="n">typer</span><span class="o">.</span><span class="n">Abort</span><span class="p">()</span>
+
+    <span class="k">if</span> <span class="n">num_rounds</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">conf</span><span class="p">[</span><span class="s2">&quot;num_rounds&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">num_rounds</span>
+    <span class="k">if</span> <span class="n">server_adress</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">conf</span><span class="p">[</span><span class="s2">&quot;server_adress&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">server_adress</span>
+
+    <span class="n">console</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Conf specified: </span><span class="si">{</span><span class="nb">dict</span><span class="p">(</span><span class="n">conf</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="n">logger</span> <span class="o">=</span> <span class="n">TensorBoardLogger</span><span class="p">(</span><span class="n">root_dir</span><span class="o">=</span><span class="n">conf</span><span class="p">[</span><span class="s2">&quot;root_dir&quot;</span><span class="p">]</span> <span class="o">+</span> <span class="n">conf</span><span class="p">[</span><span class="s2">&quot;logger&quot;</span><span class="p">][</span><span class="s2">&quot;subdir&quot;</span><span class="p">])</span>
+    <span class="n">fabric</span> <span class="o">=</span> <span class="n">Fabric</span><span class="p">(</span><span class="o">**</span><span class="n">conf</span><span class="p">[</span><span class="s2">&quot;fabric&quot;</span><span class="p">],</span> <span class="n">loggers</span><span class="o">=</span><span class="n">logger</span><span class="p">)</span>
+    <span class="n">fabric</span><span class="o">.</span><span class="n">launch</span><span class="p">()</span>
+    <span class="n">_net</span> <span class="o">=</span> <span class="n">model_registry</span><span class="p">[</span><span class="n">conf</span><span class="p">[</span><span class="s2">&quot;model&quot;</span><span class="p">][</span><span class="s2">&quot;name&quot;</span><span class="p">]](</span><span class="o">**</span><span class="n">conf</span><span class="p">[</span><span class="s2">&quot;model&quot;</span><span class="p">][</span><span class="s2">&quot;config&quot;</span><span class="p">])</span>
+    <span class="n">net</span> <span class="o">=</span> <span class="n">fabric</span><span class="o">.</span><span class="n">setup_module</span><span class="p">(</span><span class="n">_net</span><span class="p">)</span>
+    <span class="n">data</span> <span class="o">=</span> <span class="n">datamodule_registry</span><span class="p">[</span><span class="n">conf</span><span class="p">[</span><span class="s2">&quot;data&quot;</span><span class="p">][</span><span class="s2">&quot;name&quot;</span><span class="p">]](</span><span class="o">**</span><span class="n">conf</span><span class="p">[</span><span class="s2">&quot;data&quot;</span><span class="p">][</span><span class="s2">&quot;config&quot;</span><span class="p">])</span>
+    <span class="n">data</span><span class="o">.</span><span class="n">setup</span><span class="p">(</span><span class="n">stage</span><span class="o">=</span><span class="s2">&quot;test&quot;</span><span class="p">)</span>
+    <span class="n">_test_set</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">test_dataloader</span><span class="p">()</span>
+    <span class="n">test_set</span> <span class="o">=</span> <span class="n">fabric</span><span class="o">.</span><span class="n">_setup_dataloader</span><span class="p">(</span><span class="n">_test_set</span><span class="p">)</span>
+
+    <span class="n">strategy</span> <span class="o">=</span> <span class="n">FabricStrategy</span><span class="p">(</span>
+        <span class="n">fraction_fit</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span>
+        <span class="n">fraction_evaluate</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span>
+        <span class="n">fit_metrics_aggregation_fn</span><span class="o">=</span><span class="n">weighted_average</span><span class="p">,</span>
+        <span class="n">evaluate_metrics_aggregation_fn</span><span class="o">=</span><span class="n">weighted_average</span><span class="p">,</span>
+        <span class="n">model</span><span class="o">=</span><span class="n">net</span><span class="p">,</span>
+        <span class="n">fabric</span><span class="o">=</span><span class="n">fabric</span><span class="p">,</span>
+        <span class="n">evaluate_fn</span><span class="o">=</span><span class="n">get_evaluate_fn</span><span class="p">(</span><span class="n">testset</span><span class="o">=</span><span class="n">test_set</span><span class="p">,</span> <span class="n">model</span><span class="o">=</span><span class="n">net</span><span class="p">,</span> <span class="n">fabric</span><span class="o">=</span><span class="n">fabric</span><span class="p">),</span>
+        <span class="n">on_fit_config_fn</span><span class="o">=</span><span class="n">fit_config</span><span class="p">,</span>
+        <span class="n">on_evaluate_config_fn</span><span class="o">=</span><span class="n">evaluate_config</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="n">fl</span><span class="o">.</span><span class="n">server</span><span class="o">.</span><span class="n">start_server</span><span class="p">(</span>
+        <span class="n">server_address</span><span class="o">=</span><span class="n">conf</span><span class="p">[</span><span class="s2">&quot;server_adress&quot;</span><span class="p">],</span>
+        <span class="n">config</span><span class="o">=</span><span class="n">fl</span><span class="o">.</span><span class="n">server</span><span class="o">.</span><span class="n">ServerConfig</span><span class="p">(</span><span class="n">num_rounds</span><span class="o">=</span><span class="n">conf</span><span class="p">[</span><span class="s2">&quot;num_rounds&quot;</span><span class="p">]),</span>
+        <span class="n">strategy</span><span class="o">=</span><span class="n">strategy</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">fabric</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">log_dir</span> <span class="o">+</span> <span class="s2">&quot;/config_server_launch.yml&quot;</span><span class="p">,</span> <span class="s2">&quot;w&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">file</span><span class="p">:</span>
+        <span class="n">OmegaConf</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">config</span><span class="o">=</span><span class="n">conf</span><span class="p">,</span> <span class="n">f</span><span class="o">=</span><span class="n">file</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">conf</span><span class="p">[</span><span class="s2">&quot;client_configs&quot;</span><span class="p">]</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">client_conf</span> <span class="ow">in</span> <span class="n">conf</span><span class="p">[</span><span class="s2">&quot;client_configs&quot;</span><span class="p">]:</span>
+            <span class="n">console</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">client_conf</span><span class="p">)</span>
+            <span class="n">_conf</span> <span class="o">=</span> <span class="n">OmegaConf</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">client_conf</span><span class="p">)</span>
+            <span class="k">with</span> <span class="nb">open</span><span class="p">(</span>
+                <span class="n">fabric</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">log_dir</span> <span class="o">+</span> <span class="sa">f</span><span class="s2">&quot;/config_client_</span><span class="si">{</span><span class="n">_conf</span><span class="p">[</span><span class="s1">&#39;cid&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">_launch.yml&quot;</span><span class="p">,</span> <span class="s2">&quot;w&quot;</span>
+            <span class="p">)</span> <span class="k">as</span> <span class="n">file</span><span class="p">:</span>
+                <span class="n">OmegaConf</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">config</span><span class="o">=</span><span class="n">_conf</span><span class="p">,</span> <span class="n">f</span><span class="o">=</span><span class="n">file</span><span class="p">)</span>
+</code></pre></div></td></tr></table></div>
+          </details>
+  </div>
+
+</div>
+
+
+<div class="doc doc-object doc-function">
+
+
+
+
+<h2 id="src.flower.server_fabric.server" class="doc doc-heading">
+          <code class="highlight language-python"><span class="n">server</span><span class="p">()</span></code>
+
+</h2>
+
+
+  <div class="doc doc-contents ">
+  
+      <p><strong>The server part of Pybiscus.</strong></p>
+<hr />
+<p>The command launch-config launches a server for a Federated Learning, using the given config file.</p>
+
+          <details class="quote">
+            <summary>Source code in <code>src/flower/server_fabric.py</code></summary>
+            <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">77</span>
+<span class="normal">78</span>
+<span class="normal">79</span>
+<span class="normal">80</span>
+<span class="normal">81</span>
+<span class="normal">82</span>
+<span class="normal">83</span>
+<span class="normal">84</span>
+<span class="normal">85</span>
+<span class="normal">86</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@app</span><span class="o">.</span><span class="n">callback</span><span class="p">()</span>
+<span class="k">def</span> <span class="nf">server</span><span class="p">():</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+
+<span class="sd">    **The server part of Pybiscus.**</span>
+
+<span class="sd">    ---</span>
+
+<span class="sd">    The command launch-config launches a server for a Federated Learning, using the given config file.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+</code></pre></div></td></tr></table></div>
+          </details>
+  </div>
+
+</div>
+
+
+
+  </div>
+
+  </div>
+
+</div><h3 id="dev-mode">Dev Mode</h3>
+<p>We strongly suggest the use of both pyenv and poetry. </p>
+<ul>
+<li>
+<p>Pyenv is a tool to manage properly Python versions, and you can find install instructions here https://github.com/pyenv/pyenv#installation. </p>
+</li>
+<li>
+<p>Poetry is a dependency tool, way better than the usual "pip install -r requirements.txt" paradigm, and manages virtual environments too. It is easy to use, well documented, and the install instructions are here https://python-poetry.org/docs/#installation.</p>
+</li>
+</ul>
+<p>Once those tools are installed, clone the all repo, and do</p>
+<pre><code class="language-bash">pyenv local 3.9.12  # the code has only been tested for this python version
+poetry install
+</code></pre>
+<p>and you are good to go! We suggest to create a directory <code>experiments</code> to hold checkpoints and other artefacts and a directory <code>datasets</code> to hold the data.</p>
+<h2 id="docker">Docker</h2>
+<p>To build the image (which is quite heavy as of now), do the following</p>
+<pre><code class="language-bash">cd container
+docker build . -t pybiscus:app.v0.3.2
+</code></pre>
+<p>If you are working under a proxy, you might need to add some argument for the buid</p>
+<pre><code class="language-bash">cd container
+docker build \
+--build-arg http_proxy=$HTTP_PROXY \
+--build-arg https_proxy=$HTTPS_PROXY \
+--build-arg no_proxy=$NO_PROXY \
+. -t pybiscus:app.v0.3.2
+</code></pre>
+<p>Then, again only if you have to go through a proxy for internet access, then to download the data the different containers will need and internet access.
+So you need to set the file <code>~/.docker/config.json</code> with the proxy config</p>
+<p>For the client to be able to communicate with the server you need to add "server"
+to ne noProxy config.</p>
+<pre><code class="language-json">{
+        &quot;proxies&quot;:{
+                &quot;default&quot;:{
+                        &quot;httpsProxy&quot;: &quot;your_httpsProxy&quot;,
+                        &quot;httpProxy&quot;: &quot;your_httpProxy&quot;,
+                        &quot;noProxy&quot;: &quot;your_noProxy,server&quot;,
+                }
+        }
+}
+</code></pre>
+<p>and voila! The docker image is aimed at running only the pybiscus_app itself. In order to facilitate the use of docker (which can be quite verbose), some scripts are available in container/scripts. To launch a local training, you just need to update <code>container/scripts/launch_local_train.sh</code> and <code>container/configs/local_train.yml</code> according to where are located your datasets and such. Then, simply run</p>
+<pre><code class="language-bash">bash container/scripts/launch_local_train.sh
+</code></pre>
+<p>It is as simple as running</p>
+<pre><code class="language-bash">docker run -t --gpus device=(some_device) -v &quot;$(pwd)&quot;:/app/datasets pybiscus:app --help
+</code></pre>
+<p>to get the help of the app. The short version is, <code>docker run -t pybiscus:app</code> is equivalent to running <code>pybiscus_app</code>. As for the app itself, the docker image can launch either client, server or local components.</p>
+<p>To launch a "true" Federated learning, you need first to create a docker network for the containers to communicate:</p>
+<pre><code class="language-bash">docker network create federated
+</code></pre>
+<p>then </p>
+<pre><code class="language-bash">bash container/scripts/launch_server.sh
+</code></pre>
+<p>followed by (in other terminal)</p>
+<pre><code class="language-bash">bash container/scripts/launch_client_1.sh
+</code></pre>
+<p>and </p>
+<pre><code class="language-bash">bash container/scripts/launch_client_2.sh
+</code></pre>
+<h2 id="features">Features</h2>
+<h2 id="work-in-progress">Work in Progress</h2>
+<ul>
+<li>[ ] Improving the Documentation part (Sphinx ?) and docstrings of the code.</li>
+<li>[ ] Implementation of the Simulation part of Flower.</li>
+<li>[ ] Organizing dependencies in pyproject.toml: dep from Typer/Flower/Fabric part (the core), dep from Paroma, dep from next data/model.</li>
+<li>[ ] Integration of Differential Privacy.</li>
+<li>[ ] Using only LightningDataModule, and getting rid of load_data.</li>
+<li>[x] Logging with tensorboard.</li>
+</ul>
+<p>## Road Map</p>
+<p>Here is a list of more mid/long term ideas to implement in Pybiscus for Federated Learning.</p>
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    <script id="__config" type="application/json">{"base": "..", "features": [], "search": "../assets/javascripts/workers/search.f886a092.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.aecac24b.min.js"></script>
+      
+    
+  </body>
+</html>

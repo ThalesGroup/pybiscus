@@ -5,4 +5,3 @@ saved_models_path
 experiments
 *.code-workspace
 **/.ruffcache
-poetry.lock

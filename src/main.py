@@ -16,9 +16,9 @@ def explain():
 
     **The Pybiscus app is made of three commands:**
 
-    * server
+    * server: to launch a server for a Federated Learning session.
 
-    * client
+    * client: to launch a client for a Federated Learning session.
 
     * local: to train locally a model.
 
