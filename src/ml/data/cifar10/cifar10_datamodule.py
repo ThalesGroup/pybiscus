@@ -1,9 +1,43 @@
-from typing import Optional
+from typing import Literal, Optional
 
 import lightning.pytorch as pl
 import torchvision.transforms as transforms
+from pydantic import BaseModel, ConfigDict
 from torch.utils.data import DataLoader
 from torchvision.datasets import CIFAR10
+
+
+class ConfigCifar10Data(BaseModel):
+    """A Pydantic Model to validate the CifarLitDataModule config givent by the user.
+
+    Attributes
+    ----------
+    dir_train: str
+        path to the directory holding the training data
+    dir_val: str
+        path to the directory holding the validating data
+    dir_test: str, optional
+        path to the directory holding the testing data
+    batch_size: int, optional
+        the batch size (default to 32)
+    num_workers: int, optional
+        the number of workers for the DataLoaders (default to 0)
+    """
+
+    dir_train: str
+    dir_val: str
+    dir_test: str = None
+    batch_size: int = 32
+    num_workers: int = 0
+
+    model_config = ConfigDict(extra="forbid")
+
+
+class ConfigData_Cifar10(BaseModel):
+    name: Literal["cifar"]
+    config: ConfigCifar10Data
+
+    model_config = ConfigDict(extra="forbid")
 
 
 class CifarLitDataModule(pl.LightningDataModule):

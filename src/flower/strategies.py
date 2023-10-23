@@ -1,17 +1,16 @@
-from collections import OrderedDict
 from logging import WARNING
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Callable, Optional, Union
 
 import flwr as fl
-import numpy as np
-import torch
-from flwr.common import (EvaluateRes, FitRes, Parameters, Scalar,
-                         ndarrays_to_parameters, parameters_to_ndarrays)
+from flwr.common import (EvaluateRes, FitRes, MetricsAggregationFn, Parameters,
+                         Scalar, ndarrays_to_parameters,
+                         parameters_to_ndarrays)
 from flwr.common.logger import log
 from flwr.server.client_proxy import ClientProxy
 from flwr.server.strategy.aggregate import aggregate, weighted_loss_avg
 from lightning.fabric import Fabric
 from lightning.pytorch import LightningModule
+from pydantic import BaseModel
 
 from src.console import console
 
@@ -23,6 +22,10 @@ than or equal to the values of `min_fit_clients` and `min_evaluate_clients`.
 """
 
 
+class ConfigFabricStrategy(BaseModel):
+    min_fit_clients: int
+
+
 class FabricStrategy(fl.server.strategy.FedAvg):
     """A reimplementation of the FedAvg Strategy using Fabric.
 
@@ -31,10 +34,11 @@ class FabricStrategy(fl.server.strategy.FedAvg):
     A Fabric instance comes with a (TensorBoard) logger, allowing to log metrics and losses from the clients,
     using their cid as a marker.
 
-    Args:
-        model (LightningModule): the model learnt the Federated way
-        fabric (Fabric): a fabric instance, set up by the server
-        evaluate_fn (Callable):
+    Attributes:
+    -----------
+    model (LightningModule): the model learnt the Federated way
+    fabric (Fabric): a fabric instance, set up by the server
+    evaluate_fn (Callable):
     """
 
     def __init__(
@@ -42,11 +46,11 @@ class FabricStrategy(fl.server.strategy.FedAvg):
         *,
         model: LightningModule,
         fabric: Fabric,
-        evaluate_fn,
-        fit_metrics_aggregation_fn,
-        evaluate_metrics_aggregation_fn,
-        on_fit_config_fn,
-        on_evaluate_config_fn,
+        evaluate_fn: Callable[[fl.common.NDArrays], Optional[tuple[float, float]]],
+        fit_metrics_aggregation_fn: Optional[MetricsAggregationFn] = None,
+        evaluate_metrics_aggregation_fn: Optional[MetricsAggregationFn] = None,
+        on_fit_config_fn: Optional[Callable[[int], dict[str, Scalar]]] = None,
+        on_evaluate_config_fn: Optional[Callable[[int], dict[str, Scalar]]] = None,
         fraction_fit: float = 1,
         fraction_evaluate: float = 1,
         min_fit_clients: int = 2,
@@ -71,7 +75,7 @@ class FabricStrategy(fl.server.strategy.FedAvg):
 
     def evaluate(
         self, server_round: int, parameters: Parameters
-    ) -> Optional[Tuple[float, Dict[str, Scalar]]]:
+    ) -> Optional[tuple[float, dict[str, Scalar]]]:
         """Evaluate model parameters using an evaluation function."""
         if self.evaluate_fn is None:
             # No evaluation function provided
@@ -89,9 +93,9 @@ class FabricStrategy(fl.server.strategy.FedAvg):
     def aggregate_fit(
         self,
         server_round: int,
-        results: List[Tuple[ClientProxy, FitRes]],
-        failures: List[Union[Tuple[ClientProxy, FitRes], BaseException]],
-    ) -> Tuple[Optional[Parameters], Dict[str, Scalar]]:
+        results: list[tuple[ClientProxy, FitRes]],
+        failures: list[Union[tuple[ClientProxy, FitRes], BaseException]],
+    ) -> tuple[Optional[Parameters], dict[str, Scalar]]:
         """Aggregate fit results using weighted average."""
         if not results:
             return None, {}
@@ -125,9 +129,9 @@ class FabricStrategy(fl.server.strategy.FedAvg):
     def aggregate_evaluate(
         self,
         server_round: int,
-        results: List[Tuple[ClientProxy, EvaluateRes]],
-        failures: List[Union[Tuple[ClientProxy, EvaluateRes], BaseException]],
-    ) -> Tuple[Optional[float], Dict[str, Scalar]]:
+        results: list[tuple[ClientProxy, EvaluateRes]],
+        failures: list[Union[tuple[ClientProxy, EvaluateRes], BaseException]],
+    ) -> tuple[Optional[float], dict[str, Scalar]]:
         """Aggregate evaluation losses using weighted average."""
         if not results:
             return None, {}
@@ -158,71 +162,3 @@ class FabricStrategy(fl.server.strategy.FedAvg):
             log(WARNING, "No evaluate_metrics_aggregation_fn provided")
 
         return loss_aggregated, metrics_aggregated
-
-
-class SaveModelStrategy(fl.server.strategy.FedAvg):
-    # Alice: le nom de la classe me semble lié à la fonction de sauvegarde qui a été commentée.
-    # Meme si cela revient plus ou moins à copier/coller la doc de Flower
-    # je serais pour ajouter une explication des arguments.
-    def __init__(
-        self,
-        *,
-        model,
-        fabric,
-        evaluate_fn,
-        fit_metrics_aggregation_fn,
-        evaluate_metrics_aggregation_fn,
-        on_fit_config_fn,
-        on_evaluate_config_fn,
-        fraction_fit: float = 1,
-        fraction_evaluate: float = 1,
-        min_fit_clients: int = 2,
-        min_evaluate_clients: int = 2,
-        min_available_clients: int = 2,
-    ) -> None:
-        super().__init__(
-            evaluate_fn=evaluate_fn,
-            fit_metrics_aggregation_fn=fit_metrics_aggregation_fn,
-            evaluate_metrics_aggregation_fn=evaluate_metrics_aggregation_fn,
-            fraction_fit=fraction_fit,
-            fraction_evaluate=fraction_evaluate,
-            min_fit_clients=min_fit_clients,
-            min_evaluate_clients=min_evaluate_clients,
-            min_available_clients=min_available_clients,
-            on_fit_config_fn=on_fit_config_fn,
-            on_evaluate_config_fn=on_evaluate_config_fn,
-        )
-
-        self.model = model
-        self.fabric = fabric
-
-    def aggregate_fit(
-        self,
-        server_round: int,
-        results: List[Tuple[fl.server.client_proxy.ClientProxy, fl.common.FitRes]],
-        failures: List[Union[Tuple[ClientProxy, FitRes], BaseException]],
-    ) -> Tuple[Optional[Parameters], Dict[str, Scalar]]:
-        """Aggregate model weights using weighted average and store checkpoint"""
-
-        aggregated_parameters, aggregated_metrics = super().aggregate_fit(
-            server_round, results, failures
-        )
-
-        if aggregated_parameters is not None:
-            print(f"Saving round {server_round} aggregated_parameters...")
-
-            # Convert `Parameters` to `List[np.ndarray]`
-            aggregated_ndarrays: List[np.ndarray] = fl.common.parameters_to_ndarrays(
-                aggregated_parameters
-            )
-
-            # Convert `List[np.ndarray]` to PyTorch`state_dict`
-            params_dict = zip(self.model.state_dict().keys(), aggregated_ndarrays)
-            state_dict = OrderedDict({k: torch.tensor(v) for k, v in params_dict})
-            self.model.load_state_dict(state_dict, strict=True)
-
-            # Save the model
-            new_path = f"../saved_models_path/model_round_{server_round}.pth"
-            torch.save(self.model.state_dict(), new_path)
-
-        return aggregated_parameters, aggregated_metrics
