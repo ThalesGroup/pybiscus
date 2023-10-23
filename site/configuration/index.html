@@ -231,6 +231,26 @@
     Models
   </a>
   
+    <nav class="md-nav" aria-label="Models">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#src.flower.server_fabric.evaluate_config" class="md-nav__link">
+    evaluate_config
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#src.flower.server_fabric.launch_config" class="md-nav__link">
+    launch_config
+  </a>
+  
 </li>
       
         <li class="md-nav__item">
@@ -331,6 +351,26 @@
     Models
   </a>
   
+    <nav class="md-nav" aria-label="Models">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#src.flower.server_fabric.evaluate_config" class="md-nav__link">
+    evaluate_config
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#src.flower.server_fabric.launch_config" class="md-nav__link">
+    launch_config
+  </a>
+  
 </li>
       
         <li class="md-nav__item">
@@ -383,7 +423,284 @@ fabric:
 </code></pre>
 <p>The keyword <code>devices</code> is left intentionnaly commented, as Fabric will automatically find a suitable device corresponding to the choice cpu.</p>
 <h2 id="models">Models</h2>
-<h2 id="data">Data</h2>
+<p>Please look at 
+</p>
+
+
+
+<div class="doc doc-object doc-function">
+
+
+
+<a id="src.flower.server_fabric.evaluate_config"></a>
+  <div class="doc doc-contents first">
+  
+      <p>Return training configuration dict for each round.</p>
+
+          <details class="quote">
+            <summary>Source code in <code>src/flower/server_fabric.py</code></summary>
+            <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">87</span>
+<span class="normal">88</span>
+<span class="normal">89</span>
+<span class="normal">90</span>
+<span class="normal">91</span>
+<span class="normal">92</span>
+<span class="normal">93</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">evaluate_config</span><span class="p">(</span><span class="n">server_round</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return training configuration dict for each round.&quot;&quot;&quot;</span>
+    <span class="n">config</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s2">&quot;server_round&quot;</span><span class="p">:</span> <span class="n">server_round</span><span class="p">,</span>  <span class="c1"># The current round of federated learning</span>
+        <span class="c1"># &quot;local_epochs&quot;: 1,  # if server_round &lt; 2 else 2,  #</span>
+    <span class="p">}</span>
+    <span class="k">return</span> <span class="n">config</span>
+</code></pre></div></td></tr></table></div>
+          </details>
+  </div>
+
+</div><p>and </p>
+
+
+
+<div class="doc doc-object doc-function">
+
+
+
+<a id="src.flower.server_fabric.launch_config"></a>
+  <div class="doc doc-contents first">
+  
+      <p>Launch a Flower Server.</p>
+<p>This is a Typer command to launch a Flower Server, using the configuration given by config.
+Apart from the config parameter, other parameters are optional and, if given, override the associated parameter given by the parameter config.</p>
+
+
+
+  <p><strong>Parameters:</strong></p>
+  <table>
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Type</th>
+        <th>Description</th>
+        <th>Default</th>
+      </tr>
+    </thead>
+    <tbody>
+        <tr>
+          <td><code>config</code></td>
+          <td>
+                <code><span title="typing.Annotated">Annotated</span>[<span title="pathlib.Path">Path</span>, <span title="typer.Argument">Argument</span>()]</code>
+          </td>
+          <td>
+            <div class="doc-md-description">
+              <p>path to a config file</p>
+            </div>
+          </td>
+          <td>
+              <em>required</em>
+          </td>
+        </tr>
+        <tr>
+          <td><code>num_rounds</code></td>
+          <td>
+                <code>int</code>
+          </td>
+          <td>
+            <div class="doc-md-description">
+              <p>the number of Federated rounds</p>
+            </div>
+          </td>
+          <td>
+                <code>None</code>
+          </td>
+        </tr>
+        <tr>
+          <td><code>server_adress</code></td>
+          <td>
+                <code>str</code>
+          </td>
+          <td>
+            <div class="doc-md-description">
+              <p>the IP adress and port of the Flower Server.</p>
+            </div>
+          </td>
+          <td>
+                <code>None</code>
+          </td>
+        </tr>
+    </tbody>
+  </table>
+
+          <details class="quote">
+            <summary>Source code in <code>src/flower/server_fabric.py</code></summary>
+            <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">139</span>
+<span class="normal">140</span>
+<span class="normal">141</span>
+<span class="normal">142</span>
+<span class="normal">143</span>
+<span class="normal">144</span>
+<span class="normal">145</span>
+<span class="normal">146</span>
+<span class="normal">147</span>
+<span class="normal">148</span>
+<span class="normal">149</span>
+<span class="normal">150</span>
+<span class="normal">151</span>
+<span class="normal">152</span>
+<span class="normal">153</span>
+<span class="normal">154</span>
+<span class="normal">155</span>
+<span class="normal">156</span>
+<span class="normal">157</span>
+<span class="normal">158</span>
+<span class="normal">159</span>
+<span class="normal">160</span>
+<span class="normal">161</span>
+<span class="normal">162</span>
+<span class="normal">163</span>
+<span class="normal">164</span>
+<span class="normal">165</span>
+<span class="normal">166</span>
+<span class="normal">167</span>
+<span class="normal">168</span>
+<span class="normal">169</span>
+<span class="normal">170</span>
+<span class="normal">171</span>
+<span class="normal">172</span>
+<span class="normal">173</span>
+<span class="normal">174</span>
+<span class="normal">175</span>
+<span class="normal">176</span>
+<span class="normal">177</span>
+<span class="normal">178</span>
+<span class="normal">179</span>
+<span class="normal">180</span>
+<span class="normal">181</span>
+<span class="normal">182</span>
+<span class="normal">183</span>
+<span class="normal">184</span>
+<span class="normal">185</span>
+<span class="normal">186</span>
+<span class="normal">187</span>
+<span class="normal">188</span>
+<span class="normal">189</span>
+<span class="normal">190</span>
+<span class="normal">191</span>
+<span class="normal">192</span>
+<span class="normal">193</span>
+<span class="normal">194</span>
+<span class="normal">195</span>
+<span class="normal">196</span>
+<span class="normal">197</span>
+<span class="normal">198</span>
+<span class="normal">199</span>
+<span class="normal">200</span>
+<span class="normal">201</span>
+<span class="normal">202</span>
+<span class="normal">203</span>
+<span class="normal">204</span>
+<span class="normal">205</span>
+<span class="normal">206</span>
+<span class="normal">207</span>
+<span class="normal">208</span>
+<span class="normal">209</span>
+<span class="normal">210</span>
+<span class="normal">211</span>
+<span class="normal">212</span>
+<span class="normal">213</span>
+<span class="normal">214</span>
+<span class="normal">215</span>
+<span class="normal">216</span>
+<span class="normal">217</span>
+<span class="normal">218</span>
+<span class="normal">219</span>
+<span class="normal">220</span>
+<span class="normal">221</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@app</span><span class="o">.</span><span class="n">command</span><span class="p">()</span>
+<span class="k">def</span> <span class="nf">launch_config</span><span class="p">(</span>
+    <span class="n">config</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="n">Path</span><span class="p">,</span> <span class="n">typer</span><span class="o">.</span><span class="n">Argument</span><span class="p">()],</span>
+    <span class="n">num_rounds</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">server_adress</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Launch a Flower Server.</span>
+
+<span class="sd">    This is a Typer command to launch a Flower Server, using the configuration given by config.</span>
+<span class="sd">    Apart from the config parameter, other parameters are optional and, if given, override the associated parameter given by the parameter config.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    config:</span>
+<span class="sd">        path to a config file</span>
+<span class="sd">    num_rounds: optional</span>
+<span class="sd">        the number of Federated rounds</span>
+<span class="sd">    server_adress: optional</span>
+<span class="sd">        the IP adress and port of the Flower Server.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">config</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;No config file&quot;</span><span class="p">)</span>
+        <span class="k">raise</span> <span class="n">typer</span><span class="o">.</span><span class="n">Abort</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">config</span><span class="o">.</span><span class="n">is_file</span><span class="p">():</span>
+        <span class="n">conf_loaded</span> <span class="o">=</span> <span class="n">OmegaConf</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">config</span><span class="p">)</span>
+        <span class="c1"># console.log(conf)</span>
+    <span class="k">elif</span> <span class="n">config</span><span class="o">.</span><span class="n">is_dir</span><span class="p">():</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Config is a directory, will use all its config files&quot;</span><span class="p">)</span>
+        <span class="k">raise</span> <span class="n">typer</span><span class="o">.</span><span class="n">Abort</span><span class="p">()</span>
+    <span class="k">elif</span> <span class="ow">not</span> <span class="n">config</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;The config doesn&#39;t exist&quot;</span><span class="p">)</span>
+        <span class="k">raise</span> <span class="n">typer</span><span class="o">.</span><span class="n">Abort</span><span class="p">()</span>
+
+    <span class="k">if</span> <span class="n">num_rounds</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">conf_loaded</span><span class="p">[</span><span class="s2">&quot;num_rounds&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">num_rounds</span>
+    <span class="k">if</span> <span class="n">server_adress</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">conf_loaded</span><span class="p">[</span><span class="s2">&quot;server_adress&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">server_adress</span>
+
+    <span class="n">_conf</span> <span class="o">=</span> <span class="n">ConfigServer</span><span class="p">(</span><span class="o">**</span><span class="n">conf_loaded</span><span class="p">)</span>
+    <span class="n">console</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">_conf</span><span class="p">)</span>
+    <span class="n">conf</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">_conf</span><span class="p">)</span>
+    <span class="n">conf_fabric</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">conf</span><span class="p">[</span><span class="s2">&quot;fabric&quot;</span><span class="p">])</span>
+    <span class="n">conf_data</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">conf</span><span class="p">[</span><span class="s2">&quot;data&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">config</span><span class="p">)</span>
+    <span class="n">conf_model</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">conf</span><span class="p">[</span><span class="s2">&quot;model&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">config</span><span class="p">)</span>
+    <span class="n">conf_strategy</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">conf</span><span class="p">[</span><span class="s2">&quot;strategy&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">config</span><span class="p">)</span>
+
+    <span class="n">logger</span> <span class="o">=</span> <span class="n">TensorBoardLogger</span><span class="p">(</span><span class="n">root_dir</span><span class="o">=</span><span class="n">conf</span><span class="p">[</span><span class="s2">&quot;root_dir&quot;</span><span class="p">]</span> <span class="o">+</span> <span class="n">conf</span><span class="p">[</span><span class="s2">&quot;logger&quot;</span><span class="p">][</span><span class="s2">&quot;subdir&quot;</span><span class="p">])</span>
+    <span class="n">fabric</span> <span class="o">=</span> <span class="n">Fabric</span><span class="p">(</span><span class="o">**</span><span class="n">conf_fabric</span><span class="p">,</span> <span class="n">loggers</span><span class="o">=</span><span class="n">logger</span><span class="p">)</span>
+    <span class="n">fabric</span><span class="o">.</span><span class="n">launch</span><span class="p">()</span>
+    <span class="n">_net</span> <span class="o">=</span> <span class="n">model_registry</span><span class="p">[</span><span class="n">conf</span><span class="p">[</span><span class="s2">&quot;model&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">name</span><span class="p">](</span><span class="o">**</span><span class="n">conf_model</span><span class="p">)</span>
+    <span class="n">net</span> <span class="o">=</span> <span class="n">fabric</span><span class="o">.</span><span class="n">setup_module</span><span class="p">(</span><span class="n">_net</span><span class="p">)</span>
+    <span class="n">data</span> <span class="o">=</span> <span class="n">datamodule_registry</span><span class="p">[</span><span class="n">conf</span><span class="p">[</span><span class="s2">&quot;data&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">name</span><span class="p">](</span><span class="o">**</span><span class="n">conf_data</span><span class="p">)</span>
+    <span class="n">data</span><span class="o">.</span><span class="n">setup</span><span class="p">(</span><span class="n">stage</span><span class="o">=</span><span class="s2">&quot;test&quot;</span><span class="p">)</span>
+    <span class="n">_test_set</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">test_dataloader</span><span class="p">()</span>
+    <span class="n">test_set</span> <span class="o">=</span> <span class="n">fabric</span><span class="o">.</span><span class="n">_setup_dataloader</span><span class="p">(</span><span class="n">_test_set</span><span class="p">)</span>
+
+    <span class="n">strategy</span> <span class="o">=</span> <span class="n">FabricStrategy</span><span class="p">(</span>
+        <span class="n">fit_metrics_aggregation_fn</span><span class="o">=</span><span class="n">weighted_average</span><span class="p">,</span>
+        <span class="n">evaluate_metrics_aggregation_fn</span><span class="o">=</span><span class="n">weighted_average</span><span class="p">,</span>
+        <span class="n">model</span><span class="o">=</span><span class="n">net</span><span class="p">,</span>
+        <span class="n">fabric</span><span class="o">=</span><span class="n">fabric</span><span class="p">,</span>
+        <span class="n">evaluate_fn</span><span class="o">=</span><span class="n">get_evaluate_fn</span><span class="p">(</span><span class="n">testset</span><span class="o">=</span><span class="n">test_set</span><span class="p">,</span> <span class="n">model</span><span class="o">=</span><span class="n">net</span><span class="p">,</span> <span class="n">fabric</span><span class="o">=</span><span class="n">fabric</span><span class="p">),</span>
+        <span class="n">on_fit_config_fn</span><span class="o">=</span><span class="n">fit_config</span><span class="p">,</span>
+        <span class="n">on_evaluate_config_fn</span><span class="o">=</span><span class="n">evaluate_config</span><span class="p">,</span>
+        <span class="o">**</span><span class="n">conf_strategy</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="n">fl</span><span class="o">.</span><span class="n">server</span><span class="o">.</span><span class="n">start_server</span><span class="p">(</span>
+        <span class="n">server_address</span><span class="o">=</span><span class="n">conf</span><span class="p">[</span><span class="s2">&quot;server_adress&quot;</span><span class="p">],</span>
+        <span class="n">config</span><span class="o">=</span><span class="n">fl</span><span class="o">.</span><span class="n">server</span><span class="o">.</span><span class="n">ServerConfig</span><span class="p">(</span><span class="n">num_rounds</span><span class="o">=</span><span class="n">conf</span><span class="p">[</span><span class="s2">&quot;num_rounds&quot;</span><span class="p">]),</span>
+        <span class="n">strategy</span><span class="o">=</span><span class="n">strategy</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">fabric</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">log_dir</span> <span class="o">+</span> <span class="s2">&quot;/config_server_launch.yml&quot;</span><span class="p">,</span> <span class="s2">&quot;w&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">file</span><span class="p">:</span>
+        <span class="n">OmegaConf</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">config</span><span class="o">=</span><span class="n">conf_loaded</span><span class="p">,</span> <span class="n">f</span><span class="o">=</span><span class="n">file</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">conf</span><span class="p">[</span><span class="s2">&quot;client_configs&quot;</span><span class="p">]</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">client_conf</span> <span class="ow">in</span> <span class="n">conf</span><span class="p">[</span><span class="s2">&quot;client_configs&quot;</span><span class="p">]:</span>
+            <span class="n">console</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">client_conf</span><span class="p">)</span>
+            <span class="n">_conf</span> <span class="o">=</span> <span class="n">OmegaConf</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">client_conf</span><span class="p">)</span>
+            <span class="k">with</span> <span class="nb">open</span><span class="p">(</span>
+                <span class="n">fabric</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">log_dir</span> <span class="o">+</span> <span class="sa">f</span><span class="s2">&quot;/config_client_</span><span class="si">{</span><span class="n">_conf</span><span class="p">[</span><span class="s1">&#39;cid&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">_launch.yml&quot;</span><span class="p">,</span> <span class="s2">&quot;w&quot;</span>
+            <span class="p">)</span> <span class="k">as</span> <span class="n">file</span><span class="p">:</span>
+                <span class="n">OmegaConf</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">config</span><span class="o">=</span><span class="n">_conf</span><span class="p">,</span> <span class="n">f</span><span class="o">=</span><span class="n">file</span><span class="p">)</span>
+</code></pre></div></td></tr></table></div>
+          </details>
+  </div>
+
+</div><h2 id="data">Data</h2>
 <h2 id="others">Others</h2>
 
 

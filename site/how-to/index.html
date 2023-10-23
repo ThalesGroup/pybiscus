@@ -335,25 +335,37 @@
 <h1 id="how-tos">How-tos</h1>
 <p>Here are a few guides to update Pybiscus with new datasets, and models, and such.</p>
 <h2 id="how-to-add-models-in-pybiscus">How to add models in Pybiscus</h2>
-<p>Available models are located in <code>ml/models/</code>. To add a new model, follow the few points below:
-* make a new subdirectory, like <code>ml/models/my-model/</code>
-* create two files <code>my_model.py</code> and <code>lit_my_model.py</code>:
-    - the first one contains the usual PyTorch NN Module that defines your model.
-    - the second one contains the LightningModule based on the classical nn.module.
-* if needed, add another directory <code>ml/models/my-model/all-things-needed/</code> which would contain all things necessary for your model to work properly: specific losses and metrics, dedicated torch modules, and so on.
-* update the file <code>ml/registry.py</code>:
-    - import your LightningModule;
-    - update <code>model_registry</code> by adding a new key linking to your LightingModule.</p>
+<p>Available models are located in <code>ml/models/</code>. To add a new model, follow the few points below:</p>
+<ul>
+<li>make a new subdirectory, like <code>ml/models/my-model/</code></li>
+<li>create two files <code>my_model.py</code> and <code>lit_my_model.py</code>:<ul>
+<li>the first one contains the usual PyTorch NN Module that defines your model.</li>
+<li>the second one contains the LightningModule based on the classical nn.module.</li>
+</ul>
+</li>
+<li>if needed, add another directory <code>ml/models/my-model/all-things-needed/</code> which would contain all things necessary for your model to work properly: specific losses and metrics, dedicated torch modules, and so on.</li>
+<li>update the file <code>ml/registry.py</code>:<ul>
+<li>import your LightningModule;</li>
+<li>update <code>model_registry</code> by adding a new key linking to your LightingModule.</li>
+</ul>
+</li>
+</ul>
 <h2 id="how-to-add-datasets-in-pybiscus">How to add datasets in Pybiscus</h2>
-<p>Available datasets are located in <code>ml/data/</code>. To add a new model, follow the few points below:
-* make a new subdirectory, like <code>ml/data/my-data/</code>
-* create two files <code>my_data.py</code> and <code>lit_my_data.py</code>:
-    - the first one contains the usual PyTorch Dataset that defines your dataset.
-    - the second one contains the LightningDataModule based on the classical torch.dataset.
-* if needed, add another directory <code>ml/data/my-data/all-things-needed/</code> which would contain all things necessary for your dataset to work properly, in particular preprocessing.
-* update the file <code>ml/registry.py</code>:
-    - import your LightningDataModule;
-    - update <code>datamodule_registry</code> by adding a new key linking to your LightingDataModule.</p>
+<p>Available datasets are located in <code>ml/data/</code>. To add a new model, follow the few points below:</p>
+<ul>
+<li>make a new subdirectory, like <code>ml/data/my-data/</code></li>
+<li>create two files <code>my_data.py</code> and <code>lit_my_data.py</code>:<ul>
+<li>the first one contains the usual PyTorch Dataset that defines your dataset.</li>
+<li>the second one contains the LightningDataModule based on the classical torch.dataset.</li>
+</ul>
+</li>
+<li>if needed, add another directory <code>ml/data/my-data/all-things-needed/</code> which would contain all things necessary for your dataset to work properly, in particular preprocessing.</li>
+<li>update the file <code>ml/registry.py</code>:<ul>
+<li>import your LightningDataModule;</li>
+<li>update <code>datamodule_registry</code> by adding a new key linking to your LightingDataModule.</li>
+</ul>
+</li>
+</ul>
 
 
 
