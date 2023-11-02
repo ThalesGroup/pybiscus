@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "pybiscus"
-version = "0.3.4"
+version = "0.4.0"
 description = "A flexible Federated Learning framework"
 authors = ["Baptiste MORISSE <baptiste.morisse@thalesgroup.com>"]
 packages = [
