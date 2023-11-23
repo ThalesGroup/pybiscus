@@ -11,7 +11,7 @@ from lightning.fabric import Fabric
 from lightning.fabric.loggers import TensorBoardLogger
 from lightning.pytorch import LightningModule
 from omegaconf import OmegaConf
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 from src.console import console
 from src.flower.client_fabric import ConfigFabric
@@ -65,6 +65,7 @@ class ConfigServer(BaseModel):
     # model: Union[ConfigModel_Cifar10] = Field(discriminator="name")
     # data: Union[ConfigData_Cifar10] = Field(discriminator="name")
     client_configs: list[str] = None
+    save_on_train_end: bool = Field(default=False)
 
     model_config = ConfigDict(extra="forbid")
 
@@ -141,6 +142,7 @@ def launch_config(
     config: Annotated[Path, typer.Argument()],
     num_rounds: int = None,
     server_adress: str = None,
+    weights_path: Path = None,
 ):
     """Launch a Flower Server.
 
@@ -155,6 +157,8 @@ def launch_config(
         the number of Federated rounds
     server_adress: optional
         the IP adress and port of the Flower Server.
+    weights_path: optional
+        path to the weights of the model to be loaded at the beginning of the Federated Learning.
     """
     if config is None:
         print("No config file")
@@ -183,14 +187,30 @@ def launch_config(
     conf_strategy = dict(conf["strategy"].config)
 
     logger = TensorBoardLogger(root_dir=conf["root_dir"] + conf["logger"]["subdir"])
+
     fabric = Fabric(**conf_fabric, loggers=logger)
     fabric.launch()
-    _net = model_registry[conf["model"].name](**conf_model)
-    net = fabric.setup_module(_net)
+
+    model_class = model_registry[conf["model"].name]
+    net = model_class(**conf_model)
+    net = fabric.setup_module(net)
+
     data = datamodule_registry[conf["data"].name](**conf_data)
     data.setup(stage="test")
-    _test_set = data.test_dataloader()
-    test_set = fabric._setup_dataloader(_test_set)
+
+    test_set = fabric._setup_dataloader(data.test_dataloader())
+
+    initial_parameters = None
+    if weights_path is not None:
+        state = fabric.load(weights_path)["model"]
+        model = model_class(**conf_model)
+        model.load_state_dict(state)
+
+        params = torch.nn.ParameterList(
+            [param.detach().numpy() for param in model.parameters()]
+        )
+        initial_parameters = fl.common.ndarrays_to_parameters(params)
+        console.log(f"Loaded weights from {weights_path}")
 
     strategy = FabricStrategy(
         fit_metrics_aggregation_fn=weighted_average,
@@ -200,6 +220,7 @@ def launch_config(
         evaluate_fn=get_evaluate_fn(testset=test_set, model=net, fabric=fabric),
         on_fit_config_fn=fit_config,
         on_evaluate_config_fn=evaluate_config,
+        initial_parameters=initial_parameters,
         **conf_strategy,
     )
 
@@ -208,6 +229,10 @@ def launch_config(
         config=fl.server.ServerConfig(num_rounds=conf["num_rounds"]),
         strategy=strategy,
     )
+
+    if conf["save_on_train_end"]:
+        state = {"model": net}
+        fabric.save(fabric.logger.log_dir + "/checkpoint.pt", state)
 
     with open(fabric.logger.log_dir + "/config_server_launch.yml", "w") as file:
         OmegaConf.save(config=conf_loaded, f=file)
