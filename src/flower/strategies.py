@@ -2,9 +2,15 @@ from logging import WARNING
 from typing import Callable, Optional, Union
 
 import flwr as fl
-from flwr.common import (EvaluateRes, FitRes, MetricsAggregationFn, Parameters,
-                         Scalar, ndarrays_to_parameters,
-                         parameters_to_ndarrays)
+from flwr.common import (
+    EvaluateRes,
+    FitRes,
+    MetricsAggregationFn,
+    Parameters,
+    Scalar,
+    ndarrays_to_parameters,
+    parameters_to_ndarrays,
+)
 from flwr.common.logger import log
 from flwr.server.client_proxy import ClientProxy
 from flwr.server.strategy.aggregate import aggregate, weighted_loss_avg
@@ -56,6 +62,7 @@ class FabricStrategy(fl.server.strategy.FedAvg):
         min_fit_clients: int = 2,
         min_evaluate_clients: int = 2,
         min_available_clients: int = 2,
+        initial_parameters: Optional[Parameters] = None,
     ) -> None:
         super().__init__(
             evaluate_fn=evaluate_fn,
@@ -68,6 +75,7 @@ class FabricStrategy(fl.server.strategy.FedAvg):
             min_available_clients=min_available_clients,
             on_fit_config_fn=on_fit_config_fn,
             on_evaluate_config_fn=on_evaluate_config_fn,
+            initial_parameters=initial_parameters,
         )
 
         self.model = model
@@ -115,7 +123,7 @@ class FabricStrategy(fl.server.strategy.FedAvg):
         if self.fit_metrics_aggregation_fn:
             fit_metrics = [(res.num_examples, res.metrics) for _, res in results]
             # console.log(f"Fit metrics: {fit_metrics}")
-            for (_, res) in results:
+            for _, res in results:
                 for key, value in res.metrics.items():
                     self.fabric.log(
                         f"fit_{key}_{res.metrics['cid']}", value, step=server_round
@@ -152,7 +160,7 @@ class FabricStrategy(fl.server.strategy.FedAvg):
         if self.evaluate_metrics_aggregation_fn:
             eval_metrics = [(res.num_examples, res.metrics) for _, res in results]
             # console.log(f"Val metrics: {eval_metrics}")
-            for (_, res) in results:
+            for _, res in results:
                 for key, value in res.metrics.items():
                     self.fabric.log(
                         f"val_{key}_{res.metrics['cid']}", value, step=server_round
