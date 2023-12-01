@@ -9,7 +9,10 @@ def train_loop(fabric, net, trainloader, optimizer, epochs: int, verbose=False):
 
     net.train()
     for epoch in range(epochs):
-        correct, epoch_loss = 0, 0.0
+        results_epoch = {
+            key: torch.tensor(0.0, device=net.device)
+            for key in net.signature.__required_keys__
+        }
         for batch_idx, batch in track(
             enumerate(trainloader),
             total=len(trainloader),
@@ -21,29 +24,34 @@ def train_loop(fabric, net, trainloader, optimizer, epochs: int, verbose=False):
             fabric.backward(loss)
             optimizer.step()
 
-            epoch_loss += loss
-            correct += results["accuracy"]
-        epoch_loss /= len(trainloader)
-        epoch_acc = correct / len(trainloader)
-    return epoch_loss.item(), epoch_acc.item()
+            for key in results_epoch.keys():
+                results_epoch[key] += results[key]
+        for key in results_epoch.keys():
+            results_epoch[key] /= len(trainloader)
+            results_epoch[key] = results_epoch[key].item()
+    return results_epoch
 
 
 def test_loop(fabric, net, testloader):
     """Evaluate the network on the entire test set."""
     # Alice: fabric is not used
-    correct, loss = 0, 0.0
     net.eval()
 
     with torch.no_grad():
+        results_epoch = {
+            key: torch.tensor(0.0, device=net.device)
+            for key in net.signature.__required_keys__
+        }
         for batch_idx, batch in track(
             enumerate(testloader),
             total=len(testloader),
             description="Validating...",
         ):
             results = net.validation_step(batch, batch_idx)
-            loss += results["loss"]
-            correct += results["accuracy"]
+            for key in results_epoch.keys():
+                results_epoch[key] += results[key]
 
-    loss /= len(testloader)
-    accuracy = correct / len(testloader)
-    return loss.item(), accuracy.item()
+    for key in results_epoch.keys():
+        results_epoch[key] /= len(testloader)
+        results_epoch[key] = results_epoch[key].item()
+    return results_epoch

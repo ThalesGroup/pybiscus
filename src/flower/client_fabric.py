@@ -1,20 +1,16 @@
 from collections import OrderedDict
-from pathlib import Path
-from typing import Annotated, Union
+from typing import Union
 
 import flwr as fl
 import torch
-import typer
 from lightning.fabric import Fabric
 from lightning.pytorch import LightningDataModule, LightningModule
-from omegaconf import OmegaConf
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 from src.console import console
 from src.ml.data.cifar10.cifar10_datamodule import ConfigData_Cifar10
 from src.ml.loops_fabric import test_loop, train_loop
 from src.ml.models.cnn.lit_cnn import ConfigModel_Cifar10
-from src.ml.registry import datamodule_registry, model_registry
 
 torch.backends.cudnn.enabled = True
 
@@ -45,6 +41,10 @@ class ConfigClient(BaseModel):
     ----------
     cid: int
         client identifier
+    pre_train_val: optional, default to False
+        if true, at the beginning of a new fit round a validation loop will be performed.
+        This allows to perform a validation loop on the validation dataset of the Client,
+        after the client received the new, aggregated weights.
     server_adress: str
         the server adress and port
     root_dir: str
@@ -58,11 +58,14 @@ class ConfigClient(BaseModel):
     """
 
     cid: int
+    pre_train_val: bool = Field(default=False)
     server_adress: str
     root_dir: str
     fabric: ConfigFabric
     model: ConfigModel_Cifar10
     data: ConfigData_Cifar10
+
+    # Below is used when several models and/or datasets are available.
     # model: Union[ConfigModel_Cifar10, ...] = Field(discriminator="name")
     # data: Union[ConfigData_Cifar10, ...] = Field(discriminator="name")
 
@@ -85,6 +88,7 @@ class FlowerClient(fl.client.NumPyClient):
         data: LightningDataModule,
         num_examples: dict[str, int],
         conf_fabric: ConfigFabric,
+        pre_train_val: bool = False,
     ) -> None:
         """Initialize the FlowerClient instance.
 
@@ -110,6 +114,7 @@ class FlowerClient(fl.client.NumPyClient):
 
         self.conf_fabric = dict(conf_fabric)
         self.num_examples = num_examples
+        self.pre_train_val = pre_train_val
 
         self.optimizer = self.model.configure_optimizers()
 
@@ -117,7 +122,7 @@ class FlowerClient(fl.client.NumPyClient):
 
     def initialize(self):
         self.fabric.launch()
-        self._model, self._optimizer = self.fabric.setup(self.model, self.optimizer)
+        self.model, self.optimizer = self.fabric.setup(self.model, self.optimizer)
         (
             self._train_dataloader,
             self._validation_dataloader,
@@ -138,115 +143,44 @@ class FlowerClient(fl.client.NumPyClient):
     def fit(self, parameters, config):
         console.log(f"[Client {self.cid}] fit, config: {config}")
         self.set_parameters(parameters)
+        metrics = {}
+
+        if self.pre_train_val:
+            console.log(
+                f"Round {config['server_round']}, pre train validation started..."
+            )
+            results_pre_train = test_loop(
+                self.fabric, self.model, self._validation_dataloader
+            )
+            for key, val in results_pre_train.items():
+                metrics[f"{key}_pre_train_val"] = val
+
         console.log(f"Round {config['server_round']}, training Started...")
-        loss, accuracy = train_loop(
+        results_train = train_loop(
             self.fabric,
-            self._model,
+            self.model,
             self._train_dataloader,
-            self._optimizer,
+            self.optimizer,
             epochs=config["local_epochs"],
         )
-        console.log(f"Training Finished! Loss is {loss}")
-        metrics = {"accuracy": accuracy, "loss": loss, "cid": self.cid}
+        console.log(f"Training Finished! Loss is {results_train['loss']}")
+        metrics["cid"] = self.cid
+        for key, val in results_train.items():
+            metrics[key] = val
         return self.get_parameters(config={}), self.num_examples["trainset"], metrics
 
     def evaluate(self, parameters, config):
         console.log(f"[Client {self.cid}] evaluate, config: {config}")
         self.set_parameters(parameters)
+        metrics = {}
         console.log(f"Round {config['server_round']}, evaluation Started...")
-        loss, accuracy = test_loop(
-            self.fabric, self._model, self._validation_dataloader
+        results_evaluate = test_loop(
+            self.fabric, self.model, self._validation_dataloader
         )
-        console.log(f"Evaluation finished! Loss is {loss}, accuracy is {accuracy}")
-        metrics = {"accuracy": accuracy, "loss": loss, "cid": self.cid}
-        return loss, self.num_examples["valset"], metrics
-
-
-app = typer.Typer(pretty_exceptions_show_locals=False)
-
-
-@app.callback()
-def client():
-    """
-
-    **The client part of Pybiscus!**
-
-    ---
-
-    The command launch-config launches a client with a specified config file, to take part to a Federated Learning.
-    """
-
-
-@app.command()
-def launch_config(
-    config: Annotated[Path, typer.Argument()],
-    cid: int = None,
-    root_dir: str = None,
-    server_adress: str = None,
-) -> None:
-    """Launch a FlowerClient.
-
-    This is a Typer command to launch a Flower Client, using the configuration given by config.
-
-    Parameters
-    ----------
-    config: Path
-        path to a config file
-    cid: int, optional
-        the client id
-    root_dir: str, optional
-        the path to a "root" directory, relatively to which can be found Data, Experiments and other useful directories
-    server_adress: str, optional
-        the server adress and port
-    """
-
-    if config is None:
-        print("No config file")
-        raise typer.Abort()
-    if config.is_file():
-        conf_loaded = OmegaConf.load(config)
-    elif config.is_dir():
-        print("Config is a directory, will use all its config files")
-        raise typer.Abort()
-    elif not config.exists():
-        print("The config doesn't exist")
-        raise typer.Abort()
-
-    if cid is not None:
-        conf_loaded["cid"] = cid
-    if root_dir is not None:
-        conf_loaded["root_dir"] = root_dir
-    if server_adress is not None:
-        conf_loaded["server_adress"] = server_adress
-    # console.log(f"Conf specified: {dict(conf)}")
-
-    _conf = ConfigClient(**conf_loaded)
-    console.log(_conf)
-    conf = dict(_conf)
-    conf_data = dict(conf["data"].config)
-    conf_model = dict(conf["model"].config)
-
-    data = datamodule_registry[conf["data"].name](**conf_data)
-    data.setup(stage="fit")
-    num_examples = {
-        "trainset": len(data.train_dataloader()),
-        "valset": len(data.val_dataloader()),
-    }
-
-    net = model_registry[conf["model"].name](**conf_model)
-    client = FlowerClient(
-        cid=conf["cid"],
-        model=net,
-        data=data,
-        num_examples=num_examples,
-        conf_fabric=conf["fabric"],
-    )
-    client.initialize()
-    fl.client.start_numpy_client(
-        server_address=conf["server_adress"],
-        client=client,
-    )
-
-
-if __name__ == "__main__":
-    app()
+        console.log(
+            f"Evaluation finished! Loss is {results_evaluate['loss']}, metric {list(results_evaluate.keys())[0]} is {results_evaluate[list(results_evaluate.keys())[0]]}"
+        )
+        metrics["cid"] = self.cid
+        for key, val in results_evaluate.items():
+            metrics[key] = val
+        return results_evaluate["loss"], self.num_examples["valset"], metrics
