@@ -42,9 +42,9 @@ Here is the API for the server, for instance:
 
 ### Dev Mode
 
-We strongly suggest the use of both pyenv and poetry. 
+We strongly suggest the use of both pyenv and poetry.
 
-* Pyenv is a tool to manage properly Python versions, and you can find install instructions here https://github.com/pyenv/pyenv#installation. 
+* Pyenv is a tool to manage properly Python versions, and you can find install instructions here https://github.com/pyenv/pyenv#installation.
 
 * Poetry is a dependency tool, way better than the usual "pip install -r requirements.txt" paradigm, and manages virtual environments too. It is easy to use, well documented, and the install instructions are here https://python-poetry.org/docs/#installation.
 
@@ -98,7 +98,7 @@ to ne noProxy config.
 and voila! The docker image is aimed at running only the pybiscus_app itself. In order to facilitate the use of docker (which can be quite verbose), some scripts are available in container/scripts. To launch a local training, you just need to update `container/scripts/launch_local_train.sh` and `container/configs/local_train.yml` according to where are located your datasets and such. Then, simply run
 ```bash
 bash container/scripts/launch_local_train.sh
-``` 
+```
 
 It is as simple as running
 ```bash
@@ -112,7 +112,7 @@ To launch a "true" Federated learning, you need first to create a docker network
 docker network create federated
 ```
 
-then 
+then
 ```bash
 bash container/scripts/launch_server.sh
 ```
@@ -121,7 +121,7 @@ followed by (in other terminal)
 ```bash
 bash container/scripts/launch_client_1.sh
 ```
-and 
+and
 ```bash
 bash container/scripts/launch_client_2.sh
 ```
