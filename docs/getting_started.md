@@ -6,7 +6,7 @@ A simple tool to perform Federated Learning on various models and datasets. Buil
 You have two ways of using Pybiscus. Either by cloning the repo and installing (via Poetry) all dependencies, and working on the code itself; or by just downloading the wheel and installing as a package.
 
 ### User Mode
-The wheel in `dist/pybiscus-0.4.0-py3-none-any.whl` is the packaged version of Pybiscus. You can download it and do
+The wheel in `dist/pybiscus-0.5.0-py3-none-any.whl` is the packaged version of Pybiscus. You can download it and do
 ```bash
 pyenv local 3.9.12
 python -m pip install virtualenv
@@ -29,12 +29,12 @@ this command will show you some documentation on how to use the app. There are t
 
 Note that the package is still actively under development, and even if we try as much as possible to not break things, it could happen!
 
-To work, the app needs only config files for the server and the clients. Any number of clients can be launched, using the same command `client launch-config`.
+To work, the app needs only config files for the server and the clients. Any number of clients can be launched, using the same command `client launch`.
 or, now with config files (examples are provided in `configs/`):
 ```bash
-pybiscus_app server launch-config path-to-config/server.yml
-pybiscus_app client launch-config path-to-config/client_1.yml
-pybiscus_app client launch-config path-to-config/client_2.yml
+pybiscus_app server launch path-to-config/server.yml
+pybiscus_app client launch path-to-config/client_1.yml
+pybiscus_app client launch path-to-config/client_2.yml
 ```
 
 Here is the API for the server, for instance:
@@ -42,9 +42,9 @@ Here is the API for the server, for instance:
 
 ### Dev Mode
 
-We strongly suggest the use of both pyenv and poetry. 
+We strongly suggest the use of both pyenv and poetry.
 
-* Pyenv is a tool to manage properly Python versions, and you can find install instructions here https://github.com/pyenv/pyenv#installation. 
+* Pyenv is a tool to manage properly Python versions, and you can find install instructions here https://github.com/pyenv/pyenv#installation.
 
 * Poetry is a dependency tool, way better than the usual "pip install -r requirements.txt" paradigm, and manages virtual environments too. It is easy to use, well documented, and the install instructions are here https://python-poetry.org/docs/#installation.
 
@@ -61,7 +61,7 @@ and you are good to go! We suggest to create a directory `experiments` to hold c
 To build the image (which is quite heavy as of now), do the following
 ```bash
 cd container
-docker build . -t pybiscus:app.v0.4.0
+docker build . -t pybiscus:app.v0.5.0
 ```
 
 
@@ -74,7 +74,7 @@ docker build \
 --build-arg http_proxy=$HTTP_PROXY \
 --build-arg https_proxy=$HTTPS_PROXY \
 --build-arg no_proxy=$NO_PROXY \
-. -t pybiscus:app.v0.4.0
+. -t pybiscus:app.v0.5.0
 ```
 
 Then, again only if you have to go through a proxy for internet access, then to download the data the different containers will need and internet access.
@@ -98,21 +98,21 @@ to ne noProxy config.
 and voila! The docker image is aimed at running only the pybiscus_app itself. In order to facilitate the use of docker (which can be quite verbose), some scripts are available in container/scripts. To launch a local training, you just need to update `container/scripts/launch_local_train.sh` and `container/configs/local_train.yml` according to where are located your datasets and such. Then, simply run
 ```bash
 bash container/scripts/launch_local_train.sh
-``` 
+```
 
 It is as simple as running
 ```bash
 docker run -t --gpus device=(some_device) -v "$(pwd)":/app/datasets pybiscus:app --help
 ```
 
-to get the help of the app. The short version is, `docker run -t pybiscus:app.v0.4.0` is equivalent to running `pybiscus_app`. As for the app itself, the docker image can launch either client, server or local components.
+to get the help of the app. The short version is, `docker run -t pybiscus:app.v0.5.0` is equivalent to running `pybiscus_app`. As for the app itself, the docker image can launch either client, server or local components.
 
 To launch a "true" Federated learning, you need first to create a docker network for the containers to communicate:
 ```bash
 docker network create federated
 ```
 
-then 
+then
 ```bash
 bash container/scripts/launch_server.sh
 ```
@@ -121,7 +121,7 @@ followed by (in other terminal)
 ```bash
 bash container/scripts/launch_client_1.sh
 ```
-and 
+and
 ```bash
 bash container/scripts/launch_client_2.sh
 ```

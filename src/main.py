@@ -1,13 +1,20 @@
 import typer
+from trogon import Trogon
+from typer.main import get_group
 
-import src.flower.client_fabric as client
-import src.flower.local_train as local_train
-import src.flower.server_fabric as server
+import src.commands.app_client as client
+import src.commands.app_local as local_train
+import src.commands.app_server as server
 
-app = typer.Typer(pretty_exceptions_show_locals=False, rich_markup_mode="markdown")
+app = typer.Typer(pretty_exceptions_show_locals=False, rich_markup_mode="rich")
 app.add_typer(server.app, name="server")
 app.add_typer(client.app, name="client")
 app.add_typer(local_train.app, name="local")
+
+
+@app.command()
+def tui(ctx: typer.Context):
+    Trogon(get_group(app), click_context=ctx).run()
 
 
 @app.callback()

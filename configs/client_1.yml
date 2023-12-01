@@ -1,4 +1,5 @@
 cid: 1
+pre_train_val: true
 fabric:
   accelerator: gpu
   devices:

@@ -22,7 +22,7 @@ The keyword `devices` is waiting for either a list of integers (the id of the de
 ...
 fabric:
   accelerator: cpu
-  # devices: 
+  # devices:
 ...
 ```
 
@@ -30,12 +30,12 @@ The keyword `devices` is left intentionnaly commented, as Fabric will automatica
 
 ## Models
 
-Please look at 
+Please look at
 ::: src.flower.server_fabric.evaluate_config
     options:
       heading_level: 3
 
-and 
+and
 
 ::: src.flower.server_fabric.launch_config
 

@@ -1,4 +1,4 @@
-from typing import Literal
+from typing import Literal, TypedDict
 
 import lightning.pytorch as pl
 import torch
@@ -39,14 +39,27 @@ class ConfigModel_Cifar10(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
 
+class CNNSignature(TypedDict):
+    loss: torch.Tensor
+    accuracy: torch.Tensor
+
+
 class LitCNN(pl.LightningModule):
-    def __init__(self, input_shape: int, mid_shape: int, n_classes: int, lr: float):
+    def __init__(
+        self,
+        input_shape: int,
+        mid_shape: int,
+        n_classes: int,
+        lr: float,
+        _logging: bool = False,
+    ):
         super().__init__()
         self.save_hyperparameters()
         self.input_shape = input_shape
         self.mid_shape = mid_shape
         self.n_classes = n_classes
         self.lr = lr
+        self._logging = _logging
         self.model = net(
             input_shape=self.input_shape,
             mid_shape=self.mid_shape,
@@ -54,28 +67,35 @@ class LitCNN(pl.LightningModule):
         )
         self.loss = nn.CrossEntropyLoss()
         self.accuracy = Accuracy(task="multiclass", num_classes=self.n_classes, top_k=1)
+        self._signature = CNNSignature
+
+    @property
+    def signature(self):
+        return self._signature
 
     def forward(self, images):
         return self.model(images)
 
-    def training_step(self, batch: torch.Tensor, batch_idx) -> torch.Tensor:
+    def training_step(self, batch: torch.Tensor, batch_idx) -> CNNSignature:
         signal, labels = batch
         outputs = self.forward(signal)
         loss = self.loss(outputs, labels)
         acc = self.accuracy(torch.max(outputs.data, 1)[1], labels)
-        self.log("train_loss", loss, prog_bar=True)
+        if self._logging:
+            self.log("train_loss", loss, prog_bar=True)
         return {"loss": loss, "accuracy": acc}
 
-    def validation_step(self, batch: torch.Tensor, batch_idx) -> list[torch.Tensor]:
+    def validation_step(self, batch: torch.Tensor, batch_idx) -> CNNSignature:
         signal, labels = batch
         outputs = self.forward(signal)
         loss = self.loss(outputs, labels)
         acc = self.accuracy(torch.max(outputs.data, 1)[1], labels)
-        self.log("val_loss", loss, prog_bar=True)
-        self.log("val_acc", acc, prog_bar=True)
+        if self._logging:
+            self.log("val_loss", loss, prog_bar=True)
+            self.log("val_acc", acc, prog_bar=True)
         return {"loss": loss, "accuracy": acc}
 
-    def test_step(self, batch: torch.Tensor, batch_idx) -> list[torch.Tensor]:
+    def test_step(self, batch: torch.Tensor, batch_idx) -> torch.Tensor:
         signal, labels = batch
         outputs = self.forward(signal)
         loss = self.loss(outputs, labels)
