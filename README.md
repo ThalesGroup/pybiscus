@@ -1,13 +1,28 @@
 # Pybiscus: a flexible Federated Learning Framework
 
-## Get started
+## Introduction
 
-Pybiscus is a simple tool to perform Federated Learning on various models and datasets. 
+Pybiscus is a simple tool to perform Federated Learning on various models and datasets.
 It aims at automated as much as possible the FL pipeline, and allows to add virtually any kind of dataset and model.
 
 Pybiscus is built on top of Flower, a mature Federated Learning framework; Typer (script and CLI parts) and Lightning/Fabric for all the Machine Learning machinery.
 
 You can simply test Pybiscus by downloading the latest wheel available and install it.
+
+## Get started
+
+You can simply test Pybiscus by downloading the latest wheel available in the dist folder and install it in a virtual environnement:
+```bash
+python -m pip install virtualenv
+python -m virtualenv .venv
+source .venv/bin/activate
+(.venv) python -m pip install pybiscus_paroma-0.5.0-py3-none-any.whl
+```
+
+and you are good to go! The packages comes with an app named `pybiscus_paroma_app` that you can use in the virtual environment. You can then test if everything went well by launching a local training:
+```bash
+(.venv) pybiscus_paroma_app local train-config configs/local_train.yml
+```
 
 ## Documentation
 

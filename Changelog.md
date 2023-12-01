@@ -2,6 +2,16 @@
 
 ## [Unreleased]
 
+
+## [Version 0.5.0]
+
+* Renaming the commands of client and server parts. Improving the help printed by Typer.
+* Adding a new check command for both Server and Client sides in order to possibly check before-hand the validity of the provided configuration file.
+* **REFACTO**: the main commands of the pybiscus app are now located in src/commands. For instance, the previous version of `src/flower/client_fabric.py` is split into the Typer part src/commands/app_client.py and the new version of `src/flower/client_fabric.py`. This helps structure the code into more distinct block.
+* The Unet3D Module comes now with a better Dice Loss and a Dice metric instead of the Accuracy (not suitable in the context of segmentation of 3D images).
+* Small change on the `weighted_average` function, to take care of the change of keywords.
+* **NEW FEATURE**: using Trogon to add a Terminal User Interface command to the Pybiscus app. This helps new users to browse through help, existing commands and their syntax.
+
 ## [Version 0.4.0]
 
 * the Server has now the possibility to save the weights of the model at the end of the FL session.
@@ -24,5 +34,5 @@
 * getting rid of load_data_paroma, amd replaces it by direct use of LightningDataModule.
 * updating config files accordingly
 * moving logging of evaluate function to evaluate inside FabricStrategy; more coherence with aggregate_fit and aggregate_evaulate.
-* upgrading the config for local training with key 'trainer', making all Trainer arguments virtually available 
+* upgrading the config for local training with key 'trainer', making all Trainer arguments virtually available
 * adding a constraint on deepspeed library due to some issues with the installation of the wheel. Issue with poetry? In poetry, version is 0.9.0 but in installing the wheel built by poetry, it is 0.11.1...
