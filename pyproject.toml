@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "pybiscus"
-version = "0.4.0"
+version = "0.5.0"
 description = "A flexible Federated Learning framework"
 authors = ["Baptiste MORISSE <baptiste.morisse@thalesgroup.com>"]
 packages = [
@@ -17,29 +17,40 @@ numpy = ">=1.24.1,<1.26.0"
 typing_extensions = "^4.0"
 rich = "^13.4.2"
 typer = {extras = ["all"], version = "^0.9.0"}
-torch = "==2.0.0"
-torchmetrics = "^0.10"
-# lightning = {extras = ["all"], version = "^2.0.6"}
+torch = "^2.0.0"
+torchmetrics = "^1.2"
 lightning = {extras = ["pytorch-extra"], version = "^2.0.6"}
-torchvision = "<0.15.2"
+torchvision = "^0.16.0"
 einops = "^0.6.1"
 tensorboard = "^2.14.1"
-deepspeed = "==0.9.0"
 pydantic = "2.1.1"
+trogon = "^0.5.0"
 
 [tool.poetry.group.dev-dependencies.dependencies]
 black = "<23.0"
 ruff = "^0.0.278"
-sphinx = "^7.1.2"
 isort = "^5.12.0"
 docformatter = {extras = ["tomli"], version = "^1.7.5"}
-# pytest = "==7.0.0"
+pre-commit = "^3.5.0"
+bandit = "^1.7.5"
 
 
 [tool.poetry.group.docs-dependencies.dependencies]
 mkdocs = "^1.5.3"
 mkdocstrings = {extras = ["python"], version = "^0.23.0"}
 mkdocs-material = "^9.4.6"
+
+[tool.isort]
+profile = "black"
+
+
+[[tool.poetry.source]]
+name = "PyPI"
+priority = "primary"
+
+[tool.black]
+line-length = 88
+target-version = ["py39"]
 
 [tool.ruff]
 # Enable Pyflakes (`F`) and a subset of the pycodestyle (`E`)  codes by default.
