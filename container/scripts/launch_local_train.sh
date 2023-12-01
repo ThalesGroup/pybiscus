@@ -8,4 +8,4 @@ docker run \
     -v ${PWD}/container/configs:/app/configs \
     --user $uid:$gid \
     --shm-size 50G \
-    pybiscus:app.v0.4.0 local train-config configs/local_train.yml
+    pybiscus:app.v0.5.0 local train-config configs/local_train.yml

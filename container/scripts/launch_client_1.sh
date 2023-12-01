@@ -10,4 +10,4 @@ docker run \
     --net-alias client-1 \
     --user $uid:$gid \
     --shm-size 50G \
-    pybiscus:app.v0.4.0 client launch-config configs/client_1.yml
+    pybiscus:app.v0.5.0 client launch configs/client_1.yml
