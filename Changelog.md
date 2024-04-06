@@ -2,6 +2,9 @@
 
 ## [Unreleased]
 
+* Correcting a bug on the weighted_average function: "is set()" had to be replaced by "==set()". Metrics are now aggregated and averaged.
+* Introducing a short helper function to merge the configuration from the config file passed as an argument of server or client, and the optional arguments, if passed.
+
 
 ## [Version 0.5.0]
 

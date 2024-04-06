@@ -1,11 +1,11 @@
 from pathlib import Path
+from typing import Annotated
 
 import typer
 from lightning.pytorch import Trainer
 from lightning.pytorch.callbacks import RichModelSummary, RichProgressBar
 from lightning.pytorch.callbacks.progress.rich_progress import RichProgressBarTheme
 from omegaconf import OmegaConf
-from typing import Annotated
 
 from src.console import console
 from src.ml.registry import datamodule_registry, model_registry
