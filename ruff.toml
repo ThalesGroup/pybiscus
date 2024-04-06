@@ -1,0 +1,16 @@
+target-version = "py39"
+line-length = 88
+
+[lint]
+extend-select = [
+  "UP",  # pyupgrade
+#   "D",   # pydocstyle
+  "E4",
+  "E7",
+  "E9",
+  "F",
+  "I",
+]
+
+[lint.pydocstyle]
+convention = "numpy"
