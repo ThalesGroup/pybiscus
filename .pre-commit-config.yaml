@@ -9,6 +9,15 @@ repos:
     -   id: check-yaml
     -   id: check-added-large-files
 
+-   repo: https://github.com/python-poetry/poetry
+    rev: 1.7.1  # add version here
+    hooks:
+    -   id: poetry-check
+    -   id: poetry-lock
+        args: ["--no-update"]
+    -   id: poetry-install
+        args: ["--sync", "--with", "dev,docs"]
+
   # Using this mirror lets us use mypyc-compiled black, which is about 2x faster
 -   repo: https://github.com/psf/black-pre-commit-mirror
     rev: 23.11.0
@@ -29,12 +38,3 @@ repos:
     hooks:
     -   id: isort
         args: ["--profile", "black", "--filter-files"]
-
--   repo: https://github.com/python-poetry/poetry
-    rev: 1.7.1  # add version here
-    hooks:
-    -   id: poetry-check
-    -   id: poetry-lock
-        args: ["--no-update"]
-    -   id: poetry-install
-        args: ["--sync", "--with", "dev,docs"]
