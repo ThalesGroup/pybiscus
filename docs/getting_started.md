@@ -141,6 +141,6 @@ bash container/scripts/launch_client_2.sh
 
 - [x] Logging with tensorboard.
 
- ## Road Map
+## Road Map
 
- Here is a list of more mid/long term ideas to implement in Pybiscus for Federated Learning.
+Here is a list of more mid/long term ideas to implement in Pybiscus for Federated Learning.
