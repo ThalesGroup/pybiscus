@@ -18,12 +18,6 @@ repos:
     -   id: poetry-install
         args: ["--sync", "--with", "dev,docs"]
 
-  # Using this mirror lets us use mypyc-compiled black, which is about 2x faster
--   repo: https://github.com/psf/black-pre-commit-mirror
-    rev: 23.11.0
-    hooks:
-    -   id: black
-
 -   repo: https://github.com/astral-sh/ruff-pre-commit
     # Ruff version.
     rev: v0.3.5
@@ -33,8 +27,3 @@ repos:
           args: [ --fix ]
         # Run the formatter.
         - id: ruff-format
--   repo: https://github.com/pycqa/isort
-    rev: 5.12.0
-    hooks:
-    -   id: isort
-        args: ["--profile", "black", "--filter-files"]

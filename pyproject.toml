@@ -1,14 +1,11 @@
 [tool.poetry]
 name = "pybiscus"
-version = "0.5.0"
+version = "0.6.0.dev0"
 description = "A flexible Federated Learning framework"
-authors = ["Baptiste MORISSE <baptiste.morisse@thalesgroup.com>"]
-packages = [
-    {include = "src"}
-]
+authors = ["Baptiste MORISSE <bmorisse@protonmail.com>"]
 
 [tool.poetry.scripts]
-pybiscus_app = "src.main:app"
+pybiscus_app = "pybiscus.main:app"
 
 [tool.poetry.dependencies]
 python = ">=3.9, < 3.13"
@@ -18,8 +15,8 @@ typing_extensions = "^4.0"
 rich = "^13.6"
 typer = {extras = ["all"], version = "^0.9"}  # locked version as flwr 1.8 needs typer 0.9
 torch = "^2.0.0"
-torchmetrics = "^1.2"
-lightning = {extras = ["pytorch-extra"], version = "^2.0.6"}
+torchmetrics = "^1.3"
+lightning = {extras = ["pytorch-extra"], version = "^2.2"}
 torchvision = "^0.16.0"
 einops = "^0.6.1"
 tensorboard = "^2.14.1"
