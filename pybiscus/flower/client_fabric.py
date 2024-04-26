@@ -7,10 +7,10 @@ from lightning.fabric import Fabric
 from lightning.pytorch import LightningDataModule, LightningModule
 from pydantic import BaseModel, ConfigDict, Field
 
-from src.console import console
-from src.ml.data.cifar10.cifar10_datamodule import ConfigData_Cifar10
-from src.ml.loops_fabric import test_loop, train_loop
-from src.ml.models.cnn.lit_cnn import ConfigModel_Cifar10
+from pybiscus.console import console
+from pybiscus.ml.data.cifar10.cifar10_datamodule import ConfigData_Cifar10
+from pybiscus.ml.loops_fabric import test_loop, train_loop
+from pybiscus.ml.models.cnn.lit_cnn import ConfigModel_Cifar10
 
 torch.backends.cudnn.enabled = True
 

@@ -1,8 +1,9 @@
 cid: 2
 fabric:
-  accelerator: gpu
-  devices:
-    - 0
+  accelerator: cpu
+  # accelerator: gpu
+  # devices:
+  #   - 0
 root_dir: ${oc.env:PWD}
 model:
   name: cifar

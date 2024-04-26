@@ -6,7 +6,7 @@ import torch.nn as nn
 from pydantic import BaseModel, ConfigDict
 from torchmetrics import Accuracy
 
-from src.ml.models.cnn.cnn import net
+from pybiscus.ml.models.cnn.cnn import net
 
 
 class ConfigCNN(BaseModel):

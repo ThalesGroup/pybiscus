@@ -2,6 +2,14 @@
 
 ## [Unreleased]
 
+## [Version 0.6.0.dev0]
+
+* **BREAKING CHANGE** Renaming 'src' directory into 'pybiscus' to follow the structure expected by Poetry to properly build the package. First step towards packaging the tool.
+* **REFACTO** The "FabricStrategy" approach is now deprecated. Instead, a few callbacks, based on Fabric and Rich, allows to easily "upgrade" the usual weighted average and evaluation functions, for generic Strategies. Note that for now, only the classical FedAvg Strategy provided by Flower has been tested.
+* Starting a small test suite. For now, only test the 'check' parts of client and server applications, on different config files to test good/bad returns.
+* Correcting a bug on the weighted_average function: "is set()" had to be replaced by "==set()". Metrics are now aggregated and averaged.
+* Introducing a short helper function to merge the configuration from the config file passed as an argument of server or client, and the optional arguments, if passed.
+
 
 ## [Version 0.5.0]
 

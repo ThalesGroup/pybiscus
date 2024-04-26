@@ -7,9 +7,11 @@ import typer
 from omegaconf import OmegaConf
 from pydantic import ValidationError
 
-from src.console import console
-from src.ml.registry import datamodule_registry, model_registry
-from src.flower.client_fabric import ConfigClient, FlowerClient
+from pybiscus.console import console
+from pybiscus.flower.client_fabric import ConfigClient, FlowerClient
+from pybiscus.ml.registry import datamodule_registry, model_registry
+
+from . import change_conf_with_args
 
 torch.backends.cudnn.enabled = True
 
@@ -62,44 +64,25 @@ def check_client_config(
     ----------
     config : Path
         the Path to the configuration file.
-    num_rounds : int, optional
-        the number of round of Federated Learning, by default None
-    server_adress : str, optional
-        the server adress and port, by default None
-    to_onnx : bool, optional
-        if true, saves the final model into ONNX format. Only available now for Unet3D model! by default False
+    cid: int, optional
+        the client id
+    root_dir: str, optional
+        the path to a "root" directory, relatively to which can be found Data, Experiments and other useful directories
+    server_adress: str, optional
+        the server adress and port
 
     Raises
     ------
-    typer.Abort
-        _description_
-    typer.Abort
-        _description_
-    typer.Abort
-        _description_
     ValidationError
-        _description_
+        the Pydantic error raised if the config is not validated.
     """
-    if config is None:
-        print("No config file")
-        raise typer.Abort()
-    if config.is_file():
-        conf_loaded = OmegaConf.load(config)
-    elif config.is_dir():
-        print("Config is a directory, will use all its config files")
-        raise typer.Abort()
-    elif not config.exists():
-        print("The config doesn't exist")
-        raise typer.Abort()
+    conf_loaded = OmegaConf.load(config)
+    conf_merged = change_conf_with_args(
+        config=conf_loaded, cid=cid, root_dir=root_dir, server_adress=server_adress
+    )
 
-    if cid is not None:
-        conf_loaded["cid"] = cid
-    if root_dir is not None:
-        conf_loaded["root_dir"] = root_dir
-    if server_adress is not None:
-        conf_loaded["server_adress"] = server_adress
     try:
-        _ = check_and_build_client_config(conf_loaded)
+        _ = check_and_build_client_config(conf_merged)
         console.log("This is a valid config!")
     except ValidationError as e:
         console.log("This is not a valid config!")
@@ -133,29 +116,19 @@ def launch_config(
         the path to a "root" directory, relatively to which can be found Data, Experiments and other useful directories
     server_adress: str, optional
         the server adress and port
+
+    Raises
+    ------
+    ValidationError
+        the Pydantic error raised if the config is not validated.
     """
 
-    if config is None:
-        print("No config file")
-        raise typer.Abort()
-    if config.is_file():
-        conf_loaded = OmegaConf.load(config)
-    elif config.is_dir():
-        print("Config is a directory, will use all its config files")
-        raise typer.Abort()
-    elif not config.exists():
-        print("The config doesn't exist")
-        raise typer.Abort()
+    conf_loaded = OmegaConf.load(config)
+    conf_merged = change_conf_with_args(
+        config=conf_loaded, cid=cid, root_dir=root_dir, server_adress=server_adress
+    )
 
-    if cid is not None:
-        conf_loaded["cid"] = cid
-    if root_dir is not None:
-        conf_loaded["root_dir"] = root_dir
-    if server_adress is not None:
-        conf_loaded["server_adress"] = server_adress
-    # console.log(f"Conf specified: {dict(conf)}")
-
-    conf, conf_data, conf_model = check_and_build_client_config(config=conf_loaded)
+    conf, conf_data, conf_model = check_and_build_client_config(config=conf_merged)
 
     data = datamodule_registry[conf["data"].name](**conf_data)
     data.setup(stage="fit")
@@ -164,17 +137,18 @@ def launch_config(
         "valset": len(data.val_dataloader()),
     }
 
-    net = model_registry[conf["model"].name](**conf_model)
+    model = model_registry[conf["model"].name](**conf_model)
     client = FlowerClient(
         cid=conf["cid"],
-        model=net,
+        model=model,
         data=data,
         num_examples=num_examples,
         conf_fabric=conf["fabric"],
         pre_train_val=conf["pre_train_val"],
     )
     client.initialize()
-    fl.client.start_numpy_client(
+    client = client.to_client()
+    fl.client.start_client(
         server_address=conf["server_adress"],
         client=client,
     )

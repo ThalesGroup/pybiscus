@@ -9,27 +9,6 @@ repos:
     -   id: check-yaml
     -   id: check-added-large-files
 
-  # Using this mirror lets us use mypyc-compiled black, which is about 2x faster
--   repo: https://github.com/psf/black-pre-commit-mirror
-    rev: 23.11.0
-    hooks:
-    -   id: black
-
--   repo: https://github.com/astral-sh/ruff-pre-commit
-    # Ruff version.
-    rev: v0.1.4
-    hooks:
-        # Run the linter.
-        - id: ruff
-          args: [ --fix ]
-        # Run the formatter.
-        - id: ruff-format
--   repo: https://github.com/pycqa/isort
-    rev: 5.12.0
-    hooks:
-    -   id: isort
-        args: ["--profile", "black", "--filter-files"]
-
 -   repo: https://github.com/python-poetry/poetry
     rev: 1.7.1  # add version here
     hooks:
@@ -37,4 +16,14 @@ repos:
     -   id: poetry-lock
         args: ["--no-update"]
     -   id: poetry-install
-        args: ["--sync"]
+        args: ["--sync", "--with", "dev,docs"]
+
+-   repo: https://github.com/astral-sh/ruff-pre-commit
+    # Ruff version.
+    rev: v0.3.5
+    hooks:
+        # Run the linter.
+        - id: ruff
+          args: [ --fix ]
+        # Run the formatter.
+        - id: ruff-format
