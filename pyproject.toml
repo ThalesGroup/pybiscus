@@ -27,7 +27,7 @@ trogon = "^0.5.0"
 optional = true
 
 [tool.poetry.group.dev.dependencies]
-black = "<23.0"
+black = "<25.0"
 ruff = "^0.3.5"
 isort = "^5.12.0"
 docformatter = {extras = ["tomli"], version = "^1.7.5"}
