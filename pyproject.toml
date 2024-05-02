@@ -1,8 +1,12 @@
 [tool.poetry]
 name = "pybiscus"
-version = "0.6.0.dev0"
+version = "0.6.0.dev1"
 description = "A flexible Federated Learning framework"
 authors = ["Baptiste MORISSE <bmorisse@protonmail.com>"]
+readme = "README.md"
+license = "Apache - 2.0"
+homepage = "https://misterbourbaki.github.io/pybiscus/"
+repository = "https://github.com/MisterBourbaki/pybiscus"
 
 [tool.poetry.scripts]
 pybiscus_app = "pybiscus.main:app"
