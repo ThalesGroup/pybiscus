@@ -2,9 +2,9 @@ import typer
 from trogon import Trogon
 from typer.main import get_group
 
-import src.commands.app_client as client
-import src.commands.app_local as local_train
-import src.commands.app_server as server
+import pybiscus.commands.app_client as client
+import pybiscus.commands.app_local as local_train
+import pybiscus.commands.app_server as server
 
 app = typer.Typer(pretty_exceptions_show_locals=False, rich_markup_mode="rich")
 app.add_typer(server.app, name="server")

@@ -9,16 +9,16 @@ from lightning.fabric.loggers import TensorBoardLogger
 from omegaconf import OmegaConf
 from pydantic import ValidationError
 
-from src.console import console
-from src.flower.server_fabric import (
-    ConfigServer,
+from pybiscus.console import console
+from pybiscus.flower.callbacks import (
+    better_aggregate,
     evaluate_config,
     fit_config,
     get_evaluate_fn,
-    weighted_average,
+    weighted_average_metrics,
 )
-from src.flower.strategies import FabricStrategy
-from src.ml.registry import datamodule_registry, model_registry
+from pybiscus.flower.server_fabric import ConfigServer
+from pybiscus.ml.registry import datamodule_registry, model_registry
 
 from . import change_conf_with_args
 
@@ -173,12 +173,13 @@ def launch_config(
         )
         initial_parameters = fl.common.ndarrays_to_parameters(params)
 
-    strategy = FabricStrategy(
-        fit_metrics_aggregation_fn=weighted_average,
-        evaluate_metrics_aggregation_fn=weighted_average,
-        # evaluate_metrics_aggregation_fn=better_aggregate(weighted_average_metrics),
-        model=model,
-        fabric=fabric,
+    strategy = fl.server.strategy.FedAvg(
+        fit_metrics_aggregation_fn=better_aggregate(
+            weighted_average_metrics, fabric=fabric, stage="fit", start_server_round=1
+        ),
+        evaluate_metrics_aggregation_fn=better_aggregate(
+            weighted_average_metrics, fabric=fabric, stage="val", start_server_round=1
+        ),
         evaluate_fn=get_evaluate_fn(testset=test_set, model=model, fabric=fabric),
         on_fit_config_fn=fit_config,
         on_evaluate_config_fn=evaluate_config,

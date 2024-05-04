@@ -7,9 +7,9 @@ import typer
 from omegaconf import OmegaConf
 from pydantic import ValidationError
 
-from src.console import console
-from src.flower.client_fabric import ConfigClient, FlowerClient
-from src.ml.registry import datamodule_registry, model_registry
+from pybiscus.console import console
+from pybiscus.flower.client_fabric import ConfigClient, FlowerClient
+from pybiscus.ml.registry import datamodule_registry, model_registry
 
 from . import change_conf_with_args
 
@@ -137,10 +137,10 @@ def launch_config(
         "valset": len(data.val_dataloader()),
     }
 
-    net = model_registry[conf["model"].name](**conf_model)
+    model = model_registry[conf["model"].name](**conf_model)
     client = FlowerClient(
         cid=conf["cid"],
-        model=net,
+        model=model,
         data=data,
         num_examples=num_examples,
         conf_fabric=conf["fabric"],
