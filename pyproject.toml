@@ -1,8 +1,8 @@
 [tool.poetry]
 name = "pybiscus"
-version = "0.6.0.dev1"
+version = "0.6.1"
 description = "A flexible Federated Learning framework"
-authors = ["Baptiste MORISSE <bmorisse@protonmail.com>"]
+authors = ["Baptiste MORISSE <bmorisse.pro@proton.me>"]
 readme = "README.md"
 license = "Apache - 2.0"
 homepage = "https://misterbourbaki.github.io/pybiscus/"
@@ -24,7 +24,7 @@ lightning = {extras = ["pytorch-extra"], version = "^2.2"}
 torchvision = "^0.16.0"
 einops = "^0.6.1"
 tensorboard = "^2.14.1"
-pydantic = "2.6"
+pydantic = "^2.6"
 trogon = "^0.5.0"
 
 [tool.poetry.group.dev]

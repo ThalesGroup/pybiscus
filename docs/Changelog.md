@@ -2,6 +2,11 @@
 
 ## [Unreleased]
 
+## [Version 0.6.1]
+
+* Fix: Pydantic version, unfortunately pinned to non existing version 2.6.
+* Improve: documentation, still a work in progress.
+
 ## [Version 0.6.0.dev0]
 
 * **BREAKING CHANGE** Renaming 'src' directory into 'pybiscus' to follow the structure expected by Poetry to properly build the package. First step towards packaging the tool.
