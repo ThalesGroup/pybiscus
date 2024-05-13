@@ -1,0 +1,11 @@
+site_name: Documentation of Pybiscus
+nav:
+  - Home: index.md
+  - Getting started: getting_started.md
+  - Help: how-to.md
+  - How to configure: configuration.md
+  - Contributing: CONTRIBUTING.md
+  - Changelog: Changelog.md
+  - Where to go: ROADMAP.md
+
+theme: material
