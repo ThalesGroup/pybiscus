@@ -1,5 +1,5 @@
 config_client:
-  cid: 2
+  cid: 3
   fabric:
     accelerator: cpu
     # accelerator: gpu

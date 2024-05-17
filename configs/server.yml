@@ -1,32 +1,33 @@
-fabric:
-  accelerator: cpu
-  # accelerator: gpu
-  # devices:
-  #   - 0
-root_dir: ${oc.env:PWD}
-logger:
-  subdir: /experiments/federated/test_1/
-strategy:
-  name: "fabric"
-  config:
-    min_fit_clients: 2
-model:
-  name: cifar
-  config:
-    input_shape: 3
-    mid_shape: 6
-    n_classes: 10
-    lr: 0.001
-data:
-  name: cifar
-  config:
-    dir_train: None
-    dir_val: None
-    dir_test: ${root_dir}/datasets/global_test/
-    batch_size: 32
-server_adress: "[::]:22222"
-num_rounds: 2
-client_configs:
-  - ${root_dir}/configs/client_1.yml
-  - ${root_dir}/configs/client_2.yml
-save_on_train_end: true
+config_server:
+  fabric:
+    accelerator: cpu
+    # accelerator: gpu
+    # devices:
+    #   - 0
+  root_dir: ${oc.env:PWD}
+  logger:
+    subdir: /experiments/federated/test_1/
+  strategy:
+    name: "fabric"
+    config:
+      min_fit_clients: 2
+  model:
+    name: cifar
+    config:
+      input_shape: 3
+      mid_shape: 6
+      n_classes: 10
+      lr: 0.001
+  data:
+    name: cifar
+    config:
+      dir_train: None
+      dir_val: None
+      dir_test: ${config_server.root_dir}/datasets/global_test/
+      batch_size: 32
+  server_adress: "[::]:22222"
+  num_rounds: 2
+  client_configs:
+    - ${config_server.root_dir}/configs/client_1.yml
+    - ${config_server.root_dir}/configs/client_2.yml
+  save_on_train_end: true

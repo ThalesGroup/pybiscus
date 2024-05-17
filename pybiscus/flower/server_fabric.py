@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from pydantic import BaseModel, ConfigDict, Field
 
 from pybiscus.flower.client_fabric import ConfigFabric
@@ -39,9 +41,12 @@ class ConfigServer(BaseModel):
     save_on_train_end: optional, default to False
         if true, the weights of the model are saved at the very end of the Federated Learning.
         The path is fabric.logger.log_dir + "/checkpoint.pt"
+    weights_path: optional
+        path to the weights of the model to be loaded at the beginning of the Federated Learning.
+
     """
 
-    num_rounds: int
+    num_rounds: int = Field(gt=1)
     server_adress: str
     root_dir: str
     logger: dict
@@ -53,5 +58,6 @@ class ConfigServer(BaseModel):
     # data: Union[ConfigData_Cifar10] = Field(discriminator="name")
     client_configs: list[str] = Field(default=None)
     save_on_train_end: bool = Field(default=False)
+    weights_path: Path = Field(default=None)
 
     model_config = ConfigDict(extra="forbid")
