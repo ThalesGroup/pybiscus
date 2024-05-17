@@ -9,15 +9,6 @@ repos:
     -   id: check-yaml
     -   id: check-added-large-files
 
--   repo: https://github.com/python-poetry/poetry
-    rev: 1.7.1  # add version here
-    hooks:
-    -   id: poetry-check
-    -   id: poetry-lock
-        args: ["--no-update"]
-    -   id: poetry-install
-        args: ["--sync", "--with", "dev,docs"]
-
 -   repo: https://github.com/astral-sh/ruff-pre-commit
     # Ruff version.
     rev: v0.3.5
