@@ -1,6 +1,19 @@
 # Changelog
 
-## [Unreleased]
+## TODO
+
+* Remove tests, or find a way to test the jsonargparse CLI.
+* Adapt github workflow to Rye ; remove/change the test workflow ; remove the publish part.
+* Improve the CLI: how to transform a simple function (launch_client for instance) into a CLI, without duplication of code?
+* Think about the necessity of Pydantic validation.
+* Refacto of container part.
+* Improve and change the documentation.
+
+## [Version 0.7.0.dev0]
+
+* **Bump Typer CLI to jsonargparse**. Typer CLI was great to build Pybiscus as a PoC, but it has some limitations: really slow, it does not support configuration files through the arguments of the CLI, you need to rewrite the Pydantic models into the arguments of the CLI... One issue in particular was the difficulty of writing nested configuration directly in the CLI, which is important if you want to easily override parameters in the config file.
+* Remove: helper functions to check the config. Not needed with jsonargparse
+* Add: a toplevel layer 'config_server' or 'config_client' at the top of the configuration files.
 
 ## [Version 0.6.1]
 
