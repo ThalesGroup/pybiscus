@@ -45,6 +45,7 @@ dev-dependencies = [
     "mkdocs>=1.6.0",
     "mkdocstrings[python]>=0.25.1",
     "mkdocs-material>=9.5.23",
+    "ipython>=8.24.0",
 ]
 
 [tool.hatch.metadata]

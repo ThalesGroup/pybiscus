@@ -4,8 +4,9 @@
 # last locked with the following flags:
 #   pre: false
 #   features: []
-#   all-features: false
+#   all-features: true
 #   with-sources: false
+#   generate-hashes: false
 
 -e file:.
 absl-py==2.1.0
