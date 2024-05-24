@@ -1,6 +1,6 @@
 [project]
 name = "pybiscus"
-version = "0.7.0.dev0"
+version = "0.7.0.dev1"
 description = "A flexible Federated Learning framework"
 authors = [
     { name = "BaptisteMorisse", email = "bmorisse.pro@proton.me" }
