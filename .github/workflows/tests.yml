@@ -27,4 +27,4 @@ jobs:
         run: |
           rye sync --no-lock
       - name: Run the automated tests (for example)
-        run: poetry run pytest -v
+        run: rye run pytest -v
