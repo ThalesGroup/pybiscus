@@ -1,0 +1,27 @@
+name: Build
+
+on: push
+
+jobs:
+  build:
+    name: Build distribution 📦
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: "3.x"
+    - name: Setup Rye
+      uses: eifinger/setup-rye@v2
+      id: setup-rye
+    - name: Use UV instead of pip
+      run: rye config --set-bool behavior.use-uv=true
+    - name: Build a binary wheel and a source tarball with rye
+      run: rye build
+    - name: Store the distribution packages
+      uses: actions/upload-artifact@v3
+      with:
+        name: python-package-distributions
+        path: dist/

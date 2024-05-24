@@ -1,5 +1,9 @@
 name: Lint
-on: pull_request
+on:
+  push:
+  pull_request:
+    branches:
+      - master
 
 jobs:
   ci:
@@ -21,7 +25,7 @@ jobs:
         run: rye config --set-bool behavior.use-uv=true
       - name: Install dependencies
         run: |
-          rye sync
+          rye sync --no-lock
       - name: Run the lint
         run: rye run ruff check pybiscus/
       - name: Run the format

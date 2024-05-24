@@ -13,14 +13,13 @@ jobs:
       uses: actions/setup-python@v4
       with:
         python-version: "3.9"
-    - name: Install poetry
-      uses: abatilo/actions-poetry@v2
-    - name: Setup a local virtual environment (if no poetry.toml file)
+    - name: Install the latest version of rye
+      uses: eifinger/setup-rye@v2
+    - name: Use UV instead of pip
+      run: rye config --set-bool behavior.use-uv=true
+    - name: Install dependencies
       run: |
-        poetry config virtualenvs.create true --local
-        poetry config virtualenvs.in-project true --local
-    - name: Build a binary wheel and a source tarball
-      run: poetry build
+        rye sync --no-dev --no-lock
     - name: Store the distribution packages
       uses: actions/upload-artifact@v3
       with:
