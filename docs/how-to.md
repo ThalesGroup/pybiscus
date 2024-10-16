@@ -12,8 +12,8 @@ Available models are located in `ml/models/`. To add a new model, follow the few
     - the second one contains the LightningModule based on the classical nn.module.
 * if needed, add another directory `ml/models/my-model/all-things-needed/` which would contain all things necessary for your model to work properly: specific losses and metrics, dedicated torch modules, and so on.
 * update the file `ml/registry.py`:
-    - import your LightningModule;
-    - update `model_registry` by adding a new key linking to your LightingModule.
+    - import your LightningModule and its config;
+    - update `model_registry` and `ModelConfig` by adding a new key linking to your LightingModule.
 
 ## How to add datasets in Pybiscus
 
@@ -25,5 +25,5 @@ Available datasets are located in `ml/data/`. To add a new model, follow the few
     - the second one contains the LightningDataModule based on the classical torch.dataset.
 * if needed, add another directory `ml/data/my-data/all-things-needed/` which would contain all things necessary for your dataset to work properly, in particular preprocessing.
 * update the file `ml/registry.py`:
-    - import your LightningDataModule;
-    - update `datamodule_registry` by adding a new key linking to your LightingDataModule.
+    - import your LightningDataModule and its config;
+    - update `datamodule_registry` and `DataConfig` by adding a new key linking to your LightingDataModule.

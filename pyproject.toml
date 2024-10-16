@@ -25,6 +25,7 @@ einops = "^0.6.1"
 tensorboard = "^2.14.1"
 pydantic = "2.1.1"
 trogon = "^0.5.0"
+pandas = "^2.2.3"
 
 [tool.poetry.group.dev-dependencies.dependencies]
 black = "<25.0"

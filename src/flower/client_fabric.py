@@ -1,5 +1,7 @@
 from collections import OrderedDict
+from collections.abc import Mapping
 from typing import Union
+from typing_extensions import Annotated
 
 import flwr as fl
 import torch
@@ -10,7 +12,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from src.console import console
 from src.ml.data.cifar10.cifar10_datamodule import ConfigData_Cifar10
 from src.ml.loops_fabric import test_loop, train_loop
-from src.ml.models.cnn.lit_cnn import ConfigModel_Cifar10
+from src.ml.registry import ModelConfig, DataConfig
 
 torch.backends.cudnn.enabled = True
 
@@ -33,6 +35,7 @@ class ConfigFabric(BaseModel):
     accelerator: str
     devices: Union[int, list[int], str] = "auto"
 
+ConfigModel = Annotated[int, lambda x: x > 0]
 
 class ConfigClient(BaseModel):
     """A Pydantic Model to validate the Client configuration given by the user.
@@ -62,14 +65,34 @@ class ConfigClient(BaseModel):
     server_adress: str
     root_dir: str
     fabric: ConfigFabric
-    model: ConfigModel_Cifar10
-    data: ConfigData_Cifar10
+    model: ModelConfig
+    data: DataConfig
 
     # Below is used when several models and/or datasets are available.
     # model: Union[ConfigModel_Cifar10, ...] = Field(discriminator="name")
     # data: Union[ConfigData_Cifar10, ...] = Field(discriminator="name")
 
     model_config = ConfigDict(extra="forbid")
+
+def parse_optimizers(lightning_optimizers):
+    """
+    Parse the output of lightning configure_optimizers
+    https://lightning.ai/docs/pytorch/stable/api/lightning.pytorch.core.LightningModule.html#lightning.pytorch.core.LightningModule.configure_optimizers
+    To extract only the optimizers (and not the lr_schedulers)
+    """
+    optimizers = []
+    if lightning_optimizers:
+        if isinstance(lightning_optimizers, Mapping):
+            optimizers.append(lightning_optimizers['optimizer']) 
+        elif isinstance(lightning_optimizers, torch.optim.Optimizer):
+            optimizers.append(lightning_optimizers)
+        else:
+            for optmizers_conf in lightning_optimizers:
+                if isinstance(optmizers_conf, dict):
+                    optimizers.append(lightning_optimizers)
+                else:
+                    optimizers.append(optmizers_conf)
+    return optimizers
 
 
 class FlowerClient(fl.client.NumPyClient):
@@ -116,13 +139,13 @@ class FlowerClient(fl.client.NumPyClient):
         self.num_examples = num_examples
         self.pre_train_val = pre_train_val
 
-        self.optimizer = self.model.configure_optimizers()
+        self.optimizers = parse_optimizers(self.model.configure_optimizers())
 
         self.fabric = Fabric(**self.conf_fabric)
 
     def initialize(self):
         self.fabric.launch()
-        self.model, self.optimizer = self.fabric.setup(self.model, self.optimizer)
+        self.model, self.optimizers = self.fabric.setup(self.model, *self.optimizers)
         (
             self._train_dataloader,
             self._validation_dataloader,
@@ -160,7 +183,7 @@ class FlowerClient(fl.client.NumPyClient):
             self.fabric,
             self.model,
             self._train_dataloader,
-            self.optimizer,
+            self.optimizers, # Alice TODO extend this to multiple optimizers ??
             epochs=config["local_epochs"],
         )
         console.log(f"Training Finished! Loss is {results_train['loss']}")
