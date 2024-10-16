@@ -1,0 +1,33 @@
+fabric:
+  accelerator: gpu
+  devices:
+    - 0
+root_dir: ${oc.env:PWD}
+logger:
+  subdir: /experiments/federated/test_1/
+strategy:
+  name: "fabric"
+  config:
+    min_fit_clients: 2
+model:
+  name: lstm
+  config:
+    n_features: 24
+    hidden_units: 12
+    lr: 0.001
+data:
+  name: turbofan
+  config:
+    data_path: ${root_dir}/src/ml/data/turbofan/turbofan.txt
+    engines_train_list: [52,62]
+    engines_val_list: [64]
+    engines_test_list: [69]
+    window: 20
+    batch_size: 8
+    num_workers: 0
+server_adress: "[::]:22222"
+num_rounds: 2
+client_configs:
+  - ${root_dir}/configs/turbofan_lstm/client_1.yml
+  - ${root_dir}/configs/turbofan_lstm/client_2.yml
+save_on_train_end: true

@@ -1,5 +1,5 @@
 from collections import OrderedDict
-from typing import Callable, Optional
+from typing import Callable, Optional, Union
 
 import flwr as fl
 import numpy as np
@@ -12,9 +12,10 @@ from pydantic import BaseModel, ConfigDict, Field
 from src.console import console
 from src.flower.client_fabric import ConfigFabric
 from src.flower.strategies import ConfigFabricStrategy
-from src.ml.data.cifar10.cifar10_datamodule import ConfigData_Cifar10
 from src.ml.loops_fabric import test_loop
-from src.ml.models.cnn.lit_cnn import ConfigModel_Cifar10
+from src.ml.registry import ModelConfig, DataConfig
+
+
 
 
 class ConfigStrategy(BaseModel):
@@ -58,10 +59,8 @@ class ConfigServer(BaseModel):
     logger: dict
     strategy: ConfigStrategy
     fabric: ConfigFabric
-    model: ConfigModel_Cifar10
-    data: ConfigData_Cifar10
-    # model: Union[ConfigModel_Cifar10] = Field(discriminator="name")
-    # data: Union[ConfigData_Cifar10] = Field(discriminator="name")
+    model: ModelConfig
+    data: DataConfig
     client_configs: list[str] = Field(default=None)
     save_on_train_end: bool = Field(default=False)
 
