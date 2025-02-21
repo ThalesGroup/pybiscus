@@ -1,4 +1,9 @@
-docker run \
+#!/usr/bin/bash
+
+CONTAINER_ENGINE=$(container_engine)
+PYBISCUS_IMAGE=$(pybiscus_image client)
+
+$CONTAINER_ENGINE run \
     -t \
     --rm \
     --name "pybiscus-client-1" \
@@ -10,4 +15,5 @@ docker run \
     --net-alias client-1 \
     --user $uid:$gid \
     --shm-size 50G \
-    pybiscus:app.v0.5.0 client launch configs/client_1.yml
+    $(PYBISCUS_IMAGE) client launch-config configs/docker-network/cifar/client_1.yml
+

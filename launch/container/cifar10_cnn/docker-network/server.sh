@@ -1,4 +1,9 @@
-docker run \
+#!/usr/bin/bash
+
+CONTAINER_ENGINE=$(container_engine)
+PYBISCUS_IMAGE=$(pybiscus_image server)
+
+$CONTAINER_ENGINE run \
     -t \
     --rm \
     --name "pybiscus-server" \
@@ -10,4 +15,5 @@ docker run \
     --net-alias server \
     --user $uid:$gid \
     --shm-size 50G \
-    pybiscus:app.v0.5.0 server launch configs/server.yml
+    $(PYBISCUS_IMAGE) server launch-config configs/docker-network/cifar/server.yml
+

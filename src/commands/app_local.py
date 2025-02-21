@@ -7,7 +7,7 @@ from lightning.pytorch.callbacks.progress.rich_progress import RichProgressBarTh
 from omegaconf import OmegaConf
 from typing import Annotated
 
-from src.console import console
+from src.ui import pybiscus_ui
 from src.ml.registry import datamodule_registry, model_registry
 
 app = typer.Typer(pretty_exceptions_show_locals=False, rich_markup_mode="rich")
@@ -47,7 +47,7 @@ def train_config(config: Annotated[Path, typer.Argument()] = None):
         raise typer.Abort()
     if config.is_file():
         conf = OmegaConf.load(config)
-        console.log(dict(conf))
+        pybiscus_ui.log(dict(conf))
     elif config.is_dir():
         print("Config is a directory, will use all its config files")
         raise typer.Abort()

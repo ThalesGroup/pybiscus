@@ -25,13 +25,17 @@ def check_and_build_server_config(conf_loaded: dict):
     console.log(conf_loaded)
     _conf = ConfigServer(**conf_loaded)
     console.log(_conf)
-    conf = dict(_conf)
-    conf_fabric = dict(conf["fabric"])
-    conf_data = dict(conf["data"].config)
-    conf_model = dict(conf["model"].config)
+    conf          = dict(_conf)
+    conf_fabric   = dict(conf["fabric"])
+    conf_data     = dict(conf["data"].config)
+    conf_model    = dict(conf["model"].config)
     conf_strategy = dict(conf["strategy"].config)
-    return conf, conf_fabric, conf_data, conf_model, conf_strategy
-
+    conf_ssl      = None
+    
+    if "ssl" in conf and conf["ssl"] is not None:
+        conf_ssl = dict(conf["ssl"]) 
+        
+    return conf, conf_fabric, conf_data, conf_model, conf_strategy, conf_ssl
 
 app = typer.Typer(pretty_exceptions_show_locals=False, rich_markup_mode="rich")
 
@@ -111,6 +115,41 @@ def check_server_config(
         console.log("This is not a valid config!")
         raise e
 
+def server_certificates(conf_ssl):
+
+    certificates=None
+
+    if conf_ssl is not None:
+    
+        root_certificate_path=conf_ssl["root_certificate_path"]
+        server_certificate_path=conf_ssl["server_certificate_path"]
+        server_private_key_path=conf_ssl["server_private_key_path"]
+
+        root_certificate   = None
+        server_certificate = None
+        server_private_key = None
+
+        try:
+            root_certificate = Path(root_certificate_path).read_bytes()
+        except Exception as e:
+            console.log(f"Can not read root_certificate from path {root_certificate_path} {e}")
+
+        try:
+            server_certificate = Path(server_certificate_path).read_bytes()
+        except Exception as e:
+            console.log(f"Can not read server_certificate from path {server_certificate_path} {e}")
+
+        try:
+            server_private_key = Path(server_private_key_path).read_bytes()
+        except Exception as e:
+            console.log(f"Can not read server_private_key from path {server_private_key_path} {e}")
+
+        if root_certificate is not None and server_certificate is not None and server_private_key is not None:
+            certificates = ( root_certificate, server_certificate, server_private_key )
+        else:
+            raise typer.Abort()
+
+    return certificates
 
 @app.command(name="launch")
 def launch_config(
@@ -168,6 +207,7 @@ def launch_config(
         conf_data,
         conf_model,
         conf_strategy,
+        conf_ssl
     ) = check_and_build_server_config(conf_loaded=conf_loaded)
 
     logger = TensorBoardLogger(root_dir=conf["root_dir"] + conf["logger"]["subdir"])
@@ -209,6 +249,7 @@ def launch_config(
         server_address=conf["server_adress"],
         config=fl.server.ServerConfig(num_rounds=conf["num_rounds"]),
         strategy=strategy,
+        certificates=server_certificates(conf_ssl),
     )
 
     if conf["save_on_train_end"]:

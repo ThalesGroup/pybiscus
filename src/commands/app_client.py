@@ -174,11 +174,24 @@ def launch_config(
         pre_train_val=conf["pre_train_val"],
     )
     client.initialize()
+
+    ssl_secure_cnx=None
+    ssl_root_certificate=None
+
+    conf_ssl=conf_loaded.get("ssl", None)
+    if conf_ssl is not None:
+        if "secure_cnx" in conf_ssl:
+            ssl_secure_cnx= (conf_ssl["root_certificate"].lower()=="true")
+        if "root_certificate" in conf_ssl:
+            ssl_root_certificate=conf_ssl["root_certificate"]
+            ssl_secure_cnx= True
+
     fl.client.start_numpy_client(
         server_address=conf["server_adress"],
         client=client,
+        root_certificates=ssl_root_certificate,
+        insecure= not ssl_secure_cnx,
     )
-
 
 if __name__ == "__main__":
     app()

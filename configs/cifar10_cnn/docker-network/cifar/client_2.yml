@@ -1,7 +1,8 @@
-cid: 1
-pre_train_val: true
+cid: 2
 fabric:
   accelerator: gpu
+  devices:
+    - 0
 root_dir: ${oc.env:PWD}
 model:
   name: cifar
@@ -13,8 +14,8 @@ model:
 data:
   name: cifar
   config:
-    dir_train: ${root_dir}/datasets/client1/train/
-    dir_val: ${root_dir}/datasets/client1/val/
+    dir_train: ${root_dir}/datasets/client2/train/
+    dir_val: ${root_dir}/datasets/client2/val/
     dir_test: None
     batch_size: 32
 server_adress: server:22222

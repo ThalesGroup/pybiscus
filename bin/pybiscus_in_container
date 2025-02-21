@@ -1,0 +1,5 @@
+#!/usr/bin/bash
+
+export PATH="/app/bin:$PATH"
+exec pybiscus $@
+

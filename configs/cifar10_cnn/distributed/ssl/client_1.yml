@@ -1,0 +1,26 @@
+cid: 1
+pre_train_val: true
+fabric:
+  accelerator: gpu
+  devices:
+    - 0
+root_dir: ${oc.env:PWD}
+model:
+  name: cifar
+  config:
+    input_shape: 3
+    mid_shape: 6
+    n_classes: 10
+    lr: 0.001
+data:
+  name: cifar
+  config:
+    dir_train: ${root_dir}/datasets/client1/train/
+    dir_val: ${root_dir}/datasets/client1/val/
+    dir_test: None
+    batch_size: 32
+server_adress: ${oc.env:SERVER_ADDRESS, "localhost:22222" }
+ssl:
+  secure_cnx: true
+  root_certificate: ${root_dir}/certificates/ca/ca.crt
+

@@ -3,6 +3,10 @@ fabric:
 root_dir: ${oc.env:PWD}
 logger:
   subdir: /experiments/federated/test_1/
+strategy:
+  name: "fabric"
+  config:
+    min_fit_clients: 2
 model:
   name: cifar
   config:
@@ -20,5 +24,5 @@ data:
 server_adress: "[::]:22222"
 num_rounds: 10
 client_configs:
-  - ${root_dir}/configs/client_1.yml
-  - ${root_dir}/configs/client_2.yml
+  - ${root_dir}/configs/docker-network/cifar/client_1.yml
+  - ${root_dir}/configs/docker-network/cifar/client_2.yml

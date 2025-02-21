@@ -23,9 +23,13 @@ data:
     dir_val: None
     dir_test: ${root_dir}/datasets/global_test/
     batch_size: 32
-server_adress: "[::]:22222"
+server_adress: ${oc.env:SERVICE, "[::]:22222" }
+ssl:
+  root_certificate_path:   ${root_dir}/certificates/ca/ca.crt
+  server_certificate_path: ${root_dir}/certificates/server/server.crt
+  server_private_key_path: ${root_dir}/certificates/server/server.key
 num_rounds: 2
 client_configs:
-  - ${root_dir}/configs/cifar10_cnn/client_1.yml
-  - ${root_dir}/configs/cifar10_cnn/client_2.yml
-save_on_train_end: true
+  - ${root_dir}/configs/cifar10_cnn/distributed/ssl/client_1.yml
+  - ${root_dir}/configs/cifar10_cnn/distributed/ssl/client_2.yml
+
