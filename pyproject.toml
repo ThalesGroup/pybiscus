@@ -7,10 +7,12 @@ requires-python = ">=3.10"
 authors = ["Baptiste MORISSE <baptiste.morisse@thalesgroup.com>"]
 dependencies = [
     "einops>=0.8.0",
+    "flask>=3.1.0",
     "flwr>=1.7.0",
     "lightning[pytorch-extra]>=2.4.0",
     "pandas>=2.2.3",
     "pydantic>=2.10.4",
+    "pyyaml>=6.0.2",
     "torchvision>=0.20.1",
     "trogon>=0.6.0",
     "typer>=0.15.1",
