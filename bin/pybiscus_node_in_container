@@ -1,0 +1,8 @@
+#!/usr/bin/bash
+
+export PATH="/app/bin:$PATH"
+export PYTHONPATH="/app/src:$PYTHONPATH"
+
+# run command 
+exec uv run python src/rest.py 5000
+

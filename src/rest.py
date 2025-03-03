@@ -179,5 +179,5 @@ if __name__ == "__main__":
     else:
         portNumber = 5000
 
-    rest_server.run(debug=True, port=portNumber)
+    rest_server.run(debug=True, host="0.0.0.0", port=portNumber)
 
