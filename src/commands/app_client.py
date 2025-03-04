@@ -11,6 +11,8 @@ from src.console import console
 from src.ml.registry import datamodule_registry, model_registry
 from src.flower.client_fabric import ConfigClient, FlowerClient
 
+from src.commands.apps_common import load_config
+
 torch.backends.cudnn.enabled = True
 
 
@@ -80,17 +82,13 @@ def check_client_config(
     ValidationError
         _description_
     """
-    if config is None:
-        print("No config file")
-        raise typer.Abort()
-    if config.is_file():
-        conf_loaded = OmegaConf.load(config)
-    elif config.is_dir():
-        print("Config is a directory, will use all its config files")
-        raise typer.Abort()
-    elif not config.exists():
-        print("The config doesn't exist")
-        raise typer.Abort()
+
+    # handling mandatory config path parameter
+
+    conf_loaded = load_config(config)
+
+    # handling optional cid, rootdir and server address parameters
+    # it overrides the values from configuration file
 
     if cid is not None:
         conf_loaded["cid"] = cid
@@ -135,17 +133,12 @@ def launch_config(
         the server adress and port
     """
 
-    if config is None:
-        print("No config file")
-        raise typer.Abort()
-    if config.is_file():
-        conf_loaded = OmegaConf.load(config)
-    elif config.is_dir():
-        print("Config is a directory, will use all its config files")
-        raise typer.Abort()
-    elif not config.exists():
-        print("The config doesn't exist")
-        raise typer.Abort()
+    # handling mandatory config path parameter
+
+    conf_loaded = load_config(config)
+
+    # handling optional cid, rootdir and server address parameters
+    # it overrides the values from configuration file
 
     if cid is not None:
         conf_loaded["cid"] = cid

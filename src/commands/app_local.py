@@ -10,6 +10,8 @@ from typing import Annotated
 from src.ui import pybiscus_ui
 from src.ml.registry import datamodule_registry, model_registry
 
+from src.commands.apps_common import load_config
+
 app = typer.Typer(pretty_exceptions_show_locals=False, rich_markup_mode="rich")
 
 
@@ -42,18 +44,10 @@ def train_config(config: Annotated[Path, typer.Argument()] = None):
     typer.Abort
         _description_
     """
-    if config is None:
-        print("No config file")
-        raise typer.Abort()
-    if config.is_file():
-        conf = OmegaConf.load(config)
-        pybiscus_ui.log(dict(conf))
-    elif config.is_dir():
-        print("Config is a directory, will use all its config files")
-        raise typer.Abort()
-    elif not config.exists():
-        print("The config doesn't exist")
-        raise typer.Abort()
+
+    # handling mandatory config path parameter
+
+    conf_loaded = load_config(config)
 
     model = model_registry[conf["model"]["name"]](
         **conf["model"]["config"], _logging=True
