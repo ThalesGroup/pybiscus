@@ -1,5 +1,5 @@
 from collections import OrderedDict
-from typing import Callable, Optional, Union
+from typing import Callable, Optional, Union, Dict
 
 import flwr as fl
 import numpy as np
@@ -55,7 +55,7 @@ class ConfigServer(BaseModel):
     root_dir:
         the path to a "root" directory, relatively to which can be found Data, Experiments and other useful directories
     logger:
-        a doctionnary holding the config for the logger.
+        a dictionnary holding the config for the logger.
     strategy:
         a dictionnary holding (partial) arguments for the needed Strategy
     fabric:
@@ -76,7 +76,7 @@ class ConfigServer(BaseModel):
     num_rounds: int
     server_adress: str
     root_dir: str
-    logger: dict
+    logger: Dict[str, str]
     strategy: ConfigStrategy
     fabric: ConfigFabric
     model: ModelConfig

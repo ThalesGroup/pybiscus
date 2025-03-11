@@ -1,0 +1,28 @@
+server_adress: "[::]:22222"
+num_rounds: 100
+fabric:
+  accelerator: auto
+root_dir: ${oc.env:PWD}
+logger:
+  subdir: /experiments/federated/test_lr/
+strategy:
+  name: "fabric"
+  config:
+    min_fit_clients: 2
+
+data:
+  name: randomvector
+  config:
+    num_samples: 100
+    feature_dim: 1
+    seed:        42
+    batch_size:  32
+
+model:
+  name: linearregression
+  config:
+    input_dim: 1
+    output_dim: 1
+    learning_rate: 0.001
+    accuracy_threshold: 0.5
+

@@ -23,7 +23,7 @@ class ConfigCifar10Data(BaseModel):
 
 # --- Pybiscus Cifar10 configuration definition 
 
-class PybiscusConfigData_Cifar10(BaseModel):
+class ConfigData_Cifar10(BaseModel):
     name:   Literal["cifar"]
     config: ConfigCifar10Data
 
