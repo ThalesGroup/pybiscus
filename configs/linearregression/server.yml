@@ -1,4 +1,4 @@
-server_adress: "[::]:22222"
+server_adress: "127.0.0.1:22222"
 num_rounds: 100
 fabric:
   accelerator: auto

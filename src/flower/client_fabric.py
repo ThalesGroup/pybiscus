@@ -2,6 +2,7 @@ from collections import OrderedDict
 from collections.abc import Mapping
 from typing import Union, Optional
 from typing_extensions import Annotated
+from enum import Enum
 
 import flwr as fl
 import torch
@@ -31,7 +32,14 @@ class ConfigFabric(BaseModel):
         the string "auto" to let Fabric choose the best option available.
     """
 
-    accelerator: str
+    class Accelerator(str, Enum):
+        cpu  = "cpu"
+        gpu  = "gpu"
+        auto = "auto"
+
+    #accelerator: str = Field( default="auto", description="the type of accelerator to use: gpu, cpu, auto... See the Fabric documentation for more details.")
+    accelerator: Accelerator = Field( default="auto", description="the type of accelerator to use: gpu, cpu, auto... See the Fabric documentation for more details.")
+
     devices: Union[int, list[int], str] = "auto"
 
 ConfigModel = Annotated[int, lambda x: x > 0]

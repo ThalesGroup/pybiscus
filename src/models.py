@@ -2,9 +2,12 @@
 from pydantic import BaseModel, Field
 from pydantic.fields import PydanticUndefined
 from typing import Union, Literal
+from enum import Enum
+import sys
+import inspect
 
 from src.flower.server_fabric import ConfigServer
-from src.flower.client_fabric import ConfigClient
+from src.flower.client_fabric import ConfigFabric, ConfigClient
 
 """
    annotation: type[Any] | None
@@ -58,7 +61,8 @@ def dump( fi ):
     print( f"metadata {fi.metadata}<br>")
 
 
-
+class PydanticToHtml:
+    pass
 
 
 
@@ -67,6 +71,15 @@ def dump( fi ):
 
 def html_label( label ):
     return f'  <label>{label}</label>\n'
+
+def new_tab_nb2():
+    tab_counter = 1
+
+    while True:
+        nb = tab_counter
+        tab_counter += 1
+        yield nb
+
 
 tab_counter = 1
 
@@ -97,32 +110,57 @@ def generate_tab_name(field_type, default) -> str:
     else:
         return default
 
-def generate_field_html(field_name, field_type, field_required, field_default, inFieldSet: bool = True) -> str:
+#_field_input_type = {
+        #str: "text",
+        #int: "number"
+    #}
+
+def generate_field_html(field_name, field_type, field_required: bool, field_default, field_description, inFieldSet: bool = True) -> str:
+
+    """
+    sys.stderr.write(f"{field_name}, {field_type}, {field_required}, {field_default}, {field_description}, {inFieldSet}\n")
+
+    if inspect.isclass(field_type):
+        sys.stderr.write(f"YES {field_type}, {type(field_type)}, {issubclass(field_type,Enum)}\n")
+    else:
+        sys.stderr.write(f"NO {field_type}, {type(field_type)}\n")
+        """
 
     field_html = ''
-    if field_default is PydanticUndefined:
-        value = ''
-    else:
-        value = f' value="{field_default}" '
+    opt_title = '' if field_description is PydanticUndefined else f' title="{field_description}" '
+    opt_value = '' if field_default     is PydanticUndefined else f' value="{field_default}" '
+    opt_required = "required" if field_required else "", 
 
     # Générer le champ HTML en fonction du type
     if field_type is str:
         field_html += html_label( field_name )
-        field_html += f'  <input type="text" id="{field_name}" name="{field_name}" {value} placeholder="string" {field_required}><br>\n'
+        field_html += f'  <input type="text" id="{field_name}" name="{field_name}" {opt_title} {opt_value} placeholder="string" {opt_required}><br>\n'
 
     elif field_type is int:
         field_html += html_label( field_name )
-        field_html += f'  <input type="number" id="{field_name}" name="{field_name}" {value} placeholder="integer" {field_required}><br>\n'
+        field_html += f'  <input type="number" id="{field_name}" name="{field_name}" {opt_title} {opt_value} placeholder="integer" {opt_required}><br>\n'
 
     elif field_type is float:
         field_html += html_label( field_name )
-        field_html += f'  <input type="number" id="{field_name}" name="{field_name}" {value} placeholder="float" {field_required} step="0.001" ><br>\n'
+        field_html += f'  <input type="number" id="{field_name}" name="{field_name}" {opt_title} {opt_value} placeholder="float" {opt_required} step="0.001" ><br>\n'
 
     elif field_type is bool:
+        opt_checked = "checked" if True == field_default else ""
+        
         field_html += html_label( field_name )
-        #LMO
-        field_html += f'  <input type="checkbox" id="{field_name}" name="{field_name}" {value} "checked"><br>\n'
+        field_html += f'  <input type="checkbox" id="{field_name}" name="{field_name}" {opt_title} {opt_value} {opt_checked} > <br>\n'
 
+    elif inspect.isclass(field_type) and issubclass(field_type, Enum):
+        
+        field_html += '<fieldset class="fieldset-container">\n'
+        field_html += f'  <legend>{field_name}:</legend>\n'
+
+        for member in field_type:
+            opt_checked = "checked" if member.value == field_default else ""
+            field_html += f'<input type="radio" id="option1" name="option" {opt_title} value="{member.value}" {opt_checked} ><label">{member.value}</label>\n'
+
+        field_html += '</fieldset>\n'
+        
     elif field_type is type(None):
         field_html += html_label( 'NONE' )
 
@@ -171,7 +209,7 @@ def generate_field_html(field_name, field_type, field_required, field_default, i
                     else:
                         field_html += '<fieldset>\n'
                         field_html += f'<legend>union_{index}</legend>\n'
-                        field_html += generate_field_html(f"", sub_type, False, PydanticUndefined)
+                        field_html += generate_field_html("", sub_type, False, PydanticUndefined)
                         field_html += '</fieldset>\n'
             else:
 
@@ -192,7 +230,14 @@ def generate_field_html(field_name, field_type, field_required, field_default, i
                 for index, sub_type in enumerate( field_type.__args__, 1 ):
                     active = 'active' if index == 1 else ''
                     field_html += f'<div id="tab{tab_nb}-{index}" class="tab-content {active}">\n' 
-                    field_html += generate_field_html("", sub_type, False, PydanticUndefined, False)
+                    field_html += generate_field_html(
+                                    field_name        = "", 
+                                    field_type        = sub_type, 
+                                    field_required    = False, 
+                                    field_default     = PydanticUndefined, 
+                                    field_description = PydanticUndefined,
+                                    inFieldSet        = False
+                                    )
                     field_html += '</div>\n'
                 field_html += "</div>\n"
 
@@ -217,7 +262,7 @@ def generate_field_html(field_name, field_type, field_required, field_default, i
     else:
         field_html += f' ????<br>\n'
 
-        field_html += f'  <label>{field_name}:[{(field_type).__qualname__}]</label>\n'
+        field_html += f'  <label>{field_name}:   [{type(field_type).__qualname__}]:{(field_type).__qualname__}]</label>\n'
         field_html += f'  <br>\n'
 
     return field_html
@@ -234,11 +279,14 @@ def generate_model_html(model: BaseModel, inFieldSet: bool ) -> str:
 
     for field_name, field_info in model.model_fields.items():
 
-        field_type = field_info.annotation
-        field_required = "required" if field_info.is_required() else ""
-        field_default = field_info.default
-
-        model_html += generate_field_html(field_name, field_type, field_required, field_default)
+        model_html += generate_field_html(
+                                    field_name        = field_name, 
+                                    field_type        = field_info.annotation,
+                                    field_required    = field_info.is_required(), 
+                                    field_default     = field_info.default, 
+                                    field_description = field_info.description,
+                                    inFieldSet        = False,
+                                    )
    
     if inFieldSet:
         model_html += '</fieldset>\n'
@@ -294,11 +342,20 @@ print( """
     """)
 
 # Générer le formulaire HTML pour UserModel
-form_html = generate_model_html(ConfigServer, True)
-print(form_html)
-print('<br><br><br>\n')
-form_html = generate_model_html(ConfigClient, True)
-print(form_html)
+
+if False:
+    form_html = generate_model_html(ConfigServer, True)
+    print(form_html)
+    print('<br><br><br>\n')
+
+if False:
+    form_html = generate_model_html(ConfigClient, True)
+    print(form_html)
+    print('<br><br><br>\n')
+
+if True:
+    form_html = generate_model_html(ConfigFabric, True)
+    print(form_html)
 
 print("""
 <script>
