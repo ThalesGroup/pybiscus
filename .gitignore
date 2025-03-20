@@ -8,9 +8,9 @@ wheels/
 
 # Virtual environments
 .venv
-datasets/*
+
 saved_models_path
-experiments
 *.code-workspace
 **/.ruffcache
 **/lightning_logs
+src/ml/models/others
