@@ -4,7 +4,7 @@ version = "0.6.0"
 description = "A flexible Federated Learning framework"
 readme = "README.md"
 requires-python = ">=3.10"
-authors = ["Baptiste MORISSE <baptiste.morisse@thalesgroup.com>"]
+#authors = ["Baptiste MORISSE <baptiste.morisse@thalesgroup.com>"]
 dependencies = [
     "einops>=0.8.0",
     "flask>=3.1.0",
@@ -17,4 +17,11 @@ dependencies = [
     "trogon>=0.6.0",
     "typer>=0.15.1",
 ]
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = ["src"]
 

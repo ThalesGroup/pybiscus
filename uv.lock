@@ -1409,7 +1409,7 @@ wheels = [
 [[package]]
 name = "pybiscus"
 version = "0.6.0"
-source = { virtual = "." }
+source = { editable = "." }
 dependencies = [
     { name = "einops" },
     { name = "flask" },
