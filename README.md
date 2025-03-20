@@ -7,22 +7,31 @@ It aims at automated as much as possible the FL pipeline, and allows to add virt
 
 Pybiscus is built on top of Flower, a mature Federated Learning framework; Typer (script and CLI parts) and Lightning/Fabric for all the Machine Learning machinery.
 
-You can simply test Pybiscus by downloading the latest wheel available and install it.
+It is managed using the uv package manager
 
-## Get started
+## Get started using uv
 
-You can simply test Pybiscus by downloading the latest wheel available in the dist folder and install it in a virtual environnement:
-```bash
-python -m pip install virtualenv
-python -m virtualenv .venv
-source .venv/bin/activate
-(.venv) python -m pip install pybiscus_paroma-0.5.0-py3-none-any.whl
+extend your user's path to include the bin directory
+download the required packages
+
+```source ./extend_path.sh
+
+uv sync
 ```
 
-and you are good to go! The packages comes with an app named `pybiscus_paroma_app` that you can use in the virtual environment. You can then test if everything went well by launching a local training:
-```bash
-(.venv) pybiscus_paroma_app local train-config configs/local_train.yml
+You can find example launch scripts in ./launch/uv subdirectories
+
+## Get started using podman or docker
+
+extend your user's path to include the bin directory
+produce the image
+
+```source ./extend_path.sh
+
+cd ./container
+./build_pybiscus_container.sh
 ```
+You can find example launch scripts in ./launch/container subdirectories
 
 ## Documentation
 

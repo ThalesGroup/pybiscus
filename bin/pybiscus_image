@@ -1,0 +1,12 @@
+#!/usr/bin/bash
+
+DEFAULT_PYBISCUS_IMAGE="pybiscus:uv-v0.2"
+
+if [ -z "${PYBISCUS_IMAGE}" ]; then
+
+	PYBISCUS_IMAGE="${DEFAULT_PYBISCUS_IMAGE}"
+
+fi
+
+echo $PYBISCUS_IMAGE
+

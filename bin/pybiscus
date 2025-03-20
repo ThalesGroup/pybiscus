@@ -1,0 +1,8 @@
+#!/usr/bin/bash
+
+# set python path
+export PYTHONPATH="/app/src:$PYTHONPATH"
+
+# run command with the provided arguments
+uv run python src/main.py $@
+

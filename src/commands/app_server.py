@@ -20,21 +20,33 @@ from src.flower.server_fabric import (
     get_evaluate_fn,
 )
 
+from src.commands.apps_common import load_config
+
+#                    ------------------------------------------------
 
 def check_and_build_server_config(conf_loaded: dict):
     console.log(conf_loaded)
     _conf = ConfigServer(**conf_loaded)
     console.log(_conf)
-    conf = dict(_conf)
-    conf_fabric = dict(conf["fabric"])
-    conf_data = dict(conf["data"].config)
-    conf_model = dict(conf["model"].config)
+    conf          = dict(_conf)
+    conf_fabric   = dict(conf["fabric"])
+    conf_data     = dict(conf["data"].config)
+    conf_model    = dict(conf["model"].config)
     conf_strategy = dict(conf["strategy"].config)
-    return conf, conf_fabric, conf_data, conf_model, conf_strategy
+    conf_ssl      = None
+    
+    if "ssl" in conf and conf["ssl"] is not None:
+        conf_ssl = dict(conf["ssl"]) 
+        
+    return conf, conf_fabric, conf_data, conf_model, conf_strategy, conf_ssl
 
+#                    ------------------------------------------------
 
 app = typer.Typer(pretty_exceptions_show_locals=False, rich_markup_mode="rich")
 
+########################################################################################"
+########################################################################################"
+########################################################################################"
 
 @app.callback()
 def server():
@@ -47,6 +59,7 @@ def server():
 
     """
 
+#                    ------------------------------------------------
 
 @app.command(name="check")
 def check_server_config(
@@ -86,18 +99,8 @@ def check_server_config(
     ValidationError
         _description_
     """
-    if config is None:
-        print("No config file")
-        raise typer.Abort()
-    if config.is_file():
-        conf_loaded = OmegaConf.load(config)
-        # console.log(conf)
-    elif config.is_dir():
-        print("Config is a directory, will use all its config files")
-        raise typer.Abort()
-    elif not config.exists():
-        print("The config doesn't exist")
-        raise typer.Abort()
+
+    conf_loaded = load_config(config)
 
     if num_rounds is not None:
         conf_loaded["num_rounds"] = num_rounds
@@ -111,6 +114,45 @@ def check_server_config(
         console.log("This is not a valid config!")
         raise e
 
+#                    ------------------------------------------------
+
+def server_certificates(conf_ssl):
+
+    certificates=None
+
+    if conf_ssl is not None:
+    
+        root_certificate_path  =conf_ssl["root_certificate_path"]
+        server_certificate_path=conf_ssl["server_certificate_path"]
+        server_private_key_path=conf_ssl["server_private_key_path"]
+
+        root_certificate   = None
+        server_certificate = None
+        server_private_key = None
+
+        try:
+            root_certificate = Path(root_certificate_path).read_bytes()
+        except Exception as e:
+            console.log(f"Can not read root_certificate from path {root_certificate_path} {e}")
+
+        try:
+            server_certificate = Path(server_certificate_path).read_bytes()
+        except Exception as e:
+            console.log(f"Can not read server_certificate from path {server_certificate_path} {e}")
+
+        try:
+            server_private_key = Path(server_private_key_path).read_bytes()
+        except Exception as e:
+            console.log(f"Can not read server_private_key from path {server_private_key_path} {e}")
+
+        if root_certificate is not None and server_certificate is not None and server_private_key is not None:
+            certificates = ( root_certificate, server_certificate, server_private_key )
+        else:
+            raise typer.Abort()
+
+    return certificates
+
+#                    ------------------------------------------------
 
 @app.command(name="launch")
 def launch_config(
@@ -144,18 +186,13 @@ def launch_config(
     weights_path: optional
         path to the weights of the model to be loaded at the beginning of the Federated Learning.
     """
-    if config is None:
-        print("No config file")
-        raise typer.Abort()
-    if config.is_file():
-        conf_loaded = OmegaConf.load(config)
-        # console.log(conf)
-    elif config.is_dir():
-        print("Config is a directory, will use all its config files")
-        raise typer.Abort()
-    elif not config.exists():
-        print("The config doesn't exist")
-        raise typer.Abort()
+
+    # handling mandatory config path parameter
+
+    conf_loaded = load_config(config)
+
+    # handling optional num rounds and server address parameters
+    # it overrides the values from configuration file
 
     if num_rounds is not None:
         conf_loaded["num_rounds"] = num_rounds
@@ -168,14 +205,19 @@ def launch_config(
         conf_data,
         conf_model,
         conf_strategy,
+        conf_ssl
     ) = check_and_build_server_config(conf_loaded=conf_loaded)
 
     logger = TensorBoardLogger(root_dir=conf["root_dir"] + conf["logger"]["subdir"])
     fabric = Fabric(**conf_fabric, loggers=logger)
     fabric.launch()
+
+    # load the model
     model_class = model_registry[conf["model"].name]
     net = model_class(**conf_model)
     net = fabric.setup_module(net)
+
+    # load the data management strategy from registry
     data = datamodule_registry[conf["data"].name](**conf_data)
     data.setup(stage="test")
     _test_set = data.test_dataloader()
@@ -205,18 +247,24 @@ def launch_config(
         **conf_strategy,
     )
 
+    # starting flower server
     fl.server.start_server(
-        server_address=conf["server_adress"],
-        config=fl.server.ServerConfig(num_rounds=conf["num_rounds"]),
-        strategy=strategy,
+        server_address = conf["server_adress"],
+        config         = fl.server.ServerConfig(num_rounds=conf["num_rounds"]),
+        strategy       = strategy,
+        certificates   = server_certificates(conf_ssl),
     )
 
+    # optional checkpoint save
     if conf["save_on_train_end"]:
         state = {"model": net}
         fabric.save(fabric.logger.log_dir + "/checkpoint.pt", state)
 
+    # server config logging
     with open(fabric.logger.log_dir + "/config_server_launch.yml", "w") as file:
         OmegaConf.save(config=conf_loaded, f=file)
+
+    # optional clients config logging
     if conf["client_configs"] is not None:
         for client_conf in conf["client_configs"]:
             console.log(client_conf)
@@ -230,3 +278,4 @@ def launch_config(
 
 if __name__ == "__main__":
     app()
+

@@ -1,7 +1,8 @@
 from collections import OrderedDict
 from collections.abc import Mapping
-from typing import Union
+from typing import Union, Optional
 from typing_extensions import Annotated
+from enum import Enum
 
 import flwr as fl
 import torch
@@ -10,7 +11,6 @@ from lightning.pytorch import LightningDataModule, LightningModule
 from pydantic import BaseModel, ConfigDict, Field
 
 from src.console import console
-from src.ml.data.cifar10.cifar10_datamodule import ConfigData_Cifar10
 from src.ml.loops_fabric import test_loop, train_loop
 from src.ml.registry import ModelConfig, DataConfig
 
@@ -32,10 +32,34 @@ class ConfigFabric(BaseModel):
         the string "auto" to let Fabric choose the best option available.
     """
 
-    accelerator: str
+    class Accelerator(str, Enum):
+        cpu  = "cpu"
+        gpu  = "gpu"
+        auto = "auto"
+
+    #accelerator: str = Field( default="auto", description="the type of accelerator to use: gpu, cpu, auto... See the Fabric documentation for more details.")
+    accelerator: Accelerator = Field( default="auto", description="the type of accelerator to use: gpu, cpu, auto... See the Fabric documentation for more details.")
+
     devices: Union[int, list[int], str] = "auto"
 
 ConfigModel = Annotated[int, lambda x: x > 0]
+
+class ConfigSslClient(BaseModel):
+    """A Pydantic Model to validate the Client configuration given by the user.
+
+    Attributes
+    ----------
+    secure_cnx: 
+        Enables HTTPS connection when true, default value being false
+        using system certificates if root_certificate is None
+
+    root_certificate:
+        he PEM-encoded root certificates path
+    """
+
+    secure_cnx: bool
+    root_certificate: Optional[str] = None
+
 
 class ConfigClient(BaseModel):
     """A Pydantic Model to validate the Client configuration given by the user.
@@ -58,6 +82,8 @@ class ConfigClient(BaseModel):
         a dictionnary holding all necessary keywords for the LightningModule used
     data: dict
         a dictionnary holding all necessary keywords for the LightningDataModule used.
+    ssl: dict
+        a dictionnary holding all necessary options for https usage
     """
 
     cid: int
@@ -67,10 +93,7 @@ class ConfigClient(BaseModel):
     fabric: ConfigFabric
     model: ModelConfig
     data: DataConfig
-
-    # Below is used when several models and/or datasets are available.
-    # model: Union[ConfigModel_Cifar10, ...] = Field(discriminator="name")
-    # data: Union[ConfigData_Cifar10, ...] = Field(discriminator="name")
+    ssl: Optional[ConfigSslClient] = Field(default_factory=lambda: ConfigSslClient(secure_cnx=False))
 
     model_config = ConfigDict(extra="forbid")
 

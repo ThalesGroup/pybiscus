@@ -1,0 +1,34 @@
+fabric:
+  accelerator: gpu
+  devices:
+    - 0
+root_dir: ${oc.env:PWD}
+logger:
+  subdir: /experiments/federated/test_1/
+strategy:
+  name: "fabric"
+  config:
+    min_fit_clients: 2
+model:
+  name: cifar
+  config:
+    input_shape: 3
+    mid_shape: 6
+    n_classes: 10
+    lr: 0.001
+data:
+  name: cifar
+  config:
+    dir_train: None
+    dir_val: None
+    dir_test: ${root_dir}/datasets/global_test/
+    batch_size: 32
+server_adress: "0.0.0.0:22222"
+ssl:
+  root_certificate_path:   ${root_dir}/certificates/ca/ca.crt
+  server_certificate_path: ${root_dir}/certificates/server/server.crt
+  server_private_key_path: ${root_dir}/certificates/server/server.key
+num_rounds: 2
+client_configs:
+  - ${root_dir}/configs/localhost/cifar10_cnn/localhost/ssl/client_1.yml
+  - ${root_dir}/configs/localhost/cifar10_cnn/localhost/ssl/client_2.yml

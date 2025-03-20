@@ -1,5 +1,5 @@
 from collections import OrderedDict
-from typing import Callable, Optional, Union
+from typing import Callable, Optional, Union, Dict
 
 import flwr as fl
 import numpy as np
@@ -24,6 +24,24 @@ class ConfigStrategy(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
+class ConfigSslServer(BaseModel):
+    """A Pydantic Model to validate the Server configuration given by the user.
+
+    Attributes
+    ----------
+    root_certificate_path:
+        root certificate path
+    server_certificate_path:
+        server certificate path
+    server_private_key_path:
+        private key path
+    """
+
+    root_certificate_path: str
+    server_certificate_path: str
+    server_private_key_path: str
+
+    model_config = ConfigDict(extra="forbid")
 
 class ConfigServer(BaseModel):
     """A Pydantic Model to validate the Server configuration given by the user.
@@ -37,7 +55,7 @@ class ConfigServer(BaseModel):
     root_dir:
         the path to a "root" directory, relatively to which can be found Data, Experiments and other useful directories
     logger:
-        a doctionnary holding the config for the logger.
+        a dictionnary holding the config for the logger.
     strategy:
         a dictionnary holding (partial) arguments for the needed Strategy
     fabric:
@@ -46,6 +64,8 @@ class ConfigServer(BaseModel):
         a dictionnary holding all necessary keywords for the LightningModule used
     data:
         a dictionnary holding all necessary keywords for the LightningDataModule used.
+    ssl: dict
+        a dictionnary holding all necessary options for https usage
     clients_configs:
         a list of paths to the configuration files used by all clients.
     save_on_train_end: optional, default to False
@@ -56,11 +76,12 @@ class ConfigServer(BaseModel):
     num_rounds: int
     server_adress: str
     root_dir: str
-    logger: dict
+    logger: Dict[str, str]
     strategy: ConfigStrategy
     fabric: ConfigFabric
     model: ModelConfig
     data: DataConfig
+    ssl: Optional[ConfigSslServer] = None
     client_configs: list[str] = Field(default=None)
     save_on_train_end: bool = Field(default=False)
 

@@ -1,0 +1,16 @@
+#!/usr/bin/bash
+
+# look for podman or docker
+if command -v podman &> /dev/null
+then
+    CONTAINER_ENGINE="podman"
+elif command -v docker &> /dev/null
+then
+    CONTAINER_ENGINE="docker"
+else
+    echo "Nor podman nor docker found !"
+    exit 1
+fi
+
+echo $CONTAINER_ENGINE
+

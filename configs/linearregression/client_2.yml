@@ -1,0 +1,25 @@
+cid: 2
+pre_train_val: true
+fabric:
+  accelerator: auto
+root_dir: ${oc.env:PWD}
+
+server_adress: localhost:22222
+
+data:
+  name: randomvector
+  config:
+    num_samples: 320
+    feature_dim: 1
+    seed:        42
+    batch_size:  32
+
+
+model:
+  name: linearregression
+  config:
+    input_dim: 1
+    output_dim: 1
+    learning_rate: 0.001
+    accuracy_threshold: 0.5
+
