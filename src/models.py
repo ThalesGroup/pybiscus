@@ -69,25 +69,21 @@ class PydanticToHtml:
 
 
 
-def html_label( label ):
-    return f'  <label>{label}</label>\n'
+def html_label( label, pybiscus_info='' ):
+    return f'  <label {pybiscus_info}>{label}</label>\n'
 
-def new_tab_nb2():
-    tab_counter = 1
+def index_generator():
+    counter = 1
 
     while True:
-        nb = tab_counter
-        tab_counter += 1
+        nb = counter
+        counter += 1
         yield nb
 
+index_generator_instance = index_generator()
 
-tab_counter = 1
-
-def new_tab_nb():
-    global tab_counter
-    nb = tab_counter
-    tab_counter += 1
-    return nb
+def new_index():
+    return next(index_generator_instance)
 
 def generate_tab_name(field_type, default) -> str:
     if field_type is str:
@@ -127,37 +123,47 @@ def generate_field_html(field_name, field_type, field_required: bool, field_defa
         """
 
     field_html = ''
-    opt_title = '' if field_description is PydanticUndefined else f' title="{field_description}" '
+    opt_title = '' if field_description is None else f' title="{field_description}" '
     opt_value = '' if field_default     is PydanticUndefined else f' value="{field_default}" '
-    opt_required = "required" if field_required else "", 
+    opt_required = "required" if field_required else ""
+    pybiscus_marker = f' data-pybiscus-name="{field_name}" '
+    pybiscus_always = f' data-pybiscus-condition="always" '
+    pybiscus_if_checked = f' data-pybiscus-condition="if-checked" '
+    pybiscus_if_div_active = f' data-pybiscus-condition="if-div-checked" '
 
     # Générer le champ HTML en fonction du type
     if field_type is str:
         field_html += html_label( field_name )
-        field_html += f'  <input type="text" id="{field_name}" name="{field_name}" {opt_title} {opt_value} placeholder="string" {opt_required}><br>\n'
+        #field_html += f'  <input type="text" id="{field_name}" name="{field_name}" {opt_title} {opt_value} placeholder="string" {opt_required}><br>\n'
+        field_html += f'  <input type="text" {opt_title} {opt_value} placeholder="string" {opt_required} {pybiscus_marker} {pybiscus_always}><br>\n'
 
     elif field_type is int:
         field_html += html_label( field_name )
-        field_html += f'  <input type="number" id="{field_name}" name="{field_name}" {opt_title} {opt_value} placeholder="integer" {opt_required}><br>\n'
+        #field_html += f'  <input type="number" id="{field_name}" name="{field_name}" {opt_title} {opt_value} placeholder="integer" {opt_required} {pybiscus_marker}><br>\n'
+        field_html += f'  <input type="number" {opt_title} {opt_value} placeholder="integer" {opt_required} {pybiscus_marker} {pybiscus_always}><br>\n'
 
     elif field_type is float:
         field_html += html_label( field_name )
-        field_html += f'  <input type="number" id="{field_name}" name="{field_name}" {opt_title} {opt_value} placeholder="float" {opt_required} step="0.001" ><br>\n'
+        #field_html += f'  <input type="number" id="{field_name}" name="{field_name}" {opt_title} {opt_value} placeholder="float" {opt_required} step="0.001" {pybiscus_marker}><br>\n'
+        field_html += f'  <input type="number" {opt_title} {opt_value} placeholder="float" {opt_required} step="0.001" {pybiscus_marker} {pybiscus_always}><br>\n'
 
     elif field_type is bool:
         opt_checked = "checked" if True == field_default else ""
         
         field_html += html_label( field_name )
-        field_html += f'  <input type="checkbox" id="{field_name}" name="{field_name}" {opt_title} {opt_value} {opt_checked} > <br>\n'
+        field_html += f'  <input type="checkbox" id="{field_name}" name="{field_name}" {opt_title} {opt_value} {opt_checked} {pybiscus_marker} {pybiscus_always}> <br>\n'
 
     elif inspect.isclass(field_type) and issubclass(field_type, Enum):
         
         field_html += '<fieldset class="fieldset-container">\n'
         field_html += f'  <legend>{field_name}:</legend>\n'
 
+        option_name= f"option-{new_index()}"
+
         for member in field_type:
             opt_checked = "checked" if member.value == field_default else ""
-            field_html += f'<input type="radio" id="option1" name="option" {opt_title} value="{member.value}" {opt_checked} ><label">{member.value}</label>\n'
+            #field_html += f'<input type="radio" id="option1" name="{option_name}" {opt_title} value="{member.value}" {opt_checked} ><label>{member.value}</label>\n'
+            field_html += f'<input type="radio" name="{option_name}" {opt_title} value="{member.value}" {opt_checked} {pybiscus_marker} {pybiscus_if_checked}><label>{member.value}</label>\n'
 
         field_html += '</fieldset>\n'
         
@@ -213,28 +219,50 @@ def generate_field_html(field_name, field_type, field_required: bool, field_defa
                         field_html += '</fieldset>\n'
             else:
 
-                tab_nb = new_tab_nb()
+                tab_nb = new_index()
+
+                # determine the active tab index
+
+                # default is the first
+                active_index = 1
+                propagate_default = False
+
+                # if there is a default, check type
+                if field_default is not PydanticUndefined:
+                    field_default_type = type( field_default )
+                    for index, sub_type in enumerate( field_type.__args__, 1 ):
+                        if sub_type is field_default_type:
+                            active_index = index
+                            propagate_default = True
+                            break
 
                 field_html += '''
 <div class="tab-container">
-    <div class="tab-buttons">'''
+    <div class="tab-buttons">
+'''
 
                 # tab generation
                 for index, sub_type in enumerate( field_type.__args__, 1 ):
-                    active = 'active' if index == 1 else ''
+                    active = 'active' if index == active_index else ''
                     tab_name = generate_tab_name( sub_type, f'Tab {index}' )
-                    field_html += f'<div class="tab-button {active}" data-tab="tab{tab_nb}-{index}">{tab_name}</div>\n'
-                field_html += "</div>\n"
+                    field_html += f'        <div class="tab-button {active}" data-tab="tab{tab_nb}-{index}">{tab_name}</div>\n'
+                field_html += "    </div>\n"
 
                 # tab content generation
                 for index, sub_type in enumerate( field_type.__args__, 1 ):
-                    active = 'active' if index == 1 else ''
+                    active = 'active' if index == active_index else ''
                     field_html += f'<div id="tab{tab_nb}-{index}" class="tab-content {active}">\n' 
+                    if propagate_default and index == active_index:
+                        sub_field_default = field_default 
+                    else:
+                        sub_field_default = PydanticUndefined
+
+
                     field_html += generate_field_html(
                                     field_name        = "", 
                                     field_type        = sub_type, 
                                     field_required    = False, 
-                                    field_default     = PydanticUndefined, 
+                                    field_default     = sub_field_default, 
                                     field_description = PydanticUndefined,
                                     inFieldSet        = False
                                     )
@@ -247,7 +275,8 @@ def generate_field_html(field_name, field_type, field_required: bool, field_defa
 
             # ### Literal ###
             field_html += html_label( field_name )
-            field_html += html_label( field_type.__args__[0] )
+            #field_html += html_label( field_type.__args__[0], f'{pybiscus_marker} {pybiscus_if_div_active}' )
+            field_html += f'<input type="text" value="{field_type.__args__[0]}" {pybiscus_marker} {pybiscus_if_div_active} readonly><br>\n'
 
         else:
 
@@ -285,7 +314,7 @@ def generate_model_html(model: BaseModel, inFieldSet: bool ) -> str:
                                     field_required    = field_info.is_required(), 
                                     field_default     = field_info.default, 
                                     field_description = field_info.description,
-                                    inFieldSet        = False,
+                                    inFieldSet        = True,
                                     )
    
     if inFieldSet:
@@ -343,19 +372,37 @@ print( """
 
 # Générer le formulaire HTML pour UserModel
 
-if False:
+if True:
     form_html = generate_model_html(ConfigServer, True)
     print(form_html)
     print('<br><br><br>\n')
 
-if False:
+if True:
     form_html = generate_model_html(ConfigClient, True)
     print(form_html)
     print('<br><br><br>\n')
 
-if True:
+if False:
     form_html = generate_model_html(ConfigFabric, True)
     print(form_html)
+
+"""
+// Trouver le parent contenant l'attribut data-toto
+let parent = enfant.closest("div[data-toto]");
+
+// Vérifier si data-toto est égal à "titi"
+if (parent && parent.dataset.toto === "titi") {
+    console.log("La valeur de data-toto est 'titi'");
+} else {
+    console.log("La valeur de data-toto n'est pas 'titi'");
+}
+
+
+
+element.setAttribute("data-toto", "nouvelleValeur");
+console.log(element.getAttribute("data-toto")); 
+
+"""
 
 print("""
 <script>
@@ -372,6 +419,52 @@ print("""
             });
         });
     });
+
+function traverseDOM(element, callbacks) {
+    // Vérifie si l'élément possède l'attribut spécifique
+    if (element.hasAttribute('data-custom-attribute')) {
+        // Récupère la valeur de l'attribut
+        const attributeValue = element.getAttribute('data-custom-attribute');
+
+        // Appelle la fonction de rappel correspondante si elle existe
+        if (callbacks[attributeValue]) {
+            callbacks[attributeValue](element);
+        }
+    }
+
+    // Parcourt récursivement les enfants de l'élément
+    const children = element.children;
+    for (let i = 0; i < children.length; i++) {
+        traverseDOM(children[i], callbacks);
+    }
+}
+
+// Exemple de fonctions de rappel
+function handleOption1(element) {
+    console.log('Option 1 trouvée:', element);
+    // Traitement spécifique pour l'option 1
+}
+
+function handleOption2(element) {
+    console.log('Option 2 trouvée:', element);
+    // Traitement spécifique pour l'option 2
+}
+
+function handleOption3(element) {
+    console.log('Option 3 trouvée:', element);
+    // Traitement spécifique pour l'option 3
+}
+
+// Dictionnaire de fonctions de rappel
+const callbacks = {
+    'option1': handleOption1,
+    'option2': handleOption2,
+    'option3': handleOption3
+};
+
+// Lancer le parcours à partir de l'élément racine, par exemple le body
+traverseDOM(document.body, callbacks);
+
 </script>
 
 </body>
