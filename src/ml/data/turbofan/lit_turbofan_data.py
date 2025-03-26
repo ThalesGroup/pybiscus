@@ -1,4 +1,4 @@
-from typing import Literal, Optional
+from typing import Literal, Optional, ClassVar
 
 import lightning.pytorch as pl
 from pydantic import BaseModel, ConfigDict
@@ -23,6 +23,8 @@ class ConfigTurbofanData(BaseModel):
         the number of workers for the DataLoaders (default to 0)
     """
 
+    PYBISCUS_CONFIG: ClassVar[str] = "config"
+
     data_path: str = "turbofan.txt"
     engines_train_list: list[int] = [52]
     engines_val_list: list[int] = [64]
@@ -35,6 +37,9 @@ class ConfigTurbofanData(BaseModel):
 
 
 class ConfigData_TurbofanData(BaseModel):
+
+    PYBISCUS_ALIAS: ClassVar[str] = "Turbofan"
+
     name: Literal["turbofan"]
     config: ConfigTurbofanData
 

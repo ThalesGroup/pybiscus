@@ -1,4 +1,4 @@
-from typing import Literal, TypedDict
+from typing import Literal, TypedDict, ClassVar
 
 import lightning.pytorch as pl
 import torch
@@ -21,6 +21,8 @@ class ConfigLSTM(BaseModel):
         the learning rate
     """
 
+    PYBISCUS_CONFIG: ClassVar[str] = "config"
+
     n_features: int = 24
     hidden_units: int = 12
     lr: float = 0.001
@@ -29,6 +31,9 @@ class ConfigLSTM(BaseModel):
 
 
 class ConfigModel_LSTM(BaseModel):
+
+    PYBISCUS_ALIAS: ClassVar[str] = "LSTM"
+
     name: Literal["lstm"]
     config: ConfigLSTM
 

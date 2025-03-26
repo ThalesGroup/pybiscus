@@ -1,4 +1,4 @@
-from typing import override, Literal, TypedDict
+from typing import override, Literal, TypedDict, ClassVar
 
 import pytorch_lightning as pl
 import torch
@@ -12,6 +12,8 @@ from src.ml.data.randomvector.randomvector_datamodule import RandomVectorLightni
 
 class ConfigLinearRegression(BaseModel):
 
+    PYBISCUS_CONFIG: ClassVar[str] = "config"
+
     input_dim:          int
     output_dim:         int
     learning_rate:      float
@@ -22,6 +24,9 @@ class ConfigLinearRegression(BaseModel):
 #        --------------------
 
 class ConfigModel_LinearRegression(BaseModel):
+
+    PYBISCUS_ALIAS: ClassVar[str] = "Linear regression"
+
     name: Literal["linearregression"]
     config: ConfigLinearRegression
 

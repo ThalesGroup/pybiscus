@@ -1,4 +1,4 @@
-from typing import override, Literal, TypedDict
+from typing import override, Literal, TypedDict, ClassVar
 
 import lightning.pytorch as pl
 import torch
@@ -26,6 +26,8 @@ class ConfigCNN(BaseModel):
         the learning rate
     """
 
+    PYBISCUS_CONFIG: ClassVar[str] = "config"
+
     input_shape: int
     mid_shape: int
     n_classes: int
@@ -36,6 +38,9 @@ class ConfigCNN(BaseModel):
 #        --------------------
 
 class ConfigModel_Cifar10(BaseModel):
+
+    PYBISCUS_ALIAS: ClassVar[str] = "Cifar 10"
+
     name: Literal["cifar"]
     config: ConfigCNN
 

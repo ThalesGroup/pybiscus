@@ -1,5 +1,5 @@
 from collections import OrderedDict
-from typing import Callable, Optional, Union, Dict
+from typing import Callable, Optional, Union, Dict, ClassVar
 
 import flwr as fl
 import numpy as np
@@ -19,7 +19,11 @@ from src.ml.registry import ModelConfig, DataConfig
 
 
 class ConfigStrategy(BaseModel):
-    name: str
+
+    PYBISCUS_CONFIG: ClassVar[str] = "strategy"
+
+    name: str = "fabric"
+
     config: ConfigFabricStrategy
 
     model_config = ConfigDict(extra="forbid")
@@ -36,6 +40,8 @@ class ConfigSslServer(BaseModel):
     server_private_key_path:
         private key path
     """
+
+    PYBISCUS_ALIAS: ClassVar[str] = "SSL Flower server"
 
     root_certificate_path: str
     server_certificate_path: str
@@ -72,6 +78,8 @@ class ConfigServer(BaseModel):
         if true, the weights of the model are saved at the very end of the Federated Learning.
         The path is fabric.logger.log_dir + "/checkpoint.pt"
     """
+
+    PYBISCUS_ALIAS: ClassVar[str] = "Pybiscus server configuration"
 
     num_rounds: int
     server_adress: str

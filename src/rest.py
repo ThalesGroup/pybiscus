@@ -8,6 +8,10 @@ import sys
 import werkzeug
 import os
 
+from src.pydantic.pydantic2html import generate_model_form
+from src.flower.server_fabric import ConfigServer
+from src.flower.client_fabric import ConfigClient
+
 rest_server = Flask(__name__)
 
 def shutdown_server():
@@ -41,23 +45,22 @@ def run_typer_command(command: list[str]) -> str:
 
         import subprocess
 
-        # Exécuter le script Typer en subprocess
+        # run the Typer script as a subprocess
         #process = subprocess.Popen(["./launch/uv/cifar10_cnn/distributed/without_ssl/server.sh"], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
         process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, bufsize=1 )
 
-        # Lire la sortie en temps réel
+        # RT reading of stdout
         for line in process.stdout:
-            rich_print(line, end="")  # Affiche en direct sur l'écran
+            rich_print(line, end="")  # screen printint
 
-        # Récupérer la sortie complète
+        # catch complete output at the end of process
         #stdout, stderr = process.communicate()
-        #print("\nSortie complète capturée :", stdout)
 
         return_code = process.wait() # returncode
         if return_code == 0:
-            print("Le processus s'est terminé avec succès.")
+            print("Process has finished successfully.")
         else:
-            print(f"Le processus {command} a échoué avec le code {return_code}")
+            print(f"Processus {command} has failed with code {return_code}")
 
         return ""
 
@@ -68,10 +71,14 @@ def exitFlask():
 @rest_server.route("/shutdown", methods=["GET"])
 def shutdown():
     shutdown_server()
-    return "Serveur arrêté."
+    return "Server shut down."
+
+@rest_server.route("/server/config", methods=["GET"])
+def serverConfigDownload():
+    return generate_model_form(ConfigServer)
 
 @rest_server.route("/server/config", methods=["POST"])
-def serverConfig():
+def serverConfigUpload():
 
     if not saveConfigFromRequest( request ) :
         return jsonify({"serverConfig": "none"})
@@ -81,8 +88,12 @@ def serverConfig():
     output = run_typer_command( ["uv", "run", "python", "src/main.py", "server", "check", uploaded_file_path ] )
     return jsonify({"check": output})
 
+@rest_server.route("/client/config", methods=["GET"])
+def clientConfigDownload():
+    return generate_model_form(ConfigClient)
+
 @rest_server.route("/client/config", methods=["POST"])
-def clientConfig():
+def clientConfigUpload():
 
     if not saveConfigFromRequest( request ) :
         return jsonify({"clientConfig": "none"})
@@ -107,6 +118,7 @@ def client(nb: int):
     output = run_typer_command( ["uv", "run", "python", "src/main.py", "client", "launch", uploaded_file_path ] )
     return jsonify({f"client{nb}": "run performed" })
 
+"""
 @rest_server.route("/client1", methods=["GET"])
 def client1():
     #output = run_typer_command("client", "launch", "./configs/cifar10_cnn/distributed/without_ssl/client1.yml" )
@@ -121,10 +133,11 @@ def client2():
     #output = run_typer_command( ["uv", "run", "python", "src/main.py", "client", "launch", "./configs/cifar10_cnn/distributed/without_ssl/client_2.yml"] )
     output = run_typer_command( ["./launch/uv/cifar10_cnn/distributed/without_ssl/client2.sh"] )
     return jsonify({"output": output})
+"""
 
-#  Répertoire où stocker les fichiers YAML
+#  YAML files storage path
 UPLOAD_FOLDER = "configs/uploaded/"
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)  # Crée le dossier s'il n'existe pas
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)  # directory creation if required
 
 uploaded_file_path = None
 
@@ -135,17 +148,17 @@ def saveConfigFromRequest( request ) -> bool:
 
     file = request.files["file"]
 
-    # Vérifier que le fichier a une extension YAML
+    # check YAML extension
     if not file.filename.endswith((".yaml", ".yml")):
         return False
 
-    # Définir le chemin de stockage
+    # define storage path
     global uploaded_file_path
     #print(file.filename)
     #print(os.path.basename(file.filename))
     uploaded_file_path = os.path.join(UPLOAD_FOLDER, os.path.basename(file.filename) )
     
-    # Sauvegarder le fichier
+    # save the yaml file
     file.save(uploaded_file_path)
 
     return True
@@ -153,24 +166,24 @@ def saveConfigFromRequest( request ) -> bool:
 @rest_server.route("/config", methods=["POST"])
 def upload_yaml():
     if "file" not in request.files:
-        return jsonify({"error": "Aucun fichier envoyé"}), 400
+        return jsonify({"error": "no file sent"}), 400
 
     file = request.files["file"]
 
-    # Vérifier que le fichier a une extension YAML
+    # check YAML extension
     if not file.filename.endswith((".yaml", ".yml")):
-        return jsonify({"error": "Format invalide, uniquement YAML accepté"}), 400
+        return jsonify({"error": "Bad file format: yaml file required"}), 400
 
-    # Définir le chemin de stockage
+    # define storage path
     global uploaded_file_path
     print(file.filename)
     print(os.path.basename(file.filename))
     uploaded_file_path = os.path.join(UPLOAD_FOLDER, os.path.basename(file.filename) )
     
-    # Sauvegarder le fichier
+    # save the yaml file
     file.save(uploaded_file_path)
 
-    return jsonify({"message": "Fichier bien reçu", "path": uploaded_file_path})
+    return jsonify({"message": "yaml file received", "path": uploaded_file_path})
 
 if __name__ == "__main__":
 

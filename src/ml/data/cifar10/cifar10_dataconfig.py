@@ -1,4 +1,4 @@
-from typing import Literal
+from typing import Literal, ClassVar
 from pydantic import BaseModel, ConfigDict
 
 class ConfigCifar10Data(BaseModel):
@@ -13,6 +13,8 @@ class ConfigCifar10Data(BaseModel):
     num_workers: int, optional = the number of workers for the DataLoaders (default to 0)
     """
 
+    PYBISCUS_CONFIG: ClassVar[str] = "config"
+
     dir_train:   str
     dir_val:     str
     dir_test:    str = None
@@ -24,6 +26,9 @@ class ConfigCifar10Data(BaseModel):
 # --- Pybiscus Cifar10 configuration definition 
 
 class ConfigData_Cifar10(BaseModel):
+
+    PYBISCUS_ALIAS: ClassVar[str] = "Cifar 10"
+
     name:   Literal["cifar"]
     config: ConfigCifar10Data
 

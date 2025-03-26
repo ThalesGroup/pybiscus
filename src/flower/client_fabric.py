@@ -1,6 +1,6 @@
 from collections import OrderedDict
 from collections.abc import Mapping
-from typing import Union, Optional
+from typing import Union, Optional, ClassVar
 from typing_extensions import Annotated
 from enum import Enum
 
@@ -16,7 +16,6 @@ from src.ml.registry import ModelConfig, DataConfig
 
 torch.backends.cudnn.enabled = True
 
-
 class ConfigFabric(BaseModel):
     """A Pydantic Model to validate the Client configuration given by the user.
 
@@ -31,6 +30,8 @@ class ConfigFabric(BaseModel):
         either an integer (the number of devices needed); a list of integers (the id of the devices); or
         the string "auto" to let Fabric choose the best option available.
     """
+
+    PYBISCUS_CONFIG: ClassVar[str] = "fabric"
 
     class Accelerator(str, Enum):
         cpu  = "cpu"
@@ -56,6 +57,8 @@ class ConfigSslClient(BaseModel):
     root_certificate:
         he PEM-encoded root certificates path
     """
+
+    PYBISCUS_ALIAS: ClassVar[str] = "SSL Flower client"
 
     secure_cnx: bool
     root_certificate: Optional[str] = None
@@ -85,6 +88,8 @@ class ConfigClient(BaseModel):
     ssl: dict
         a dictionnary holding all necessary options for https usage
     """
+
+    PYBISCUS_ALIAS: ClassVar[str] = "Pybiscus client configuration"
 
     cid: int
     pre_train_val: bool = Field(default=False)

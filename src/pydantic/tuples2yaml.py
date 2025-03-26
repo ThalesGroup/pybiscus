@@ -38,22 +38,25 @@ def convert_defaultdict_to_dict(d):
         d = {k: convert_defaultdict_to_dict(v) for k, v in d.items()}
     return d
 
-# Exemple de paires de tuples
-tuples = [
-    ("a.b.c", "-", "v1"),
-    ("a.b.c", "-", "v2"),
-    ("server.host", "", "localhost"),
-    ("server.port", "", "8080"),
-    ("database.connection.host", "", "localhost"),
-    ("database.connection.port", "", "5432"),
-    ("database.connection.options.pool_size", "", "10"),
-    ("logging.level", "", "debug"),
-]
+if __name__ == "__main__":
 
-# Convertir les tuples en structure YAML
-yaml_data = parse_tuples_to_yaml(tuples)
+    # Exemple de paires de tuples
+    tuples = [
+        ("a.b.c", "-", "v1"),
+        ("a.b.c", "-", "v2"),
+        ("server.host", "", "localhost"),
+        ("server.port", "", "8080"),
+        ("database.connection.host", "", "localhost"),
+        ("database.connection.port", "", "5432"),
+        ("database.connection.options.pool_size", "", "10"),
+        ("logging.level", "", "debug"),
+    ]
 
-# Convertir le dictionnaire en chaîne YAML
-yaml_output = yaml.dump(yaml_data, default_flow_style=False, sort_keys=False)
+    # Convertir les tuples en structure YAML
+    yaml_data = parse_tuples_to_yaml(tuples)
 
-print(yaml_output)
+    # Convertir le dictionnaire en chaîne YAML
+    yaml_output = yaml.dump(yaml_data, default_flow_style=False, sort_keys=False)
+
+    print(yaml_output)
+

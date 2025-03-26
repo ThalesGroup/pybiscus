@@ -1,5 +1,5 @@
 from logging import WARNING
-from typing import Callable, Optional, Union
+from typing import Callable, Optional, Union, ClassVar
 
 import flwr as fl
 from flwr.common import (
@@ -29,7 +29,10 @@ than or equal to the values of `min_fit_clients` and `min_evaluate_clients`.
 
 
 class ConfigFabricStrategy(BaseModel):
-    min_fit_clients: int
+
+    PYBISCUS_CONFIG: ClassVar[str] = "config"
+
+    min_fit_clients: int = 2
 
 
 class FabricStrategy(fl.server.strategy.FedAvg):
