@@ -5,22 +5,10 @@ from typing import Union, Literal
 from enum import Enum
 import sys
 import inspect
+import html
 
 from src.flower.server_fabric import ConfigServer
 from src.flower.client_fabric import ConfigClient
-
-"""
-// Trouver le parent contenant l'attribut data-toto
-let parent = enfant.closest("div[data-toto]");
-
-// Vérifier si data-toto est égal à "titi"
-if (parent && parent.dataset.toto === "titi") {
-    console.log("La valeur de data-toto est 'titi'");
-} else {
-    console.log("La valeur de data-toto n'est pas 'titi'");
-}
-
-"""
 
 class PydanticToHtml:
 
@@ -36,7 +24,7 @@ class PydanticToHtml:
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>Typer2Html</title>
+    <title>Pybiscus Node</title>
 
     <style>
 
@@ -87,6 +75,24 @@ class PydanticToHtml:
             background-color: #e0f7fa; /* Bleu très clair */
         }
 
+        .pybiscus-control-container {
+            display: flex;
+            align-items: center; /* Aligne verticalement les éléments au centre */
+            gap: 10px; /* Espace entre les éléments */
+        }
+        .pybiscus-indicator {
+            display: none;
+            color: orange;
+        }
+        .pybiscus-success {
+            display: none;
+            color: green;
+        }
+        .pybiscus-failure {
+            display: none;
+            color: red;
+        }
+
     </style>
 </head>
 
@@ -95,12 +101,31 @@ class PydanticToHtml:
     """
 
     @staticmethod
-    def genEpilog() -> str:
+    def genEpilog( modelName: str ) -> str:
+
+        if modelName == "ConfigServer":
+            action = "server"
+        elif modelName == "ConfigClient":
+            action = "client"
+        else:
+            action = "unknown"
 
         return """
       </div>
 
-    <button id="select-button">Sélectionner et Appeler fff</button>
+    <div class="pybiscus-control-container">
+        <button id="check-config-button">check config</button>
+        <span id="check-indicator" class="pybiscus-indicator">Running check...</span>
+        <span id="check-success-result" class="pybiscus-success" >'Check success !'</span>
+        <span id="check-failure-result" class="pybiscus-failure" ">'Check failure.'</span>
+    </div>
+
+    <div class="pybiscus-control-container">
+        <button id="execute-button">execute config</button>
+        <span id="execute-indicator" class="pybiscus-indicator">Running launch...</span>
+        <span id="execute-success-result" class="pybiscus-success" >'Launch success !'</span>
+        <span id="execute-failure-result" class="pybiscus-failure" ">'Launch failure.'</span>
+    </div>
 
 <script>
     document.querySelectorAll('.tab-container').forEach(container => {
@@ -112,7 +137,11 @@ class PydanticToHtml:
                 container.querySelectorAll('.tab-button').forEach(b => {
                     b.classList.remove('active');
                     b.setAttribute('data-pybiscus-status', 'ignored');
-                    } );
+
+                    associatedDiv = container.querySelector(`#${b.dataset.tab}`);
+                    associatedDiv.classList.remove('active');
+                    associatedDiv.setAttribute('data-pybiscus-status', 'ignored');
+                } );
                 container.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
 
                 // activate the clicked tab and its associated content
@@ -156,7 +185,7 @@ class PydanticToHtml:
         }
     });
 
-    function traverseDOM(element) {
+    function traverseDOM(element, data) {
 
         if (element.getAttribute('data-pybiscus-status') === 'ignored') {
 
@@ -165,35 +194,141 @@ class PydanticToHtml:
             if (element.hasAttribute('data-pybiscus-name')) {
 
                 const attributeValue = element.getAttribute('data-pybiscus-name');
-                console.log( attributeValue + " = " + element.value );
+
+                if( element.tagName === "INPUT" ) {
+                    if( element.type === "checkbox" ) {
+                        //console.log( `${attributeValue} = ${element.checked}` );
+                        data = [ [ attributeValue, "", element.checked ], ...data ];
+                    } else if( element.type === "text" ) {
+                        //console.log( `${attributeValue} = "${element.value}"` );
+                        data = [ [ attributeValue, "", element.value ], ...data ];
+                    } else {
+                        //console.log( `${attributeValue} = ${element.value}` );
+                        data = [ [ attributeValue, "", element.value ], ...data ];
+                    }
+                } else {
+                    console.log( "field is not an input" );
+                }
 
             } else {
 
                 const children = element.children;
                 for (let i = 0; i < children.length; i++) {
-                    traverseDOM(children[i]);
+                    data = traverseDOM(children[i], data);
                 }
             }
         }
+
+        return data;
     }
 
-    const button = document.getElementById('select-button');
+    const check_button = document.getElementById('check-config-button');
 
-    // Ajoute un écouteur d'événement pour le clic sur le bouton
-    button.addEventListener('click', function() {
+    // add an button event listener
+    check_button.addEventListener('click', function() {
 
-        // Sélectionne l'élément avec l'ID top-div
+        const indicatorDiv = document.getElementById('check-indicator');
+        const successResultDiv = document.getElementById('check-success-result');
+        const failureResultDiv = document.getElementById('check-failure-result');
+
+        indicatorDiv.style.display = 'block';
+        successResultDiv.style.display = 'none';
+        failureResultDiv.style.display = 'none';
+
+        // Select top-div ided element
         const topDiv = document.getElementById('top-div');
 
-        // Appelle la fonction fff en passant l'élément en paramètre
-        traverseDOM(topDiv);
+        // generate configuration data
+        data = traverseDOM(topDiv, []).reverse();
+
+        //console.log( data );
+
+        // target URL for posting configuration
+        const url_conf = "/config/MODEL_NAME/json";
+
+        // request options
+        const options = {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify(data)
+        };
+
+        // post the configuration in json format
+        fetch(url_conf, options)
+          .then(response => {
+            if (!response.ok) {
+              throw new Error("Post error " + response.status);
+            }
+            return response.json();
+          })
+          .then(data => {
+            console.log("Server response:", data);
+
+            indicatorDiv.style.display = 'none';
+            successResultDiv.style.display = 'block';
+            failureResultDiv.style.display = 'none';
+          })
+          .catch(error => {
+            console.error("Error:", error);
+
+            indicatorDiv.style.display = 'none';
+            successResultDiv.style.display = 'none';
+            failureResultDiv.style.display = 'block';
+          });
+    });
+
+    const execute_button = document.getElementById('execute-button');
+
+    // add an button event listener
+    execute_button.addEventListener('click', function() {
+
+        const indicatorDiv = document.getElementById('execute-indicator');
+        const successResultDiv = document.getElementById('execute-success-result');
+        const failureResultDiv = document.getElementById('execute-failure-result');
+
+        indicatorDiv.style.display = 'block';
+        successResultDiv.style.display = 'none';
+        failureResultDiv.style.display = 'none';
+        
+        // target URL for posting configuration
+        const url_conf = "/ACTION";
+
+        // request options
+        const options = {
+          method: "GET",
+        };
+
+        // post the configuration in json format
+        fetch(url_conf, options)
+          .then(response => {
+            if (!response.ok) {
+              throw new Error("Get error " + response.status);
+            }
+            return response.json();
+          })
+          .then(data => {
+            console.log("ACTION response:", data);
+
+            indicatorDiv.style.display = 'none';
+            successResultDiv.style.display = 'block';
+            failureResultDiv.style.display = 'none';
+          })
+          .catch(error => {
+            console.error("Error:", error);
+            
+            indicatorDiv.style.display = 'none';
+            successResultDiv.style.display = 'none';
+            failureResultDiv.style.display = 'block';
+          });
     });
 
 </script>
 
 </body>
 </html>
-"""
+""".replace( "MODEL_NAME", modelName ).replace( "ACTION", action )
 
 def html_label( label: str, is_config: bool = False, pybiscus_info: str = '' ):
 
@@ -260,13 +395,18 @@ def generate_field_html(field_name: str, field_type, field_required: bool, field
         """
 
     field_html = ''
-    opt_title = '' if field_description is None else f' title="{field_description}" '
+    opt_title = '' if (field_description is None or field_description is PydanticUndefined) else f' title="{html.escape(field_description)}" '
     opt_value = '' if field_default     is PydanticUndefined else f' value="{field_default}" '
     opt_required = "required" if field_required else ""
-    pybiscus_marker = f' data-pybiscus-name="{prefix+field_name}" '
+
+    prefixed_name = prefix+field_name
+    if prefixed_name.endswith("."):
+        prefixed_name = prefixed_name[:-1]
+    pybiscus_marker = f' data-pybiscus-name="{prefixed_name}" '
 
     # Générer le champ HTML en fonction du type
     if field_type is str:
+        opt_value = '' if (field_default is PydanticUndefined or field_default is None ) else f' value="{html.escape(field_default)}" '
         field_html += html_label( field_name, True )
         field_html += f'  <input type="text" {opt_title} {opt_value} placeholder="string" {opt_required} {pybiscus_marker}><br>\n'
 
@@ -322,12 +462,16 @@ def generate_field_html(field_name: str, field_type, field_required: bool, field
             if field_type.__args__[0] is int:
                 field_html += html_label( field_name, True )
 
-                for i in range(default_list_len):  
-                    field_html += f'  <input type="number" name="{field_name}_{i}" placeholder="integer">\n'
+                #for i in range(default_list_len):  
+                #    field_html += f'  <input type="number" name="{field_name}_{i}" placeholder="integer">\n'
+
+                field_html += f'  <input type="text" {opt_title} {opt_value} placeholder="comma separated int list" {pybiscus_marker}><br>\n'
+
             elif field_type.__args__[0] is str:
                 field_html += html_label( field_name, True )
 
-                for i in range(default_list_len):  
+                #for i in range(default_list_len):  
+                for i in range(0):  
                     field_html += f'  <input type="text" name="{field_name}_{i}" placeholder="string">\n'
             field_html += f'  <br>\n'
 
@@ -338,9 +482,25 @@ def generate_field_html(field_name: str, field_type, field_required: bool, field
             key_type, value_type = field_type.__args__
             field_html += html_label( field_name, True )
             
-            for key in range(5):
-                field_html += f'  <input type="text" id="{field_name}_key_{key}" name="{field_name}_key_{key}" placeholder="key_{key}">\n'
-                field_html += f'  <input type="text" id="{field_name}_val_{key}" name="{field_name}_val_{key}" placeholder="value_{key}"><br>\n'
+            if field_default is None or field_default is PydanticUndefined:
+                items = []
+            else:
+                items = list(field_default.items())
+
+            for index in range(1):
+
+                if len(items) > index:
+                    key, value = items[index]
+                    opt_key   = f' value="{key}" '
+                    opt_value = f' value="{value}" '
+                else:
+                    opt_key   = ''
+                    opt_value = ''
+
+                field_html += html_label( "key" )
+                field_html += f'  <input type="text" id="{field_name}_key_{index}" name="{field_name}_key_{index}" placeholder="key_{index}" {opt_key}>\n'
+                field_html += html_label( "value" )
+                field_html += f'  <input type="text" id="{field_name}_val_{index}" name="{field_name}_val_{index}" placeholder="value_{index}" {opt_value}><br>\n'
 
         elif field_type.__origin__ is Union:
 
@@ -497,7 +657,7 @@ def generate_model_html(model: BaseModel, inFieldSet: bool, prefix: str ) -> str
 
 def generate_model_form(model: BaseModel ) -> str:
 
-    return PydanticToHtml.genProlog() + generate_model_html(model, True, "") + PydanticToHtml.genEpilog()
+    return PydanticToHtml.genProlog() + generate_model_html(model, True, "") + PydanticToHtml.genEpilog( model.__name__ )
 
 if __name__ == "__main__" :
 

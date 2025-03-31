@@ -3,11 +3,10 @@ from typing import override, Literal, TypedDict, ClassVar
 import lightning.pytorch as pl
 import torch
 import torch.nn as nn
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 from torchmetrics import Accuracy
 
 from src.ml.models.cnn.cnn import net
-
 
 # ------------------------------------------------------------------------------------
 
@@ -16,7 +15,7 @@ class ConfigCNN(BaseModel):
 
     Attributes
     ----------
-    input_shape:
+    input_shape: int
         number of channels of the input
     mid_shape: int
         number of channels of the second convolutional layer
@@ -28,10 +27,10 @@ class ConfigCNN(BaseModel):
 
     PYBISCUS_CONFIG: ClassVar[str] = "config"
 
-    input_shape: int
-    mid_shape: int
-    n_classes: int
-    lr: float
+    input_shape: int   = Field( default=3,     description="number of channels of the input" )
+    mid_shape:   int   = Field( default=6,     description="number of channels of the second convolutional layer" )
+    n_classes:   int   = Field( default=10,    description="number of classes" )
+    lr:          float = Field( default=0.001, description="the learning rate" )
 
     model_config = ConfigDict(extra="forbid")
 

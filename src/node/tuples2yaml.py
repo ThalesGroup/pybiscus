@@ -11,7 +11,7 @@ def add_to_dict(d, keys, value, is_list):
     for key in keys[:-1]:
         d = d[key]
 
-    # Check if the value should be added to a list
+    # check if the value should be added to a list
     if is_list:
         key = keys[-1]
         if key not in d or not isinstance(d[key], list):
@@ -29,8 +29,16 @@ def parse_tuples_to_yaml(tuples):
         is_list = list_indicator == "-"
         add_to_dict(data, keys, value, is_list)
 
-    # Convert defaultdict to a regular dict before serializing to YAML
+    # convert defaultdict to a regular dict before serializing to YAML
     return convert_defaultdict_to_dict(data)
+
+def parse_tuples_to_yaml_string(tuples):
+
+    # convert tuples tp YAML
+    yaml_data = parse_tuples_to_yaml(tuples)
+
+    # convert to string
+    return yaml.dump(yaml_data, default_flow_style=False, sort_keys=False)
 
 def convert_defaultdict_to_dict(d):
     """Recursively convert a defaultdict to a regular dict."""
@@ -40,7 +48,7 @@ def convert_defaultdict_to_dict(d):
 
 if __name__ == "__main__":
 
-    # Exemple de paires de tuples
+    # test dataset
     tuples = [
         ("a.b.c", "-", "v1"),
         ("a.b.c", "-", "v2"),
@@ -52,10 +60,10 @@ if __name__ == "__main__":
         ("logging.level", "", "debug"),
     ]
 
-    # Convertir les tuples en structure YAML
+    # convert tuples tp YAML
     yaml_data = parse_tuples_to_yaml(tuples)
 
-    # Convertir le dictionnaire en chaîne YAML
+    # convert to string
     yaml_output = yaml.dump(yaml_data, default_flow_style=False, sort_keys=False)
 
     print(yaml_output)

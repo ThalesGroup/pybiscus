@@ -179,9 +179,9 @@ def launch_config(
             ssl_root_certificate=conf_ssl["root_certificate"]
             ssl_secure_cnx= True
 
-    fl.client.start_numpy_client(
+    fl.client.start_client(
         server_address=conf["server_adress"],
-        client=client,
+        client=client.to_client(),
         root_certificates=ssl_root_certificate,
         insecure= not ssl_secure_cnx,
     )

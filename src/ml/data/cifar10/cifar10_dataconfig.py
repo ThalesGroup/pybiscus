@@ -1,5 +1,5 @@
-from typing import Literal, ClassVar
-from pydantic import BaseModel, ConfigDict
+from typing import Literal, ClassVar, Optional
+from pydantic import BaseModel, ConfigDict, Field
 
 class ConfigCifar10Data(BaseModel):
     """Pydantic Model used to validate the LightningDataModule config
@@ -15,11 +15,12 @@ class ConfigCifar10Data(BaseModel):
 
     PYBISCUS_CONFIG: ClassVar[str] = "config"
 
-    dir_train:   str
-    dir_val:     str
-    dir_test:    str = None
-    batch_size:  int = 32
-    num_workers: int = 0
+    dir_train:   str = Field( default="${root_dir}/datasets/global_test/", description="the training data directory path" )
+    dir_val:     str = Field( default = None, description="the validating data directory path" )
+    #dir_test:    Optional[str] = Field( default = None, description="the testing data directory path" )
+    dir_test:    str = Field( default = None, description="the testing data directory path" )
+    batch_size:  int = Field( default = 32,   description="the batch size" )
+    num_workers: int = Field( default = 0,    description="the number of workers for the DataLoaders" )
 
     model_config = ConfigDict(extra="forbid")
 
@@ -33,3 +34,4 @@ class ConfigData_Cifar10(BaseModel):
     config: ConfigCifar10Data
 
     model_config = ConfigDict(extra="forbid")
+

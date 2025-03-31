@@ -15,14 +15,23 @@ from src.flower.strategies import ConfigFabricStrategy
 from src.ml.loops_fabric import test_loop
 from src.ml.registry import ModelConfig, DataConfig
 
+class ConfigLogger(BaseModel):
 
+    PYBISCUS_ALIAS: ClassVar[str] = "logger"
 
+    subdir: str = Field( default="/experiments/node", description="!!!!!!!" )
+
+    model_config = ConfigDict(extra="forbid")
+
+    # to emulate a dict
+    def __getitem__(self, attName):
+        return getattr(self, attName, None)
 
 class ConfigStrategy(BaseModel):
 
     PYBISCUS_CONFIG: ClassVar[str] = "strategy"
 
-    name: str = "fabric"
+    name: str = Field( default="fabric", description="fabric is the only possible value" )
 
     config: ConfigFabricStrategy
 
@@ -43,9 +52,9 @@ class ConfigSslServer(BaseModel):
 
     PYBISCUS_ALIAS: ClassVar[str] = "SSL Flower server"
 
-    root_certificate_path: str
-    server_certificate_path: str
-    server_private_key_path: str
+    root_certificate_path:   str = Field( default=None, description="root certificate path" )
+    server_certificate_path: str = Field( default=None, description="server certificate path" )
+    server_private_key_path: str = Field( default=None, description="server private key path" )
 
     model_config = ConfigDict(extra="forbid")
 
@@ -81,17 +90,18 @@ class ConfigServer(BaseModel):
 
     PYBISCUS_ALIAS: ClassVar[str] = "Pybiscus server configuration"
 
-    num_rounds: int
-    server_adress: str
-    root_dir: str
-    logger: Dict[str, str]
-    strategy: ConfigStrategy
-    fabric: ConfigFabric
-    model: ModelConfig
-    data: DataConfig
-    ssl: Optional[ConfigSslServer] = None
-    client_configs: list[str] = Field(default=None)
-    save_on_train_end: bool = Field(default=False)
+    num_rounds:        int = Field( default=10, description="the number of rounds of the FL session" )
+    server_adress:     str = Field( default='[::]:3333', description="the server adress and port" )
+    root_dir:          str = Field( default="${oc.env:PWD}", description='the path to a \"root\" directory, relatively to which can be found data, experiments and other directories' )
+    client_configs:    list[str] = Field(default=None, description='a list of paths to the configuration files used by all clients' )
+    save_on_train_end: bool = Field(default=False, description='flagstating if final models weights of the model are to be saved at path is fabric.logger.log_dir + "/checkpoint.pt"' )
+
+    logger:            Optional[ConfigLogger]
+    strategy:          ConfigStrategy
+    fabric:            ConfigFabric
+    model:             ModelConfig
+    data:              DataConfig
+    ssl:               Optional[ConfigSslServer] = None
 
     model_config = ConfigDict(extra="forbid")
 
