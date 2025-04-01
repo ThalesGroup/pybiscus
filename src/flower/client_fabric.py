@@ -91,10 +91,12 @@ class ConfigClient(BaseModel):
 
     PYBISCUS_ALIAS: ClassVar[str] = "Pybiscus client configuration"
 
-    cid: int
-    pre_train_val: bool = Field(default=False)
-    server_adress: str
-    root_dir: str
+    cid: int= Field(default=1, description="client identifier")
+    pre_train_val: bool = Field(default=False, description="""if true, at the beginning of a new fit round a validation loop will be performed.
+        This allows to perform a validation loop on the validation dataset of the Client,
+        after the client received the new, aggregated weights.""")
+    server_adress: str = Field(default="localhost:3333", description="the server adress and port")
+    root_dir: str = Field(default="${oc.env:PWD}", description="the path to a \"root\" directory, relatively to which can be found Data, Experiments and other useful directories")
     fabric: ConfigFabric
     model: ModelConfig
     data: DataConfig

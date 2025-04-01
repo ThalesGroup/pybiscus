@@ -1,334 +1,21 @@
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 from pydantic.fields import PydanticUndefined
 from typing import Union, Literal
 from enum import Enum
 import sys
 import inspect
 import html
+import importlib.resources
 
 from src.flower.server_fabric import ConfigServer
 from src.flower.client_fabric import ConfigClient
+from src.pybiscusexception import PybiscusInternalException
 
 class PydanticToHtml:
 
     valid_status   = 'data-pybiscus-status="valid"'
     ignored_status = 'data-pybiscus-status="ignored"'
-
-    @staticmethod
-    def genProlog() -> str:
-
-        return """
-
-<!DOCTYPE html>
-<html lang="fr">
-<head>
-    <meta charset="UTF-8">
-    <title>Pybiscus Node</title>
-
-    <style>
-
-        .fieldset-container {
-            display: flex;
-            flex-direction: row;
-            gap: 10px;
-        }
-
-        .tab-container {
-            width: 100%;
-            border-bottom: 1px solid #ccc;
-        }
-        .tab-buttons {
-            display: flex;
-            border-bottom: 1px solid #ccc;
-        }
-        .tab-button {:
-            padding: 10px 20px;
-            cursor: pointer;
-            border: 1px solid #ccc;
-            border-bottom: none;
-            margin-right: 5px;
-        }
-        .tab-button.active___ {
-            background-color: #e0e0e0;
-        }
-        .tab-content {
-            padding: 20px;
-            border-top: 1px solid #ccc;
-        }
-        .tab-content:not(.active) {
-            display: none;
-        }
-
-        .pybiscus-config {
-            background-color: gray;
-            color: orange;
-            border: 1px solid orange;
-            padding: 5px;
-        }
-
-        [data-pybiscus-status="ignored"] {
-            background-color: #f0f0f0; /* Gris clair */
-        }
-
-        [data-pybiscus-status="valid"] {
-            background-color: #e0f7fa; /* Bleu très clair */
-        }
-
-        .pybiscus-control-container {
-            display: flex;
-            align-items: center; /* Aligne verticalement les éléments au centre */
-            gap: 10px; /* Espace entre les éléments */
-        }
-        .pybiscus-indicator {
-            display: none;
-            color: orange;
-        }
-        .pybiscus-success {
-            display: none;
-            color: green;
-        }
-        .pybiscus-failure {
-            display: none;
-            color: red;
-        }
-
-    </style>
-</head>
-
-<body>
-    <div id="top-div" data-pybiscus-status="valid">
-    """
-
-    @staticmethod
-    def genEpilog( modelName: str ) -> str:
-
-        if modelName == "ConfigServer":
-            action = "server"
-        elif modelName == "ConfigClient":
-            action = "client"
-        else:
-            action = "unknown"
-
-        return """
-      </div>
-
-    <div class="pybiscus-control-container">
-        <button id="check-config-button">check config</button>
-        <span id="check-indicator" class="pybiscus-indicator">Running check...</span>
-        <span id="check-success-result" class="pybiscus-success" >'Check success !'</span>
-        <span id="check-failure-result" class="pybiscus-failure" ">'Check failure.'</span>
-    </div>
-
-    <div class="pybiscus-control-container">
-        <button id="execute-button">execute config</button>
-        <span id="execute-indicator" class="pybiscus-indicator">Running launch...</span>
-        <span id="execute-success-result" class="pybiscus-success" >'Launch success !'</span>
-        <span id="execute-failure-result" class="pybiscus-failure" ">'Launch failure.'</span>
-    </div>
-
-<script>
-    document.querySelectorAll('.tab-container').forEach(container => {
-        container.querySelectorAll('.tab-button').forEach(button => {
-            button.addEventListener('click', () => {
-
-                // desactivate all tabs of the container
-                
-                container.querySelectorAll('.tab-button').forEach(b => {
-                    b.classList.remove('active');
-                    b.setAttribute('data-pybiscus-status', 'ignored');
-
-                    associatedDiv = container.querySelector(`#${b.dataset.tab}`);
-                    associatedDiv.classList.remove('active');
-                    associatedDiv.setAttribute('data-pybiscus-status', 'ignored');
-                } );
-                container.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-
-                // activate the clicked tab and its associated content
-
-                button.classList.add('active');
-                button.setAttribute('data-pybiscus-status', 'valid');
-
-                associatedDiv = container.querySelector(`#${button.dataset.tab}`);
-                associatedDiv.classList.add('active');
-                associatedDiv.setAttribute('data-pybiscus-status', 'valid');
-            });
-        });
-    });
-
-    const radioButtons = document.querySelectorAll('input[type="radio"].pybiscus_radiobutton');
-
-    // Ajoute un écouteur d'événement pour chaque input radio
-    radioButtons.forEach(function(radio) {
-
-        radio.addEventListener('change', function() {
-            
-            const radiosWithSameName = document.querySelectorAll(`input[type="radio"][name="${radio.name}"]`);
-
-            // Itère sur chaque bouton radio avec le même nom
-            radiosWithSameName.forEach(function(radioButton) {
-
-                const parentDiv = radioButton.parentElement;
-                parentDiv.setAttribute('data-pybiscus-status', 'ignored');
-            });
-
-            // Sélectionne le div parent de l'input radio
-            const parentDiv = radio.parentElement;
-            parentDiv.setAttribute('data-pybiscus-status', 'valid');
-        });
-
-        // Initialise l'état au chargement de la page
-        if (radio.checked) {
-            radio.parentElement.setAttribute('data-pybiscus-status', 'valid');
-        } else {
-            radio.parentElement.setAttribute('data-pybiscus-status', 'ignored');
-        }
-    });
-
-    function traverseDOM(element, data) {
-
-        if (element.getAttribute('data-pybiscus-status') === 'ignored') {
-
-        } else {
-
-            if (element.hasAttribute('data-pybiscus-name')) {
-
-                const attributeValue = element.getAttribute('data-pybiscus-name');
-
-                if( element.tagName === "INPUT" ) {
-                    if( element.type === "checkbox" ) {
-                        //console.log( `${attributeValue} = ${element.checked}` );
-                        data = [ [ attributeValue, "", element.checked ], ...data ];
-                    } else if( element.type === "text" ) {
-                        //console.log( `${attributeValue} = "${element.value}"` );
-                        data = [ [ attributeValue, "", element.value ], ...data ];
-                    } else {
-                        //console.log( `${attributeValue} = ${element.value}` );
-                        data = [ [ attributeValue, "", element.value ], ...data ];
-                    }
-                } else {
-                    console.log( "field is not an input" );
-                }
-
-            } else {
-
-                const children = element.children;
-                for (let i = 0; i < children.length; i++) {
-                    data = traverseDOM(children[i], data);
-                }
-            }
-        }
-
-        return data;
-    }
-
-    const check_button = document.getElementById('check-config-button');
-
-    // add an button event listener
-    check_button.addEventListener('click', function() {
-
-        const indicatorDiv = document.getElementById('check-indicator');
-        const successResultDiv = document.getElementById('check-success-result');
-        const failureResultDiv = document.getElementById('check-failure-result');
-
-        indicatorDiv.style.display = 'block';
-        successResultDiv.style.display = 'none';
-        failureResultDiv.style.display = 'none';
-
-        // Select top-div ided element
-        const topDiv = document.getElementById('top-div');
-
-        // generate configuration data
-        data = traverseDOM(topDiv, []).reverse();
-
-        //console.log( data );
-
-        // target URL for posting configuration
-        const url_conf = "/config/MODEL_NAME/json";
-
-        // request options
-        const options = {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify(data)
-        };
-
-        // post the configuration in json format
-        fetch(url_conf, options)
-          .then(response => {
-            if (!response.ok) {
-              throw new Error("Post error " + response.status);
-            }
-            return response.json();
-          })
-          .then(data => {
-            console.log("Server response:", data);
-
-            indicatorDiv.style.display = 'none';
-            successResultDiv.style.display = 'block';
-            failureResultDiv.style.display = 'none';
-          })
-          .catch(error => {
-            console.error("Error:", error);
-
-            indicatorDiv.style.display = 'none';
-            successResultDiv.style.display = 'none';
-            failureResultDiv.style.display = 'block';
-          });
-    });
-
-    const execute_button = document.getElementById('execute-button');
-
-    // add an button event listener
-    execute_button.addEventListener('click', function() {
-
-        const indicatorDiv = document.getElementById('execute-indicator');
-        const successResultDiv = document.getElementById('execute-success-result');
-        const failureResultDiv = document.getElementById('execute-failure-result');
-
-        indicatorDiv.style.display = 'block';
-        successResultDiv.style.display = 'none';
-        failureResultDiv.style.display = 'none';
-        
-        // target URL for posting configuration
-        const url_conf = "/ACTION";
-
-        // request options
-        const options = {
-          method: "GET",
-        };
-
-        // post the configuration in json format
-        fetch(url_conf, options)
-          .then(response => {
-            if (!response.ok) {
-              throw new Error("Get error " + response.status);
-            }
-            return response.json();
-          })
-          .then(data => {
-            console.log("ACTION response:", data);
-
-            indicatorDiv.style.display = 'none';
-            successResultDiv.style.display = 'block';
-            failureResultDiv.style.display = 'none';
-          })
-          .catch(error => {
-            console.error("Error:", error);
-            
-            indicatorDiv.style.display = 'none';
-            successResultDiv.style.display = 'none';
-            failureResultDiv.style.display = 'block';
-          });
-    });
-
-</script>
-
-</body>
-</html>
-""".replace( "MODEL_NAME", modelName ).replace( "ACTION", action )
 
 def html_label( label: str, is_config: bool = False, pybiscus_info: str = '' ):
 
@@ -615,7 +302,6 @@ def generate_field_html(field_name: str, field_type, field_required: bool, field
     return field_html
 
 
-
 def generate_model_html(model: BaseModel, inFieldSet: bool, prefix: str ) -> str:
 
     model_html = ''
@@ -655,17 +341,36 @@ def generate_model_html(model: BaseModel, inFieldSet: bool, prefix: str ) -> str
     return model_html
 
 
-def generate_model_form(model: BaseModel ) -> str:
+def generate_model_page(model: BaseModel ) -> str:
+    
+    modelName = model.__name__
 
-    return PydanticToHtml.genProlog() + generate_model_html(model, True, "") + PydanticToHtml.genEpilog( model.__name__ )
+    if modelName == "ConfigServer":
+        action = "server"
+    elif modelName == "ConfigClient":
+        action = "client"
+    else:
+        action = "unknown"
+
+    try:
+        with importlib.resources.open_text('src.node', 'pydantic.html') as file:
+            html_template = file.read()
+        body = generate_model_html(model, True, "")
+        html = html_template.replace( "MODEL_NAME", modelName ).replace( "ACTION", action ).replace( "BODY", body )
+    except FileNotFoundError:
+        raise PybiscusInternalException("Template file pydantic.html not found !")
+    except Exception as e:
+        raise PybiscusInternalException("Html generation error !")
+
+    return html
 
 if __name__ == "__main__" :
 
     param = sys.argv[1] if len(sys.argv) == 2 else "all"
     
     if param != "server":
-        form_html = generate_model_form(ConfigClient)
+        form_html = generate_model_page(ConfigClient)
         print(form_html)
     if param != "client":
-        form_html = generate_model_form(ConfigServer)
+        form_html = generate_model_page(ConfigServer)
         print(form_html)
