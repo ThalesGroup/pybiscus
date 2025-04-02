@@ -11,6 +11,7 @@ import importlib.resources
 from src.flower.server_fabric import ConfigServer
 from src.flower.client_fabric import ConfigClient
 from src.pybiscusexception import PybiscusInternalException
+from src.node.heredoc import get_basemodel_attribute_description
 
 class PydanticToHtml:
 
@@ -71,15 +72,6 @@ def generate_tab_name(field_type, default) -> str:
     #}
 
 def generate_field_html(field_name: str, field_type, field_required: bool, field_default, field_description, inFieldSet: bool, prefix: str) -> str:
-
-    """
-    sys.stderr.write(f"{field_name}, {field_type}, {field_required}, {field_default}, {field_description}, {inFieldSet}\n")
-
-    if inspect.isclass(field_type):
-        sys.stderr.write(f"YES {field_type}, {type(field_type)}, {issubclass(field_type,Enum)}\n")
-    else:
-        sys.stderr.write(f"NO {field_type}, {type(field_type)}\n")
-        """
 
     field_html = ''
     opt_title = '' if (field_description is None or field_description is PydanticUndefined) else f' title="{html.escape(field_description)}" '
@@ -197,83 +189,69 @@ def generate_field_html(field_name: str, field_type, field_required: bool, field
             field_html += f'  <legend><div class="pybiscus-config">{field_name}</div></legend>\n'
             prefix += f"{field_name}."
 
-            if False:
+            tab_nb = new_index()
 
-                for index, sub_type in enumerate( field_type.__args__ ):
+            # determine the active tab index
 
-                    if isinstance(field_type, type) and issubclass(field_type, BaseModel):
-                        field_html += generate_model_html(sub_type, inFieldSet, prefix)
-                    else:
-                        field_html += '<fieldset>\n'
-                        field_html += f'<legend>union_{index}</legend>\n'
-                        field_html += generate_field_html("", sub_type, False, PydanticUndefined, True, prefix)
-                        field_html += '</fieldset>\n'
-            else:
+            # default is the first
+            active_index = 1
+            propagate_default = False
 
-                tab_nb = new_index()
+            # if there is a default, check type
+            if field_default is not PydanticUndefined:
+                field_default_type = type( field_default )
+                for index, sub_type in enumerate( field_type.__args__, 1 ):
+                    if sub_type is field_default_type:
+                        active_index = index
+                        propagate_default = True
+                        break
 
-                # determine the active tab index
-
-                # default is the first
-                active_index = 1
-                propagate_default = False
-
-                # if there is a default, check type
-                if field_default is not PydanticUndefined:
-                    field_default_type = type( field_default )
-                    for index, sub_type in enumerate( field_type.__args__, 1 ):
-                        if sub_type is field_default_type:
-                            active_index = index
-                            propagate_default = True
-                            break
-
-                field_html += '''
-<div class="tab-container">
+            field_html += '''   <div class="tab-container">
     <div class="tab-buttons">
 '''
 
-                # tab generation
-                for index, sub_type in enumerate( field_type.__args__, 1 ):
+            # tab generation
+            for index, sub_type in enumerate( field_type.__args__, 1 ):
 
-                    if index == active_index:
-                        active = 'active'
-                        status = PydanticToHtml.valid_status
-                    else:
-                        active = ''
-                        status = PydanticToHtml.ignored_status
+                if index == active_index:
+                    active = 'active'
+                    status = PydanticToHtml.valid_status
+                else:
+                    active = ''
+                    status = PydanticToHtml.ignored_status
 
-                    tab_name = generate_tab_name( sub_type, f'Tab {index}' )
-                    field_html += f'        <div class="tab-button {active}" data-tab="tab{tab_nb}-{index}" {status}>{tab_name}</div>\n'
-                field_html += "    </div>\n"
+                tab_name = generate_tab_name( sub_type, f'Tab {index}' )
+                field_html += f'        <div class="tab-button {active}" data-tab="tab{tab_nb}-{index}" {status}>{tab_name}</div>\n'
+            field_html += "    </div>\n"
 
-                # tab content generation
-                for index, sub_type in enumerate( field_type.__args__, 1 ):
+            # tab content generation
+            for index, sub_type in enumerate( field_type.__args__, 1 ):
 
-                    if index == active_index:
-                        active = 'active'
-                        status = 'data-pybiscus-status="valid"'
-                    else:
-                        active = ''
-                        status = 'data-pybiscus-status="ignored"'
+                if index == active_index:
+                    active = 'active'
+                    status = 'data-pybiscus-status="valid"'
+                else:
+                    active = ''
+                    status = 'data-pybiscus-status="ignored"'
 
-                    field_html += f'<div id="tab{tab_nb}-{index}" class="tab-content {active}" {status}>\n' 
-                    if propagate_default and index == active_index:
-                        sub_field_default = field_default 
-                    else:
-                        sub_field_default = PydanticUndefined
+                field_html += f'<div id="tab{tab_nb}-{index}" class="tab-content {active}" {status}>\n' 
 
+                if propagate_default and index == active_index:
+                    sub_field_default = field_default 
+                else:
+                    sub_field_default = PydanticUndefined
 
-                    field_html += generate_field_html(
-                                    field_name        = "", 
-                                    field_type        = sub_type, 
-                                    field_required    = False, 
-                                    field_default     = sub_field_default, 
-                                    field_description = PydanticUndefined,
-                                    inFieldSet        = False,
-                                    prefix            = prefix,
-                                    )
-                    field_html += '</div>\n'
-                field_html += "</div>\n"
+                field_html += generate_field_html(
+                                field_name        = "", 
+                                field_type        = sub_type, 
+                                field_required    = False, 
+                                field_default     = sub_field_default, 
+                                field_description = PydanticUndefined,
+                                inFieldSet        = False,
+                                prefix            = prefix,
+                                )
+                field_html += '</div>\n'
+            field_html += "</div>\n"
 
             field_html += '</fieldset>\n'
 
@@ -330,7 +308,8 @@ def generate_model_html(model: BaseModel, inFieldSet: bool, prefix: str ) -> str
                                     field_type        = field_info.annotation,
                                     field_required    = field_info.is_required(), 
                                     field_default     = field_info.default, 
-                                    field_description = field_info.description,
+                                    #field_description = field_info.description,
+                                    field_description = get_basemodel_attribute_description(model,field_name),
                                     inFieldSet        = True,
                                     prefix            = prefix,
                                     )

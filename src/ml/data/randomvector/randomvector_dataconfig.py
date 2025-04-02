@@ -2,8 +2,6 @@ from typing import Literal, ClassVar
 from pydantic import BaseModel, ConfigDict
 
 class ConfigRandomVector(BaseModel):
-    """
-    """
 
     PYBISCUS_CONFIG: ClassVar[str] = "config"
 

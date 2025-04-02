@@ -28,10 +28,11 @@ class ConfigLogger(BaseModel):
         return getattr(self, attName, None)
 
 class ConfigStrategy(BaseModel):
+    """name: str = fabric is the only possible value"""
 
     PYBISCUS_CONFIG: ClassVar[str] = "strategy"
 
-    name: str = Field( default="fabric", description="fabric is the only possible value" )
+    name: str = "fabric"
 
     config: ConfigFabricStrategy
 
@@ -42,12 +43,9 @@ class ConfigSslServer(BaseModel):
 
     Attributes
     ----------
-    root_certificate_path:
-        root certificate path
-    server_certificate_path:
-        server certificate path
-    server_private_key_path:
-        private key path
+    root_certificate_path   = root certificate path
+    server_certificate_path = server certificate path
+    server_private_key_path = private key path
     """
 
     PYBISCUS_ALIAS: ClassVar[str] = "SSL Flower server"
@@ -63,38 +61,26 @@ class ConfigServer(BaseModel):
 
     Attributes
     ----------
-    num_rounds:
-        the number of rounds for the FL session.
-    server_adress:
-        the server adress and port
-    root_dir:
-        the path to a "root" directory, relatively to which can be found Data, Experiments and other useful directories
-    logger:
-        a dictionnary holding the config for the logger.
-    strategy:
-        a dictionnary holding (partial) arguments for the needed Strategy
-    fabric:
-        a dictionnary holding all necessary keywords for the Fabric instance
-    model:
-        a dictionnary holding all necessary keywords for the LightningModule used
-    data:
-        a dictionnary holding all necessary keywords for the LightningDataModule used.
-    ssl: dict
-        a dictionnary holding all necessary options for https usage
-    clients_configs:
-        a list of paths to the configuration files used by all clients.
-    save_on_train_end: optional, default to False
-        if true, the weights of the model are saved at the very end of the Federated Learning.
-        The path is fabric.logger.log_dir + "/checkpoint.pt"
+    num_rounds: int    = the number of rounds for the FL session.
+    server_adress: str = the server adress and port
+    root_dir: str      = the path to a "root" directory, relatively to which can be found Data, Experiments and other useful directories
+    logger: str        = the config for the logger.
+    strategy           = arguments for the needed Strategy
+    fabric             = keywords for the Fabric instance
+    model              = keywords for the LightningModule used
+    data               = keywords for the LightningDataModule used.
+    ssl                = keywords for https usage
+    clients_configs    = list of paths to the configuration files used by all clients.
+    save_on_train_end: optional, default to False = states if the weights of the model are saved at the very end of FL session, the path is fabric.logger.log_dir + "/checkpoint.pt"
     """
 
     PYBISCUS_ALIAS: ClassVar[str] = "Pybiscus server configuration"
 
-    num_rounds:        int = Field( default=10, description="the number of rounds of the FL session" )
-    server_adress:     str = Field( default='[::]:3333', description="the server adress and port" )
-    root_dir:          str = Field( default="${oc.env:PWD}", description='the path to a \"root\" directory, relatively to which can be found data, experiments and other directories' )
-    client_configs:    list[str] = Field(default=None, description='a list of paths to the configuration files used by all clients' )
-    save_on_train_end: bool = Field(default=False, description='flagstating if final models weights of the model are to be saved at path is fabric.logger.log_dir + "/checkpoint.pt"' )
+    num_rounds:        int = 10
+    server_adress:     str = '[::]:3333'
+    root_dir:          str = "${oc.env:PWD}"
+    client_configs:    list[str] = Field(default=None)
+    save_on_train_end: bool = False
 
     logger:            Optional[ConfigLogger]
     strategy:          ConfigStrategy

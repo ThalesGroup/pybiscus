@@ -41,7 +41,8 @@
             background-color: gray;
             color: orange;
             border: 1px solid orange;
-            padding: 5px;
+            padding: 2px;
+            margin-bottom: 4px;
         }
 
         [data-pybiscus-status="ignored"] {
@@ -96,12 +97,17 @@
 
 <script>
     document.querySelectorAll('.tab-container').forEach(container => {
-        container.querySelectorAll('.tab-button').forEach(button => {
+
+        const my_buttons  = ':scope > .tab-buttons > .tab-button'
+        const my_contents = ':scope > .tab-content'
+
+        // select all tab_button that are direct children
+        container.querySelectorAll(my_buttons).forEach(button => {
             button.addEventListener('click', () => {
 
                 // desactivate all tabs of the container
                 
-                container.querySelectorAll('.tab-button').forEach(b => {
+                container.querySelectorAll(my_buttons).forEach(b => {
                     b.classList.remove('active');
                     b.setAttribute('data-pybiscus-status', 'ignored');
 
@@ -109,7 +115,7 @@
                     associatedDiv.classList.remove('active');
                     associatedDiv.setAttribute('data-pybiscus-status', 'ignored');
                 } );
-                container.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                container.querySelectorAll(my_contents).forEach(c => c.classList.remove('active'));
 
                 // activate the clicked tab and its associated content
 

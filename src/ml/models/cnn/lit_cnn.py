@@ -15,14 +15,10 @@ class ConfigCNN(BaseModel):
 
     Attributes
     ----------
-    input_shape: int
-        number of channels of the input
-    mid_shape: int
-        number of channels of the second convolutional layer
-    n_classes:
-        number of classes
-    lr: float
-        the learning rate
+    input_shape: int   = number of channels of the input
+    mid_shape:   int   = number of channels of the second convolutional layer
+    n_classes:   int   = number of classes
+    lr:          float = the learning rate
     """
 
     PYBISCUS_CONFIG: ClassVar[str] = "config"

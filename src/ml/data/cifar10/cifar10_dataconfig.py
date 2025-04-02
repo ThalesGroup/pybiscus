@@ -6,21 +6,20 @@ class ConfigCifar10Data(BaseModel):
 
     Attributes
     ----------
-    dir_train:   str           = the training data directory path
-    dir_val:     str           = the validating data directory path
-    dir_test:    str, optional = the testing data directory path
+    dir_train:   str, optional = the training data directory path (required for clients)
+    dir_val:     str, optional = the validating data directory path (required for clients)
+    dir_test:    str, optional = the testing data directory path (required for server)
     batch_size:  int, optional = the batch size (default to 32)
     num_workers: int, optional = the number of workers for the DataLoaders (default to 0)
     """
 
     PYBISCUS_CONFIG: ClassVar[str] = "config"
 
-    dir_train:   str = Field( default="${root_dir}/datasets/global_test/", description="the training data directory path" )
-    dir_val:     str = Field( default = None, description="the validating data directory path" )
-    #dir_test:    Optional[str] = Field( default = None, description="the testing data directory path" )
-    dir_test:    str = Field( default = None, description="the testing data directory path" )
-    batch_size:  int = Field( default = 32,   description="the batch size" )
-    num_workers: int = Field( default = 0,    description="the number of workers for the DataLoaders" )
+    dir_train:   Optional[str] = "${root_dir}/datasets/train/"
+    dir_val:     Optional[str] = "${root_dir}/datasets/val/"
+    dir_test:    Optional[str] = "${root_dir}/datasets/test/"
+    batch_size:  int = 32
+    num_workers: int = 0
 
     model_config = ConfigDict(extra="forbid")
 

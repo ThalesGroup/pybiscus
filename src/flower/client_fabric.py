@@ -69,38 +69,26 @@ class ConfigClient(BaseModel):
 
     Attributes
     ----------
-    cid: int
-        client identifier
-    pre_train_val: optional, default to False
-        if true, at the beginning of a new fit round a validation loop will be performed.
-        This allows to perform a validation loop on the validation dataset of the Client,
-        after the client received the new, aggregated weights.
-    server_adress: str
-        the server adress and port
-    root_dir: str
-        the path to a "root" directory, relatively to which can be found Data, Experiments and other useful directories
-    fabric: dict
-        a dictionnary holding all necessary keywords for the Fabric instance
-    model: dict
-        a dictionnary holding all necessary keywords for the LightningModule used
-    data: dict
-        a dictionnary holding all necessary keywords for the LightningDataModule used.
-    ssl: dict
-        a dictionnary holding all necessary options for https usage
+    cid: int = client identifier
+    pre_train_val: optional, default to False = states if at the beginning of a new fit round a validation loop will be performed, this allows to perform a validation loop on the validation dataset of the Client, after the client received the new, aggregated weights.
+    server_adress: str = the server adress and port
+    root_dir: str      = the path to a "root" directory, relatively to which can be found Data, Experiments and other useful directories
+    fabric             = keywords for the Fabric instance
+    model              = keywords for the LightningModule used
+    data               = keywords for the LightningDataModule used.
+    ssl                = keywords for https usage
     """
 
     PYBISCUS_ALIAS: ClassVar[str] = "Pybiscus client configuration"
 
-    cid: int= Field(default=1, description="client identifier")
-    pre_train_val: bool = Field(default=False, description="""if true, at the beginning of a new fit round a validation loop will be performed.
-        This allows to perform a validation loop on the validation dataset of the Client,
-        after the client received the new, aggregated weights.""")
-    server_adress: str = Field(default="localhost:3333", description="the server adress and port")
-    root_dir: str = Field(default="${oc.env:PWD}", description="the path to a \"root\" directory, relatively to which can be found Data, Experiments and other useful directories")
-    fabric: ConfigFabric
-    model: ModelConfig
-    data: DataConfig
-    ssl: Optional[ConfigSslClient] = Field(default_factory=lambda: ConfigSslClient(secure_cnx=False))
+    cid: int            = 1
+    pre_train_val: bool = False
+    server_adress: str  = "localhost:3333"
+    root_dir: str       = "${oc.env:PWD}"
+    fabric:             ConfigFabric
+    model:              ModelConfig
+    data:               DataConfig
+    ssl:                Optional[ConfigSslClient] = None
 
     model_config = ConfigDict(extra="forbid")
 
