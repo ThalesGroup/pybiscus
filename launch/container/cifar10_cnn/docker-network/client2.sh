@@ -13,6 +13,12 @@ $CONTAINER_ENGINE run \
     -v ${PWD}/container/configs:/app/configs \
     --net federated \
     --net-alias client-2 \
+    -e no_proxy=$no_proxy                    \
+    -e NO_PROXY=$NO_PROXY                    \
+    -e http_proxy=$http_proxy                \
+    -e https_proxy=$https_proxy              \
+    -e HTTP_PROXY=$HTTP_PROXY                \
+    -e HTTPS_PROXY=$HTTPS_PROXY              \
     --user $uid:$gid \
     --shm-size 50G \
     $(PYBISCUS_IMAGE) client launch-config configs/docker-network/cifar/client_2.yml

@@ -4,8 +4,7 @@ IMAGE_NAME=$(pybiscus_node_image)
 
 echo "Building image: ${IMAGE_NAME}"
 
-# create the paroma container
-#podman build \
+# create the container
 $(container_engine) build \
 	 -f container/Dockerfile_node \
 	 --build-arg http_proxy=$HTTP_PROXY \

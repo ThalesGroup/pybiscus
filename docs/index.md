@@ -1,17 +1,21 @@
-# Welcome to MkDocs
+# Welcome to Pybiscus!
 
-For full documentation visit [mkdocs.org](https://www.mkdocs.org).
-
-## Commands
-
-* `mkdocs new [dir-name]` - Create a new project.
-* `mkdocs serve` - Start the live-reloading docs server.
-* `mkdocs build` - Build the documentation site.
-* `mkdocs -h` - Print help message and exit.
+You can find here a short documentation on how to use and adapt Pybiscus. The tool is aimed at being modular and as simple as possible.
 
 ## Project layout
 
-    mkdocs.yml    # The configuration file.
-    docs/
-        index.md  # The documentation homepage.
-        ...       # Other markdown pages, images and other files.
+Here are the main directories of the Pybiscus project:
+
+* the src directory - the core of Pybiscus:
+    * src/flower contains new implementation of Client, Server and Strategies provided by Flower, using Fabric in order to be agnostic to hardware, precision and the like.
+    * src/ml contains both data and models. This is where you can add simply your own dataset or model.
+* configs - contains only YAML configuration files. In order to change the behaviour of your client, model etc, do not change the code - change the config!
+* container: everything related to the build of docker/podman images.
+* launch: scripts to launch session, either inline with uv or using containers, with variations on the used models, network configuration, ssl optional usage ...
+* main.py: the entrypoint of Pybiscus. Gather all three main commands: server, client and local-train.
+* docs: last but not least, the present documentation
+
+We strongly suggest to create some other directories:
+
+* experiments: to hold checkpoints, tensorboards and such.
+* datasets: this is self explanatory!

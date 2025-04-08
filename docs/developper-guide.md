@@ -2,27 +2,24 @@
 
 If you want to help develop Pybiscus, by adding for instance other datasets or Torch modules, there are a few "rules" to follow and a few tools to use. Those are meant to help better develop Pybiscus, not to be an hindrance for a newly Python user wanted to try and test Pybiscus!
 
-This guide is meant to be as concise as possible, but of course no one can cover it all :)
+This guide is meant to be as concise as possible, but of course no one can cover it all.
 
 ## Tools
 
-Here is a short list of tools used to develop Pybiscus. Not all are mandatory, but they are all helpful.
+Here is a short list of tools used to develop Pybiscus. Not all are mandatory, but they are all helpful. In fact, now, you need only once : uv ;-).
 
-### Pyenv
+### uv
 
-**Pyenv** is a tool to manage properly Python versions, and you can find install instructions here https://github.com/pyenv/pyenv#installation.
+**uv** is a tool to manage properly Python versions, package depencies and scripts execution. You can find install instructions here https://docs.astral.sh/uv/getting-started/installation/.
 
-###  Poetry
-
-**Poetry** is a dependency tool, way better than the usual "pip install -r requirements.txt" paradigm, and manages virtual environments too. It is easy to use, well documented, and the install instructions are here https://python-poetry.org/docs/#installation.
 
 Once those tools are installed, clone the all repo, and do
 ```bash
-pyenv local 3.9.12  # the code has only been tested for this python version
-poetry install --sync -E parom --with=dev,docs
+uv sync
 ```
 
-and you are good to go!
+and you are good to go !
+This all-in-one command creates a virtual environment, downloads and installs the dependant packages, and creates an uv.lock file.
 
 ### Pre-commit
 

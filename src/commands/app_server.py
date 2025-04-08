@@ -50,7 +50,7 @@ app = typer.Typer(pretty_exceptions_show_locals=False, rich_markup_mode="rich")
 
 @app.callback()
 def server():
-    """The server part of Pybiscus for Paroma.
+    """The server part of Pybiscus.
 
     It is made of two commands:
 
