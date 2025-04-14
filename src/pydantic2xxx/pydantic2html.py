@@ -1,17 +1,13 @@
-
 from pydantic import BaseModel
 from pydantic.fields import PydanticUndefined
 from typing import Union, Literal
 from enum import Enum
-import sys
 import inspect
 import html
 import importlib.resources
 
-from src.flower.server_fabric import ConfigServer
-from src.flower.client_fabric import ConfigClient
 from src.pybiscusexception import PybiscusInternalException
-from src.node.heredoc import get_basemodel_attribute_description
+from heredoc import get_basemodel_attribute_description
 
 class PydanticToHtml:
 
@@ -66,11 +62,6 @@ def generate_tab_name(field_type, default) -> str:
     else:
         return default
 
-#_field_input_type = {
-        #str: "text",
-        #int: "number"
-    #}
-
 def generate_field_html(field_name: str, field_type, field_required: bool, field_default, field_description, inFieldSet: bool, prefix: str) -> str:
 
     field_html = ''
@@ -83,7 +74,7 @@ def generate_field_html(field_name: str, field_type, field_required: bool, field
         prefixed_name = prefixed_name[:-1]
     pybiscus_marker = f' data-pybiscus-name="{prefixed_name}" '
 
-    # Générer le champ HTML en fonction du type
+    # generate HTML field according to type
     if field_type is str:
         opt_value = '' if (field_default is PydanticUndefined or field_default is None ) else f' value="{html.escape(field_default)}" '
         field_html += html_label( field_name, True )
@@ -320,8 +311,8 @@ def generate_model_html(model: BaseModel, inFieldSet: bool, prefix: str ) -> str
     return model_html
 
 
-def generate_model_page(model: BaseModel ) -> str:
-    
+def generate_model_page(model: BaseModel, templatePath: str, templateName: str ) -> str:
+
     modelName = model.__name__
 
     if modelName == "ConfigServer":
@@ -332,24 +323,13 @@ def generate_model_page(model: BaseModel ) -> str:
         action = "unknown"
 
     try:
-        with importlib.resources.open_text('src.node', 'pydantic.html') as file:
+        with importlib.resources.files(templatePath).joinpath(templateName).open('r') as file:
             html_template = file.read()
         body = generate_model_html(model, True, "")
         html = html_template.replace( "MODEL_NAME", modelName ).replace( "ACTION", action ).replace( "BODY", body )
     except FileNotFoundError:
         raise PybiscusInternalException("Template file pydantic.html not found !")
     except Exception as e:
-        raise PybiscusInternalException("Html generation error !")
+        raise PybiscusInternalException(f"Html generation error ! {e}")
 
     return html
-
-if __name__ == "__main__" :
-
-    param = sys.argv[1] if len(sys.argv) == 2 else "all"
-    
-    if param != "server":
-        form_html = generate_model_page(ConfigClient)
-        print(form_html)
-    if param != "client":
-        form_html = generate_model_page(ConfigServer)
-        print(form_html)

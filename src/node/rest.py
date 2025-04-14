@@ -1,15 +1,13 @@
 
 from flask import Flask, jsonify, request
-#from typer.testing import CliRunner
 from rich import print as rich_print
 from pathlib import Path
 import click
 import sys
-#import werkzeug
 import os
 import subprocess
 
-from src.node.pydantic2html import generate_model_page
+from src.pydantic2xxx.pydantic2html import generate_model_page
 from src.node.tuples2yaml import parse_tuples_to_yaml_string
 from src.flower.server_fabric import ConfigServer
 from src.flower.client_fabric import ConfigClient
@@ -81,7 +79,7 @@ def shutdown():
 
 @rest_server.route("/server/config", methods=["GET"])
 def serverConfigDownload():
-    return generate_model_page(ConfigServer)
+    return generate_model_page(ConfigServer,'src.node','node.html')
 
 @rest_server.route("/server/config", methods=["POST"])
 def serverConfigUpload():
@@ -97,7 +95,7 @@ def serverConfigUpload():
 
 @rest_server.route("/client/config", methods=["GET"])
 def clientConfigDownload():
-    return generate_model_page(ConfigClient)
+    return generate_model_page(ConfigClient,'src.node','node.html')
 
 @rest_server.route("/client/config", methods=["POST"])
 def clientConfigUpload():
