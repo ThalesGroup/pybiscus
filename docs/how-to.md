@@ -15,9 +15,27 @@ Available models are located in `ml/models/`. To add a new model, follow the few
         - a Pydantic BaseModel similar to `src.ml.models.cnn.lit_cnn.ConfigModel_Cifar10`.
         - a Signature for both training and evaluation steps, as in `src.ml.models.cnn.lit_cnn.CNNSignature`. This is necessary in order for the train and test loops to work.
 3. if needed, add another directory `ml/models/my-model/all-things-needed/` which would contain all things necessary for your model to work properly: specific losses and metrics, dedicated torch modules, and so on.
-4. update the file `ml/registry.py`:
-    - import your LightningModule;
-    - update `model_registry` by adding a new key linking to your LightingModule.
+4. create the file `ml/models/my-data/__init__.py`:
+    - write a function `get_modules_and_configs()` 
+    that exports your classes derived from LightningModule
+    and their associated configuration classes (derived from pydantic.BaseModel).
+    You can follow this template:
+
+```python
+from typing import Dict, List, Tuple
+import lightning.pytorch as pl
+from pydantic import BaseModel
+
+from src.ml.models.cnn.lit_cnn import ( LitCNN, ConfigModel_Cifar10, )
+
+def get_modules_and_configs() -> Tuple[Dict[str, pl.LightningModule], List[BaseModel]]:
+
+    registry = { "cifar": LitCNN, }
+    configs  = [ConfigModel_Cifar10]
+
+    return registry, configs
+```
+
 5. of course, add the needed Python libraries using uv
 ```bash
 uv add needed-library1 needed-library2 ...
@@ -32,6 +50,52 @@ Available datasets are located in `ml/data/`. To add a new model, follow the few
     - the first one contains the usual PyTorch Dataset that defines your dataset.
     - the second one contains the LightningDataModule based on the classical torch.dataset.
 3. if needed, add another directory `ml/data/my-data/all-things-needed/` which would contain all things necessary for your dataset to work properly, in particular preprocessing.
-4. update the file `ml/registry.py`:
-    - import your LightningDataModule;
-    - update `datamodule_registry` by adding a new key linking to your LightingDataModule.
+4. create the file `ml/data/my-data/__init__.py`:
+    - write a function `get_modules_and_configs()` 
+    that exports your classes derived from LightningDataModule
+    and their associated configuration classes (derived from pydantic.BaseModel).
+    You can follow this template:
+
+```python
+from typing import Dict, List, Tuple
+import lightning.pytorch as pl
+from pydantic import BaseModel
+
+from src.ml.data.cifar10.cifar10_dataconfig import ConfigData_Cifar10 
+from src.ml.data.cifar10.cifar10_datamodule import CifarLightningDataModule 
+
+def get_modules_and_configs() -> Tuple[Dict[str, pl.LightningDataModule], List[BaseModel]]:
+
+    registry = {"cifar": CifarLightningDataModule,}
+    configs  = [ConfigData_Cifar10]
+
+    return registry, configs
+```
+5. of course, add the needed Python libraries using uv
+```bash
+uv add needed-library1 needed-library2 ...
+```
+
+At program launch, you will see the registry logs, loading modules and configuration, for instance :
+
+🔍 [registry] Scanning submodules in: src.ml.data (./pybiscus/src/ml/data)
+📦 Loading module: src.ml.data.cifar10
+  ✅ Registered: cifar (CifarLightningDataModule)
+📦 Loading module: src.ml.data.randomvector
+  ✅ Registered: randomvector (RandomVectorLightningDataModule)
+📦 Loading module: src.ml.data.turbofan
+  ✅ Registered: turbofan (LitTurbofanDataModule)
+
+📦 Total LightningDataModules registered: 3
+🧩 Total configs in union: 3
+
+🔍 [registry] Scanning submodules in: src.ml.models (./pybiscus/src/ml/models)
+📦 Loading module: src.ml.models.cnn
+  ✅ Registered: cifar (LitCNN)
+📦 Loading module: src.ml.models.linearregression
+  ✅ Registered: linearregression (LitLinearRegression)
+📦 Loading module: src.ml.models.lstm
+  ✅ Registered: lstm (LitLSTMRegressor)
+
+📦 Total LightningModules registered: 3
+🧩 Total configs in union: 3

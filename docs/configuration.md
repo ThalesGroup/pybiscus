@@ -73,3 +73,14 @@ data:
 ### Others
 
 For clients, the key cid is to give each client a dedicated integer for designation.
+
+# How to see configuration model
+
+The following commands produce a textual representation of the current pybiscus configuration schema
+(dynamically generated as new data and model modules extend it)
+
+```bash
+ uv run python src/pydantic2xxx/pydantic2xxx.py server text
+ uv run python src/pydantic2xxx/pydantic2xxx.py client text
+ uv run python src/pydantic2xxx/pydantic2xxx.py all text
+```

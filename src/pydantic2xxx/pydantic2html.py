@@ -7,7 +7,7 @@ import html
 import importlib.resources
 
 from src.pybiscusexception import PybiscusInternalException
-from heredoc import get_basemodel_attribute_description
+from src.pydantic2xxx.heredoc import get_basemodel_attribute_description
 
 class PydanticToHtml:
 

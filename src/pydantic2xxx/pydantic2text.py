@@ -3,7 +3,7 @@ from pydantic.fields import PydanticUndefined
 from typing import Union, Literal
 from enum import Enum
 import inspect
-from heredoc import get_basemodel_attribute_description
+from src.pydantic2xxx.heredoc import get_basemodel_attribute_description
 
 def text_label( label: str, is_config: bool = False, pybiscus_info: str = '' ):
 
