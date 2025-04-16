@@ -1,8 +1,8 @@
 #!/usr/bin/bash
 
 # set python path
-export PYTHONPATH="/app/src:$PYTHONPATH"
+export PYTHONPATH="/app/pybiscus:$PYTHONPATH"
 
 # run command with the provided arguments
-uv run python src/main.py $@
+uv run python pybiscus/main.py $@
 

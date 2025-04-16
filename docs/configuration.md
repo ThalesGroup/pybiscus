@@ -80,7 +80,7 @@ The following commands produce a textual representation of the current pybiscus 
 (dynamically generated as new data and model modules extend it)
 
 ```bash
- uv run python src/pydantic2xxx/pydantic2xxx.py server text
- uv run python src/pydantic2xxx/pydantic2xxx.py client text
- uv run python src/pydantic2xxx/pydantic2xxx.py all text
+ uv run python pybiscus/pydantic2xxx/pydantic2xxx.py server text
+ uv run python pybiscus/pydantic2xxx/pydantic2xxx.py client text
+ uv run python pybiscus/pydantic2xxx/pydantic2xxx.py all text
 ```

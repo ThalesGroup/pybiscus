@@ -42,7 +42,7 @@ ENV PYTHON_VERSION=${PYTHON_VERSION}
 WORKDIR /app
 
 RUN mkdir datasets
-COPY src           ./src
+COPY pybiscus           ./pybiscus
 COPY bin           ./bin
 COPY certificates/ ./certificates
 COPY configs/      ./configs

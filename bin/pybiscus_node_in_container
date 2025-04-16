@@ -1,8 +1,8 @@
 #!/usr/bin/bash
 
 export PATH="/app/bin:$PATH"
-export PYTHONPATH="/app/src:$PYTHONPATH"
+export PYTHONPATH="/app/pybiscus:$PYTHONPATH"
 
 # run command 
-exec uv run python src/node/rest.py 5000
+exec uv run python pybiscus/node/rest.py 5000
 
