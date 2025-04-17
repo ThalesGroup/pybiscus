@@ -1,3 +1,4 @@
+import typer
 
 from pathlib import Path
 from omegaconf import OmegaConf, DictConfig
@@ -18,4 +19,3 @@ def load_config( config: Path ) -> DictConfig:
         raise typer.Abort()
 
     return conf_loaded
-

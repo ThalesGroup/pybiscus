@@ -8,7 +8,7 @@ from omegaconf import OmegaConf
 from typing import Annotated
 
 from pybiscus.ui import pybiscus_ui
-from pybiscus.ml.registry import datamodule_registry, model_registry
+from pybiscus.registries import datamodule_registry, model_registry
 
 from pybiscus.commands.apps_common import load_config
 
@@ -49,26 +49,26 @@ def train_config(config: Annotated[Path, typer.Argument()] = None):
 
     conf_loaded = load_config(config)
 
-    model = model_registry[conf["model"]["name"]](
-        **conf["model"]["config"], _logging=True
+    model = model_registry[conf_loaded["model"]["name"]](
+        **conf_loaded["model"]["config"], _logging=True
     )
-    data = datamodule_registry[conf["data"]["name"]](**conf["data"]["config"])
+    data = datamodule_registry[conf_loaded["data"]["name"]](**conf_loaded["data"]["config"])
 
     trainer = Trainer(
-        default_root_dir=Path(conf["root_dir"]) / "experiments/local/",
+        default_root_dir=Path(conf_loaded["root_dir"]) / "experiments/local/",
         enable_checkpointing=True,
         logger=True,
-        # max_epochs=conf["epochs"],
+        # max_epochs=conf_loaded["epochs"],
         callbacks=[
             RichModelSummary(),
             RichProgressBar(theme=RichProgressBarTheme(metrics="blue")),
         ],
-        **conf["trainer"],
+        **conf_loaded["trainer"],
     )
 
     trainer.fit(model, data)
     with open(trainer.log_dir + "/config_launch.yml", "w") as file:
-        OmegaConf.save(config=conf, f=file)
+        OmegaConf.save(config=conf_loaded, f=file)
 
 
 if __name__ == "__main__":

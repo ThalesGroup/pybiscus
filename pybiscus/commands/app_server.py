@@ -10,8 +10,8 @@ from pydantic import ValidationError
 from typing import Annotated
 
 from pybiscus.console import console
-from pybiscus.flower.strategies import FabricStrategy
-from pybiscus.ml.registry import datamodule_registry, model_registry
+from pybiscus.registries import datamodule_registry, model_registry, strategy_registry
+
 from pybiscus.flower.server_fabric import (
     ConfigServer,
     weighted_average,
@@ -21,6 +21,7 @@ from pybiscus.flower.server_fabric import (
 )
 
 from pybiscus.commands.apps_common import load_config
+
 
 #                    ------------------------------------------------
 
@@ -235,7 +236,9 @@ def launch_config(
         initial_parameters = fl.common.ndarrays_to_parameters(params)
         console.log(f"Loaded weights from {weights_path}")
 
-    strategy = FabricStrategy(
+    strategy_class = strategy_registry[conf["strategy"].name]
+
+    strategy = strategy_class(
         fit_metrics_aggregation_fn=weighted_average,
         evaluate_metrics_aggregation_fn=weighted_average,
         model=net,
@@ -246,7 +249,7 @@ def launch_config(
         initial_parameters=initial_parameters,
         **conf_strategy,
     )
-
+    
     # starting flower server
     fl.server.start_server(
         server_address = conf["server_adress"],

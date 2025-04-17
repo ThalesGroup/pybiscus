@@ -29,7 +29,7 @@ fabric:
 ...
 ```
 
-The keyword `devices` is waiting for either a list of integers (the id of the devices themselves) or an integer (for the number of devices wanted). To use CPU for instance, you can simply write
+The keyword `devices` is waiting for either a list of integers (the id of the devices themselves) or an integer (for the number of devices wanted) or the string "auto". To use CPU for instance, you can simply write
 ```yaml
 ...
 fabric:
@@ -70,17 +70,39 @@ data:
 ...
 ```
 
+### Strategy
+
+```yaml
+...
+strategy:
+  name: "fedavg"
+  config:
+    min_fit_clients: 2
+...
+```
+
+
 ### Others
 
 For clients, the key cid is to give each client a dedicated integer for designation.
 
 # How to see configuration model
 
-The following commands produce a textual representation of the current pybiscus configuration schema
+The pydantic2xxx.py command produce a representation of the current pybiscus configuration schema
 (dynamically generated as new data and model modules extend it)
+
+it can produce a textual description :
 
 ```bash
  uv run python pybiscus/pydantic2xxx/pydantic2xxx.py server text
  uv run python pybiscus/pydantic2xxx/pydantic2xxx.py client text
  uv run python pybiscus/pydantic2xxx/pydantic2xxx.py all text
+```
+
+or an html one :
+
+```bash
+ uv run python pybiscus/pydantic2xxx/pydantic2xxx.py server html
+ uv run python pybiscus/pydantic2xxx/pydantic2xxx.py client html
+ uv run python pybiscus/pydantic2xxx/pydantic2xxx.py all html
 ```

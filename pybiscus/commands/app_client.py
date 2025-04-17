@@ -8,7 +8,7 @@ from omegaconf import OmegaConf
 from pydantic import ValidationError
 
 from pybiscus.console import console
-from pybiscus.ml.registry import datamodule_registry, model_registry
+from pybiscus.registries import datamodule_registry, model_registry
 from pybiscus.flower.client_fabric import ConfigClient, FlowerClient
 
 from pybiscus.commands.apps_common import load_config

@@ -1,5 +1,5 @@
 from collections import OrderedDict
-from typing import Callable, Optional, Union, Dict, ClassVar
+from typing import Callable, Literal, Optional, Union, Dict, ClassVar
 
 import flwr as fl
 import numpy as np
@@ -11,9 +11,8 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from pybiscus.console import console
 from pybiscus.flower.client_fabric import ConfigFabric
-from pybiscus.flower.strategies import ConfigFabricStrategy
 from pybiscus.ml.loops_fabric import test_loop
-from pybiscus.ml.registry import ModelConfig, DataConfig
+from pybiscus.registries import ModelConfig, DataConfig, StrategyConfig
 
 class ConfigLogger(BaseModel):
 
@@ -27,16 +26,6 @@ class ConfigLogger(BaseModel):
     def __getitem__(self, attName):
         return getattr(self, attName, None)
 
-class ConfigStrategy(BaseModel):
-    """name: str = fabric is the only possible value"""
-
-    PYBISCUS_CONFIG: ClassVar[str] = "strategy"
-
-    name: str = "fabric"
-
-    config: ConfigFabricStrategy
-
-    model_config = ConfigDict(extra="forbid")
 
 class ConfigSslServer(BaseModel):
     """A Pydantic Model to validate the Server configuration given by the user.
@@ -83,7 +72,7 @@ class ConfigServer(BaseModel):
     save_on_train_end: bool = False
 
     logger:            Optional[ConfigLogger]
-    strategy:          ConfigStrategy
+    strategy:          StrategyConfig
     fabric:            ConfigFabric
     model:             ModelConfig
     data:              DataConfig

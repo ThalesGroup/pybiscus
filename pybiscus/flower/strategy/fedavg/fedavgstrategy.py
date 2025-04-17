@@ -1,5 +1,5 @@
 from logging import WARNING
-from typing import Callable, Optional, Union, ClassVar
+from typing import Callable, Literal, Optional, Union, ClassVar
 
 import flwr as fl
 from flwr.common import (
@@ -16,7 +16,7 @@ from flwr.server.client_proxy import ClientProxy
 from flwr.server.strategy.aggregate import aggregate, weighted_loss_avg
 from lightning.fabric import Fabric
 from lightning.pytorch import LightningModule
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 from pybiscus.console import console
 
@@ -27,18 +27,35 @@ connected to the server. `min_available_clients` must be set to a value larger
 than or equal to the values of `min_fit_clients` and `min_evaluate_clients`.
 """
 
-
-class ConfigFabricStrategy(BaseModel):
+class ConfigFabricFedAvgStrategyData(BaseModel):
 
     PYBISCUS_CONFIG: ClassVar[str] = "config"
 
+    # fraction_fit: float = 1,
+    # fraction_evaluate: float = 1,
+    # min_fit_clients: int = 2,
+    # min_evaluate_clients: int = 2,
+    # min_available_clients: int = 2,
+
     min_fit_clients: int = 2
 
+    model_config = ConfigDict(extra="forbid")
 
-class FabricStrategy(fl.server.strategy.FedAvg):
+
+class ConfigFabricFedAvgStrategy(BaseModel):
+
+    PYBISCUS_ALIAS: ClassVar[str] = "FedAvg"
+
+    name:   Literal["fedavg"]
+    config: ConfigFabricFedAvgStrategyData
+
+    model_config = ConfigDict(extra="forbid")
+
+
+class FabricFedAvgStrategy(fl.server.strategy.FedAvg):
     """A reimplementation of the FedAvg Strategy using Fabric.
 
-    FabricStrategy replaces the base version of Flower by a Fabric-powered version.
+    FabricFedAvgStrategy replaces the base version of Flower by a Fabric-powered version.
     Fabric allows to abstract the use of CPU/GPU, multiple hardwares, Float32/Float16 precision, and so on.
     A Fabric instance comes with a (TensorBoard) logger, allowing to log metrics and losses from the clients,
     using their cid as a marker.

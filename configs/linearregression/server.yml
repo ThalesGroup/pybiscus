@@ -6,7 +6,7 @@ root_dir: ${oc.env:PWD}
 logger:
   subdir: /experiments/federated/test_lr/
 strategy:
-  name: "fabric"
+  name: "fedavg"
   config:
     min_fit_clients: 2
 

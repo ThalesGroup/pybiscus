@@ -12,7 +12,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from pybiscus.console import console
 from pybiscus.ml.loops_fabric import test_loop, train_loop
-from pybiscus.ml.registry import ModelConfig, DataConfig
+from pybiscus.registries import ModelConfig, DataConfig
 
 torch.backends.cudnn.enabled = True
 
