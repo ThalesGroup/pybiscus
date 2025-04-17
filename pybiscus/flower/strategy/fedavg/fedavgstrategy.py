@@ -18,7 +18,7 @@ from lightning.fabric import Fabric
 from lightning.pytorch import LightningModule
 from pydantic import BaseModel, ConfigDict
 
-from pybiscus.console import console
+from pybiscus.core.console import console
 
 WARNING_MIN_AVAILABLE_CLIENTS_TOO_LOW = """
 Setting `min_available_clients` lower than `min_fit_clients` or

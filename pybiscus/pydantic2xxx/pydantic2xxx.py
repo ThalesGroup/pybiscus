@@ -9,7 +9,7 @@ from pybiscus.flower.client_fabric import ConfigClient
 
 from pydantic2text import generate_model_text
 from pydantic2html import generate_model_page
-from pybiscus.pybiscusexception import PybiscusInternalException
+from pybiscus.core.pybiscusexception import PybiscusInternalException
 
 class ModelGenerator(ABC):
     class Kind(StrEnum):

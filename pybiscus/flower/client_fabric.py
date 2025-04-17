@@ -10,9 +10,9 @@ from lightning.fabric import Fabric
 from lightning.pytorch import LightningDataModule, LightningModule
 from pydantic import BaseModel, ConfigDict, Field
 
-from pybiscus.console import console
+from pybiscus.core.console import console
 from pybiscus.ml.loops_fabric import test_loop, train_loop
-from pybiscus.registries import ModelConfig, DataConfig
+from pybiscus.core.registries import ModelConfig, DataConfig
 
 torch.backends.cudnn.enabled = True
 
@@ -86,8 +86,8 @@ class ConfigClient(BaseModel):
     server_adress: str  = "localhost:3333"
     root_dir: str       = "${oc.env:PWD}"
     fabric:             ConfigFabric
-    model:              ModelConfig
-    data:               DataConfig
+    model:              ModelConfig # pyright: ignore[reportInvalidTypeForm]
+    data:               DataConfig # pyright: ignore[reportInvalidTypeForm]
     ssl:                Optional[ConfigSslClient] = None
 
     model_config = ConfigDict(extra="forbid")

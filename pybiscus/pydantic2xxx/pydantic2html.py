@@ -6,7 +6,7 @@ import inspect
 import html
 import importlib.resources
 
-from pybiscus.pybiscusexception import PybiscusInternalException
+from pybiscus.core.pybiscusexception import PybiscusInternalException
 from pybiscus.pydantic2xxx.heredoc import get_basemodel_attribute_description
 
 class PydanticToHtml:

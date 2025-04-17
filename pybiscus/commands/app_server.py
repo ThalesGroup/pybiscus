@@ -9,8 +9,8 @@ from omegaconf import OmegaConf
 from pydantic import ValidationError
 from typing import Annotated
 
-from pybiscus.console import console
-from pybiscus.registries import datamodule_registry, model_registry, strategy_registry
+from pybiscus.core.console import console
+from pybiscus.core.registries import datamodule_registry, model_registry, strategy_registry
 
 from pybiscus.flower.server_fabric import (
     ConfigServer,

@@ -9,10 +9,10 @@ from lightning.fabric import Fabric
 from lightning.pytorch import LightningModule
 from pydantic import BaseModel, ConfigDict, Field
 
-from pybiscus.console import console
+from pybiscus.core.console import console
 from pybiscus.flower.client_fabric import ConfigFabric
 from pybiscus.ml.loops_fabric import test_loop
-from pybiscus.registries import ModelConfig, DataConfig, StrategyConfig
+from pybiscus.core.registries import ModelConfig, DataConfig, StrategyConfig
 
 class ConfigLogger(BaseModel):
 
@@ -72,13 +72,14 @@ class ConfigServer(BaseModel):
     save_on_train_end: bool = False
 
     logger:            Optional[ConfigLogger]
-    strategy:          StrategyConfig
+    strategy:          StrategyConfig # pyright: ignore[reportInvalidTypeForm]
     fabric:            ConfigFabric
-    model:             ModelConfig
-    data:              DataConfig
+    model:             ModelConfig # pyright: ignore[reportInvalidTypeForm]
+    data:              DataConfig # pyright: ignore[reportInvalidTypeForm]
     ssl:               Optional[ConfigSslServer] = None
 
     model_config = ConfigDict(extra="forbid")
+
 
 
 def set_params(model: torch.nn.ModuleList, params: list[np.ndarray]):

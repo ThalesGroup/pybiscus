@@ -1,5 +1,5 @@
 
-from pybiscus.registryloader import RegistryLoader
+from pybiscus.core.registryloader import RegistryLoader
 
 from lightning.pytorch import LightningDataModule, LightningModule
 

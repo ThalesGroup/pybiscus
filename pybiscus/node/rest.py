@@ -11,8 +11,8 @@ from pybiscus.pydantic2xxx.pydantic2html import generate_model_page
 from pybiscus.node.tuples2yaml import parse_tuples_to_yaml_string
 from pybiscus.flower.server_fabric import ConfigServer
 from pybiscus.flower.client_fabric import ConfigClient
-from pybiscus.pybiscusexception import PybiscusInternalException, PybiscusValueException
-from pybiscus.console import console
+from pybiscus.core.pybiscusexception import PybiscusInternalException, PybiscusValueException
+from pybiscus.core.console import console
 
 rest_server = Flask(__name__)
 
