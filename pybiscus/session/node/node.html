@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Pybiscus Node</title>
+
+    <style>
+        
+        CSS
+
+    </style>
+</head>
+
+<body>
+    <div id="top-div" data-pybiscus-status="valid">
+
+        BODY
+
+    </div>
+
+    BUTTONS_HTML
+
+<script>
+
+    // *** tab selection management ***
+    document.querySelectorAll('.pybiscus-tab-container').forEach(container => {
+
+        const my_buttons  = ':scope > .pybiscus-tab-buttons > .pybiscus-tab-button'
+        const my_contents = ':scope > .pybiscus-tab-content'
+
+        // select all tab_button that are direct children
+        container.querySelectorAll(my_buttons).forEach(button => {
+            button.addEventListener('click', () => {
+
+                // desactivate all tabs of the container
+                
+                container.querySelectorAll(my_buttons).forEach(b => {
+                    b.classList.remove('active');
+                    b.setAttribute('data-pybiscus-status', 'ignored');
+
+                    associatedDiv = container.querySelector(`#${b.dataset.tab}`);
+                    associatedDiv.classList.remove('active');
+                    associatedDiv.setAttribute('data-pybiscus-status', 'ignored');
+                } );
+                container.querySelectorAll(my_contents).forEach(c => c.classList.remove('active'));
+
+                // activate the clicked tab and its associated content
+
+                button.classList.add('active');
+                button.setAttribute('data-pybiscus-status', 'valid');
+
+                associatedDiv = container.querySelector(`#${button.dataset.tab}`);
+                associatedDiv.classList.add('active');
+                associatedDiv.setAttribute('data-pybiscus-status', 'valid');
+            });
+        });
+    });
+
+    // *** radio buttons management ***
+    const radioButtons = document.querySelectorAll('input[type="radio"].pybiscus_radiobutton');
+
+    // add a listener to each input radio
+    radioButtons.forEach(function(radio) {
+
+        radio.addEventListener('change', function() {
+            
+            const radiosWithSameName = document.querySelectorAll(`input[type="radio"][name="${radio.name}"]`);
+
+            // iteration on same name buttons
+            radiosWithSameName.forEach(function(radioButton) {
+
+                const parentDiv = radioButton.parentElement;
+                parentDiv.setAttribute('data-pybiscus-status', 'ignored');
+            });
+
+            // select the input radio parent
+            const parentDiv = radio.parentElement;
+            parentDiv.setAttribute('data-pybiscus-status', 'valid');
+        });
+
+        // initialisation on page loading
+        if (radio.checked) {
+            radio.parentElement.setAttribute('data-pybiscus-status', 'valid');
+        } else {
+            radio.parentElement.setAttribute('data-pybiscus-status', 'ignored');
+        }
+    });
+
+    function traverseDOM(element, data) {
+
+        if (element.getAttribute('data-pybiscus-status') === 'ignored') {
+
+        } else {
+
+            if (element.hasAttribute('data-pybiscus-name')) {
+
+                const attributeValue = element.getAttribute('data-pybiscus-name');
+
+                if( element.tagName === "INPUT" ) {
+                    if( element.type === "checkbox" ) {
+                        //console.log( `${attributeValue} = ${element.checked}` );
+                        data = [ [ attributeValue, "", element.checked ], ...data ];
+                    } else if( element.type === "text" ) {
+                        //console.log( `${attributeValue} = "${element.value}"` );
+                        data = [ [ attributeValue, "", element.value ], ...data ];
+                    } else {
+                        //console.log( `${attributeValue} = ${element.value}` );
+                        data = [ [ attributeValue, "", element.value ], ...data ];
+                    }
+                } else {
+                    console.log( "field is not an input" );
+                }
+
+            } else {
+
+                const children = element.children;
+                for (let i = 0; i < children.length; i++) {
+                    data = traverseDOM(children[i], data);
+                }
+            }
+        }
+
+        return data;
+    }
+
+
+    function selected_option(prefix) {
+        const fieldset = document.querySelector(`.pybiscus-fieldset-container[data-pybiscus-prefix="${prefix}"]`);
+        if (!fieldset) return null;
+
+        const tabButtonsContainer = fieldset.querySelector('.pybiscus-tab-buttons');
+        if (!tabButtonsContainer) return null;
+
+        const activeButton = tabButtonsContainer.querySelector('.pybiscus-tab-button.active');
+        if (!activeButton) return null;
+
+        return activeButton.textContent.trim();
+    }
+
+    function selected_options(prefixes) {
+        const result = {};
+        for (const prefix of prefixes) {
+            const value = selected_option(prefix);
+            if (value !== null) {
+                result[prefix] = value;
+            }
+        }
+        return result;
+    }
+
+    BUTTONS_JS
+
+    function set_option(prefix, value) {
+        const fieldset = document.querySelector(`.pybiscus-fieldset-container[data-pybiscus-prefix="${prefix}"]`);
+        if (!fieldset) return;
+   	//console.log("fieldset found : ", prefix)
+
+        const my_buttons  = ':scope > .pybiscus-tab-container > .pybiscus-tab-buttons > .pybiscus-tab-button'
+
+        const buttons = fieldset.querySelectorAll(my_buttons);
+        buttons.forEach(button => {
+	    //console.log(button.textContent)
+            if (button.textContent.trim() === value) {
+                button.classList.add('active');
+	        button.setAttribute('data-pybiscus-status', 'valid');
+
+	        associatedDiv = fieldset.querySelector(`#${button.dataset.tab}`);
+                associatedDiv.classList.add('active');
+                associatedDiv.setAttribute('data-pybiscus-status', 'valid');
+            } else {
+                button.classList.remove('active');
+	        button.setAttribute('data-pybiscus-status', 'ignored');
+
+                associatedDiv = fieldset.querySelector(`#${button.dataset.tab}`);
+	        associatedDiv.classList.remove('active');
+	        associatedDiv.setAttribute('data-pybiscus-status', 'ignored');
+            }
+        });
+    }
+    
+    function set_options(options) {
+        for (const [prefix, value] of Object.entries(options)) {
+            set_option(prefix, value);
+        }
+    }
+
+    function lock_option( option ) {
+    	const fieldset = document.querySelector(`.pybiscus-fieldset-container[data-pybiscus-prefix="${option}"] `);
+	    if (!fieldset) {
+		    console.error("lock_option : fieldset not found ! ", option );
+		    return;
+	    }
+
+        fieldset.classList.add('pybiscus-locked')
+    }
+ 
+     
+    document.addEventListener("DOMContentLoaded", () => {
+
+        ON_DOCUMENT_LOAD_JS
+    });
+
+</script>
+
+</body>
+</html>

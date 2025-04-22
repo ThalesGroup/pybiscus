@@ -1,7 +1,8 @@
 from pydantic import BaseModel
 from pydantic.fields import PydanticUndefined
-from typing import Union, Literal
+from typing import Optional, Union, Literal
 from enum import Enum
+
 import inspect
 import html
 import importlib.resources
@@ -96,7 +97,7 @@ def generate_field_html(field_name: str, field_type, field_required: bool, field
 
     elif inspect.isclass(field_type) and issubclass(field_type, Enum):
         
-        field_html += '<fieldset class="fieldset-container">\n'
+        field_html += '<fieldset class="pybiscus-fieldset-container">\n'
         field_html += f'  <legend><div class="pybiscus-config">{field_name}</div></legend>\n'
 
         option_name= f"option-{new_index()}"
@@ -176,9 +177,9 @@ def generate_field_html(field_name: str, field_type, field_required: bool, field
 
             # ### Union ###
             
-            field_html += '<fieldset class="fieldset-container">\n'
-            field_html += f'  <legend><div class="pybiscus-config">{field_name}</div></legend>\n'
             prefix += f"{field_name}."
+            field_html += f'<fieldset class="pybiscus-fieldset-container" data-pybiscus-prefix="{prefix[:-1]}">\n'
+            field_html += f'  <legend><div class="pybiscus-config">{field_name}</div></legend>\n'
 
             tab_nb = new_index()
 
@@ -197,8 +198,8 @@ def generate_field_html(field_name: str, field_type, field_required: bool, field
                         propagate_default = True
                         break
 
-            field_html += '''   <div class="tab-container">
-    <div class="tab-buttons">
+            field_html += '''   <div class="pybiscus-tab-container">
+    <div class="pybiscus-tab-buttons">
 '''
 
             # tab generation
@@ -212,7 +213,7 @@ def generate_field_html(field_name: str, field_type, field_required: bool, field
                     status = PydanticToHtml.ignored_status
 
                 tab_name = generate_tab_name( sub_type, f'Tab {index}' )
-                field_html += f'        <div class="tab-button {active}" data-tab="tab{tab_nb}-{index}" {status}>{tab_name}</div>\n'
+                field_html += f'        <div class="pybiscus-tab-button {active}" data-tab="tab{tab_nb}-{index}" {status}>{tab_name}</div>\n'
             field_html += "    </div>\n"
 
             # tab content generation
@@ -225,7 +226,7 @@ def generate_field_html(field_name: str, field_type, field_required: bool, field
                     active = ''
                     status = 'data-pybiscus-status="ignored"'
 
-                field_html += f'<div id="tab{tab_nb}-{index}" class="tab-content {active}" {status}>\n' 
+                field_html += f'<div id="tab{tab_nb}-{index}" class="pybiscus-tab-content {active}" {status}>\n' 
 
                 if propagate_default and index == active_index:
                     sub_field_default = field_default 
@@ -311,7 +312,7 @@ def generate_model_html(model: BaseModel, inFieldSet: bool, prefix: str ) -> str
     return model_html
 
 
-def generate_model_page(model: BaseModel, templatePath: str, templateName: str ) -> str:
+def generate_model_page(model: BaseModel, templatePath: str, templateName: str, buttons_type: str, on_document_load_js: str = "" ) -> str:
 
     modelName = model.__name__
 
@@ -324,11 +325,23 @@ def generate_model_page(model: BaseModel, templatePath: str, templateName: str )
 
     try:
         with importlib.resources.files(templatePath).joinpath(templateName).open('r') as file:
-            html_template = file.read()
+            html = file.read()
+        with importlib.resources.files("pybiscus.session.node").joinpath("pybiscus.css").open('r') as file:
+            css = file.read()
+        with importlib.resources.files("pybiscus.session.node").joinpath(f"{buttons_type}.html").open('r') as file:
+            buttons_html = file.read()
+        with importlib.resources.files("pybiscus.session.node").joinpath(f"{buttons_type}.js").open('r') as file:
+            buttons_js = file.read()
+
         body = generate_model_html(model, True, "")
-        html = html_template.replace( "MODEL_NAME", modelName ).replace( "ACTION", action ).replace( "BODY", body )
-    except FileNotFoundError:
-        raise PybiscusInternalException("Template file pydantic.html not found !")
+
+        html = html.replace( "CSS", css )
+        html = html.replace( "BODY", body )
+        html = html.replace( "BUTTONS_HTML", buttons_html )
+        html = html.replace( "BUTTONS_JS", buttons_js )
+        html = html.replace( "ON_DOCUMENT_LOAD_JS", on_document_load_js )
+        html = html.replace( "MODEL_NAME", modelName ).replace( "ACTION", action )
+
     except Exception as e:
         raise PybiscusInternalException(f"Html generation error ! {e}")
 

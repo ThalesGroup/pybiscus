@@ -1,0 +1,12 @@
+
+lancer le manager :
+ ./launch/node/cli/5000.sh
+./session/run_manager.sh
+
+lancer le client1 :
+ ./launch/node/cli/5001.sh
+./session/start1.sh
+
+lancer le client2 :
+ ./launch/node/cli/5002.sh
+./session/start2.sh

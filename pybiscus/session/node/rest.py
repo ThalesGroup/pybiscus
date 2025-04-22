@@ -1,5 +1,7 @@
 
-from flask import Flask, jsonify, request
+import json
+from flask import Flask, jsonify, request, render_template_string
+
 from rich import print as rich_print
 from pathlib import Path
 import click
@@ -7,14 +9,19 @@ import sys
 import os
 import subprocess
 
+import urllib
+
 from pybiscus.pydantic2xxx.pydantic2html import generate_model_page
-from pybiscus.node.tuples2yaml import parse_tuples_to_yaml_string
+from pybiscus.session.node.ConfigSession import make_session_model
+from pybiscus.session.node.tuples2yaml import parse_tuples_to_yaml_string
 from pybiscus.flower.server_fabric import ConfigServer
 from pybiscus.flower.client_fabric import ConfigClient
 from pybiscus.core.pybiscusexception import PybiscusInternalException, PybiscusValueException
 from pybiscus.core.console import console
+from pybiscus.core.registries import datamodule_registry, model_registry, DataConfig, ModelConfig
 
 rest_server = Flask(__name__)
+session_parameters = {}
 
 def shutdown_server():
     """Arrête proprement le serveur Flask."""
@@ -77,9 +84,55 @@ def shutdown():
     shutdown_server()
     return "Server shut down."
 
+@rest_server.route("/session/config", methods=["GET"])
+def sessionConfigDownload():
+
+    # models_names = list(datamodule_registry.keys())
+    # data_names = list(model_registry.keys())
+
+    models_names = list(datamodule_registry.keys())
+    data_names = list(model_registry.keys())
+
+    config_session = make_session_model(models_names, ModelConfig, data_names, DataConfig)
+
+    return generate_model_page(config_session,'pybiscus.session.node','node.html','launch_session_button')
+
 @rest_server.route("/server/config", methods=["GET"])
 def serverConfigDownload():
-    return generate_model_page(ConfigServer,'pybiscus.node','node.html')
+
+    param_js = "console.log(generate_model_page() called from HTTP GET @ /server/config );"
+
+    param_raw = request.args.get("param")
+    
+    if not param_raw:
+        console.log("/server/config with no param")
+    else:
+        try:
+            # decode and parse JSON param
+            decoded = urllib.parse.unquote(param_raw)
+            config = json.loads(decoded)
+
+            param_js = """
+                const prefixes = ["model", "data", "ssl"];
+                let selected = selected_options(prefixes);
+                console.log("✅ Selected options:", selected);
+
+                const new_values = { 'model' : 'Cifar 10', 'data' : 'Cifar 10', 'ssl' : 'None' }
+                set_options( new_values );
+                    selected = selected_options(prefixes);
+                    console.log("✅ Selected options 2:", selected);
+
+                lock_option("ssl");
+                lock_option("data");
+                lock_option("model");
+
+                selected_options
+            """
+
+        except Exception as e:
+            console.log( f"/server/config with bad param {str(e)}" )
+
+    return generate_model_page(ConfigServer,'pybiscus.session.node','node.html','check_exec_buttons',param_js)
 
 @rest_server.route("/server/config", methods=["POST"])
 def serverConfigUpload():
@@ -95,7 +148,7 @@ def serverConfigUpload():
 
 @rest_server.route("/client/config", methods=["GET"])
 def clientConfigDownload():
-    return generate_model_page(ConfigClient,'pybiscus.node','node.html')
+    return generate_model_page(ConfigClient,'pybiscus.session.node','node.html','check_exec_buttons')
 
 @rest_server.route("/client/config", methods=["POST"])
 def clientConfigUpload():
@@ -262,6 +315,46 @@ def upload_yaml():
     file.save(uploaded_file_path)
 
     return jsonify({"message": "yaml file received", "path": uploaded_file_path})
+
+@rest_server.route('/session')
+def session_page():
+    return render_template_string("""
+        <h1>En attente de démarrage...</h1>
+        <p>Veuillez patienter.</p>
+        <script>
+        async function check() {
+            const res = await fetch('/session/check_parameters');
+            const data = await res.json();
+            if (data.ready) {
+                // Rediriger avec les paramètres
+                const url = new URL("/launch", window.location.origin);
+                for (const [key, value] of Object.entries(data.params)) {
+                    url.searchParams.append(key, value);
+                }
+                window.location.href = url.toString();
+            } else {
+                setTimeout(check, 1000);
+            }
+        }
+        check();
+        </script>
+    """)
+
+@rest_server.route('/session/parameters', methods=['POST'])
+def set_parameters():
+    global session_parameters
+    session_parameters = request.json or {}
+    return jsonify({"status": "ok"})
+
+@rest_server.route('/session/check_parameters')
+def check_parameters():
+    if session_parameters:
+        return jsonify({"ready": True, "params": session_parameters})
+    return jsonify({"ready": False})
+
+@rest_server.route('/launch')
+def launch():
+    return f"<h1>Lancement de la session avec paramètres :</h1><pre>{dict(request.args)}</pre>"
 
 if __name__ == "__main__":
 

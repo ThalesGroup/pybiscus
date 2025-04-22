@@ -4,5 +4,5 @@ export PATH="/app/bin:$PATH"
 export PYTHONPATH="/app/pybiscus:$PYTHONPATH"
 
 # run command 
-exec uv run python pybiscus/node/rest.py 5000
+exec uv run python pybiscus/session/node/rest.py 5000
 

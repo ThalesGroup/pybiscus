@@ -25,7 +25,7 @@ class HtmlModelGenerator(ModelGenerator):
 
     @override
     def generate(self, model: BaseModel) -> str :
-        return generate_model_page(model,'pybiscus.node','node.html')
+        return generate_model_page(model,'pybiscus.session.node','node.html','check_exec_buttons')
     
 class TextModelGenerator(ModelGenerator):
 
