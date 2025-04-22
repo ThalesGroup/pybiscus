@@ -215,8 +215,8 @@ def launch_config(
 
     # load the model
     model_class = model_registry[conf["model"].name]
-    net = model_class(**conf_model)
-    net = fabric.setup_module(net)
+    model = model_class(**conf_model)
+    model = fabric.setup_module(model)
 
     # load the data management strategy from registry
     data = datamodule_registry[conf["data"].name](**conf_data)
@@ -227,23 +227,32 @@ def launch_config(
     initial_parameters = None
     if weights_path is not None:
         state = fabric.load(weights_path)["model"]
-        model = model_class(**conf_model)
         model.load_state_dict(state)
 
         params = torch.nn.ParameterList(
-            [param.detach().numpy() for param in model.parameters()]
+            [param.detach().cpu().numpy() for param in model.parameters()]
         )
         initial_parameters = fl.common.ndarrays_to_parameters(params)
         console.log(f"Loaded weights from {weights_path}")
+    else:
+        params = torch.nn.ParameterList(
+            [param.detach().cpu().numpy() for param in model.parameters()]
+        )
+        initial_parameters = fl.common.ndarrays_to_parameters(params)
+        console.log("No weights provided, random server-side initialization instead.")
+
+    # NB : if the initial_parameters had been None
+    # the behaviour would have been : Requesting initial parameters from one random client
+    # Question: add this as a configuration option ?
 
     strategy_class = strategy_registry[conf["strategy"].name]
 
     strategy = strategy_class(
         fit_metrics_aggregation_fn=weighted_average,
         evaluate_metrics_aggregation_fn=weighted_average,
-        model=net,
+        model=model,
         fabric=fabric,
-        evaluate_fn=get_evaluate_fn(testset=test_set, model=net, fabric=fabric),
+        evaluate_fn=get_evaluate_fn(testset=test_set, model=model, fabric=fabric),
         on_fit_config_fn=fit_config,
         on_evaluate_config_fn=evaluate_config,
         initial_parameters=initial_parameters,
@@ -260,7 +269,7 @@ def launch_config(
 
     # optional checkpoint save
     if conf["save_on_train_end"]:
-        state = {"model": net}
+        state = {"model": model}
         fabric.save(fabric.logger.log_dir + "/checkpoint.pt", state)
 
     # server config logging
