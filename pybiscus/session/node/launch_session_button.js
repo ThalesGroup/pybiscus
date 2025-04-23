@@ -16,7 +16,22 @@ launch_session_button.addEventListener('click', function() {
     const topDiv = document.getElementById('top-div');
 
     // generate configuration data
-    data = traverseDOM(topDiv, []).reverse();
+    raw_data = traverseDOM(topDiv, []).reverse();
+
+    console.log( raw_data );
+
+    const options_set = {};
+    const options_lock = [];
+
+    raw_data.forEach(([key, _, value]) => {
+        options_set[key] = value;
+        options_lock.push(key);
+    });
+
+    data = {
+        options_set,
+        options_lock
+    };    
 
     console.log( data );
 
@@ -24,7 +39,7 @@ launch_session_button.addEventListener('click', function() {
     const paramStr = encodeURIComponent(JSON.stringify(data));
 
     // allow back function
-    //window.location.href = `http://localhost:5000/server/config?param=${paramStr}`
+    //window.location.href = `/server/config?param=${paramStr}`
 
-    window.location.replace(`http://localhost:5000/server/config?param=${paramStr}`)
+    window.location.replace(`/server/config?param=${paramStr}`)
 });

@@ -3,36 +3,117 @@ from flask import Flask, request, jsonify, render_template_string
 import requests
 
 app = Flask(__name__)
+
+# global variable that contains the application context
 registered_clients = {}
-server_url = None  # Stocké globalement pour accès dans la route /manage
+server_url = None
+manager_port = None
 
 MAIN_TEMPLATE="""
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Deux URLs sur une page</title>
+    <title>FL Manager</title>
     <style>
-        .container {
+        .split-container {
             display: flex;
-            height: 100vh;
+            height: 75vh;
+            width: 100%;
+        }
+          .left, .right {
+            flex: 1;
+            box-sizing: border-box;
         }
         iframe {
-            flex: 1;
-            border: none;
+            width: 100%;
+            height: 100%;
+            //border: none;
+            border: 1px solid #ccc;
+            box-sizing: border-box;
+        }
+
+        .container-center {
+            display: flex;
+            justify-content: center;
+        }
+
+        header {
+            width: 100%;
+            height: 60px;
+            background-color: #4a90e2;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+        }
+        footer {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 60px;
+            background-color: #4a90e2;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+        }
+        .stack {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem; /* espace entre le label et l’iframe */
+            margin: auto;
+        }
+        .right {
+        display: flex;
+        flex-direction: column;
+        }
+
+        .right p {
+        margin: 1rem;
+        font-size: 1rem;
+        }
+
+        .right div {
+        flex: 1;
+        border-top: 1px solid #ccc;
+        background-color: #f0f0f0;
+        padding: 1rem;
+        box-sizing: border-box;
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <iframe src="http://localhost:5555/visualize"></iframe>
-        <iframe src="http://localhost:5000/session/config"></iframe>
+    <header>
+        <div class="container-center">
+            <h1>🧠 Federated Learning Manager</h1>
+        </div>
+    </header>
+    
+    <div class="split-container">
+        <div class="left">
+            <iframe src="/visualize"></iframe>
+        </div>
+        <div class="right">
+            <p>Server URL: <strong>{{ server_url }}</strong></p>
+            <iframe src="{{server_url}}/session/config"></iframe>
+        </div>
     </div>
+
+    <footer>
+        <div class="container-center">
+            <button onclick="spreadSessionParams()">📡 Spread session params</button>
+        </div>
+    </footer>
+
 </body>
 </html>
 """
 
-TEMPLATE = """
+VISUALIZE_TEMPLATE = """
 <!DOCTYPE html>
 <html>
 <head>
@@ -44,10 +125,8 @@ TEMPLATE = """
     </style>
 </head>
 <body>
-    <h1>🧠 Federated Learning Manager</h1>
-    <p>Server URL: <strong>{{ server_url }}</strong></p>
     <canvas id="graph" width="600" height="400"></canvas><br>
-    <button onclick="spreadSessionParams()">📡 Spread session params</button>
+
     <script>
         const canvas = document.getElementById('graph');
         const ctx = canvas.getContext('2d');
@@ -135,53 +214,6 @@ TEMPLATE = """
 </html>
 """
 
-# l'envoi de paramètres en python
-"""
-import requests
-
-url = "http://localhost:5000/session/parameters"
-data = {
-    "user": "alice",
-    "mode": "test",
-    "lang": "fr"
-}
-
-response = requests.post(url, json=data)
-
-if response.ok:
-    print("✅ Paramètres envoyés avec succès :", response.json())
-else:
-    print("❌ Échec de l'envoi :", response.status_code, response.text)
-"""
-# l'envoi de paramètres en js
-"""
-const params = {
-    user: "alice",
-    mode: "test",
-    lang: "fr"
-};
-
-fetch("/session/parameters", {
-    method: "POST",
-    headers: {
-        "Content-Type": "application/json"
-    },
-    body: JSON.stringify(params)
-})
-.then(response => {
-    if (!response.ok) {
-        throw new Error("Erreur lors de l'envoi des paramètres");
-    }
-    return response.json();
-})
-.then(data => {
-    console.log("✅ Paramètres envoyés avec succès :", data);
-})
-.catch(error => {
-    console.error("❌ Erreur :", error);
-});
-"""
-
 @app.route("/register", methods=["POST"])
 def register():
     data = request.json
@@ -189,10 +221,30 @@ def register():
     client_url = data.get("client_url")
 
     if name and client_url:
+
+        if name in registered_clients:
+            
+            if registered_clients[name] == client_url:
+                return jsonify({
+                    "status": "success",
+                    "message": f"Client '{name}' already registered.",
+                    "server" : server_url,
+                    "registered_clients": list(registered_clients.keys())
+                })
+
+            else:
+                return jsonify({
+                    "status": "error",
+                    "message": f"Client '{name}' already registered with a different URL.",
+                    "registered_clients": list(registered_clients.keys())
+                })
+
         registered_clients[name] = client_url
+
         return jsonify({
             "status": "success",
             "message": f"Client '{name}' registered.",
+            "server" : server_url,
             "registered_clients": list(registered_clients.keys())
         })
     else:
@@ -202,13 +254,19 @@ def register():
 def list_clients():
     return jsonify({"clients": registered_clients})
 
+# sub-view URL
+# visualize a graph of session participants
 @app.route("/visualize")
 def visualize():
-    return render_template_string(TEMPLATE, server_url=server_url)
+    return render_template_string(VISUALIZE_TEMPLATE, server_url=server_url)
 
+# manager main URL
+# double view on :
+# - session content ( server + connected clients )
+# - ConfigSession ( cnx to Pybiscus server )
 @app.route("/manage")
 def manage():
-    return render_template_string(MAIN_TEMPLATE, server_url="http://localhost:5000/session/config", visualize_url="localhost:5555/visualize")
+    return render_template_string(MAIN_TEMPLATE, server_url=server_url)
 
 @app.route("/ping-server")
 def ping_server():
@@ -220,14 +278,18 @@ def ping_server():
 
 def main():
     global server_url
+    global manager_port
+
     parser = argparse.ArgumentParser(description="Start the Federated Learning Manager Server.")
-    parser.add_argument("--port", type=int, default=5000, help="Port to run the manager on")
-    parser.add_argument("--server-url", type=str, required=True, help="URL of the central server (e.g. http://localhost:7000)")
+    parser.add_argument("--port", type=int, default=6000, help="Port to run the manager on")
+    parser.add_argument("--server-url", type=str, required=True, help="URL of the central server (e.g. http://localhost:5000)")
     args = parser.parse_args()
 
     server_url = args.server_url
-    print(f"🚀 Manager starting on port {args.port}, connected to server: {server_url}")
-    app.run(port=args.port)
+    manager_port=args.port
+
+    print(f"🚀 Manager starting on port {manager_port}, connected to server: {server_url}")
+    app.run(port=manager_port)
 
 if __name__ == "__main__":
     main()

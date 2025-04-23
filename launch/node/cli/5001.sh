@@ -1,4 +1,4 @@
  #!/usr/bin/bash 
 
-uv run python pybiscus/session/node/rest.py 5001
+uv run python pybiscus/session/node/node.py 5001
 

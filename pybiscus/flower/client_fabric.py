@@ -58,7 +58,7 @@ class ConfigSslClient(BaseModel):
         he PEM-encoded root certificates path
     """
 
-    PYBISCUS_ALIAS: ClassVar[str] = "SSL Flower client"
+    PYBISCUS_ALIAS: ClassVar[str] = "SSL configuration"
 
     secure_cnx: bool
     root_certificate: Optional[str] = None

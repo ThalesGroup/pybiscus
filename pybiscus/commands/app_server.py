@@ -221,25 +221,21 @@ def launch_config(
     # load the data management strategy from registry
     data = datamodule_registry[conf["data"].name](**conf_data)
     data.setup(stage="test")
-    _test_set = data.test_dataloader()
-    test_set = fabric._setup_dataloader(_test_set)
+    test_set = fabric._setup_dataloader(data.test_dataloader())
 
     initial_parameters = None
+    initial_parameters_log_message = "No weights provided, random server-side initialization instead."
+
     if weights_path is not None:
         state = fabric.load(weights_path)["model"]
         model.load_state_dict(state)
+        initial_parameters_log_message = f"Loaded weights from {weights_path}"
 
-        params = torch.nn.ParameterList(
-            [param.detach().cpu().numpy() for param in model.parameters()]
-        )
-        initial_parameters = fl.common.ndarrays_to_parameters(params)
-        console.log(f"Loaded weights from {weights_path}")
-    else:
-        params = torch.nn.ParameterList(
-            [param.detach().cpu().numpy() for param in model.parameters()]
-        )
-        initial_parameters = fl.common.ndarrays_to_parameters(params)
-        console.log("No weights provided, random server-side initialization instead.")
+    params = torch.nn.ParameterList(
+        [param.detach().cpu().numpy() for param in model.parameters()]
+    )
+    initial_parameters = fl.common.ndarrays_to_parameters(params)
+    console.log(initial_parameters_log_message)
 
     # NB : if the initial_parameters had been None
     # the behaviour would have been : Requesting initial parameters from one random client

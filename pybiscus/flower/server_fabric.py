@@ -37,7 +37,7 @@ class ConfigSslServer(BaseModel):
     server_private_key_path = private key path
     """
 
-    PYBISCUS_ALIAS: ClassVar[str] = "SSL Flower server"
+    PYBISCUS_ALIAS: ClassVar[str] = "SSL configuration"
 
     root_certificate_path:   str = Field( default=None, description="root certificate path" )
     server_certificate_path: str = Field( default=None, description="server certificate path" )
