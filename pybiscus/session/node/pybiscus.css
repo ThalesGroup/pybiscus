@@ -1,4 +1,10 @@
 
+* {
+    border-radius: 6px;
+}
+
+/* management of union fields >>> begin >>> */
+
 .pybiscus-fieldset-container {
     display: flex;
     flex-direction: row;
@@ -30,20 +36,107 @@
     display: none;
 }
 
-.pybiscus-config {
-    background-color: gray;
-    color: orange;
-    border: 1px solid orange;
-    padding: 2px;
-    margin-bottom: 4px;
-}
-
 [data-pybiscus-status="ignored"] {
     background-color: #f0f0f0; /* light grey */
 }
 
 [data-pybiscus-status="valid"] {
     background-color: #e0f7fa; /* very light blue */
+}
+
+/* management of union fieds <<< end <<< */
+
+
+
+/* management of optional fieds >>> begin >>> */
+
+.pybiscus-option-cb {
+    accent-color: red;
+  }
+
+.pybiscus-camouflaged-fieldset {
+    border: none;
+    padding: 0;
+    margin: 0;
+}
+
+.pybiscus-option-fs.pybiscus-camouflaged-fieldset > *:not(legend) {
+    display: none;
+}
+
+.pybiscus-option-fs:not(.pybiscus-camouflaged-fieldset) 
+    > .pybiscus-tab-container {
+
+    display: flex;
+    flex-wrap: nowrap; /* évite les retours à la ligne */
+    gap: 8px; /* facultatif : espace entre les éléments */
+    border-bottom: initial;
+}
+
+.pybiscus-option-fs:not(.pybiscus-camouflaged-fieldset) 
+    > .pybiscus-tab-container 
+    > .pybiscus-tab-buttons {
+
+    display: inline;
+    border-bottom: initial;
+}
+
+.pybiscus-option-fs:not(.pybiscus-camouflaged-fieldset) 
+    > .pybiscus-tab-container 
+    > .pybiscus-tab-buttons
+    > .pybiscus-tab-button {
+
+    border: initial;
+    padding: initial;
+    cursor: auto;
+    border-bottom: initial;
+    margin-right: initial;
+    display: inline;
+}
+
+.pybiscus-option-fs:not(.pybiscus-camouflaged-fieldset) 
+    > .pybiscus-tab-container 
+    > .pybiscus-tab-content {
+
+    padding: initial;
+    border-top: initial;
+}
+
+.pybiscus-option-fs:not(.pybiscus-camouflaged-fieldset) 
+    > .pybiscus-tab-container 
+    > .pybiscus-tab-buttons
+    > .pybiscus-tab-button:not(:first-child) {
+
+    display: none;
+}
+
+/* management of optional fieds <<< end <<< */
+
+
+
+/* management of fieldset locking >>> begin >>> */
+
+.pybiscus-fieldset-container.pybiscus-locked > legend .pybiscus-config::after {
+    content: " 🔒 ";
+    font-size: 0.9em;
+    color: #555;
+}
+    
+.pybiscus-fieldset-container.pybiscus-locked > .pybiscus-tab-container > .pybiscus-tab-buttons > .pybiscus-tab-button:not(.active) {
+    display: none;
+}
+
+/* management of fieldset locking <<< end <<< */
+    
+
+
+/* for fields that correspond to pybiscus configuration items */
+.pybiscus-config {
+    background-color: gray;
+    color: orange;
+    border: 1px solid orange;
+    padding: 2px;
+    margin-bottom: 4px;
 }
 
 .pybiscus-control-container {
@@ -64,14 +157,3 @@
     color: red;
 }
 
-/* management of fieldset locking --- begin --- */
-.pybiscus-fieldset-container.pybiscus-locked > legend .pybiscus-config::after {
-content: " 🔒 ";
-font-size: 0.9em;
-color: #555;
-}
-
-.pybiscus-fieldset-container.pybiscus-locked > .pybiscus-tab-container > .pybiscus-tab-buttons > .pybiscus-tab-button:not(.active) {
-display: none;
-}
-/* management of fieldset locking --- end --- */

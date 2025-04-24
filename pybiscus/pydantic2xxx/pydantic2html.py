@@ -177,11 +177,8 @@ def generate_field_html(field_name: str, field_type, field_required: bool, field
 
             # ### Union ###
             
-            prefix += f"{field_name}."
-            field_html += f'<fieldset class="pybiscus-fieldset-container" data-pybiscus-prefix="{prefix[:-1]}">\n'
-            field_html += f'  <legend><div class="pybiscus-config">{field_name}</div></legend>\n'
-
-            tab_nb = new_index()
+            # Optional[Type] is encoded by pedantic as : Union(Type, NoneType)
+            is_an_option = len(field_type.__args__) == 2 and field_type.__args__[1] is type(None)
 
             # determine the active tab index
 
@@ -197,6 +194,18 @@ def generate_field_html(field_name: str, field_type, field_required: bool, field
                         active_index = index
                         propagate_default = True
                         break
+
+            prefix += f"{field_name}."
+            optional_fs_class = "pybiscus-option-fs" if is_an_option else ""
+            field_html += f'<fieldset class="pybiscus-fieldset-container {optional_fs_class}" data-pybiscus-prefix="{prefix[:-1]}">\n'
+
+            field_html += f'  <legend><div class="pybiscus-config">{field_name}'
+            if is_an_option:
+                opt_checked = "checked" if active_index == 1 else ""
+                field_html += f' ❓ <input type="checkbox" class="pybiscus-option-cb" {opt_checked} > '
+            field_html += '</div></legend>\n'
+
+            tab_nb = new_index()
 
             field_html += '''   <div class="pybiscus-tab-container">
     <div class="pybiscus-tab-buttons">
@@ -226,7 +235,9 @@ def generate_field_html(field_name: str, field_type, field_required: bool, field
                     active = ''
                     status = 'data-pybiscus-status="ignored"'
 
-                field_html += f'<div id="tab{tab_nb}-{index}" class="pybiscus-tab-content {active}" {status}>\n' 
+                opt_first = "" if index > 1 else "pybiscus-first-tab-content"
+
+                field_html += f'<div id="tab{tab_nb}-{index}" class="pybiscus-tab-content {active} {opt_first}" {status}>\n' 
 
                 if propagate_default and index == active_index:
                     sub_field_default = field_default 

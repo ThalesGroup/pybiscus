@@ -22,6 +22,35 @@
 
 <script>
 
+    // *** optional fields management ***
+    document.querySelectorAll('.pybiscus-option-cb').forEach(cb => {
+        console.log("CB option");
+        const fieldset = cb.closest('fieldset');
+        console.log(fieldset);
+    
+        the_tabs_sel = ':scope > .pybiscus-tab-container > .pybiscus-tab-buttons > .pybiscus-tab-button ';
+        const the_tabs = Array.from(fieldset.querySelectorAll(the_tabs_sel));
+        console.log(the_tabs);
+    
+        cb.addEventListener('change', () => {
+            if (the_tabs.length < 2) {
+                console.log('moins de 2');
+                return;
+            }
+        
+            // select option tab according to checkbox status
+            if (cb.checked) {
+                fieldset.classList.remove('pybiscus-camouflaged-fieldset');
+                the_tabs[0].click();
+            } else {
+                fieldset.classList.add('pybiscus-camouflaged-fieldset');
+                the_tabs[1].click();
+            }
+        });
+
+        cb.dispatchEvent(new Event('change'));
+    });
+
     // *** tab selection management ***
     document.querySelectorAll('.pybiscus-tab-container').forEach(container => {
 
@@ -56,6 +85,7 @@
         });
     });
 
+
     // *** radio buttons management ***
     const radioButtons = document.querySelectorAll('input[type="radio"].pybiscus_radiobutton');
 
@@ -85,6 +115,7 @@
             radio.parentElement.setAttribute('data-pybiscus-status', 'ignored');
         }
     });
+
 
     function traverseDOM(element, data) {
 
@@ -153,7 +184,7 @@
     function set_option(prefix, value) {
         const fieldset = document.querySelector(`.pybiscus-fieldset-container[data-pybiscus-prefix="${prefix}"]`);
         if (!fieldset) return;
-   	//console.log("fieldset found : ", prefix)
+   	    //console.log("fieldset found : ", prefix)
 
         const my_buttons  = ':scope > .pybiscus-tab-container > .pybiscus-tab-buttons > .pybiscus-tab-button'
 
