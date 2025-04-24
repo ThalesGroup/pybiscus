@@ -68,8 +68,8 @@
     > .pybiscus-tab-container {
 
     display: flex;
-    flex-wrap: nowrap; /* évite les retours à la ligne */
-    gap: 8px; /* facultatif : espace entre les éléments */
+    flex-wrap: nowrap;
+    gap: 8px;
     border-bottom: initial;
 }
 
@@ -123,6 +123,11 @@
 }
     
 .pybiscus-fieldset-container.pybiscus-locked > .pybiscus-tab-container > .pybiscus-tab-buttons > .pybiscus-tab-button:not(.active) {
+    display: none;
+}
+
+/* locking an optional removes the checkbox that permits switching between type and None */
+.pybiscus-fieldset-container.pybiscus-locked > legend input[type="checkbox"] {
     display: none;
 }
 
