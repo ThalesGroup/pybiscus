@@ -1,0 +1,83 @@
+
+*1* launch the server :
+ ./launch/node/cli/5000.sh
+
+*2* launch the manager back-end :
+./launch/session/run_manager.sh
+
+-- access the manager front-end : 
+
+    browse http://localhost:5555/manage
+
+    which loads html pages :
+        HTTP GET manager_url/visualize
+        HTTP GET server_url/session/config
+
+*3* launch client1 :
+ ./launch/node/cli/5001.sh
+
+-- access the client1 front-end : 
+
+    browse http://localhost:5001/session/client/registration/waiting
+
+    poll back-end : 
+        HTTP GET /session/client/registration/check
+        <- {'redirect': boolean }
+
+
+*4* declare client1 :
+./launch/session/start1.sh
+
+    client1 back-end -> manager
+        HTTP POST manager_url/register { "name": name, "client_url": client_url }
+
+    negative response:
+        <- { "status": "error", "message": message }
+
+    positive response:
+        <- { "status": "success", "message": message, "server" : server_url }
+
+        post registration info to the client back-end
+        HTTP POST client_url/session/client/registration { "client_name": name, "manager_url": manager_url,"server_url": server_url }
+
+        which conducts client front-end, polling on /session/client/registration/check
+        to redirect to /session/client/parameters/server_polling
+
+
+*5* launch client2 :
+ ./launch/node/cli/5002.sh
+
+-- access the client2 front-end : 
+
+    browse http://localhost:5002/session/client/registration/waiting
+
+    ...
+
+*6* declare client2 :
+./launch/session/start2.sh
+
+    client2 back-end -> manager
+        HTTP POST manager_url/register { "name": name, "client_url": client_url }
+
+    ...
+
+
+
+
+*** Set the session parameters from the server_url/session/config page viewed in manager front-end
+
+    redirect server front-end to : HTTP GET /server/config?param=paramStr
+
+*** client front-end poll the server 
+        HTTP GET server_url/session/server/parameters/check'
+        <- {"ready": True, "params": session_parameters}
+        or
+        <- {"ready": False}
+
+        if True:
+
+            send the session parameters to its back-end
+            HTTP POST /session/client/parameters session_parameters
+
+            redirect to /client/config
+

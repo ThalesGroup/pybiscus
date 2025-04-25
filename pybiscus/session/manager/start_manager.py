@@ -98,7 +98,7 @@ MAIN_TEMPLATE="""
             <iframe src="/visualize"></iframe>
         </div>
         <div class="right">
-            <p>Server URL: <strong>{{ server_url }}</strong></p>
+            <p>Pybiscus Server Agent URL: <strong>{{ server_url }}</strong></p>
             <iframe src="{{server_url}}/session/config"></iframe>
         </div>
     </div>
@@ -229,14 +229,14 @@ def register():
                     "status": "success",
                     "message": f"Client '{name}' already registered.",
                     "server" : server_url,
-                    "registered_clients": list(registered_clients.keys())
+                    # "registered_clients": list(registered_clients.keys())
                 })
 
             else:
                 return jsonify({
                     "status": "error",
                     "message": f"Client '{name}' already registered with a different URL.",
-                    "registered_clients": list(registered_clients.keys())
+                    # "registered_clients": list(registered_clients.keys())
                 })
 
         registered_clients[name] = client_url
@@ -245,7 +245,7 @@ def register():
             "status": "success",
             "message": f"Client '{name}' registered.",
             "server" : server_url,
-            "registered_clients": list(registered_clients.keys())
+            # "registered_clients": list(registered_clients.keys())
         })
     else:
         return jsonify({"status": "error", "message": "Missing 'name' or 'client_url'"}), 400

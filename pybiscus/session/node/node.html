@@ -210,8 +210,8 @@
     }
     
     function set_options(options) {
-        for (const [prefix, value] of Object.entries(options)) {
-            set_option(prefix, value);
+        for (const [name, option] of Object.entries(options)) {
+            set_option(name, option);
         }
     }
 
@@ -226,6 +226,50 @@
     }
  
      
+    function set_value(data_pybiscus_name, value) {
+
+        const element = document.querySelector(`[data-pybiscus-name="${data_pybiscus_name}"]`);
+        if (!element) {
+            console.error("set_value : value not found = ", data_pybiscus_name);
+            return;
+        }
+
+        if( element.tagName === "INPUT" ) {
+            console.log( `set_value: ${data_pybiscus_name} = ${value}` );
+            if( element.type === "checkbox" ) {
+                element.checked = JSON.parse(value);
+            } else if( element.type === "text" ) {
+                element.value = value;
+            } else {
+                element.value = value;
+            }
+        } else {
+            console.log( "field is not an input" );
+        }
+    }
+
+    function set_values(values) {
+        for (const [name, value] of Object.entries(values)) {
+            set_value(name, value);
+        }
+    }
+
+    function lock_value(data_pybiscus_name) {
+
+        const input = document.querySelector(`[data-pybiscus-name="${data_pybiscus_name}"]`);
+        if (!input) {
+            console.error("lock_value : value not found = ", data_pybiscus_name);
+            return;
+        }
+
+        input.readOnly = true;
+
+        const label = input.previousElementSibling;
+        if (label && label.tagName.toLowerCase() === 'label') {
+            label.classList.add('pybiscus-locked');
+        }
+    }
+
     document.addEventListener("DOMContentLoaded", () => {
 
         ON_DOCUMENT_LOAD_JS

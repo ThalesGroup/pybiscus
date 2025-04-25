@@ -25,16 +25,24 @@ rest_server = Flask(__name__)
 
 #TODO: CORS origin is *
 CORS(rest_server, origins="*")
-#CORS(rest_server, origins=["http://localhost:5001"])  # autorise ton frontend
+#CORS(rest_server, origins=["http://localhost:5001"])
 
 session_parameters = {}
+session_client_id_counter = 0
 session_server_url = None
 session_manager_url = None
 session_client_name = None
 
+def generate_new_cid():
+    global session_client_id_counter
+    session_client_id_counter += 1
+    return str(session_client_id_counter)
+
 def reset_session():
     global session_parameters
     session_parameters = {}
+    global session_client_id_counter
+    session_client_id_counter = 0
     global session_server_url
     session_server_url = None
     global session_manager_url
@@ -184,9 +192,11 @@ def serverConfigUpload():
 @rest_server.route("/client/config", methods=["GET"])
 def clientConfigDownload():
     """get the client parameters form
-    if global session_parameters dict is defined :
-    - options values can be set
+    if the global session_parameters dict is defined :
+    - options can be set
     - options can be locked to the active value with change not permitted
+    - values can be set
+    - values can be locked as the input field is set read only
     """
     param_js = "console.log(\"generate_model_page() called from HTTP GET @ /client/config\" );"
 
@@ -194,8 +204,7 @@ def clientConfigDownload():
 
             param_js = generate_param_js(session_parameters)
 
-            console.log("client: stored session parameters: ", session_parameters)
-            # console.log("generated params :\n", param_js)
+            console.log("client: downloaded parameters: ", session_parameters)
 
     return generate_model_page(ConfigClient,'pybiscus.session.node','node.html','check_exec_buttons', param_js)
 
@@ -373,10 +382,16 @@ def generate_param_js(payload):
         "options_set": {
             "model" : "Cifar 10",
             "data" : "Cifar 10"
-            "ssl" : "None",
+            "ssl" : "None"
         },
 
-        "options_lock": [ "model", "data", "ssl" ]
+        "options_lock": [ "model", "data", "ssl" ],
+
+        "values_set": {
+            "cid" : "17"
+        },
+
+        "values_lock": [ "cid" ]
     }
     """
 
@@ -386,23 +401,33 @@ def generate_param_js(payload):
     prefixes = list(options_set.keys())
     prefixes_str = ", ".join(f'"{key}"' for key in prefixes)
 
-    new_values_items = ", ".join(f"'{key}' : '{value}'" for key, value in options_set.items())
+    new_option_items = ", ".join(f"'{key}' : '{value}'" for key, value in options_set.items())
+    option_lock_lines = "\n".join(f'lock_option("{opt}");' for opt in options_lock)
 
-    lock_lines = "\n".join(f'lock_option("{opt}");' for opt in options_lock)
+    values_set = payload.get("values_set", {})
+    values_lock = payload.get("values_lock", [])
+
+    new_values_items = ", ".join(f"'{key}' : '{value}'" for key, value in values_set.items())
+    value_lock_lines = "\n".join(f'lock_value("{opt}");' for opt in values_lock)
 
     param_js = f'''
-const prefixes = [{prefixes_str}];
+        const prefixes = [{prefixes_str}];
 
-let selected = selected_options(prefixes);
-console.log("✅ Selected options:", selected);
+        let selected = selected_options(prefixes);
+        console.log("✅ Selected options before :", selected);
 
-const new_values = {{ {new_values_items} }}
-set_options( new_values );
+        const new_options = {{ {new_option_items} }}
+        set_options( new_options );
 
-selected = selected_options(prefixes);
-console.log("✅ Selected options 2:", selected);
+        selected = selected_options(prefixes);
+        console.log("✅ Selected options after :", selected);
 
-{lock_lines}
+        {option_lock_lines}
+
+        const new_values = {{ {new_values_items} }}
+        set_values( new_values );
+
+        {value_lock_lines}
 '''.strip()
 
     return param_js
@@ -436,7 +461,12 @@ def set_parameters():
 def check_parameters():
 
     if session_parameters:
-        return jsonify({"ready": True, "params": session_parameters})
+
+        client_params = session_parameters.copy()
+        client_params["values_set"] = { "cid" : generate_new_cid() }
+        client_params["values_lock"] = [ "cid" ]    
+
+        return jsonify({"ready": True, "params": client_params})
     else:
         return jsonify({"ready": False})
 

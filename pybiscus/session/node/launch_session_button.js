@@ -35,7 +35,7 @@ launch_session_button.addEventListener('click', function() {
 
     console.log( data );
 
-    // Encodage du paramètre JSON pour l'URL
+    // JSON parameter encoding
     const paramStr = encodeURIComponent(JSON.stringify(data));
 
     // allow back function
