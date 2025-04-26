@@ -6,7 +6,7 @@ import torch.nn as nn
 import torch.optim as optim
 from pydantic import BaseModel, ConfigDict
 
-from pybiscus.ml.data.randomvector.randomvector_datamodule import RandomVectorLightningDataModule
+# from pybiscus.ml.data.randomvector.randomvector_datamodule import RandomVectorLightningDataModule
 
 # ------------------------------------------------------------------------------------
 
@@ -114,21 +114,21 @@ class LitLinearRegression(pl.LightningModule):
     def configure_optimizers(self):
         return optim.Adam(self.parameters(), lr=self.hparams.learning_rate)
 
-if __name__ == "__main__":
+# if __name__ == "__main__":
 
-    # Exemple d'utilisation
-    input_dim = 1
-    output_dim = 1
+#     # Exemple d'utilisation
+#     input_dim = 1
+#     output_dim = 1
 
-    # Initialiser le DataModule
-    data_module = RandomVectorLightningDataModule(num_samples=320, feature_dim=input_dim, batch_size=32)
+#     # Initialiser le DataModule
+#     data_module = RandomVectorLightningDataModule(num_samples=320, feature_dim=input_dim, batch_size=32)
 
-    # Initialiser le modèle
-    model = LitLinearRegression(input_dim=input_dim, output_dim=output_dim, _logging = True )
+#     # Initialiser le modèle
+#     model = LitLinearRegression(input_dim=input_dim, output_dim=output_dim, _logging = True )
 
-    # Initialiser le Trainer
-    trainer = pl.Trainer(max_epochs=10)
+#     # Initialiser le Trainer
+#     trainer = pl.Trainer(max_epochs=10)
 
-    # Entraîner le modèle
-    trainer.fit(model, datamodule=data_module)
+#     # Entraîner le modèle
+#     trainer.fit(model, datamodule=data_module)
 

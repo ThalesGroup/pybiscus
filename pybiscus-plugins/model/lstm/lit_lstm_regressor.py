@@ -5,7 +5,7 @@ import torch
 import torch.nn as nn
 from pydantic import BaseModel, ConfigDict
 
-from pybiscus.ml.models.lstm.lstm_regressor import LSTMRegressor
+from lstm.lstm_regressor import LSTMRegressor
 
 
 class ConfigLSTM(BaseModel):

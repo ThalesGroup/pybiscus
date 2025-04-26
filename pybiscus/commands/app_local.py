@@ -49,10 +49,10 @@ def train_config(config: Annotated[Path, typer.Argument()] = None):
 
     conf_loaded = load_config(config)
 
-    model = model_registry[conf_loaded["model"]["name"]](
+    model = model_registry()[conf_loaded["model"]["name"]](
         **conf_loaded["model"]["config"], _logging=True
     )
-    data = datamodule_registry[conf_loaded["data"]["name"]](**conf_loaded["data"]["config"])
+    data = datamodule_registry()[conf_loaded["data"]["name"]](**conf_loaded["data"]["config"])
 
     trainer = Trainer(
         default_root_dir=Path(conf_loaded["root_dir"]) / "experiments/local/",

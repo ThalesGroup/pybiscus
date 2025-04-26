@@ -6,7 +6,7 @@ import torch.nn as nn
 from pydantic import BaseModel, ConfigDict, Field
 from torchmetrics import Accuracy
 
-from pybiscus.ml.models.cnn.cnn import net
+from cnn.cnn import net
 
 # ------------------------------------------------------------------------------------
 

@@ -3,7 +3,7 @@ from typing import Literal, Optional, ClassVar
 import lightning.pytorch as pl
 from pydantic import BaseModel, ConfigDict
 from torch.utils.data import DataLoader
-from pybiscus.ml.data.turbofan.turbofan_data import turbofan_dataset
+from turbofan.turbofan_data import turbofan_dataset
 
 
 class ConfigTurbofanData(BaseModel):

@@ -119,10 +119,10 @@ def sessionConfigDownload():
     the button calls the /server/config?param={json} service
     in order to get a customized server config
     """
-    models_names = list(datamodule_registry.keys())
-    data_names = list(model_registry.keys())
+    models_names = list(datamodule_registry().keys())
+    data_names = list(model_registry().keys())
 
-    config_session = make_session_model(models_names, ModelConfig, data_names, DataConfig)
+    config_session = make_session_model(models_names, ModelConfig(), data_names, DataConfig() )
 
     return generate_model_page(config_session,'pybiscus.session.node','node.html','launch_session_button')
 

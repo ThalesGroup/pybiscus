@@ -86,8 +86,8 @@ class ConfigClient(BaseModel):
     server_adress: str  = "localhost:3333"
     root_dir: str       = "${oc.env:PWD}"
     fabric:             ConfigFabric
-    model:              ModelConfig # pyright: ignore[reportInvalidTypeForm]
-    data:               DataConfig # pyright: ignore[reportInvalidTypeForm]
+    model:              ModelConfig() # pyright: ignore[reportInvalidTypeForm]
+    data:               DataConfig() # pyright: ignore[reportInvalidTypeForm]
     ssl:                Optional[ConfigSslClient] = None
 
     model_config = ConfigDict(extra="forbid")

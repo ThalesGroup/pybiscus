@@ -1,0 +1,16 @@
+data:
+  - path: "./pybiscus-plugins/data"
+    modules:
+      - cifar10
+      - randomvector
+      - turbofan
+model:
+  - path: "./pybiscus-plugins/model"
+    modules:
+      - cnn
+      - linearregression
+      - lstm
+strategy:
+  - path: "./pybiscus-plugins/strategy"
+    modules:
+      - fedavg

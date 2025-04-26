@@ -3,7 +3,7 @@ from typing import Dict, List, Tuple
 import lightning.pytorch as pl
 from pydantic import BaseModel
 
-from pybiscus.ml.models.cnn.lit_cnn import ( LitCNN, ConfigModel_Cifar10, )
+from cnn.lit_cnn import ( LitCNN, ConfigModel_Cifar10, )
 
 def get_modules_and_configs() -> Tuple[Dict[str, pl.LightningModule], List[BaseModel]]:
 

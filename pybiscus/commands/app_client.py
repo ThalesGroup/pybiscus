@@ -150,14 +150,14 @@ def launch_config(
 
     conf, conf_data, conf_model = check_and_build_client_config(config=conf_loaded)
 
-    data = datamodule_registry[conf["data"].name](**conf_data)
+    data = datamodule_registry()[conf["data"].name](**conf_data)
     data.setup(stage="fit")
     num_examples = {
         "trainset": len(data.train_dataloader()),
         "valset": len(data.val_dataloader()),
     }
 
-    net = model_registry[conf["model"].name](**conf_model)
+    net = model_registry()[conf["model"].name](**conf_model)
     client = FlowerClient(
         cid=conf["cid"],
         model=net,

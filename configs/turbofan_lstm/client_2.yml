@@ -13,7 +13,7 @@ model:
 data:
   name: turbofan
   config:
-    data_path: ${root_dir}/pybiscus/ml/data/turbofan/turbofan.txt
+    data_path: ${root_dir}/pybiscus-plugins/data/turbofan/turbofan.txt
     engines_train_list: [2]
     engines_val_list: [64]
     engines_test_list: [69]

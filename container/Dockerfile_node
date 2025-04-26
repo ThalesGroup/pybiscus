@@ -42,10 +42,12 @@ ENV PYTHON_VERSION=${PYTHON_VERSION}
 WORKDIR /app
 
 RUN mkdir datasets
-COPY pybiscus           ./pybiscus
-COPY bin           ./bin
-COPY certificates/ ./certificates
-COPY configs/      ./configs
+COPY pybiscus                  ./pybiscus
+COPY pybiscus-plugins          ./pybiscus-plugins
+COPY pybiscus-plugins-conf.yml ./pybiscus-plugins-conf.yml
+COPY bin                       ./bin
+COPY certificates/             ./certificates
+COPY configs/                  ./configs
 
 # Install python and pin the current used version
 RUN uv python install 3.12

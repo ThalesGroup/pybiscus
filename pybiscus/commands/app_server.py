@@ -214,12 +214,12 @@ def launch_config(
     fabric.launch()
 
     # load the model
-    model_class = model_registry[conf["model"].name]
+    model_class = model_registry()[conf["model"].name]
     model = model_class(**conf_model)
     model = fabric.setup_module(model)
 
     # load the data management strategy from registry
-    data = datamodule_registry[conf["data"].name](**conf_data)
+    data = datamodule_registry()[conf["data"].name](**conf_data)
     data.setup(stage="test")
     test_set = fabric._setup_dataloader(data.test_dataloader())
 
@@ -241,7 +241,7 @@ def launch_config(
     # the behaviour would have been : Requesting initial parameters from one random client
     # Question: add this as a configuration option ?
 
-    strategy_class = strategy_registry[conf["strategy"].name]
+    strategy_class = strategy_registry()[conf["strategy"].name]
 
     strategy = strategy_class(
         fit_metrics_aggregation_fn=weighted_average,

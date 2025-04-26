@@ -13,4 +13,4 @@ saved_models_path
 *.code-workspace
 **/.ruffcache
 **/lightning_logs
-pybiscus/ml/models/others
+pybiscus-plugins/models/others

@@ -72,10 +72,10 @@ class ConfigServer(BaseModel):
     save_on_train_end: bool = False
 
     logger:            Optional[ConfigLogger]
-    strategy:          StrategyConfig # pyright: ignore[reportInvalidTypeForm]
+    strategy:          StrategyConfig() # pyright: ignore[reportInvalidTypeForm]
     fabric:            ConfigFabric
-    model:             ModelConfig # pyright: ignore[reportInvalidTypeForm]
-    data:              DataConfig # pyright: ignore[reportInvalidTypeForm]
+    model:             ModelConfig() # pyright: ignore[reportInvalidTypeForm]
+    data:              DataConfig() # pyright: ignore[reportInvalidTypeForm]
     ssl:               Optional[ConfigSslServer] = None
 
     model_config = ConfigDict(extra="forbid")
