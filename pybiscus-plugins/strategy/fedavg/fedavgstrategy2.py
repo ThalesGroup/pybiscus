@@ -63,9 +63,9 @@ class ConfigFabricFedAvgStrategyData2(BaseModel):
 
 class ConfigFabricFedAvgStrategy2(BaseModel):
 
-    PYBISCUS_ALIAS: ClassVar[str] = "FedAvg2"
+    PYBISCUS_ALIAS: ClassVar[str] = "FedAvgExtended"
 
-    name:   Literal["fedavg2"]
+    name:   Literal["fedavgextended"]
     config: ConfigFabricFedAvgStrategyData2
 
     model_config = ConfigDict(extra="forbid")

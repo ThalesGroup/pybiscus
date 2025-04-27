@@ -12,7 +12,8 @@ from pydantic import BaseModel, ConfigDict, Field
 from pybiscus.core.console import console
 from pybiscus.flower.client_fabric import ConfigFabric
 from pybiscus.ml.loops_fabric import test_loop
-from pybiscus.core.registries import ModelConfig, DataConfig, StrategyConfig
+from pybiscus.core.registries import ModelConfig, DataConfig, StrategyConfig, LoggerConfig
+
 
 class ConfigLogger(BaseModel):
 
@@ -54,6 +55,7 @@ class ConfigServer(BaseModel):
     server_adress: str = the server adress and port
     root_dir: str      = the path to a "root" directory, relatively to which can be found Data, Experiments and other useful directories
     logger: str        = the config for the logger.
+    future_logger      = future config for the logger (using plugins).
     strategy           = arguments for the needed Strategy
     fabric             = keywords for the Fabric instance
     model              = keywords for the LightningModule used
@@ -72,6 +74,8 @@ class ConfigServer(BaseModel):
     save_on_train_end: bool = False
 
     logger:            Optional[ConfigLogger]
+    future_logger:            Optional[LoggerConfig()] = None # pyright: ignore[reportInvalidTypeForm]
+    #future_logger:            LoggerConfig()  # pyright: ignore[reportInvalidTypeForm]
     strategy:          StrategyConfig() # pyright: ignore[reportInvalidTypeForm]
     fabric:            ConfigFabric
     model:             ModelConfig() # pyright: ignore[reportInvalidTypeForm]

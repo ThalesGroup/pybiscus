@@ -7,7 +7,7 @@ from fedavg.fedavgstrategy2 import FabricFedAvgStrategy2, ConfigFabricFedAvgStra
 
 def get_modules_and_configs() -> Tuple[Dict[str, Strategy], List[BaseModel]]:
 
-    registry = { "fedavg2": FabricFedAvgStrategy2, }
+    registry = { "fedavgextended": FabricFedAvgStrategy2, }
     configs  = [ConfigFabricFedAvgStrategy2,]
 
     return registry, configs

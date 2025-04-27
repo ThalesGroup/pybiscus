@@ -1,6 +1,7 @@
+from typing_extensions import Annotated
 from pydantic import BaseModel
 from pydantic.fields import PydanticUndefined
-from typing import Optional, Union, Literal
+from typing import Optional, Union, Literal, get_args, get_origin
 from enum import Enum
 
 import inspect
@@ -74,6 +75,12 @@ def generate_field_html(field_name: str, field_type, field_required: bool, field
     if prefixed_name.endswith("."):
         prefixed_name = prefixed_name[:-1]
     pybiscus_marker = f' data-pybiscus-name="{prefixed_name}" '
+
+    # while get_origin(field_type) is Annotated:
+
+    #     # ### Annotated
+    #     field_type, *annotations = get_args(field_type)
+            
 
     # generate HTML field according to type
     if field_type is str:
@@ -173,12 +180,36 @@ def generate_field_html(field_name: str, field_type, field_required: bool, field
                 field_html += html_label( "value" )
                 field_html += f'  <input type="text" id="{field_name}_val_{index}" name="{field_name}_val_{index}" placeholder="value_{index}" {opt_value}><br>\n'
 
-        elif field_type.__origin__ is Union:
+        elif get_origin(field_type) is Annotated or get_origin(field_type) is Union:
 
-            # ### Union ###
+            # an Annotated field is handled as an Union of only one type
+            # as is it simplified by python / typing
+
+            if get_origin(field_type) is Annotated:
+
+                # ### Annotated ###
+
+                # consider the inner field_type
+                field_type, *params = get_args(field_type)
+
+            if get_origin(field_type) is not Union:
+
+                is_an_union = False
+                is_an_option = False
+
+                # consider the inner field_type
+                field_type = get_args(field_type)
+
+            else:
+
+                # ### Union ###
+
+                is_an_union = True
             
-            # Optional[Type] is encoded by pedantic as : Union(Type, NoneType)
-            is_an_option = len(field_type.__args__) == 2 and field_type.__args__[1] is type(None)
+                # ### Optional ###
+
+                # Optional[Type] is encoded by pedantic as : Union(Type, NoneType)
+                is_an_option = len(field_type.__args__) == 2 and field_type.__args__[1] is type(None)
 
             # determine the active tab index
 
@@ -186,24 +217,26 @@ def generate_field_html(field_name: str, field_type, field_required: bool, field
             active_index = 1
             propagate_default = False
 
-            # if there is a default, check type
-            if field_default is not PydanticUndefined:
-                field_default_type = type( field_default )
-                for index, sub_type in enumerate( field_type.__args__, 1 ):
-                    if sub_type is field_default_type:
-                        active_index = index
-                        propagate_default = True
-                        break
+            if is_an_union:
+                # if there is a default, check type
+                if field_default is not PydanticUndefined:
+                    field_default_type = type( field_default )
+                    for index, sub_type in enumerate( field_type.__args__, 1 ):
+                        if sub_type is field_default_type:
+                            active_index = index
+                            propagate_default = True
+                            break
 
             prefix += f"{field_name}."
             optional_fs_class = "pybiscus-option-fs" if is_an_option else ""
             field_html += f'<fieldset class="pybiscus-fieldset-container {optional_fs_class}" data-pybiscus-prefix="{prefix[:-1]}">\n'
 
-            field_html += f'  <legend><div class="pybiscus-config">{field_name}'
-            if is_an_option:
-                opt_checked = "checked" if active_index == 1 else ""
-                field_html += f' ❓ <input type="checkbox" class="pybiscus-option-cb" {opt_checked} > '
-            field_html += '</div></legend>\n'
+            if field_name != "":
+                field_html += f'  <legend><div class="pybiscus-config">{field_name}'
+                if is_an_option:
+                    opt_checked = "checked" if active_index == 1 else ""
+                    field_html += f' ❓ <input type="checkbox" class="pybiscus-option-cb" {opt_checked} > '
+                field_html += '</div></legend>\n'
 
             tab_nb = new_index()
 
@@ -212,38 +245,47 @@ def generate_field_html(field_name: str, field_type, field_required: bool, field
 '''
 
             # tab generation
-            for index, sub_type in enumerate( field_type.__args__, 1 ):
 
-                if index == active_index:
-                    active = 'active'
-                    status = PydanticToHtml.valid_status
-                else:
-                    active = ''
-                    status = PydanticToHtml.ignored_status
+            if not is_an_union:
 
-                tab_name = generate_tab_name( sub_type, f'Tab {index}' )
+                index = 1
+                active = 'active'
+                status = PydanticToHtml.valid_status
+                tab_name = generate_tab_name( sub_type, 'Annotated' )
+
                 field_html += f'        <div class="pybiscus-tab-button {active}" data-tab="tab{tab_nb}-{index}" {status}>{tab_name}</div>\n'
+
+            else:
+                for index, sub_type in enumerate( field_type.__args__, 1 ):
+
+                    if index == active_index:
+                        active = 'active'
+                        status = PydanticToHtml.valid_status
+                    else:
+                        active = ''
+                        status = PydanticToHtml.ignored_status
+
+                    if is_an_option:
+                        tab_name = ''
+                    else:
+                        tab_name = generate_tab_name( sub_type, f'Tab {index}' )
+
+                    field_html += f'        <div class="pybiscus-tab-button {active}" data-tab="tab{tab_nb}-{index}" {status}>{tab_name}</div>\n'
+
             field_html += "    </div>\n"
 
             # tab content generation
-            for index, sub_type in enumerate( field_type.__args__, 1 ):
+            if not is_an_union:
 
-                if index == active_index:
-                    active = 'active'
-                    status = 'data-pybiscus-status="valid"'
-                else:
-                    active = ''
-                    status = 'data-pybiscus-status="ignored"'
-
-                opt_first = "" if index > 1 else "pybiscus-first-tab-content"
-
-                field_html += f'<div id="tab{tab_nb}-{index}" class="pybiscus-tab-content {active} {opt_first}" {status}>\n' 
-
-                if propagate_default and index == active_index:
+                active = 'active'
+                status = 'data-pybiscus-status="valid"'
+                opt_first = "pybiscus-first-tab-content"
+                if propagate_default:
                     sub_field_default = field_default 
                 else:
                     sub_field_default = PydanticUndefined
 
+                field_html += f'<div id="tab{tab_nb}-{index}" class="pybiscus-tab-content {active} {opt_first}" {status}>\n' 
                 field_html += generate_field_html(
                                 field_name        = "", 
                                 field_type        = sub_type, 
@@ -254,6 +296,37 @@ def generate_field_html(field_name: str, field_type, field_required: bool, field
                                 prefix            = prefix,
                                 )
                 field_html += '</div>\n'
+
+            else:
+                for index, sub_type in enumerate( field_type.__args__, 1 ):
+
+                    if index == active_index:
+                        active = 'active'
+                        status = 'data-pybiscus-status="valid"'
+                    else:
+                        active = ''
+                        status = 'data-pybiscus-status="ignored"'
+
+                    opt_first = "" if index > 1 else "pybiscus-first-tab-content"
+
+                    field_html += f'<div id="tab{tab_nb}-{index}" class="pybiscus-tab-content {active} {opt_first}" {status}>\n' 
+
+                    if propagate_default and index == active_index:
+                        sub_field_default = field_default 
+                    else:
+                        sub_field_default = PydanticUndefined
+
+                    field_html += generate_field_html(
+                                    field_name        = "", 
+                                    field_type        = sub_type, 
+                                    field_required    = False, 
+                                    field_default     = sub_field_default, 
+                                    field_description = PydanticUndefined,
+                                    inFieldSet        = False,
+                                    prefix            = prefix,
+                                    )
+                    field_html += '</div>\n'
+
             field_html += "</div>\n"
 
             field_html += '</fieldset>\n'
@@ -267,7 +340,7 @@ def generate_field_html(field_name: str, field_type, field_required: bool, field
         else:
 
             # ### ??? ###
-            field_html += html_label( 'Field Type not handled !!!' )
+            field_html += html_label( f'Field Type not handled !!! {field_type}' )
             field_html += html_label( field_name )
 
     elif issubclass(field_type, BaseModel):

@@ -38,8 +38,7 @@ class ConfigFabric(BaseModel):
         gpu  = "gpu"
         auto = "auto"
 
-    #accelerator: str = Field( default="auto", description="the type of accelerator to use: gpu, cpu, auto... See the Fabric documentation for more details.")
-    accelerator: Accelerator = Field( default="auto", description="the type of accelerator to use: gpu, cpu, auto... See the Fabric documentation for more details.")
+    accelerator: Accelerator = "auto"
 
     devices: Union[int, list[int], str] = "auto"
 

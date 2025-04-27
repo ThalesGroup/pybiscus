@@ -91,7 +91,7 @@ class RegistryLoader(Generic[T]):
                     print(f"❌ Error loading {full_module_name}: {e}")
 
         config_union = (
-            Annotated[Union[tuple(config_classes)], Field(discriminator="name")]
+            Annotated[Union[*config_classes], Field(discriminator="name")]
             if config_classes
             else None
         )

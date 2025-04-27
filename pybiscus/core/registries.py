@@ -1,6 +1,6 @@
 
 from collections import defaultdict
-from pybiscus.core import console
+from pybiscus.core.logger.interface.loggerfactory import LoggerFactory
 from pybiscus.core.pluginmanager import get_plugins_by_category
 from pybiscus.core.registryloader import RegistryLoader
 
@@ -54,7 +54,21 @@ def strategy_registry():
 def StrategyConfig():
     return _StrategyConfig
 
+#### --- Logger ---
+
+_logger_loader = RegistryLoader(LoggerFactory, True)
+_logger_modules = _logger_loader.get_submodules_from_path("pybiscus.core.logger") 
+_logger_modules += plugins_by_category["logger"]
+_logger_registry, _LoggerConfig = _logger_loader.register_modules( _logger_modules )
+
+def logger_registry():
+    return _logger_registry
+
+def LoggerConfig():
+    return _LoggerConfig
+
 if __name__ == "__main__":
-    print(f'Data plugins : {plugins_by_category["data"]}')
-    print(f'Model plugins : {plugins_by_category["model"]}')
-    print(f'Strategy plugins : {plugins_by_category["strategy"]}')
+    print(f'Logger plugins : {plugins_by_category["logger"]} {_logger_modules}')
+    print(f'Data plugins : {plugins_by_category["data"]} {_data_modules}')
+    print(f'Model plugins : {plugins_by_category["model"]} {_model_modules}')
+    print(f'Strategy plugins : {plugins_by_category["strategy"]} {_strategy_modules }')

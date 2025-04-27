@@ -1,6 +1,7 @@
+from typing_extensions import Annotated
 from pydantic import BaseModel
 from pydantic.fields import PydanticUndefined
-from typing import Union, Literal
+from typing import Union, Literal, get_args, get_origin
 from enum import Enum
 import inspect
 from pybiscus.pydantic2xxx.heredoc import get_basemodel_attribute_description
@@ -19,6 +20,13 @@ def generate_field_text(field_name: str, field_type, field_required: bool, field
     prefixed_name = prefix+field_name
 
     # Generate the text according to the type
+
+    while get_origin(field_type) is Annotated:
+
+        # ### Annotated
+        field_text += f'\n{prefix}# ignored Annotated\n'
+        field_type, *annotations = get_args(field_type)
+            
     if field_type in { str, int, float }:
         field_text += text_label( prefixed_name, True )
         field_text += f'{opt_value}\n'
