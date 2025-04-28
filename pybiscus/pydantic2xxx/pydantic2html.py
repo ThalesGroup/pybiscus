@@ -76,31 +76,25 @@ def generate_field_html(field_name: str, field_type, field_required: bool, field
         prefixed_name = prefixed_name[:-1]
     pybiscus_marker = f' data-pybiscus-name="{prefixed_name}" '
 
-    # while get_origin(field_type) is Annotated:
-
-    #     # ### Annotated
-    #     field_type, *annotations = get_args(field_type)
-            
-
     # generate HTML field according to type
     if field_type is str:
         opt_value = '' if (field_default is PydanticUndefined or field_default is None ) else f' value="{html.escape(field_default)}" '
         field_html += html_label( field_name, True )
-        field_html += f'  <input type="text" {opt_title} {opt_value} placeholder="string" {opt_required} {pybiscus_marker}><br>\n'
+        field_html += f'  <input type="text" {opt_title} {opt_value} placeholder="string" {opt_required} {pybiscus_marker}>\n'
 
     elif field_type is int:
         field_html += html_label( field_name, True )
-        field_html += f'  <input type="number" {opt_title} {opt_value} placeholder="integer" {opt_required} {pybiscus_marker}><br>\n'
+        field_html += f'  <input type="number" {opt_title} {opt_value} placeholder="integer" {opt_required} {pybiscus_marker}>\n'
 
     elif field_type is float:
         field_html += html_label( field_name, True )
-        field_html += f'  <input type="number" {opt_title} {opt_value} placeholder="float" {opt_required} step="0.001" {pybiscus_marker}><br>\n'
+        field_html += f'  <input type="number" {opt_title} {opt_value} placeholder="float" {opt_required} step="0.001" {pybiscus_marker}>\n'
 
     elif field_type is bool:
         opt_checked = "checked" if True == field_default else ""
         
         field_html += html_label( field_name, True )
-        field_html += f'  <input type="checkbox" id="{field_name}" name="{field_name}" {opt_title} {opt_value} {opt_checked} {pybiscus_marker}> <br>\n'
+        field_html += f'  <input type="checkbox" id="{field_name}" name="{field_name}" {opt_title} {opt_value} {opt_checked} {pybiscus_marker}> \n'
 
     elif inspect.isclass(field_type) and issubclass(field_type, Enum):
         
@@ -143,7 +137,7 @@ def generate_field_html(field_name: str, field_type, field_required: bool, field
                 #for i in range(default_list_len):  
                 #    field_html += f'  <input type="number" name="{field_name}_{i}" placeholder="integer">\n'
 
-                field_html += f'  <input type="text" {opt_title} {opt_value} placeholder="comma separated int list" {pybiscus_marker}><br>\n'
+                field_html += f'  <input type="text" {opt_title} {opt_value} placeholder="comma separated int list" {pybiscus_marker}>\n'
 
             elif field_type.__args__[0] is str:
                 field_html += html_label( field_name, True )
@@ -151,7 +145,7 @@ def generate_field_html(field_name: str, field_type, field_required: bool, field
                 #for i in range(default_list_len):  
                 for i in range(0):  
                     field_html += f'  <input type="text" name="{field_name}_{i}" placeholder="string">\n'
-            field_html += f'  <br>\n'
+            field_html += f'  \n'
 
         elif field_type.__origin__ is dict:
 
@@ -178,7 +172,7 @@ def generate_field_html(field_name: str, field_type, field_required: bool, field
                 field_html += html_label( "key" )
                 field_html += f'  <input type="text" id="{field_name}_key_{index}" name="{field_name}_key_{index}" placeholder="key_{index}" {opt_key}>\n'
                 field_html += html_label( "value" )
-                field_html += f'  <input type="text" id="{field_name}_val_{index}" name="{field_name}_val_{index}" placeholder="value_{index}" {opt_value}><br>\n'
+                field_html += f'  <input type="text" id="{field_name}_val_{index}" name="{field_name}_val_{index}" placeholder="value_{index}" {opt_value}>\n'
 
         elif get_origin(field_type) is Annotated or get_origin(field_type) is Union:
 
@@ -335,7 +329,7 @@ def generate_field_html(field_name: str, field_type, field_required: bool, field
 
             # ### Literal ###
             field_html += html_label( field_name, True )
-            field_html += f'<input type="text" value="{field_type.__args__[0]}" {pybiscus_marker} readonly><br>\n'
+            field_html += f'<input type="text" value="{field_type.__args__[0]}" {pybiscus_marker} readonly>\n'
 
         else:
 
@@ -348,17 +342,19 @@ def generate_field_html(field_name: str, field_type, field_required: bool, field
         field_html += generate_model_html(field_type, inFieldSet, prefix )
 
     else:
-        field_html += f' ????<br>\n'
+        field_html += f' ????\n'
 
         field_html += f'  <label>{field_name}:   [{type(field_type).__qualname__}]:{(field_type).__qualname__}]</label>\n'
-        field_html += f'  <br>\n'
+        field_html += f'  \n'
+
+    field_html = f'<div class="pybiscus-field">\n{field_html}</div>\n'
 
     return field_html
 
 
 def generate_model_html(model: BaseModel, inFieldSet: bool, prefix: str ) -> str:
 
-    model_html = ''
+    model_html = '<br>'
 
     if inFieldSet:
         model_html += '<fieldset>\n'

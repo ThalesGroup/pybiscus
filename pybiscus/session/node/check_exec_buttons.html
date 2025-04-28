@@ -1,14 +1,26 @@
+<div class="pybiscus-box">
+    <div class="pybiscus-columns">
+        <!-- Colonne 1 -->
+        <div class="pybiscus-control-stack">
+            <button class="pybiscus-button check" id="check-config-button">✅ Check Config</button>
+            <span id="check-indicator" class="pybiscus-indicator">Running check...</span>
+            <span id="check-success-result" class="pybiscus-success">Check success!</span>
+            <span id="check-failure-result" class="pybiscus-failure">Check failure.</span>
+        </div>
 
-<div class="pybiscus-control-container">
-    <button id="check-config-button">check config</button>
-    <span id="check-indicator" class="pybiscus-indicator">Running check...</span>
-    <span id="check-success-result" class="pybiscus-success" >'Check success !'</span>
-    <span id="check-failure-result" class="pybiscus-failure" ">'Check failure.'</span>
+        <!-- Colonne 2 -->
+        <div class="pybiscus-control-stack">
+            <button class="pybiscus-button execute" id="execute-button">🚀 Execute Config</button>
+            <span id="execute-indicator" class="pybiscus-indicator">Running launch...</span>
+            <span id="execute-success-result" class="pybiscus-success">Launch success!</span>
+            <span id="execute-failure-result" class="pybiscus-failure">Launch failure.</span>
+        </div>
+
+        <!-- Colonne 3 -->
+        <div class="pybiscus-control-stack">
+            <button class="pybiscus-button save" id="save-config-button">💾 Save Config</button>
+            <button class="pybiscus-button load" id="load-config-button">🔄 Load Config</button>
+        </div>
+    </div>
 </div>
 
-<div class="pybiscus-control-container">
-    <button id="execute-button">execute config</button>
-    <span id="execute-indicator" class="pybiscus-indicator">Running launch...</span>
-    <span id="execute-success-result" class="pybiscus-success" >'Launch success !'</span>
-    <span id="execute-failure-result" class="pybiscus-failure" ">'Launch failure.'</span>
-</div>

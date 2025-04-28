@@ -1,183 +1,293 @@
 
-* {
-    border-radius: 6px;
-}
+    * {
+        border-radius: 6px;
+        font-size: 1rem;
+    }
 
-/* management of union fields >>> begin >>> */
+    body > div > fieldset > legend {
+        font-size: 1.5rem;            /* Agrandir le texte */
+        font-weight: bold;            /* Texte en gras */
+        color: #2c3e50;               /* Couleur du texte */
+        padding: 0.5rem 0.5rem;         /* Ajouter de l'espace autour */
+        background-color: whitesmoke;    /* Couleur de fond pour contraster */
+        border-radius: 8px;           /* Coins arrondis */
+        border-color: black;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); /* Petite ombre */
+        text-align: center;
+        margin-bottom: 1rem; /* ou la valeur que tu veux */
+    }
 
-.pybiscus-fieldset-container {
-    display: flex;
-    flex-direction: row;
-    gap: 10px;
-}
-.pybiscus-tab-container {
-    width: 100%;
-    border-bottom: 1px solid #ccc;
-}
-.pybiscus-tab-buttons {
-    display: flex;
-    border-bottom: 1px solid #ccc;
-}
-.pybiscus-tab-button {
-    padding: 10px 20px;
-    cursor: pointer;
-    border: 1px solid #ccc;
-    border-bottom: none;
-    margin-right: 5px;
-}
-.pybiscus-tab-button.active___ {
-    background-color: #e0e0e0;
-}
-.pybiscus-tab-content {
-    padding: 20px;
-    border-top: 1px solid #ccc;
-}
-.pybiscus-tab-content:not(.active) {
-    display: none;
-}
+    /* management of union fields >>> begin >>> */
 
-[data-pybiscus-status="ignored"] {
-    background-color: #f0f0f0; /* light grey */
-}
+    .pybiscus-fieldset-container {
+        display: flex;
+        flex-direction: row;
+        gap: 10px;
+    }
+    .pybiscus-tab-container {
+        width: 100%;
+        border-bottom: 1px solid #ccc;
+    }
+    .pybiscus-tab-buttons {
+        display: flex;
+        border-bottom: 1px solid #ccc;
+    }
+    .pybiscus-tab-button {
+        padding: 10px 20px;
+        cursor: pointer;
+        border: 1px solid #ccc;
+        border-bottom: none;
+        margin-right: 5px;
+    }
+    .pybiscus-tab-button.active___ {
+        background-color: #e0e0e0;
+    }
+    .pybiscus-tab-content {
+        padding: 20px;
+        border-top: 1px solid #ccc;
+        opacity: 1;
+        transition: opacity 0.5s ease;
+    }
+    .pybiscus-tab-content:not(.active) {
+        display: none;
+    }
+    .pybiscus-tab-content.hidden {
+        opacity: 0;
+    }
 
-[data-pybiscus-status="valid"] {
-    background-color: #e0f7fa; /* very light blue */
-}
+    [data-pybiscus-status="ignored"] {
+        background-color: #f0f0f0; /* light grey */
+    }
 
-/* management of union fieds <<< end <<< */
+    [data-pybiscus-status="valid"] {
+        background-color: #e0f7fa; /* very light blue */
+    }
 
-
-
-/* management of optional fieds >>> begin >>> */
-
-.pybiscus-option-cb {
-    accent-color: red;
-  }
-
-.pybiscus-camouflaged-fieldset {
-    border: none;
-    padding: 0;
-    margin: 0;
-}
-
-.pybiscus-option-fs.pybiscus-camouflaged-fieldset > *:not(legend) {
-    display: none;
-}
-
-.pybiscus-option-fs:not(.pybiscus-camouflaged-fieldset) 
-    > .pybiscus-tab-container {
-
-    display: flex;
-    flex-wrap: nowrap;
-    gap: 8px;
-    border-bottom: initial;
-}
-
-.pybiscus-option-fs:not(.pybiscus-camouflaged-fieldset) 
-    > .pybiscus-tab-container 
-    > .pybiscus-tab-buttons {
-
-    display: inline;
-    border-bottom: initial;
-}
-
-.pybiscus-option-fs:not(.pybiscus-camouflaged-fieldset) 
-    > .pybiscus-tab-container 
-    > .pybiscus-tab-buttons
-    > .pybiscus-tab-button {
-
-    border: initial;
-    padding: initial;
-    cursor: auto;
-    border-bottom: initial;
-    margin-right: initial;
-    display: inline;
-}
-
-.pybiscus-option-fs:not(.pybiscus-camouflaged-fieldset) 
-    > .pybiscus-tab-container 
-    > .pybiscus-tab-content {
-
-    padding: initial;
-    border-top: initial;
-}
-
-.pybiscus-option-fs:not(.pybiscus-camouflaged-fieldset) 
-    > .pybiscus-tab-container 
-    > .pybiscus-tab-buttons
-    > .pybiscus-tab-button:not(:first-child) {
-
-    display: none;
-}
-
-/* management of optional fieds <<< end <<< */
+    /* management of union fieds <<< end <<< */
 
 
 
-/* management of fieldset locking >>> begin >>> */
+    /* management of optional fieds >>> begin >>> */
 
-.pybiscus-fieldset-container.pybiscus-locked > legend .pybiscus-config::after {
-    content: " 🔒 ";
-    font-size: 0.9em;
-    color: #555;
-}
+    .pybiscus-option-cb {
+        accent-color: red;
+    }
+
+    .pybiscus-camouflaged-fieldset {
+        border: none;
+        padding: 0;
+        margin: 0;
+    }
+
+    .pybiscus-option-fs.pybiscus-camouflaged-fieldset > *:not(legend) {
+        display: none;
+    }
+
+    .pybiscus-option-fs:not(.pybiscus-camouflaged-fieldset) 
+        > .pybiscus-tab-container {
+
+        display: flex;
+        flex-wrap: nowrap;
+        gap: 8px;
+        border-bottom: initial;
+    }
+
+    .pybiscus-option-fs:not(.pybiscus-camouflaged-fieldset) 
+        > .pybiscus-tab-container 
+        > .pybiscus-tab-buttons {
+
+        display: inline;
+        border-bottom: initial;
+    }
+
+    .pybiscus-option-fs:not(.pybiscus-camouflaged-fieldset) 
+        > .pybiscus-tab-container 
+        > .pybiscus-tab-buttons
+        > .pybiscus-tab-button {
+
+        border: initial;
+        padding: initial;
+        cursor: auto;
+        border-bottom: initial;
+        margin-right: initial;
+        display: inline;
+    }
+
+    .pybiscus-option-fs:not(.pybiscus-camouflaged-fieldset) 
+        > .pybiscus-tab-container 
+        > .pybiscus-tab-content {
+
+        padding: initial;
+        border-top: initial;
+    }
+
+    .pybiscus-option-fs:not(.pybiscus-camouflaged-fieldset) 
+        > .pybiscus-tab-container 
+        > .pybiscus-tab-buttons
+        > .pybiscus-tab-button:not(:first-child) {
+
+        display: none;
+    }
+
+    /* management of optional fieds <<< end <<< */
+
+
+
+    /* management of fieldset locking >>> begin >>> */
+
+    .pybiscus-fieldset-container.pybiscus-locked > legend .pybiscus-config::after {
+        content: " 🔒 ";
+        font-size: 0.9em;
+        color: #555;
+    }
+        
+    .pybiscus-fieldset-container.pybiscus-locked > .pybiscus-tab-container > .pybiscus-tab-buttons > .pybiscus-tab-button:not(.active) {
+        display: none;
+    }
+
+    /* locking an optional removes the checkbox that permits switching between type and None */
+    .pybiscus-fieldset-container.pybiscus-locked > legend input[type="checkbox"] {
+        display: none;
+    }
+
+    /* management of fieldset locking <<< end <<< */
+        
+
+
+    /* management of pybiscus configuration items >>> begin >>> */
+
+    .pybiscus-field {
+        /* display: flex; */
+        /* justify-content: space-between; /* Espace entre le label et l'input */
+        /* align-items: center; /* Centrer verticalement */
+        margin-bottom: 1rem; /* Ajouter de l'espace entre les champs */
+    }
+
+    /* marker */
+    .pybiscus-config {
+        background-color: gray;
+        color: orange;
+        border: 1px solid orange;
+        padding: 6px;
+        padding-left: 24px;
+        padding-right: 24px;
+        margin-top: 4px;
+        margin-bottom: 4px;
+    }
     
-.pybiscus-fieldset-container.pybiscus-locked > .pybiscus-tab-container > .pybiscus-tab-buttons > .pybiscus-tab-button:not(.active) {
-    display: none;
-}
 
-/* locking an optional removes the checkbox that permits switching between type and None */
-.pybiscus-fieldset-container.pybiscus-locked > legend input[type="checkbox"] {
-    display: none;
-}
+    .pybiscus-config.pybiscus-locked::after {
+        content: " 🔒 ";
+        font-size: 0.9em;
+        color: #555;
+    }
 
-/* management of fieldset locking <<< end <<< */
-    
+    .pybiscus-config.pybiscus-locked + input[readonly] {
+        color: #f5f5f5;
+        background-color: #555;
+        cursor: not-allowed;
+        opacity: 0.8;
+    }
 
-
-/* management of pybiscus configuration items >>> begin >>> */
-
-/* marker */
-.pybiscus-config {
-    background-color: gray;
-    color: orange;
-    border: 1px solid orange;
-    padding: 2px;
-    margin-bottom: 4px;
-}
-
-.pybiscus-config.pybiscus-locked::after {
-    content: " 🔒 ";
-    font-size: 0.9em;
-    color: #555;
-}
-
-.pybiscus-config.pybiscus-locked + input[readonly] {
-    color: #f5f5f5;
-    background-color: #555;
-    cursor: not-allowed;
-    opacity: 0.8;
-}
-
-/* management of pybiscus configuration items <<< end <<< */
+    /* management of pybiscus configuration items <<< end <<< */
 
 
 
-.pybiscus-control-container {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-}
-.pybiscus-indicator {
-    display: none;
-    color: orange;
-}
-.pybiscus-success {
-    display: none;
-    color: green;
-}
-.pybiscus-failure {
-    display: none;
-    color: red;
-}
+    /* management of pybiscus action buttons >>> begin >>> */
 
+    .pybiscus-control-container {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    .pybiscus-indicator {
+        display: none;
+        color: orange;
+    }
+    .pybiscus-success {
+        display: none;
+        color: green;
+    }
+    .pybiscus-failure {
+        display: none;
+        color: red;
+    }
+
+    .pybiscus-box {
+        background-color: #f6f1f1;
+        padding: 2rem;
+        margin: 2rem 0;
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    }
+
+    .pybiscus-columns {
+        display: flex;
+        gap: 2rem;
+        justify-content: center;
+        flex-wrap: wrap;
+    }
+
+    .pybiscus-control-stack {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+        align-items: start;
+    }
+
+    .pybiscus-button {
+        padding: 0.7rem 1.2rem;
+        font-size: 1rem;
+        font-weight: 600;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: 
+            background-color 0.3s ease,
+            transform 0.1s ease; /* Add transform animation */
+    }
+
+    /* Animation on clic */
+    .pybiscus-button:active {
+        transform: scale(0.95);
+    }
+
+    .pybiscus-button.check {
+        background-color: #d1e7dd;
+        color: #0f5132;
+    }
+    .pybiscus-button.check:hover {
+        background-color: #bcd0c7;
+    }
+
+    .pybiscus-button.execute {
+        background-color: #cff4fc;
+        color: #055160;
+    }
+    .pybiscus-button.execute:hover {
+        background-color: #b6e5ef;
+    }
+
+    .pybiscus-button.save {
+        background-color: #fde2e2;
+        color: #611a15;
+    }
+    .pybiscus-button.save:hover {
+        background-color: #f7c8c8;
+    }
+
+    .pybiscus-button.load {
+        background-color: #f8d7da;
+        color: #842029;
+    }
+    .pybiscus-button.load:hover {
+        background-color: #f1c0c5;
+    }
+
+    .pybiscus-indicator,
+    .pybiscus-success,
+    .pybiscus-failure {
+        font-size: 0.9rem;
+    }
+
+    /* management of pybiscus action buttons <<< end <<< */
