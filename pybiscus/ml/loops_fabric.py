@@ -40,7 +40,7 @@ def test_loop(fabric, net, testloader):
     with torch.no_grad():
         results_epoch = {
             key: torch.tensor(0.0, device=net.device)
-            for key in net.signature.__required_keys__
+            for key in (net.signature.__required_keys__ if hasattr(net.signature,"__required_keys__") else [] ) 
         }
         for batch_idx, batch in track(
             enumerate(testloader),
