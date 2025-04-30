@@ -24,17 +24,17 @@
 
     // *** optional fields management ***
     document.querySelectorAll('.pybiscus-option-cb').forEach(cb => {
-        console.log("CB option");
+        // console.log("CB option");
         const fieldset = cb.closest('fieldset');
-        console.log(fieldset);
+        // console.log(fieldset);
     
         the_tabs_sel = ':scope > .pybiscus-tab-container > .pybiscus-tab-buttons > .pybiscus-tab-button ';
         const the_tabs = Array.from(fieldset.querySelectorAll(the_tabs_sel));
-        console.log(the_tabs);
+        // console.log(the_tabs);
     
         cb.addEventListener('change', () => {
             if (the_tabs.length < 2) {
-                console.log('moins de 2');
+                console.log('less than 2');
                 return;
             }
         

@@ -21,7 +21,7 @@ data:
     dir_val: None
     dir_test: ${root_dir}/datasets/global_test/
     batch_size: 32
-server_adress: "[::]:22222"
+server_listen_address: "[::]:22222"
 num_rounds: 10
 client_configs:
   - ${root_dir}/configs/docker-network/cifar/client_1.yml

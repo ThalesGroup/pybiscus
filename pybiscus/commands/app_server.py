@@ -68,7 +68,7 @@ def check_server_config(
     num_rounds: Annotated[
         int, typer.Option(rich_help_panel="Overriding some parameters")
     ] = None,
-    server_adress: Annotated[
+    server_listen_address: Annotated[
         str, typer.Option(rich_help_panel="Overriding some parameters")
     ] = None,
 ) -> None:
@@ -86,8 +86,8 @@ def check_server_config(
         the Path to the configuration file.
     num_rounds : int, optional
         the number of round of Federated Learning, by default None
-    server_adress : str, optional
-        the server adress and port, by default None
+    server_listen_address : str, optional
+        the server address and port, by default None
        
     Raises
     ------
@@ -105,8 +105,8 @@ def check_server_config(
 
     if num_rounds is not None:
         conf_loaded["num_rounds"] = num_rounds
-    if server_adress is not None:
-        conf_loaded["server_adress"] = server_adress
+    if server_listen_address is not None:
+        conf_loaded["server_listen_address"] = server_listen_address
 
     try:
         _ = check_and_build_server_config(conf_loaded=conf_loaded)
@@ -161,7 +161,7 @@ def launch_config(
     num_rounds: Annotated[
         int, typer.Option(rich_help_panel="Overriding some parameters")
     ] = None,
-    server_adress: Annotated[
+    server_listen_address: Annotated[
         str, typer.Option(rich_help_panel="Overriding some parameters")
     ] = None,
     weights_path: Annotated[
@@ -182,8 +182,8 @@ def launch_config(
         path to a config file
     num_rounds: optional
         the number of Federated rounds
-    server_adress: optional
-        the IP adress and port of the Flower Server.
+    server_listen_address: optional
+        the IP address and port of the Flower Server.
     weights_path: optional
         path to the weights of the model to be loaded at the beginning of the Federated Learning.
     """
@@ -197,8 +197,8 @@ def launch_config(
 
     if num_rounds is not None:
         conf_loaded["num_rounds"] = num_rounds
-    if server_adress is not None:
-        conf_loaded["server_adress"] = server_adress
+    if server_listen_address is not None:
+        conf_loaded["server_listen_address"] = server_listen_address
 
     (
         conf,
@@ -257,7 +257,7 @@ def launch_config(
     
     # starting flower server
     fl.server.start_server(
-        server_address = conf["server_adress"],
+        server_address = conf["server_listen_address"],
         config         = fl.server.ServerConfig(num_rounds=conf["num_rounds"]),
         strategy       = strategy,
         certificates   = server_certificates(conf_ssl),

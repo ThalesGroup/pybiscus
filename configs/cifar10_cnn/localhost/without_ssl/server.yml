@@ -32,7 +32,7 @@ watermark:
     name: trigger_cifar
     config:
       dir_trigger: ${root_dir}/datasets/CWAFFLE
-server_adress: "[::]:22222"
+server_listen_address: "[::]:22222"
 num_rounds: 2
 # save_on_train_end: true
 # weights_path: ${root_dir}/experiments/federated/test_1/lightning_logs/version_48/checkpoint.pt

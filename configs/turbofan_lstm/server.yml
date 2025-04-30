@@ -25,7 +25,7 @@ data:
     window: 20
     batch_size: 8
     num_workers: 0
-server_adress: "[::]:22222"
+server_listen_address: "[::]:22222"
 num_rounds: 2
 client_configs:
   - ${root_dir}/configs/turbofan_lstm/client_1.yml

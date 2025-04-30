@@ -23,7 +23,7 @@ data:
     dir_val: None
     dir_test: ${root_dir}/datasets/global_test/
     batch_size: 32
-server_adress: "0.0.0.0:22222"
+server_listen_address: "0.0.0.0:22222"
 ssl:
   root_certificate_path:   ${root_dir}/certificates/ca/ca.crt
   server_certificate_path: ${root_dir}/certificates/server/server.crt

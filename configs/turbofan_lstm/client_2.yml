@@ -20,4 +20,4 @@ data:
     window: 20
     batch_size: 8
     num_workers: 0
-server_adress: localhost:22222
+server_address: localhost:22222

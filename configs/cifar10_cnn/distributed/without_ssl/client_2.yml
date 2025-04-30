@@ -16,4 +16,4 @@ data:
     dir_val: ${root_dir}/datasets/client2/val/
     dir_test: None
     batch_size: 32
-server_adress: ${oc.env:SERVER_ADDRESS, "localhost:22222" }
+server_address: ${oc.env:SERVER_ADDRESS, "localhost:22222" }

@@ -52,7 +52,7 @@ class ConfigServer(BaseModel):
     Attributes
     ----------
     num_rounds: int    = the number of rounds for the FL session.
-    server_adress: str = the server adress and port
+    server_listen_address: str = the server listen address and port
     root_dir: str      = the path to a "root" directory, relatively to which can be found Data, Experiments and other useful directories
     logger: str        = the config for the logger.
     future_logger      = future config for the logger (using plugins).
@@ -68,7 +68,7 @@ class ConfigServer(BaseModel):
     PYBISCUS_ALIAS: ClassVar[str] = "Pybiscus server configuration"
 
     num_rounds:        int = 10
-    server_adress:     str = '[::]:3333'
+    server_listen_address:     str = '[::]:3333'
     root_dir:          str = "${oc.env:PWD}"
     client_configs:    list[str] = Field(default=None)
     save_on_train_end: bool = False

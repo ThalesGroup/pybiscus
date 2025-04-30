@@ -18,4 +18,4 @@ data:
     dir_val: ${root_dir}/datasets/client2/val/
     dir_test: None
     batch_size: 32
-server_adress: server:22222
+server_address: server:22222

@@ -21,7 +21,7 @@ data:
     dir_val: None
     dir_test: ${root_dir}/datasets/global_test/
     batch_size: 32
-server_adress: ${oc.env:SERVICE, "[::]:22222" }
+server_listen_address: ${oc.env:SERVICE, "[::]:22222" }
 num_rounds: 2
 client_configs:
   - ${root_dir}/configs/uploaded/client_1.yml

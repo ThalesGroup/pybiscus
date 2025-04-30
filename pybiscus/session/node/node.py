@@ -463,8 +463,8 @@ def check_parameters():
     if session_parameters:
 
         client_params = session_parameters.copy()
-        client_params["values_set"] = { "cid" : generate_new_cid() }
-        client_params["values_lock"] = [ "cid" ]    
+        client_params["values_set"]["cid"] = generate_new_cid();
+        client_params["values_lock"] += [ "cid" ]    
 
         return jsonify({"ready": True, "params": client_params})
     else:
@@ -474,7 +474,7 @@ def check_parameters():
 @rest_server.route('/session/client/registration/waiting')
 def session_registration_waiting():
 
-    # reset_session()
+    reset_session()
 
     return render_template_string("""
         <h1>Pybiscus session</h1>

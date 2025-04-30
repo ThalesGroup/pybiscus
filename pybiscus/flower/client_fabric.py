@@ -70,7 +70,7 @@ class ConfigClient(BaseModel):
     ----------
     cid: int = client identifier
     pre_train_val: optional, default to False = states if at the beginning of a new fit round a validation loop will be performed, this allows to perform a validation loop on the validation dataset of the Client, after the client received the new, aggregated weights.
-    server_adress: str = the server adress and port
+    server_address: str = the server address and port
     root_dir: str      = the path to a "root" directory, relatively to which can be found Data, Experiments and other useful directories
     fabric             = keywords for the Fabric instance
     model              = keywords for the LightningModule used
@@ -82,7 +82,7 @@ class ConfigClient(BaseModel):
 
     cid: int            = 1
     pre_train_val: bool = False
-    server_adress: str  = "localhost:3333"
+    server_address: str  = "localhost:3333"
     root_dir: str       = "${oc.env:PWD}"
     fabric:             ConfigFabric
     model:              ModelConfig() # pyright: ignore[reportInvalidTypeForm]

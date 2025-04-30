@@ -48,7 +48,7 @@ def check_client_config(
     root_dir: Annotated[
         str, typer.Option(rich_help_panel="Overriding some parameters")
     ] = None,
-    server_adress: Annotated[
+    server_address: Annotated[
         str, typer.Option(rich_help_panel="Overriding some parameters")
     ] = None,
 ) -> None:
@@ -66,8 +66,8 @@ def check_client_config(
         the Path to the configuration file.
     num_rounds : int, optional
         the number of round of Federated Learning, by default None
-    server_adress : str, optional
-        the server adress and port, by default None
+    server_address : str, optional
+        the server address and port, by default None
     to_onnx : bool, optional
         if true, saves the final model into ONNX format. Only available now for Unet3D model! by default False
 
@@ -94,8 +94,8 @@ def check_client_config(
         conf_loaded["cid"] = cid
     if root_dir is not None:
         conf_loaded["root_dir"] = root_dir
-    if server_adress is not None:
-        conf_loaded["server_adress"] = server_adress
+    if server_address is not None:
+        conf_loaded["server_address"] = server_address
     try:
         _ = check_and_build_client_config(conf_loaded)
         console.log("This is a valid config!")
@@ -113,7 +113,7 @@ def launch_config(
     root_dir: Annotated[
         str, typer.Option(rich_help_panel="Overriding some parameters")
     ] = None,
-    server_adress: Annotated[
+    server_address: Annotated[
         str, typer.Option(rich_help_panel="Overriding some parameters")
     ] = None,
 ) -> None:
@@ -129,8 +129,8 @@ def launch_config(
         the client id
     root_dir: str, optional
         the path to a "root" directory, relatively to which can be found Data, Experiments and other useful directories
-    server_adress: str, optional
-        the server adress and port
+    server_address: str, optional
+        the server address and port
     """
 
     # handling mandatory config path parameter
@@ -144,8 +144,8 @@ def launch_config(
         conf_loaded["cid"] = cid
     if root_dir is not None:
         conf_loaded["root_dir"] = root_dir
-    if server_adress is not None:
-        conf_loaded["server_adress"] = server_adress
+    if server_address is not None:
+        conf_loaded["server_address"] = server_address
     # console.log(f"Conf specified: {dict(conf)}")
 
     conf, conf_data, conf_model = check_and_build_client_config(config=conf_loaded)
@@ -180,7 +180,7 @@ def launch_config(
             ssl_secure_cnx= True
 
     fl.client.start_client(
-        server_address=conf["server_adress"],
+        server_address=conf["server_address"],
         client=client.to_client(),
         root_certificates=ssl_root_certificate,
         insecure= not ssl_secure_cnx,
