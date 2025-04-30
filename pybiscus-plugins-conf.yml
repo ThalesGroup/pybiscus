@@ -8,6 +8,7 @@ data:
       - cifar10
       - randomvector
       - turbofan
+      - mnist
 model:
   - path: "./pybiscus-plugins/model"
     modules:
