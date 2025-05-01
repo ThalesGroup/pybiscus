@@ -312,8 +312,8 @@ def interpretConfigurationFile( mode: str, file_path: str ):
     return jsonify({mode: "yaml file interpreted successfully"}), 200
 
 
-@rest_server.route("/config/<model_name>/json", methods=["POST"])
-def upload_json(model_name: str):
+@rest_server.route("/config/json/to_yaml", methods=["POST"])
+def convert_json_to_yaml():
 
     try:
         # get JSON payload
@@ -329,6 +329,33 @@ def upload_json(model_name: str):
             yaml_string = parse_tuples_to_yaml_string( tuples )
 
             print( yaml_string )
+
+            return jsonify({"success": yaml_string}), 200
+
+        else:
+            return jsonify({"error": "Invalid format, was expecting a list of 3-tuples of strings"}), 400
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@rest_server.route("/config/<model_name>/json", methods=["POST"])
+def upload_json(model_name: str):
+
+    try:
+        # get JSON payload
+        data = request.get_json()
+
+        # chech data format
+        if isinstance(data, list) and all(isinstance(sublist, list) for sublist in data):
+
+            tuples = list(map(tuple,data))
+
+            # print( tuples )
+
+            yaml_string = parse_tuples_to_yaml_string( tuples )
+
+            # print( yaml_string )
 
             # define storage path
             global uploaded_file_path
@@ -413,14 +440,14 @@ def generate_param_js(payload):
     param_js = f'''
         const prefixes = [{prefixes_str}];
 
-        let selected = selected_options(prefixes);
-        console.log("✅ Selected options before :", selected);
+        /* let selected = selected_options(prefixes);
+        console.log("✅ Selected options before :", selected); */
 
         const new_options = {{ {new_option_items} }}
         set_options( new_options );
 
-        selected = selected_options(prefixes);
-        console.log("✅ Selected options after :", selected);
+        /* selected = selected_options(prefixes);
+        console.log("✅ Selected options after :", selected); */
 
         {option_lock_lines}
 

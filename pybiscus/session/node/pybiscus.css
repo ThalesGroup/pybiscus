@@ -46,7 +46,7 @@
         padding: 20px;
         border-top: 1px solid #ccc;
         opacity: 1;
-        transition: opacity 0.5s ease;
+        transition: opacity 0.2s ease;
     }
     .pybiscus-tab-content:not(.active) {
         display: none;
@@ -244,7 +244,7 @@
         cursor: pointer;
         transition: 
             background-color 0.3s ease,
-            transform 0.1s ease; /* Add transform animation */
+            transform 0.3s ease; /* Add transform animation */
     }
 
     /* Animation on clic */

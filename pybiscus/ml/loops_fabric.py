@@ -8,6 +8,12 @@ def train_loop(fabric, net, trainloader, optimizer, epochs: int, verbose=False):
     """Train the network on the training set."""
 
     net.train()
+
+    if not optimizer:
+        optimizer = None
+    elif isinstance(optimizer, list) and len(optimizer) == 1:
+        optimizer = optimizer[0]
+    
     for epoch in range(epochs):
         results_epoch = {
             key: torch.tensor(0.0, device=net.device)
@@ -18,14 +24,27 @@ def train_loop(fabric, net, trainloader, optimizer, epochs: int, verbose=False):
             total=len(trainloader),
             description="Training...",
         ):
-            optimizer.zero_grad()
             results = net.training_step(batch, batch_idx)
             loss = results["loss"]
-            fabric.backward(loss)
-            optimizer.step()
+
+            if optimizer is not None:
+                optimizer.zero_grad()
+                fabric.backward(loss)
+                optimizer.step()
 
             for key in results_epoch.keys():
-                results_epoch[key] += results[key]
+                value = results[key]
+
+                # hardening code --- begin ---
+                if not isinstance(value, torch.Tensor):
+                    value = torch.tensor(value, device=net.device)
+
+                if value.shape != results_epoch[key].shape:
+                    value = value.reshape(results_epoch[key].shape)
+                # hardening code --- end ---
+
+                results_epoch[key] += value
+
         for key in results_epoch.keys():
             results_epoch[key] /= len(trainloader)
             results_epoch[key] = results_epoch[key].item()
@@ -40,7 +59,7 @@ def test_loop(fabric, net, testloader):
     with torch.no_grad():
         results_epoch = {
             key: torch.tensor(0.0, device=net.device)
-            for key in (net.signature.__required_keys__ if hasattr(net.signature,"__required_keys__") else [] ) 
+            for key in net.signature.__required_keys__
         }
         for batch_idx, batch in track(
             enumerate(testloader),
@@ -48,8 +67,19 @@ def test_loop(fabric, net, testloader):
             description="Validating...",
         ):
             results = net.validation_step(batch, batch_idx)
+
             for key in results_epoch.keys():
-                results_epoch[key] += results[key]
+                value = results[key]
+
+                # hardening code --- begin ---
+                if not isinstance(value, torch.Tensor):
+                    value = torch.tensor(value, device=net.device)
+
+                if value.shape != results_epoch[key].shape:
+                    value = value.reshape(results_epoch[key].shape)
+                # hardening code --- end ---
+
+                results_epoch[key] += value
 
     for key in results_epoch.keys():
         results_epoch[key] /= len(testloader)

@@ -162,7 +162,12 @@ class FlowerClient(fl.client.NumPyClient):
 
     def initialize(self):
         self.fabric.launch()
-        self.model, self.optimizers = self.fabric.setup(self.model, *self.optimizers)
+
+        if hasattr(self, "optimizers") and self.optimizers:
+            self.model, *self.optimizers = self.fabric.setup(self.model, *self.optimizers)
+        else:
+            self.model = self.fabric.setup(self.model)
+
         (
             self._train_dataloader,
             self._validation_dataloader,
@@ -196,6 +201,7 @@ class FlowerClient(fl.client.NumPyClient):
                 metrics[f"{key}_pre_train_val"] = val
 
         console.log(f"Round {config['server_round']}, training Started...")
+
         results_train = train_loop(
             self.fabric,
             self.model,
@@ -203,6 +209,7 @@ class FlowerClient(fl.client.NumPyClient):
             self.optimizers, # Alice TODO extend this to multiple optimizers ??
             epochs=config["local_epochs"],
         )
+            
         console.log(f"Training Finished! Loss is {results_train['loss']}")
         metrics["cid"] = self.cid
         for key, val in results_train.items():

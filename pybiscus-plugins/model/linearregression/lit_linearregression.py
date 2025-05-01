@@ -6,18 +6,16 @@ import torch.nn as nn
 import torch.optim as optim
 from pydantic import BaseModel, ConfigDict
 
-# from pybiscus.ml.data.randomvector.randomvector_datamodule import RandomVectorLightningDataModule
-
 # ------------------------------------------------------------------------------------
 
 class ConfigLinearRegression(BaseModel):
 
     PYBISCUS_CONFIG: ClassVar[str] = "config"
 
-    input_dim:          int
-    output_dim:         int
-    learning_rate:      float
-    accuracy_threshold: float
+    input_dim:          int = 1
+    output_dim:         int = 1
+    learning_rate:      float = 0.1
+    accuracy_threshold: float = 0.001
 
     model_config = ConfigDict(extra="forbid")
 
@@ -77,7 +75,6 @@ class LitLinearRegression(pl.LightningModule):
         if self._logging:
             self.log('train_loss', loss)
 
-        #return loss
         return {"loss": loss, "accuracy": acc}
 
     @override
@@ -91,7 +88,6 @@ class LitLinearRegression(pl.LightningModule):
             self.log("val_loss", loss, prog_bar=True)
             self.log("val_acc",  acc,  prog_bar=True)
         
-        #return loss
         return {"loss": loss, "accuracy": acc}
 
     @override

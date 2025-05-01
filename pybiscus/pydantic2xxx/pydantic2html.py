@@ -260,7 +260,11 @@ def generate_field_html(field_name: str, field_type, field_required: bool, field
                         status = PydanticToHtml.ignored_status
 
                     if is_an_option:
-                        tab_name = ''
+                        # having different blank names is used when setting option value
+                        # as they are displayed => nothing appears
+                        # but we are able to address the union values by name
+                        # ' ' stands for Some(x), '  ' for None
+                        tab_name = ' ' * index
                     else:
                         tab_name = generate_tab_name( sub_type, f'Tab {index}' )
 

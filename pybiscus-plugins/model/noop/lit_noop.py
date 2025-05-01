@@ -3,6 +3,7 @@ from pydantic import BaseModel, ConfigDict
 import lightning.pytorch as pl
 import torch
 import torch.nn as nn
+from dataclasses import dataclass
 
 class ConfigNoop(BaseModel):
     """A Pydantic Model to validate the LitNoop config given by the user.
@@ -57,7 +58,7 @@ class LitNoop(pl.LightningModule):
         super().__init__()
         self.model = NoopModel()
         self.loss_fn = nn.MSELoss()
-        self._signature = NoopSignature(loss=0)
+        self._signature = NoopSignature
 
     @property
     def signature(self):
@@ -67,21 +68,14 @@ class LitNoop(pl.LightningModule):
         return self.model(x)
 
     def training_step(self, batch, batch_idx):
-        loss = torch.zeros(1)
-        acc = torch.ones(1)
-
-        return NoopSignature(loss=loss, accuracy=acc)
+        return { "loss": torch.zeros(1), "accuracy": torch.ones(1) }
 
     def validation_step(self, batch: torch.Tensor, batch_idx):
-        loss = torch.zeros(1)
-        acc = torch.ones(1)
-        
-        return NoopSignature(loss=loss, accuracy=acc)
+        return { "loss": torch.zeros(1), "accuracy": torch.ones(1) }
 
     def test_step(self, batch: torch.Tensor, batch_idx):
-        loss = torch.zeros(1)
-        
+        loss = torch.zeros(1)        
         return loss
 
     def configure_optimizers(self):
-        return torch.optim.SGD(self.parameters(), lr=0.01)
+        return None
