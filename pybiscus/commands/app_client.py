@@ -9,20 +9,20 @@ from pydantic import ValidationError
 
 from pybiscus.core.console import console
 from pybiscus.core.registries import datamodule_registry, model_registry
-from pybiscus.flower.client_fabric import ConfigClient, FlowerClient
+from pybiscus.flower.config_client import ConfigClient, FlowerClient
 
 from pybiscus.commands.apps_common import load_config
 
 torch.backends.cudnn.enabled = True
 
 
-def check_and_build_client_config(config: dict) -> tuple[dict, dict, dict]:
+def check_and_build_client_config(config: dict) -> ConfigClient:
+
+    console.log(config)
     _conf = ConfigClient(**config)
     console.log(_conf)
-    conf = dict(_conf)
-    conf_data = dict(conf["data"].config)
-    conf_model = dict(conf["model"].config)
-    return conf, conf_data, conf_model
+
+    return _conf
 
 
 app = typer.Typer(pretty_exceptions_show_locals=False, rich_markup_mode="rich")
@@ -64,8 +64,6 @@ def check_client_config(
     ----------
     config : Path
         the Path to the configuration file.
-    num_rounds : int, optional
-        the number of round of Federated Learning, by default None
     server_address : str, optional
         the server address and port, by default None
     to_onnx : bool, optional
@@ -73,10 +71,6 @@ def check_client_config(
 
     Raises
     ------
-    typer.Abort
-        _description_
-    typer.Abort
-        _description_
     typer.Abort
         _description_
     ValidationError
@@ -141,46 +135,48 @@ def launch_config(
     # it overrides the values from configuration file
 
     if cid is not None:
-        conf_loaded["cid"] = cid
+        conf_loaded["client_run"]["cid"] = cid
     if root_dir is not None:
         conf_loaded["root_dir"] = root_dir
     if server_address is not None:
-        conf_loaded["server_address"] = server_address
+        conf_loaded["flower_client"]["server_address"] = server_address
     # console.log(f"Conf specified: {dict(conf)}")
 
-    conf, conf_data, conf_model = check_and_build_client_config(config=conf_loaded)
+    conf = check_and_build_client_config(config=conf_loaded)
 
-    data = datamodule_registry()[conf["data"].name](**conf_data)
+    # load the data management module from registry
+    data_class = datamodule_registry()[conf.data.name]
+    data = data_class(**conf.data.config.model_dump())
+
     data.setup(stage="fit")
     num_examples = {
         "trainset": len(data.train_dataloader()),
         "valset": len(data.val_dataloader()),
     }
 
-    net = model_registry()[conf["model"].name](**conf_model)
+    # load the model
+    model_class = model_registry()[conf.model.name]
+    model = model_class(**conf.model.config.model_dump())
+
     client = FlowerClient(
-        cid=conf["cid"],
-        model=net,
+        cid=conf.client_run.cid,
+        model=model,
         data=data,
         num_examples=num_examples,
-        conf_fabric=conf["fabric"],
-        pre_train_val=conf["pre_train_val"],
+        conf_fabric=conf.client_compute_context.hardware,
+        pre_train_val=conf.client_run.pre_train_val,
     )
     client.initialize()
 
-    ssl_secure_cnx=None
-    ssl_root_certificate=None
-
-    conf_ssl=conf_loaded.get("ssl", None)
-    if conf_ssl is not None:
-        if "secure_cnx" in conf_ssl:
-            ssl_secure_cnx= (conf_ssl["root_certificate"].lower()=="true")
-        if "root_certificate" in conf_ssl:
-            ssl_root_certificate=conf_ssl["root_certificate"]
-            ssl_secure_cnx= True
+    if conf.flower_client.ssl is None:
+        ssl_secure_cnx=None
+        ssl_root_certificate=None
+    else:
+        ssl_secure_cnx=conf.flower_client.ssl.secure_cnx
+        ssl_root_certificate=conf.flower_client.ssl.root_certificate
 
     fl.client.start_client(
-        server_address=conf["server_address"],
+        server_address=conf.flower_client.server_address,
         client=client.to_client(),
         root_certificates=ssl_root_certificate,
         insecure= not ssl_secure_cnx,

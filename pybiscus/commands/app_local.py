@@ -55,7 +55,7 @@ def train_config(config: Annotated[Path, typer.Argument()] = None):
     data = datamodule_registry()[conf_loaded["data"]["name"]](**conf_loaded["data"]["config"])
 
     trainer = Trainer(
-        default_root_dir=Path(conf_loaded["root_dir"]) / "experiments/local/",
+        default_root_dir=Path(conf_loaded["server_run"]["root_dir"]) / "experiments/local/",
         enable_checkpointing=True,
         logger=True,
         # max_epochs=conf_loaded["epochs"],

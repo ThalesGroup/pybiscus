@@ -1,6 +1,6 @@
 
 *1* launch the server :
- ./launch/node/cli/5000.sh
+ ./launch/agent/cli/5000.sh
 
 *2* launch the manager back-end :
 ./launch/session/run_manager.sh
@@ -14,7 +14,7 @@
         HTTP GET server_url/session/config
 
 *3* launch client1 :
- ./launch/node/cli/5001.sh
+ ./launch/agent/cli/5001.sh
 
 -- access the client1 front-end : 
 
@@ -45,7 +45,7 @@
 
 
 *5* launch client2 :
- ./launch/node/cli/5002.sh
+ ./launch/agent/cli/5002.sh
 
 -- access the client2 front-end : 
 

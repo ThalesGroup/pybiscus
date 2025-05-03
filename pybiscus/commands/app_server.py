@@ -1,3 +1,4 @@
+from collections import defaultdict
 from pathlib import Path
 
 import flwr as fl
@@ -12,7 +13,7 @@ from typing import Annotated
 from pybiscus.core.console import console
 from pybiscus.core.registries import datamodule_registry, model_registry, strategy_registry
 
-from pybiscus.flower.server_fabric import (
+from pybiscus.flower.config_server import (
     ConfigServer,
     weighted_average,
     fit_config,
@@ -22,24 +23,15 @@ from pybiscus.flower.server_fabric import (
 
 from pybiscus.commands.apps_common import load_config
 
-
 #                    ------------------------------------------------
 
-def check_and_build_server_config(conf_loaded: dict):
+def check_and_build_server_config(conf_loaded: dict) -> ConfigServer :
+
     console.log(conf_loaded)
     _conf = ConfigServer(**conf_loaded)
     console.log(_conf)
-    conf          = dict(_conf)
-    conf_fabric   = dict(conf["fabric"])
-    conf_data     = dict(conf["data"].config)
-    conf_model    = dict(conf["model"].config)
-    conf_strategy = dict(conf["strategy"].config)
-    conf_ssl      = None
-    
-    if "ssl" in conf and conf["ssl"] is not None:
-        conf_ssl = dict(conf["ssl"]) 
         
-    return conf, conf_fabric, conf_data, conf_model, conf_strategy, conf_ssl
+    return _conf
 
 #                    ------------------------------------------------
 
@@ -95,24 +87,20 @@ def check_server_config(
         _description_
     typer.Abort
         _description_
-    typer.Abort
-        _description_
-    ValidationError
-        _description_
     """
 
     conf_loaded = load_config(config)
 
     if num_rounds is not None:
-        conf_loaded["num_rounds"] = num_rounds
+        conf_loaded.server_run.num_rounds = num_rounds
     if server_listen_address is not None:
-        conf_loaded["server_listen_address"] = server_listen_address
+        conf_loaded.flower_server.listen_address = server_listen_address
 
     try:
         _ = check_and_build_server_config(conf_loaded=conf_loaded)
         console.log("This is a valid conf!")
     except ValidationError as e:
-        console.log("This is not a valid config!")
+        console.log(f"This is not a valid config ! {e}")
         raise e
 
 #                    ------------------------------------------------
@@ -123,9 +111,9 @@ def server_certificates(conf_ssl):
 
     if conf_ssl is not None:
     
-        root_certificate_path  =conf_ssl["root_certificate_path"]
-        server_certificate_path=conf_ssl["server_certificate_path"]
-        server_private_key_path=conf_ssl["server_private_key_path"]
+        root_certificate_path  = conf_ssl["root_certificate_path"]
+        server_certificate_path= conf_ssl["server_certificate_path"]
+        server_private_key_path= conf_ssl["server_private_key_path"]
 
         root_certificate   = None
         server_certificate = None
@@ -157,19 +145,10 @@ def server_certificates(conf_ssl):
 
 @app.command(name="launch")
 def launch_config(
-    config: Annotated[Path, typer.Argument()],
-    num_rounds: Annotated[
-        int, typer.Option(rich_help_panel="Overriding some parameters")
-    ] = None,
-    server_listen_address: Annotated[
-        str, typer.Option(rich_help_panel="Overriding some parameters")
-    ] = None,
-    weights_path: Annotated[
-        Path,
-        typer.Option(
-            rich_help_panel="Overriding some parameters",
-        ),
-    ] = None,
+    config:                Annotated[Path, typer.Argument()],
+    num_rounds:            Annotated[int, typer.Option(rich_help_panel="Overriding some parameters")] = None,
+    server_listen_address: Annotated[str, typer.Option(rich_help_panel="Overriding some parameters")] = None,
+    weights_path:          Annotated[Path,typer.Option(rich_help_panel="Overriding some parameters")] = None,
 ):
     """Launch a Flower Server.
 
@@ -196,30 +175,26 @@ def launch_config(
     # it overrides the values from configuration file
 
     if num_rounds is not None:
-        conf_loaded["num_rounds"] = num_rounds
+        conf_loaded.server_run.num_rounds = num_rounds
     if server_listen_address is not None:
-        conf_loaded["server_listen_address"] = server_listen_address
+        conf_loaded.flower_server.listen_address = server_listen_address
 
-    (
-        conf,
-        conf_fabric,
-        conf_data,
-        conf_model,
-        conf_strategy,
-        conf_ssl
-    ) = check_and_build_server_config(conf_loaded=conf_loaded)
+    conf = check_and_build_server_config(conf_loaded)
 
-    logger = TensorBoardLogger(root_dir=conf["root_dir"] + conf["logger"]["subdir"])
-    fabric = Fabric(**conf_fabric, loggers=logger)
+    _loggers = [TensorBoardLogger(root_dir=conf.root_dir + conf.server_compute_context.metrics_logger.config.subdir)]
+
+    fabric = Fabric(**conf.server_compute_context.hardware.model_dump(), loggers=_loggers)
     fabric.launch()
 
     # load the model
-    model_class = model_registry()[conf["model"].name]
-    model = model_class(**conf_model)
+    model_class = model_registry()[conf.model.name]
+    model = model_class(**conf.model.config.model_dump())
     model = fabric.setup_module(model)
 
-    # load the data management strategy from registry
-    data = datamodule_registry()[conf["data"].name](**conf_data)
+    # load the data management module from registry
+    data_class = datamodule_registry()[conf.data.name]
+    data = data_class(**conf.data.config.model_dump())
+    
     data.setup(stage="test")
     test_set = fabric._setup_dataloader(data.test_dataloader())
 
@@ -241,7 +216,7 @@ def launch_config(
     # the behaviour would have been : Requesting initial parameters from one random client
     # Question: add this as a configuration option ?
 
-    strategy_class = strategy_registry()[conf["strategy"].name]
+    strategy_class = strategy_registry()[conf.strategy.name]
 
     strategy = strategy_class(
         fit_metrics_aggregation_fn=weighted_average,
@@ -252,19 +227,19 @@ def launch_config(
         on_fit_config_fn=fit_config,
         on_evaluate_config_fn=evaluate_config,
         initial_parameters=initial_parameters,
-        **conf_strategy,
+        **conf.strategy.config.model_dump()
     )
     
     # starting flower server
     fl.server.start_server(
-        server_address = conf["server_listen_address"],
-        config         = fl.server.ServerConfig(num_rounds=conf["num_rounds"]),
+        server_address = conf.flower_server.listen_address,
+        config         = fl.server.ServerConfig(num_rounds=conf.server_run.num_rounds),
         strategy       = strategy,
-        certificates   = server_certificates(conf_ssl),
+        certificates   = server_certificates(conf.flower_server.ssl),
     )
 
     # optional checkpoint save
-    if conf["save_on_train_end"]:
+    if conf.server_run.save_on_train_end:
         state = {"model": model}
         fabric.save(fabric.logger.log_dir + "/checkpoint.pt", state)
 
@@ -273,12 +248,12 @@ def launch_config(
         OmegaConf.save(config=conf_loaded, f=file)
 
     # optional clients config logging
-    if conf["client_configs"] is not None:
-        for client_conf in conf["client_configs"]:
+    if conf.server_run.client_configs is not None:
+        for client_conf in conf.server_run.client_configs:
             console.log(client_conf)
             _conf = OmegaConf.load(client_conf)
             with open(
-                fabric.logger.log_dir + f"/config_client_{_conf['cid']}_launch.yml", "w"
+                fabric.logger.log_dir + f"/config_client_{_conf['client_run']['cid']}_launch.yml", "w"
             ) as file:
                 OmegaConf.save(config=_conf, f=file)
 
@@ -286,4 +261,3 @@ def launch_config(
 
 if __name__ == "__main__":
     app()
-

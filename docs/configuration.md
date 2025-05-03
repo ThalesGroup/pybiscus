@@ -1,4 +1,11 @@
-# How to use config files
+# Config files
+
+Config files can be hand-written, but the easy way is to launch a pybiscus agent (for instance `./launch/agent/cli/5000.sh` )
+and connect with a browser to its services to produce them at URLs : 
+- http://localhost:5000/server/config 
+- http://localhost:5000/client/config
+
+# Details about config files
 
 Here are a few hints about how to use and customize the config files (server, client).
 
@@ -14,31 +21,33 @@ Behind the curtain, Pybiscus uses OmegaConf to deal with loading and saving conf
 
 ## Description of parts of config files
 
-### Fabric
+### Fabric / GPU / hardware description
 
-The keyword `fabric` holds a dictionnary of keywords to use by the Fabric instance. It is used by both Server and Clients. The keywords and their types are simply the one provided by the Fabric API, available [here](https://lightning.ai/docs/fabric/stable/api/generated/lightning.fabric.fabric.Fabric.html#lightning.fabric.fabric.Fabric).
+The keyword `hardware` holds keywords to use by the Fabric instance. It is used by both Server and Clients. The keywords and their types are simply the one provided by the Fabric API, available [here](https://lightning.ai/docs/fabric/stable/api/generated/lightning.fabric.fabric.Fabric.html#lightning.fabric.fabric.Fabric).
 
-Here is an example from the file `configs/server.yml`:
+The keyword `devices` is waiting for either a list of integers (the id of the devices themselves) or an integer (for the number of devices wanted) or the string "auto".
+
+Here is an example from a server configuration:
 
 ```yaml
 ...
-fabric:
-  accelerator: gpu
-  devices:
-    - 0
+server_compute_context:
+  hardware:
+    accelerator: auto
+    devices: auto
 ...
 ```
 
-The keyword `devices` is waiting for either a list of integers (the id of the devices themselves) or an integer (for the number of devices wanted) or the string "auto". To use CPU for instance, you can simply write
+And anoter one from a client configuration:
+
 ```yaml
 ...
-fabric:
-  accelerator: cpu
-  # devices:
+client_compute_context:
+  hardware:
+    accelerator: auto
+    devices: auto
 ...
 ```
-
-The keyword `devices` is left intentionnaly commented, as Fabric will automatically find a suitable device corresponding to the choice cpu.
 
 ### Models
 
@@ -88,8 +97,7 @@ For clients, the key cid is to give each client a dedicated integer for designat
 
 # How to see configuration model
 
-The pydantic2xxx.py command produce a representation of the current pybiscus configuration schema
-(dynamically generated as new data and model modules extend it)
+The pydantic2xxx.py command generates dynamically a representation of the current pybiscus configuration schema
 
 it can produce a textual description :
 

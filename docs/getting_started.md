@@ -6,19 +6,20 @@ A simple tool to perform Federated Learning on various models and datasets. Buil
 
 ## Key features
 
-* a CLI built on Typer: to launch a server or a client, it is as simple as invoking the pybiscus app! Everything needed is written in config files, as you can find in the configs directory. No code to change, juste YAML files!
+* a ***CLI*** built on Typer: to launch a server or a client, it is as simple as invoking the pybiscus app! Everything needed is written in config files, as you can find in the configs directory. **No code to change, juste YAML files!**
+* a ***web-based agent*** that provides an interactive interface for configuring and launching pybiscus from your browser. **No YAML files to write, just click !**
 * all thing related to the Machine Learning parts is handled by Lightning and Fabric, cornerstones of the PyTorch ecosystem. This allows to separate the "Federated" part (i.e. senfin/receiving/aggragating the weights; done by FLower) from the specifics of the models and the data themselves. The Flower part is as much as possible agnostic from the ML part.
 * as it is, the Server part will log in tensorboards all losses and metrics sent by the Clients (both on fit and evaluate), and also the loss and metrics computed by the Server if global test dataset is provided. This allows to follow the good process of the Federated Learning session.
 * the final model is saved on the Server side
 * the structure of the code is meant to be as modular as possible. If you need to add other datasets and/or models, please have a look at [how-to](how-to.md).
 
-## Use of Pybiscus
+## Install Pybiscus
 After cloning the repo and installing (via uv) all dependencies, tou have to extend you PATH with the command:
 ```bash
 source ./extend_path.sh
 ```
 
-### User Mode
+### Command Line Interface Mode
 ```
 The Pybiscus project comes with an handy app, dubbed pybiscus. You can test it directly :
 ```bash

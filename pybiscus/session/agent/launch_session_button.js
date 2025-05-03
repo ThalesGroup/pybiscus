@@ -38,16 +38,24 @@ launch_session_button.addEventListener('click', function() {
     // special names of tab components for unions corresponding to an optional config field
     const optional_options_by_visibility = { true: ' ', false: '  ' };
 
+    const ssl_option_is_visible = optional_options_by_visibility[server_protocol[2] === 'https'];
+
     const values_set = { 
-        'server_listen_address' : `${listen_address}:${server_port[2]}`,
-        'server_address'        : `${server_host[2]}:${server_port[2]}`,
+        'flower_server.listen_address' : `${listen_address}:${server_port[2]}`,
+        'flower_client.server_address' : `${server_host[2]}:${server_port[2]}`,
     };
-    const values_lock  = ['root_dir', 'server_listen_address', 'server_address'];
+    const values_lock  = [
+        'root_dir', 
+        'flower_server.listen_address', 
+        'flower_client.server_address',
+    ];
+
     const options_set  = {
-        'ssl'                   : `${optional_options_by_visibility[server_protocol[2] === 'https']}`,
+        'flower_server.ssl'            : `${ssl_option_is_visible}`,
+        'flower_client.ssl'            : `${ssl_option_is_visible}`,
     }
     
-    const options_lock = ['ssl'];
+    const options_lock = ['flower_server.ssl', 'flower_client.ssl', ];
 
     new_data.forEach(([key, _, value]) => {
         options_set[key] = value;

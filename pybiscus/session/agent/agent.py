@@ -13,10 +13,10 @@ import subprocess
 import urllib
 
 from pybiscus.pydantic2xxx.pydantic2html import generate_model_page
-from pybiscus.session.node.ConfigSession import make_session_model
-from pybiscus.session.node.tuples2yaml import parse_tuples_to_yaml_string
-from pybiscus.flower.server_fabric import ConfigServer
-from pybiscus.flower.client_fabric import ConfigClient
+from pybiscus.session.agent.ConfigSession import make_session_model
+from pybiscus.session.agent.tuples2yaml import parse_tuples_to_yaml_string
+from pybiscus.flower.config_server import ConfigServer
+from pybiscus.flower.config_client import ConfigClient
 from pybiscus.core.pybiscusexception import PybiscusInternalException, PybiscusValueException
 from pybiscus.core.console import console
 from pybiscus.core.registries import datamodule_registry, model_registry, DataConfig, ModelConfig
@@ -124,7 +124,7 @@ def sessionConfigDownload():
 
     config_session = make_session_model(models_names, ModelConfig(), data_names, DataConfig() )
 
-    return generate_model_page(config_session,'pybiscus.session.node','node.html','launch_session_button')
+    return generate_model_page(config_session,'pybiscus.session.agent','agent.html','launch_session_button')
 
 
 @rest_server.route("/server/config", methods=["GET"])
@@ -173,7 +173,7 @@ def serverConfigDownload():
     else:
         console.log("/server/config with no param")
 
-    return generate_model_page(ConfigServer,'pybiscus.session.node','node.html','check_exec_buttons',param_js)
+    return generate_model_page(ConfigServer,'pybiscus.session.agent','agent.html','check_exec_buttons',param_js)
 
 
 @rest_server.route("/server/config", methods=["POST"])
@@ -206,7 +206,7 @@ def clientConfigDownload():
 
             console.log("client: downloaded parameters: ", session_parameters)
 
-    return generate_model_page(ConfigClient,'pybiscus.session.node','node.html','check_exec_buttons', param_js)
+    return generate_model_page(ConfigClient,'pybiscus.session.agent','agent.html','check_exec_buttons', param_js)
 
 @rest_server.route("/client/config", methods=["POST"])
 def clientConfigUpload():
@@ -409,16 +409,15 @@ def generate_param_js(payload):
         "options_set": {
             "model" : "Cifar 10",
             "data" : "Cifar 10"
-            "ssl" : "None"
         },
 
-        "options_lock": [ "model", "data", "ssl" ],
+        "options_lock": [ "model", "data" ],
 
         "values_set": {
-            "cid" : "17"
+            "client_run.cid" : "17"
         },
 
-        "values_lock": [ "cid" ]
+        "values_lock": [ "client_run.cid" ]
     }
     """
 
@@ -465,7 +464,7 @@ def store_parameters():
 
 @rest_server.route('/session/client/parameters', methods=['POST'])
 def set_parameters():
-    """ the client node front-end after getting access to the session configuration
+    """ the client agent front-end after getting access to the session configuration
     send it to the backend by posting it to this URL 
     which stores it into ist context
     """
@@ -490,8 +489,8 @@ def check_parameters():
     if session_parameters:
 
         client_params = session_parameters.copy()
-        client_params["values_set"]["cid"] = generate_new_cid();
-        client_params["values_lock"] += [ "cid" ]    
+        client_params["values_set"]["client_run.cid"] = generate_new_cid();
+        client_params["values_lock"] += [ "client_run.cid" ]    
 
         return jsonify({"ready": True, "params": client_params})
     else:

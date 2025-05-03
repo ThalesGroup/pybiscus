@@ -12,13 +12,13 @@ echo "[container] server listening in container on : ${DOCKER_SERVER_INTERFACE}"
 
 # pybiscus configuration override (public)
 PUBLIC_SERVER_LISTEN_IP="0.0.0.0"
-PUBLIC_SERVER_PORT="3332"
+PUBLIC_SERVER_PORT="3333"
 export PUBLIC_SERVER_INTERFACE="$PUBLIC_SERVER_LISTEN_IP:$PUBLIC_SERVER_PORT"
 echo "[container] server listening on internet on : ${PUBLIC_SERVER_INTERFACE}"
 
 DOCKER_REST_PORT="5000"
-PUBLIC_REST_PORT="5002"
-echo "[container] node listening on internet on : ${PUBLIC_REST_PORT}"
+PUBLIC_REST_PORT="5000"
+echo "[container] agent listening on internet on : ${PUBLIC_REST_PORT}"
 
 uid=$(id -u)  # current user
 gid=$(id -g)  # current group
@@ -27,7 +27,7 @@ gid=$(id -g)  # current group
 $CONTAINER_ENGINE run \
     -t \
     --rm \
-    --name "pybiscus-node-$PUBLIC_REST_PORT" \
+    --name "pybiscus-agent-$PUBLIC_REST_PORT" \
     --gpus device=1                          \
     -e SERVICE="$DOCKER_SERVER_INTERFACE"    \
     -e no_proxy=$no_proxy                    \

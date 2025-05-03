@@ -4,8 +4,8 @@ from typing import override
 from pydantic import BaseModel
 from enum import StrEnum
 
-from pybiscus.flower.server_fabric import ConfigServer
-from pybiscus.flower.client_fabric import ConfigClient
+from pybiscus.flower.config_server import ConfigServer
+from pybiscus.flower.config_client import ConfigClient
 
 from pydantic2text import generate_model_text
 from pydantic2html import generate_model_page
@@ -25,7 +25,7 @@ class HtmlModelGenerator(ModelGenerator):
 
     @override
     def generate(self, model: BaseModel) -> str :
-        return generate_model_page(model,'pybiscus.session.node','node.html','check_exec_buttons')
+        return generate_model_page(model,'pybiscus.session.agent','agent.html','check_exec_buttons')
     
 class TextModelGenerator(ModelGenerator):
 

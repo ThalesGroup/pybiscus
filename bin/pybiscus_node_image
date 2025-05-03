@@ -1,6 +1,6 @@
 #!/usr/bin/bash
 
-DEFAULT_PYBISCUS_IMAGE="pybiscus-node:uv-v0.2"
+DEFAULT_PYBISCUS_IMAGE="pybiscus-agent:uv-v0.2"
 
 if [ -z "${PYBISCUS_IMAGE}" ]; then
 

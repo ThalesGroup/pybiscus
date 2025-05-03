@@ -410,11 +410,11 @@ def generate_model_page(model: BaseModel, templatePath: str, templateName: str, 
     try:
         with importlib.resources.files(templatePath).joinpath(templateName).open('r') as file:
             html = file.read()
-        with importlib.resources.files("pybiscus.session.node").joinpath("pybiscus.css").open('r') as file:
+        with importlib.resources.files("pybiscus.session.agent").joinpath("pybiscus.css").open('r') as file:
             css = file.read()
-        with importlib.resources.files("pybiscus.session.node").joinpath(f"{buttons_type}.html").open('r') as file:
+        with importlib.resources.files("pybiscus.session.agent").joinpath(f"{buttons_type}.html").open('r') as file:
             buttons_html = file.read()
-        with importlib.resources.files("pybiscus.session.node").joinpath(f"{buttons_type}.js").open('r') as file:
+        with importlib.resources.files("pybiscus.session.agent").joinpath(f"{buttons_type}.js").open('r') as file:
             buttons_js = file.read()
 
         body = generate_model_html(model, True, "")
