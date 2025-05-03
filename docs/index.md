@@ -1,4 +1,4 @@
-![Pybiscus logo](../pybiscus/assets/images/logo_pybiscus.png)
+![Pybiscus logo](/pybiscus/assets/images/logo_pybiscus.png)
 
 # Welcome to Pybiscus!
 
