@@ -17,6 +17,7 @@ dependencies = [
     "torchvision>=0.20.1",
     "trogon>=0.6.0",
     "typer>=0.15.1",
+    "wandb>=0.19.10",
 ]
 
 [build-system]

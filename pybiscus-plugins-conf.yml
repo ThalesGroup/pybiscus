@@ -1,7 +1,7 @@
 loggerfactory:
   - path: "./pybiscus-plugins/loggerfactory"
     modules:
-      - wandb
+      - wandb_
 data:
   - path: "./pybiscus-plugins/data"
     modules:
