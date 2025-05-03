@@ -1,7 +1,7 @@
 from enum import Enum
 from typing import ClassVar, Union
 from pydantic import BaseModel, ConfigDict
-from pybiscus.core.registries import LoggerConfig
+from pybiscus.core.registries import LoggerFactoryConfig
 
 class ConfigHardware(BaseModel):
     """A Pydantic Model to validate the hardware configuration given by the user.
@@ -37,7 +37,7 @@ class ConfigServerComputeContext(BaseModel):
     PYBISCUS_CONFIG: ClassVar[str] = "server_compute_context"
 
     hardware: ConfigHardware
-    metrics_logger: LoggerConfig() = None # pyright: ignore[reportInvalidTypeForm]
+    metrics_logger: LoggerFactoryConfig() # pyright: ignore[reportInvalidTypeForm]
 
     model_config = ConfigDict(extra="forbid")
 

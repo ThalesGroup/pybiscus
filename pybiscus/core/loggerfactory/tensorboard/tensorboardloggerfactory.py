@@ -1,7 +1,7 @@
 
 from typing import ClassVar, Literal
 from pydantic import BaseModel, ConfigDict
-from pybiscus.core.logger.interface.loggerfactory import LoggerFactory
+from pybiscus.core.loggerfactory.interface.loggerfactory import LoggerFactory
 from lightning.fabric.loggers import TensorBoardLogger
 
 class ConfigTensorBoardLoggerFactoryData(BaseModel):
@@ -30,8 +30,14 @@ class ConfigTensorBoardLoggerFactory(BaseModel):
 
 class TensorBoardLoggerFactory(LoggerFactory):
 
-    def __init__(self):
+    def __init__(self, root_dir, config):
         super().__init__()
+        self.root_dir = root_dir
+        self.config = config
 
-    def get_logger( root_dir ):
-        return (TensorBoardLogger(root_dir=root_dir), [])
+    def get_logger(self):
+
+        log_dir = self.root_dir + self.config.subdir
+        print(f"Allocating TensorBoardLoggerFactory(rootidr={log_dir})")
+
+        return [TensorBoardLogger(root_dir=log_dir )]

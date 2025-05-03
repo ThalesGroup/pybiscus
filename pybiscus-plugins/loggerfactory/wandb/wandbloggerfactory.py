@@ -10,7 +10,7 @@ from pydantic import BaseModel, ConfigDict
 # from lightning.pytorch.loggers import WandbLogger
 # from omegaconf import OmegaConf
 
-from pybiscus.core.logger.interface.loggerfactory import LoggerFactory
+from pybiscus.core.loggerfactory.interface.loggerfactory import LoggerFactory
 
 class ConfigWandbLoggerFactoryData(BaseModel):
 

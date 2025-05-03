@@ -5,13 +5,12 @@ import flwr as fl
 import torch
 import typer
 from lightning.fabric import Fabric
-from lightning.fabric.loggers import TensorBoardLogger
 from omegaconf import OmegaConf
 from pydantic import ValidationError
 from typing import Annotated
 
 from pybiscus.core.console import console
-from pybiscus.core.registries import datamodule_registry, model_registry, strategy_registry
+from pybiscus.core.registries import datamodule_registry, loggerfactory_registry, model_registry, strategy_registry
 
 from pybiscus.flower.config_server import (
     ConfigServer,
@@ -181,15 +180,20 @@ def launch_config(
 
     conf = check_and_build_server_config(conf_loaded)
 
-    _loggers = [TensorBoardLogger(root_dir=conf.root_dir + conf.server_compute_context.metrics_logger.config.subdir)]
+    # load the loggerfactory
+    _loggerfactory_class = loggerfactory_registry()[conf.server_compute_context.metrics_logger.name]
+    _loggersFactory = _loggerfactory_class(conf.root_dir,conf.server_compute_context.metrics_logger.config)
+
+    _loggers = _loggersFactory.get_logger()
 
     fabric = Fabric(**conf.server_compute_context.hardware.model_dump(), loggers=_loggers)
     fabric.launch()
 
     # load the model
     model_class = model_registry()[conf.model.name]
-    model = model_class(**conf.model.config.model_dump())
-    model = fabric.setup_module(model)
+    _model = model_class(**conf.model.config.model_dump())
+
+    model = fabric.setup_module(_model)
 
     # load the data management module from registry
     data_class = datamodule_registry()[conf.data.name]

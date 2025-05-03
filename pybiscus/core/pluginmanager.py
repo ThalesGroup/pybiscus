@@ -54,4 +54,5 @@ if __name__ == "__main__":
     plugins_by_category = get_plugins_by_category()
     print(plugins_by_category)
     print(plugins_by_category["data"])
-    print(plugins_by_category["models"])
+    print(plugins_by_category["model"])
+    print(plugins_by_category["loggerfactory"])
