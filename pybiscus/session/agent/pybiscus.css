@@ -153,6 +153,78 @@
     /* management of fieldset locking <<< end <<< */
         
 
+    
+    /* management of fieldset folding >>> begin >>> */
+
+    #top-div > fieldset {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        align-items: flex-start;
+        justify-content: flex-start;
+    }
+
+    #top-div > fieldset > div:not(:has(> fieldset.foldable)) {
+        flex-basis: 100%;
+    }
+
+    #top-div > fieldset > div:has(> fieldset.foldable.collapsed) {
+        flex: 0 0 auto;
+
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100%;
+      
+        /* border: 1px dashed red;
+        background-color: rgba(255, 0, 0, 0.05); */
+    }
+
+    #top-div > fieldset > div:has(> fieldset.foldable:not(.collapsed)) {
+        flex-basis: 100%;
+
+        display: flex;
+        justify-content: flex-start;
+        align-items: center;
+        height: 100%;
+
+        /* border: 1px dashed red;
+        background-color: rgba(255, 0, 0, 0.05); */
+    }
+
+    fieldset.foldable.collapsed {
+        max-height: 100%;
+        width: auto;
+        box-sizing: border-box;
+
+        border: none;          /* Supprime la bordure autour du fieldset */
+        padding: 0; 
+    }
+
+    fieldset.foldable.collapsed {
+        flex-basis: 100%;
+    }
+
+    fieldset.foldable > legend {
+        cursor: pointer;
+        user-select: none;
+    }
+
+    fieldset.foldable.collapsed > *:not(legend) {
+        display: none;
+    }
+
+    fieldset.foldable > legend .pybiscus-config::before {
+        content: '🔽 ';
+    }
+
+    fieldset.foldable.collapsed > legend .pybiscus-config::before {
+        content: '▶️ ';
+    }
+
+    /* management of fieldset folding <<< end <<< */
+
+
 
     /* management of pybiscus configuration items >>> begin >>> */
 
@@ -215,8 +287,7 @@
 
     .pybiscus-box {
         background-color: #f6f1f1;
-        padding: 2rem;
-        margin: 2rem 0;
+        padding: 8px;  
         border-radius: 8px;
         box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
     }

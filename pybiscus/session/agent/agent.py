@@ -1,4 +1,5 @@
 
+import importlib
 import json
 from flask import Flask, jsonify, request, render_template_string
 from flask_cors import CORS
@@ -173,7 +174,10 @@ def serverConfigDownload():
     else:
         console.log("/server/config with no param")
 
-    return generate_model_page(ConfigServer,'pybiscus.session.agent','agent.html','check_exec_buttons',param_js)
+    with importlib.resources.files("pybiscus.session.agent").joinpath("fold_fieldset.js").open('r') as file:
+        fold_fieldsets = file.read()
+
+    return generate_model_page(ConfigServer,'pybiscus.session.agent','agent.html','check_exec_buttons', fold_fieldsets + param_js)
 
 
 @rest_server.route("/server/config", methods=["POST"])
@@ -206,7 +210,10 @@ def clientConfigDownload():
 
             console.log("client: downloaded parameters: ", session_parameters)
 
-    return generate_model_page(ConfigClient,'pybiscus.session.agent','agent.html','check_exec_buttons', param_js)
+    with importlib.resources.files("pybiscus.session.agent").joinpath("fold_fieldset.js").open('r') as file:
+        fold_fieldsets = file.read()
+
+    return generate_model_page(ConfigClient,'pybiscus.session.agent','agent.html','check_exec_buttons', fold_fieldsets + param_js)
 
 @rest_server.route("/client/config", methods=["POST"])
 def clientConfigUpload():

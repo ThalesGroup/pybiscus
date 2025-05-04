@@ -356,12 +356,12 @@ def generate_field_html(field_name: str, field_type, field_required: bool, field
     return field_html
 
 
-def generate_model_html(model: BaseModel, inFieldSet: bool, prefix: str ) -> str:
+def generate_model_html(model: BaseModel, inFieldSet: bool, prefix: str) -> str:
 
     model_html = '<br>'
 
     if inFieldSet:
-        model_html += '<fieldset>\n'
+        model_html += f'<fieldset>\n'
 
         if hasattr(model, "PYBISCUS_CONFIG"):
             
@@ -384,7 +384,6 @@ def generate_model_html(model: BaseModel, inFieldSet: bool, prefix: str ) -> str
                                     field_type        = field_info.annotation,
                                     field_required    = field_info.is_required(), 
                                     field_default     = field_info.default, 
-                                    #field_description = field_info.description,
                                     field_description = get_basemodel_attribute_description(model,field_name),
                                     inFieldSet        = True,
                                     prefix            = prefix,

@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Manager Dashboard</title>
+    <style>
+        canvas { margin-top: 6rem; border: 1px solid #ccc; background: #f9f9f9; }
+        body { font-family: Arial, sans-serif; text-align: center; }
+    </style>
+</head>
+<body>
+    <canvas id="graph" width="600" height="400"></canvas><br>
+
+    <script>
+        const canvas = document.getElementById('graph');
+        const ctx = canvas.getContext('2d');
+
+        function drawGraph(clients) {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            const centerX = canvas.width / 2;
+            const centerY = canvas.height / 2;
+
+            const angleStep = (2 * Math.PI) / clients.length;
+
+            clients.forEach((client, i) => {
+                const angle = i * angleStep;
+                const radius = 120;
+                const x = centerX + radius * Math.cos(angle);
+                const y = centerY + radius * Math.sin(angle);
+
+                // Line to server
+                ctx.beginPath();
+                ctx.moveTo(centerX, centerY);
+                ctx.lineTo(x, y);
+                ctx.stroke();
+            });
+
+            // Draw server
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, 30, 0, 2 * Math.PI);
+            ctx.fillStyle = "blue";
+            ctx.fill();
+            ctx.stroke();
+            ctx.fillStyle = "white";
+            ctx.font = "12px Arial";
+            ctx.textAlign = "center";
+            ctx.fillText("Server", centerX, centerY + 4);
+
+            clients.forEach((client, i) => {
+                const angle = i * angleStep;
+                const radius = 120;
+                const x = centerX + radius * Math.cos(angle);
+                const y = centerY + radius * Math.sin(angle);
+
+                // Draw client
+                ctx.beginPath();
+                ctx.arc(x, y, 20, 0, 2 * Math.PI);
+                ctx.fillStyle = "lightgray";
+                ctx.fill();
+                ctx.stroke();
+
+                ctx.fillStyle = "black";
+                ctx.fillText(client, x, y + 30);
+            });
+        }
+
+        function updateGraph() {
+            fetch('/clients')
+                .then(res => res.json())
+                .then(data => {
+                    const clients = Object.keys(data.clients);
+                    drawGraph(clients);
+                });
+        }
+
+        function spreadSessionParams() {
+
+            /*
+            fetch('/ping-server')
+                .then(res => res.json())
+                .then(data => alert("Server says: " + data.message))
+                .catch(err => alert("Error contacting server"));
+                */
+
+            fetch('/clients')
+                .then(res => res.json())
+                .then(data => {
+                    const clients = Object.keys(data.clients);
+                    alert("Spreading session params to " + clients);
+                });
+            
+        }
+
+        setInterval(updateGraph, 2000);  // Refresh every 2 seconds
+        updateGraph();
+    </script>
+</body>
+</html>
