@@ -309,6 +309,12 @@ def generate_field_html(field_name: str, field_type, field_required: bool, field
 
                     field_html += f'<div id="tab{tab_nb}-{index}" class="pybiscus-tab-content {active} {opt_first}" {status}>\n' 
 
+                    if hasattr(sub_type, 'PYBISCUS_MODULE_ORIGIN'):
+                        if sub_type.PYBISCUS_MODULE_ORIGIN == 'core':
+                            field_html += """<span style="background-color: black; border: 2px solid orange; padding: 2px 4px;">📦📚</span>"""
+                        elif sub_type.PYBISCUS_MODULE_ORIGIN == 'plugin':
+                            field_html += """<span style="background-color: black; border: 2px solid orange; padding: 2px 4px;">📦🧩</span>"""
+                            
                     if propagate_default and index == active_index:
                         sub_field_default = field_default 
                     else:
