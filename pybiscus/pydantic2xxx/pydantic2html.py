@@ -311,9 +311,9 @@ def generate_field_html(field_name: str, field_type, field_required: bool, field
 
                     if hasattr(sub_type, 'PYBISCUS_MODULE_ORIGIN'):
                         if sub_type.PYBISCUS_MODULE_ORIGIN == 'core':
-                            field_html += """<span style="background-color: black; border: 2px solid orange; padding: 2px 4px;">📦📚</span>"""
+                            field_html += """<span style="background-color: black; border: 2px solid orange; margin-left : 20rem">📦📚</span>"""
                         elif sub_type.PYBISCUS_MODULE_ORIGIN == 'plugin':
-                            field_html += """<span style="background-color: black; border: 2px solid orange; padding: 2px 4px;">📦🧩</span>"""
+                            field_html += """<span style="background-color: black; border: 2px solid orange; margin-left : 20rem">📦🧩</span>"""
                             
                     if propagate_default and index == active_index:
                         sub_field_default = field_default 
@@ -364,7 +364,7 @@ def generate_field_html(field_name: str, field_type, field_required: bool, field
 
 def generate_model_html(model: BaseModel, inFieldSet: bool, prefix: str) -> str:
 
-    model_html = '<br>'
+    model_html = ''
 
     if inFieldSet:
         model_html += f'<fieldset>\n'

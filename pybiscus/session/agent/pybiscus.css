@@ -5,16 +5,16 @@
     }
 
     body > div > fieldset > legend {
-        font-size: 1.5rem;            /* Agrandir le texte */
-        font-weight: bold;            /* Texte en gras */
-        color: #2c3e50;               /* Couleur du texte */
-        padding: 0.5rem 0.5rem;         /* Ajouter de l'espace autour */
-        background-color: whitesmoke;    /* Couleur de fond pour contraster */
-        border-radius: 8px;           /* Coins arrondis */
+        font-size: 1.5rem;
+        font-weight: bold;
+        color: #2c3e50;
+        padding: 0.5rem 0.5rem;
+        background-color: whitesmoke;
+        border-radius: 8px;
         border-color: black;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); /* Petite ombre */
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
         text-align: center;
-        margin-bottom: 1rem; /* ou la valeur que tu veux */
+        margin-bottom: 1rem;
     }
 
     /* management of union fields >>> begin >>> */
@@ -222,6 +222,21 @@
         content: '▶️ ';
     }
 
+    fieldset.foldable:not(.collapsed)  {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1rem;
+        align-items: flex-start;
+    }
+
+    fieldset.foldable:not(.collapsed) > div.pybiscus-field {
+        flex-basis: 100%;
+    }
+    
+    fieldset.foldable:not(.collapsed) > div.pybiscus-field:has(> fieldset ) {
+        flex: 0 1 auto;
+    }
+    
     /* management of fieldset folding <<< end <<< */
 
 
