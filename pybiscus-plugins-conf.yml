@@ -1,5 +1,5 @@
-loggerfactory:
-  - path: "./pybiscus-plugins/loggerfactory"
+metricslogger:
+  - path: "./pybiscus-plugins/metricslogger"
     modules:
       - wandb_
 data:

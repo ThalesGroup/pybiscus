@@ -55,4 +55,4 @@ if __name__ == "__main__":
     print(plugins_by_category)
     print(plugins_by_category["data"])
     print(plugins_by_category["model"])
-    print(plugins_by_category["loggerfactory"])
+    print(plugins_by_category["metricslogger"])

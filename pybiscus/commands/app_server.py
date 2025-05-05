@@ -1,4 +1,3 @@
-from collections import defaultdict
 from pathlib import Path
 
 import flwr as fl
@@ -10,7 +9,7 @@ from pydantic import ValidationError
 from typing import Annotated
 
 from pybiscus.core.console import console
-from pybiscus.core.registries import datamodule_registry, loggerfactory_registry, model_registry, strategy_registry
+from pybiscus.core.registries import datamodule_registry, metricslogger_registry, model_registry, strategy_registry
 
 from pybiscus.flower.config_server import (
     ConfigServer,
@@ -180,13 +179,13 @@ def launch_config(
 
     conf = check_and_build_server_config(conf_loaded)
 
-    # load the loggerfactory
-    _loggerfactory_class = loggerfactory_registry()[conf.server_compute_context.metrics_logger.name]
-    _loggersFactory = _loggerfactory_class(conf.root_dir,conf.server_compute_context.metrics_logger.config)
+    # load the metricslogger
+    _metricslogger_class = metricslogger_registry()[conf.server_compute_context.metrics_logger.name]
+    _metricsloggerFactory = _metricslogger_class(conf.root_dir,conf.server_compute_context.metrics_logger.config)
 
-    _loggers = _loggersFactory.get_logger()
+    _metricsloggers = _metricsloggerFactory.get_logger()
 
-    fabric = Fabric(**conf.server_compute_context.hardware.model_dump(), loggers=_loggers)
+    fabric = Fabric(**conf.server_compute_context.hardware.model_dump(), loggers=_metricsloggers)
     fabric.launch()
 
     # load the model

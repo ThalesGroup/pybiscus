@@ -1,7 +1,7 @@
 
 from typing import ClassVar, Literal
 from pydantic import BaseModel, ConfigDict
-from pybiscus.core.loggerfactory.interface.loggerfactory import LoggerFactory
+from pybiscus.core.metricslogger.interface.metricsloggerfactory import MetricsLoggerFactory
 from lightning.fabric.loggers import TensorBoardLogger
 
 class ConfigTensorBoardLoggerFactoryData(BaseModel):
@@ -28,7 +28,7 @@ class ConfigTensorBoardLoggerFactory(BaseModel):
         return getattr(self, attName, None)
 
 
-class TensorBoardLoggerFactory(LoggerFactory):
+class TensorBoardLoggerFactory(MetricsLoggerFactory):
 
     def __init__(self, root_dir, config):
         super().__init__()

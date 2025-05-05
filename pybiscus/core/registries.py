@@ -1,6 +1,6 @@
 
 from collections import defaultdict
-from pybiscus.core.loggerfactory.interface.loggerfactory import LoggerFactory
+from pybiscus.core.metricslogger.interface.metricsloggerfactory import MetricsLoggerFactory
 from pybiscus.core.pluginmanager import get_plugins_by_category
 from pybiscus.core.registryloader import RegistryLoader
 
@@ -56,19 +56,19 @@ def StrategyConfig():
 
 #### --- Logger ---
 
-_loggerfactory_loader = RegistryLoader(LoggerFactory, True)
-_loggerfactory_modules = _loggerfactory_loader.get_submodules_from_path("pybiscus.core.loggerfactory") 
-_loggerfactory_modules += plugins_by_category["loggerfactory"]
-_loggerfactory_registry, _LoggerFactoryConfig = _loggerfactory_loader.register_modules( _loggerfactory_modules )
+_metricslogger_loader = RegistryLoader(MetricsLoggerFactory, True)
+_metricslogger_modules = _metricslogger_loader.get_submodules_from_path("pybiscus.core.metricslogger") 
+_metricslogger_modules += plugins_by_category["metricslogger"]
+_metricslogger_registry, _MetricsLoggerConfig = _metricslogger_loader.register_modules( _metricslogger_modules )
 
-def loggerfactory_registry():
-    return _loggerfactory_registry
+def metricslogger_registry():
+    return _metricslogger_registry
 
-def LoggerFactoryConfig():
-    return _LoggerFactoryConfig
+def MetricsLoggerConfig():
+    return _MetricsLoggerConfig
 
 if __name__ == "__main__":
-    print(f'LoggerFactory plugins : {plugins_by_category["loggerfactory"]} {_loggerfactory_modules}')
+    print(f'MetricsLogger plugins : {plugins_by_category["metricslogger"]} {_metricslogger_modules}')
     print(f'Data plugins : {plugins_by_category["data"]} {_data_modules}')
     print(f'Model plugins : {plugins_by_category["model"]} {_model_modules}')
     print(f'Strategy plugins : {plugins_by_category["strategy"]} {_strategy_modules }')
