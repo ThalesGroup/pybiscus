@@ -11,13 +11,7 @@ from typing import Annotated
 from pybiscus.core.console import console
 from pybiscus.core.registries import datamodule_registry, metricslogger_registry, model_registry, strategy_registry
 
-from pybiscus.flower.config_server import (
-    ConfigServer,
-    weighted_average,
-    fit_config,
-    evaluate_config,
-    get_evaluate_fn,
-)
+from pybiscus.flower.config_server import ConfigServer
 
 from pybiscus.commands.apps_common import load_config
 
@@ -219,20 +213,15 @@ def launch_config(
     # the behaviour would have been : Requesting initial parameters from one random client
     # Question: add this as a configuration option ?
 
-    strategy_class = strategy_registry()[conf.strategy.name]
-
-    strategy = strategy_class(
-        fit_metrics_aggregation_fn=weighted_average,
-        evaluate_metrics_aggregation_fn=weighted_average,
+    strategy = strategy_registry()[conf.strategy.name]( 
         model=model,
         fabric=fabric,
-        evaluate_fn=get_evaluate_fn(testset=test_set, model=model, fabric=fabric),
-        on_fit_config_fn=fit_config,
-        on_evaluate_config_fn=evaluate_config,
+        testset=test_set,
         initial_parameters=initial_parameters,
-        **conf.strategy.config.model_dump()
-    )
-    
+        config=conf.strategy.config,
+        
+    ).get_strategy()
+
     # starting flower server
     fl.server.start_server(
         server_address = conf.flower_server.listen_address,
@@ -256,7 +245,7 @@ def launch_config(
             console.log(client_conf)
             _conf = OmegaConf.load(client_conf)
             with open(
-                fabric.logger.log_dir + f"/config_client_{_conf['client_run']['cid']}_launch.yml", "w"
+                fabric.logger.log_dir + f"/config_client_{_conf.client_run.cid}_launch.yml", "w"
             ) as file:
                 OmegaConf.save(config=_conf, f=file)
 

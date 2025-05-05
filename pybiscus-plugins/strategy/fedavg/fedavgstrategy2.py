@@ -19,6 +19,8 @@ from lightning.pytorch import LightningModule
 from pydantic import BaseModel, ConfigDict
 
 from pybiscus.core.console import console
+from pybiscus.flower.strategy.interface.fabricstrategyfactory import FabricStrategyFactory
+from pybiscus.flower.utils_server import evaluate_config, fit_config, get_evaluate_fn, weighted_average
 
 WARNING_MIN_AVAILABLE_CLIENTS_TOO_LOW = """
 Setting `min_available_clients` lower than `min_fit_clients` or
@@ -214,3 +216,27 @@ class FabricFedAvgStrategy2(fl.server.strategy.FedAvg):
             log(WARNING, "No evaluate_metrics_aggregation_fn provided")
 
         return loss_aggregated, metrics_aggregated
+
+
+class FabricFedAvgStrategyFactory2(FabricStrategyFactory):
+
+    def __init__(self,model,fabric,testset,initial_parameters,config,):
+        self.model=model
+        self.fabric=fabric
+        self.testset=testset
+        self.initial_parameters=initial_parameters
+        self.config=config
+
+    def get_strategy(self):
+
+        return FabricFedAvgStrategy2(
+            fit_metrics_aggregation_fn=weighted_average,
+            evaluate_metrics_aggregation_fn=weighted_average,
+            model=self.model,
+            fabric=self.fabric,
+            evaluate_fn=get_evaluate_fn(testset=self.testset, model=self.model, fabric=self.fabric),
+            on_fit_config_fn=fit_config,
+            on_evaluate_config_fn=evaluate_config,
+            initial_parameters=self.initial_parameters,
+            **self.config.model_dump()
+        )

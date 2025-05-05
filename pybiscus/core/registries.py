@@ -6,6 +6,8 @@ from pybiscus.core.registryloader import RegistryLoader
 
 from lightning.pytorch import LightningDataModule, LightningModule
 
+from pybiscus.flower.strategy.interface.fabricstrategyfactory import FabricStrategyFactory
+
 
 try:
     plugins_by_category = get_plugins_by_category()
@@ -41,9 +43,7 @@ def ModelConfig():
 
 #### --- Strategy ---
 
-from flwr.server.strategy import Strategy
-
-_strategy_loader = RegistryLoader(Strategy, True)
+_strategy_loader = RegistryLoader(FabricStrategyFactory, True)
 _strategy_modules = _data_loader.get_submodules_from_path("pybiscus.flower.strategy") 
 _strategy_modules += plugins_by_category["strategy"]
 _strategy_registry, _StrategyConfig = _strategy_loader.register_modules( _strategy_modules )

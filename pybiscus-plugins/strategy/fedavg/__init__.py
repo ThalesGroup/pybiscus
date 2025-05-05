@@ -1,13 +1,13 @@
 
 from typing import Dict, List, Tuple
 from pydantic import BaseModel
-from flwr.server.strategy import Strategy
 
-from fedavg.fedavgstrategy2 import FabricFedAvgStrategy2, ConfigFabricFedAvgStrategy2
+from fedavg.fedavgstrategy2 import ConfigFabricFedAvgStrategy2, FabricFedAvgStrategyFactory2
+from pybiscus.flower.strategy.interface.fabricstrategyfactory import FabricStrategyFactory
 
-def get_modules_and_configs() -> Tuple[Dict[str, Strategy], List[BaseModel]]:
+def get_modules_and_configs() -> Tuple[Dict[str, FabricStrategyFactory], List[BaseModel]]:
 
-    registry = { "fedavgextended": FabricFedAvgStrategy2, }
+    registry = { "fedavgextended": FabricFedAvgStrategyFactory2, }
     configs  = [ConfigFabricFedAvgStrategy2,]
 
     return registry, configs

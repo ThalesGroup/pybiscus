@@ -125,7 +125,7 @@ To add a new strategy, follow the few points below:
 
 0. choose either plugin or pybiscus directory as ROOT
 1. make a new subdirectory, like `$ROOT/my-strategy/`
-2. create a file `my_strategy.py` implementing the flwr.server.strategy.Strategy class
+2. create a file `my_strategy.py` implementing the pybiscus.flower.strategy.interface.fabricstrategyfactory.FabricStrategyFactory class
 3. create the file `$ROOT/my-strategy/__init__.py`:
     - write a function `get_modules_and_configs()` 
     that exports your classes derived from flwr.server.strategy.Strategy
@@ -136,11 +136,11 @@ To add a new strategy, follow the few points below:
 
 from typing import Dict, List, Tuple
 from pydantic import BaseModel
-from flwr.server.strategy import Strategy
+from pybiscus.flower.strategy.interface.fabricstrategyfactory import FabricStrategyFactory
 
 from fedavg.fedavgstrategy2 import FabricFedAvgStrategy2, ConfigFabricFedAvgStrategy2
 
-def get_modules_and_configs() -> Tuple[Dict[str, Strategy], List[BaseModel]]:
+def get_modules_and_configs() -> Tuple[Dict[str, FabricStrategyFactory], List[BaseModel]]:
 
     registry = { "fedavg2": FabricFedAvgStrategy2, }
     configs  = [ConfigFabricFedAvgStrategy2,]
