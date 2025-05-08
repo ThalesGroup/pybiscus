@@ -19,7 +19,7 @@ from pybiscus.session.agent.tuples2yaml import parse_tuples_to_yaml_string
 from pybiscus.flower.config_server import ConfigServer
 from pybiscus.flower.config_client import ConfigClient
 from pybiscus.core.pybiscusexception import PybiscusInternalException, PybiscusValueException
-from pybiscus.core.console import console
+from pybiscus.core.pybiscus_logger import pluggable_logger as console
 from pybiscus.core.registries import datamodule_registry, model_registry, DataConfig, ModelConfig
 
 rest_server = Flask(__name__)
@@ -103,16 +103,26 @@ def run_typer_command(command: list[str]) -> str:
 
     return ''.join(lines)
 
+# ..........................................................
+# .... GET /exit ...........................................
+# ..........................................................
+
 @rest_server.route("/exit", methods=["GET"])
 def exitFlask():
     sys.exit(0)
 
+# ..........................................................
+# .... GET /shutdown .......................................
+# ..........................................................
 
 @rest_server.route("/shutdown", methods=["GET"])
 def shutdown():
     shutdown_server()
     return "Server shut down."
 
+# ..........................................................
+# .... GET /session/config .................................
+# ..........................................................
 
 @rest_server.route("/session/config", methods=["GET"])
 def sessionConfigDownload():
@@ -127,6 +137,9 @@ def sessionConfigDownload():
 
     return generate_model_page(config_session,'pybiscus.session.agent','agent.html','launch_session_button')
 
+# ..........................................................
+# .... GET /server/config ..................................
+# ..........................................................
 
 @rest_server.route("/server/config", methods=["GET"])
 def serverConfigDownload():
@@ -179,6 +192,9 @@ def serverConfigDownload():
 
     return generate_model_page(ConfigServer,'pybiscus.session.agent','agent.html','check_exec_buttons', fold_fieldsets + param_js)
 
+# ..........................................................
+# .... POST /server/config .................................
+# ..........................................................
 
 @rest_server.route("/server/config", methods=["POST"])
 def serverConfigUpload():
@@ -192,6 +208,10 @@ def serverConfigUpload():
         return checkConfigurationFile( "server", uploaded_file_path )
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+# ..........................................................
+# .... GET /client/config ..................................
+# ..........................................................
 
 @rest_server.route("/client/config", methods=["GET"])
 def clientConfigDownload():
@@ -215,6 +235,10 @@ def clientConfigDownload():
 
     return generate_model_page(ConfigClient,'pybiscus.session.agent','agent.html','check_exec_buttons', fold_fieldsets + param_js)
 
+# ..........................................................
+# .... POST /client/config .................................
+# ..........................................................
+
 @rest_server.route("/client/config", methods=["POST"])
 def clientConfigUpload():
     """post a client configuration file whose validity is checked"""
@@ -228,6 +252,10 @@ def clientConfigUpload():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+# ..........................................................
+# .... GET /server .........................................
+# ..........................................................
+
 @rest_server.route("/server", methods=["GET"])
 def server():
     """run in server mode using the uploaded configuration"""
@@ -236,6 +264,10 @@ def server():
         return interpretConfigurationFile( "server", uploaded_file_path )
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+# ..........................................................
+# .... GET /client .........................................
+# ..........................................................
 
 @rest_server.route("/client", methods=["GET"])
 def client():
@@ -318,6 +350,9 @@ def interpretConfigurationFile( mode: str, file_path: str ):
 
     return jsonify({mode: "yaml file interpreted successfully"}), 200
 
+# ..........................................................
+# ............ POST /config/json/to_yaml ...................
+# ..........................................................
 
 @rest_server.route("/config/json/to_yaml", methods=["POST"])
 def convert_json_to_yaml():
@@ -345,6 +380,9 @@ def convert_json_to_yaml():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+# ..........................................................
+# ............ POST /config/<model_name>/json ..............
+# ..........................................................
 
 @rest_server.route("/config/<model_name>/json", methods=["POST"])
 def upload_json(model_name: str):
@@ -384,6 +422,9 @@ def upload_json(model_name: str):
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+# ..........................................................
+# ............ POST /config ................................
+# ..........................................................
 
 @rest_server.route("/config", methods=["POST"])
 def upload_yaml():
@@ -468,6 +509,9 @@ def generate_param_js(payload):
 def store_parameters():
     pass
 
+# ..........................................................
+# ............ POST /session/client/parameters .............
+# ..........................................................
 
 @rest_server.route('/session/client/parameters', methods=['POST'])
 def set_parameters():
@@ -488,7 +532,10 @@ def set_parameters():
     
     else:
         return jsonify({"status": "ko"})
-    
+
+# ..........................................................
+# ............. GET /session/server/parameters/check .......
+# ..........................................................    
 
 @rest_server.route('/session/server/parameters/check')
 def check_parameters():
@@ -503,6 +550,9 @@ def check_parameters():
     else:
         return jsonify({"ready": False})
 
+# ..........................................................
+# ........... GET /session/client/registration/waiting .....
+# ..........................................................    
 
 @rest_server.route('/session/client/registration/waiting')
 def session_registration_waiting():
@@ -529,6 +579,9 @@ def session_registration_waiting():
         </script>
     """)
 
+# ..........................................................
+# ............ POST /session/client/registration ...........
+# ..........................................................    
 
 @rest_server.route('/session/client/registration', methods=['POST'])
 def session_registration_notification():
@@ -551,11 +604,17 @@ def session_registration_notification():
     else:
         return jsonify({"status": "ko"})
 
+# ..........................................................
+# ............. GET /session/client/registration/check .....
+# ..........................................................    
 
 @rest_server.route('/session/client/registration/check')
 def check_registration():
     return jsonify({'redirect': session_client_name is not None })
 
+# ..........................................................
+# ...... GET /session/client/parameters/server_polling .....
+# ..........................................................    
 
 @rest_server.route('/session/client/parameters/server_polling')
 def session_parameters_waiting():

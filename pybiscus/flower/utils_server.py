@@ -8,7 +8,7 @@ from flwr.common import Metrics, Scalar
 from lightning.fabric import Fabric
 from lightning.pytorch import LightningModule
 
-from pybiscus.core.console import console
+from pybiscus.core.pybiscus_logger import pluggable_logger as console
 from pybiscus.ml.loops_fabric import test_loop
 
 def set_params(model: torch.nn.ModuleList, params: list[np.ndarray]):

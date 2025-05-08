@@ -5,6 +5,8 @@ from pathlib import Path
 import importlib
 import pkgutil
 
+from importlib.metadata import inspect
+
 
 def get_name_value_if_literal(cls):
     annotation = cls.__annotations__.get('name')
@@ -90,6 +92,17 @@ class RegistryLoader(Generic[T]):
                     print(f"📦 Loading module: {full_module_name}")
 
                 if hasattr(mod, "get_modules_and_configs"):
+
+                    # print(f"🔍 Content of {full_module_name} :")
+                    # for name in dir(mod):
+                    #     if not name.startswith("__"):
+                    #         attr = getattr(mod, name)
+                    #         print(f" - {name}: {type(attr)}")
+                    #         if inspect.isfunction(attr):
+                    #             print(f"   (function) {name}{inspect.signature(attr)}")
+                    #         elif inspect.isclass(attr):
+                    #             print(f"   (class) {name}")                    
+
                     sub_registry, sub_configs = mod.get_modules_and_configs()
 
                     for key, cls in sub_registry.items():
@@ -126,6 +139,16 @@ class RegistryLoader(Generic[T]):
 
                 elif self.verbose:
                     print(f"⚠️  No get_modules_and_configs() in {full_module_name}")
+                    print(f"🔍 Content of {full_module_name} :")
+                    for name in dir(mod):
+                        if not name.startswith("__"):
+                            attr = getattr(mod, name)
+                            print(f" - {name}: {type(attr)}")
+                            if inspect.isfunction(attr):
+                                print(f"   (function) {name}{inspect.signature(attr)}")
+                            elif inspect.isclass(attr):
+                                print(f"   (class) {name}")                    
+
             except Exception as e:
                 if self.verbose:
                     print(f"❌ Error loading {full_module_name}: {e}")

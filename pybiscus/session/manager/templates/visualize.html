@@ -3,14 +3,167 @@
 <head>
     <title>Manager Dashboard</title>
     <style>
-        canvas { margin-top: 6rem; border: 1px solid #ccc; background: #f9f9f9; }
+        canvas { margin-top: 0rem; border: 1px solid #ccc; background: #f9f9f9; }
         body { font-family: Arial, sans-serif; text-align: center; }
+
+        #logs-container {
+            width: 600px;
+            margin: 2rem auto;
+            text-align: left;
+        }
+
+        #log-list {
+            max-height: 400px;
+            overflow-y: auto;
+            border: 1px solid #ccc;
+            padding: 10px;
+            background: #f0f0f0;
+            border-radius: 5px;
+        }
+
+        .log-entry {
+            background: #fff;
+            padding: 8px;
+            margin-bottom: 6px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+
+        .log-source {
+            font-weight: bold;
+            color: #333;
+        }
+
+        .log-message {
+            margin-top: 4px;
+            color: #555;
+        }
+
+        #reset-btn {
+            margin-top: 10px;
+            padding: 6px 12px;
+            font-size: 14px;
+            background-color: #d9534f;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        #reset-btn:hover {
+            background-color: #c9302c;
+        }
+
+        #pause-btn {
+            margin-top: 10px;
+            margin-left: 10px;
+            padding: 6px 12px;
+            font-size: 14px;
+            background-color: #5bc0de;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        #pause-btn:hover {
+            background-color: #31b0d5;
+        }
+
     </style>
 </head>
 <body>
     <canvas id="graph" width="600" height="400"></canvas><br>
 
+    <div id="logs-container">
+        <h3>Logs</h3>
+        <button id="reset-btn">Reset</button>
+        <button id="pause-btn">Pause</button>
+        <div id="log-list"></div>
+    </div>
+
     <script>
+
+        // ******************************
+        // **** logs management *********
+        // ******************************
+
+        const apiUrl = 'http://localhost:5555/logs'; // URL de l'API backend
+    
+        const logList = document.getElementById('log-list');
+        const resetBtn = document.getElementById('reset-btn');
+        const pauseBtn = document.getElementById('pause-btn');
+
+        // Tableaux pour stocker les logs déjà affichés
+        let displayedLogs = [];
+        let paused = false;
+
+        function addLogs(newLogs) {
+            newLogs.forEach(log => {
+                const entryId = `${log.source}-${log.message}-${Math.random()}`; // ID unique approximatif
+    
+                // Créer et ajouter l'élément HTML
+                const entry = document.createElement('div');
+                entry.className = 'log-entry';
+    
+                const source = document.createElement('div');
+                source.className = 'log-source';
+                source.textContent = `[${log.source}]`;
+    
+                const message = document.createElement('div');
+                message.className = 'log-message';
+                message.textContent = log.message;
+    
+                entry.appendChild(source);
+                entry.appendChild(message);
+    
+                logList.appendChild(entry);
+                displayedLogs.push(entry);
+    
+                // Ne garder que les 100 derniers logs
+                if (displayedLogs.length > 100) {
+                    const removed = displayedLogs.shift();
+                    removed.remove();
+                }
+            });
+    
+            // Scroll automatique vers le bas
+            logList.scrollTop = logList.scrollHeight;
+        }
+    
+        function fetchLogs() {
+            if (paused) return;
+
+            fetch(apiUrl)
+                .then(res => res.json())
+                .then(data => {
+                    // Option simple : afficher seulement les logs non encore présents
+                    // (si le backend envoie les mêmes à chaque appel, cela évite les doublons)
+                    const newItems = data.slice(displayedLogs.length);
+                    if (newItems.length > 0) {
+                        addLogs(newItems);
+                    }
+                })
+                .catch(err => console.error('Erreur de récupération des logs:', err));
+        }
+    
+        resetBtn.addEventListener('click', () => {
+            logList.innerHTML = '';
+            displayedLogs = [];
+        });
+
+        pauseBtn.addEventListener('click', () => {
+            paused = !paused;
+            pauseBtn.textContent = paused ? 'Reprendre' : 'Pause';
+        });
+    
+        fetchLogs();
+        setInterval(fetchLogs, 5000);
+    
+        // ******************************
+        // **** graph management ********
+        // ******************************
+
         const canvas = document.getElementById('graph');
         const ctx = canvas.getContext('2d');
 

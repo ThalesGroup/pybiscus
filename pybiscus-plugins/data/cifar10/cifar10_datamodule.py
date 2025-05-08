@@ -7,7 +7,7 @@ import torchvision.transforms as transforms
 from torch.utils.data import DataLoader
 from torchvision.datasets import CIFAR10
 
-from pybiscus.core.console import console
+from pybiscus.core.pybiscus_logger import pluggable_logger as console
 
 class CifarLightningDataModule(pl.LightningDataModule):
     """

@@ -7,7 +7,6 @@ from lightning.pytorch.callbacks.progress.rich_progress import RichProgressBarTh
 from omegaconf import OmegaConf
 from typing import Annotated
 
-from pybiscus.core.ui import pybiscus_ui
 from pybiscus.core.registries import datamodule_registry, model_registry
 
 from pybiscus.commands.apps_common import load_config

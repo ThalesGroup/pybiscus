@@ -4,14 +4,15 @@ from typing import Annotated
 import flwr as fl
 import torch
 import typer
-from omegaconf import OmegaConf
 from pydantic import ValidationError
 
-from pybiscus.core.console import console
-from pybiscus.core.registries import datamodule_registry, model_registry
-from pybiscus.flower.config_client import ConfigClient, FlowerClient
+from pybiscus.core.pybiscus_logger import pluggable_logger as console
+from pybiscus.core.registries import client_registry, datamodule_registry, model_registry
+from pybiscus.flower.config_client import ConfigClient
 
 from pybiscus.commands.apps_common import load_config
+from pybiscus.flower.flowerfabricclient import FlowerFabricClient
+from pybiscus.flower.flowerfabricclientfactory import FlowerFabricClientFactory
 
 torch.backends.cudnn.enabled = True
 
@@ -158,7 +159,17 @@ def launch_config(
     model_class = model_registry()[conf.model.name]
     model = model_class(**conf.model.config.model_dump())
 
-    client = FlowerClient(
+    # load the client
+    # if conf.flower_client.alternate_client_class is None:
+    #     client_factory = FlowerFabricClientFactory(config,data,model,num_examples)
+    # else:
+    #     client_factory = client_registry()[conf.flower_client.alternate_client_class.name](config,data,model,num_examples)
+
+    # client_factory = FlowerFabricClientFactory(config,data,model,num_examples)
+    # client = client_factory.get_client()
+    
+    
+    client = FlowerFabricClient(
         cid=conf.client_run.cid,
         model=model,
         data=data,
@@ -166,6 +177,7 @@ def launch_config(
         conf_fabric=conf.client_compute_context.hardware,
         pre_train_val=conf.client_run.pre_train_val,
     )
+
     client.initialize()
 
     if conf.flower_client.ssl is None:

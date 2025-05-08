@@ -1,4 +1,4 @@
  #!/usr/bin/bash 
 
-uv run python pybiscus/session/agent/agent.py 5000
+uv run python pybiscus/session/agent/pybiscus_agent.py 5000
 

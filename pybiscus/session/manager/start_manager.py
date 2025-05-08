@@ -71,13 +71,46 @@ def ping_server():
     except Exception as e:
         return jsonify({"message": f"Error contacting server: {e}"}), 500
 
+# **********************
+# *** Log management ***
+# **********************
+
+from threading import Lock
+
+log_messages = []  # Liste pour stocker les messages
+log_lock = Lock()  # Verrou pour gérer l'accès concurrent aux messages
+
+@app.route('/webhook/logs', methods=['POST'])
+def receive_log():
+    data = request.json
+    message = data.get('content', '')
+    source = data.get('source', 'unknown')
+
+    # Verrouiller l'accès pour éviter les problèmes de concurrence
+    with log_lock:
+        global log_messages
+        log_messages.append({'source': source, 'message': message})
+
+    return jsonify({"status": "success"}), 200
+
+@app.route('/logs', methods=['GET'])
+def get_logs():
+
+    with log_lock:
+        global log_messages
+        _log_messages = log_messages
+        log_messages = []
+
+    # Retourner les messages stockés sous forme de JSON
+    return jsonify(_log_messages)
+
 def main():
     global server_url
     global manager_port
 
     parser = argparse.ArgumentParser(description="Start the Federated Learning Manager Server.")
     parser.add_argument("--port", type=int, default=6000, help="Port to run the manager on")
-    parser.add_argument("--server-url", type=str, required=True, help="URL of the central server (e.g. http://localhost:5000)")
+    parser.add_argument("--server-url", type=str, required=True, help="URL of the central server (e.g. http://localhost:5555)")
     args = parser.parse_args()
 
     server_url = args.server_url

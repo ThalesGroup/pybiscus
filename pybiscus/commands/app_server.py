@@ -8,8 +8,8 @@ from omegaconf import OmegaConf
 from pydantic import ValidationError
 from typing import Annotated
 
-from pybiscus.core.console import console
-from pybiscus.core.registries import datamodule_registry, metricslogger_registry, model_registry, strategy_registry
+from pybiscus.core.pybiscus_logger import pluggable_logger as console
+from pybiscus.core.registries import datamodule_registry, logger_registry, metricslogger_registry, model_registry, strategy_registry
 
 from pybiscus.flower.config_server import ConfigServer
 
@@ -173,11 +173,16 @@ def launch_config(
 
     conf = check_and_build_server_config(conf_loaded)
 
+    # load the logger
+    _logger_class = logger_registry()[conf.server_run.logger.name]
+    print(conf.server_run.logger.config)
+    console = _logger_class(config=conf.server_run.logger.config).get_logger()
+
     # load the metricslogger
     _metricslogger_class = metricslogger_registry()[conf.server_compute_context.metrics_logger.name]
     _metricsloggerFactory = _metricslogger_class(conf.root_dir,conf.server_compute_context.metrics_logger.config)
 
-    _metricsloggers = _metricsloggerFactory.get_logger()
+    _metricsloggers = _metricsloggerFactory.get_loggers()
 
     fabric = Fabric(**conf.server_compute_context.hardware.model_dump(), loggers=_metricsloggers)
     fabric.launch()
@@ -222,6 +227,8 @@ def launch_config(
         
     ).get_strategy()
 
+    console.log("start of flower server")
+
     # starting flower server
     fl.server.start_server(
         server_address = conf.flower_server.listen_address,
@@ -229,6 +236,8 @@ def launch_config(
         strategy       = strategy,
         certificates   = server_certificates(conf.flower_server.ssl),
     )
+
+    console.log("flower server ended")
 
     # optional checkpoint save
     if conf.server_run.save_on_train_end:

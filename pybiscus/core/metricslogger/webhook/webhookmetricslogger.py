@@ -1,7 +1,7 @@
 import requests
 from requests.exceptions import RequestException, Timeout
 
-class WebHookLogger():
+class WebHookMetricsLogger():
 
     def __init__(self, root_dir, webhook_url):
         self.log_dir = root_dir
