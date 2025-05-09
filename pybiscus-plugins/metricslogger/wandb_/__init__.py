@@ -3,7 +3,7 @@ from pydantic import BaseModel
 
 from wandb_.wandbloggerfactory import WandbLoggerFactory, ConfigWandbLoggerFactory
 
-from pybiscus.core.interfaces.metricsloggerfactory import MetricsLoggerFactory
+from pybiscus.interfaces.core.metricsloggerfactory import MetricsLoggerFactory
 
 
 def get_modules_and_configs() -> Tuple[Dict[str, MetricsLoggerFactory], List[BaseModel]]:

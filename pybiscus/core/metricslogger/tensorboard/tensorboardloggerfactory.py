@@ -1,7 +1,7 @@
 
 from typing import ClassVar, Literal
 from pydantic import BaseModel, ConfigDict
-from pybiscus.core.interfaces.metricsloggerfactory import MetricsLoggerFactory
+from pybiscus.interfaces.core.metricsloggerfactory import MetricsLoggerFactory
 from lightning.fabric.loggers import TensorBoardLogger
 from pybiscus.core.pybiscus_logger import pluggable_logger as console
 

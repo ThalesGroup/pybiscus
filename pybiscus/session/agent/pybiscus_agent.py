@@ -16,11 +16,11 @@ import urllib
 from pybiscus.pydantic2xxx.pydantic2html import generate_model_page
 from pybiscus.session.agent.ConfigSession import make_session_model
 from pybiscus.session.agent.tuples2yaml import parse_tuples_to_yaml_string
-from pybiscus.flower.config_server import ConfigServer
-from pybiscus.flower.config_client import ConfigClient
+from pybiscus.flower_config.config_server import ConfigServer
+from pybiscus.flower_config.config_client import ConfigClient
 from pybiscus.core.pybiscusexception import PybiscusInternalException, PybiscusValueException
 from pybiscus.core.pybiscus_logger import pluggable_logger as console
-from pybiscus.core.registries import datamodule_registry, model_registry, DataConfig, ModelConfig
+from pybiscus.plugin.registries import datamodule_registry, model_registry, DataConfig, ModelConfig
 
 rest_server = Flask(__name__)
 

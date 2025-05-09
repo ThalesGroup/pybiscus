@@ -1,7 +1,7 @@
 
 from collections import defaultdict
-from pybiscus.core.pluginmanager import get_plugins_by_category
-from pybiscus.core.registryloader import RegistryLoader
+from pybiscus.plugin.pluginmanager import get_plugins_by_category
+from pybiscus.plugin.registryloader import RegistryLoader
 
 
 try:
@@ -42,7 +42,7 @@ def ModelConfig():
 
 #### --- Strategy ---
 
-from pybiscus.flower.interfaces.fabricstrategyfactory import FabricStrategyFactory
+from pybiscus.interfaces.flower.fabricstrategyfactory import FabricStrategyFactory
 
 _strategy_loader = RegistryLoader(FabricStrategyFactory, True)
 _strategy_modules = _data_loader.get_submodules_from_path("pybiscus.flower.strategy") 
@@ -57,7 +57,7 @@ def StrategyConfig():
 
 #### --- Metric Logger ---
 
-from pybiscus.core.interfaces.metricsloggerfactory import MetricsLoggerFactory
+from pybiscus.interfaces.core.metricsloggerfactory import MetricsLoggerFactory
 
 _metricslogger_loader = RegistryLoader(MetricsLoggerFactory, True)
 _metricslogger_modules = _metricslogger_loader.get_submodules_from_path("pybiscus.core.metricslogger") 
@@ -72,7 +72,7 @@ def MetricsLoggerConfig():
 
 #### --- Logger ---
 
-from pybiscus.core.interfaces.logger import LoggerFactory
+from pybiscus.interfaces.core.logger import LoggerFactory
 
 _logger_loader = RegistryLoader(LoggerFactory, True)
 _logger_modules = _logger_loader.get_submodules_from_path("pybiscus.core.logger") 
@@ -87,10 +87,10 @@ def LoggerConfig():
 
 #### --- Client ---
 
-from pybiscus.flower.interfaces.clientfactory import ClientFactory
+from pybiscus.interfaces.flower.clientfactory import ClientFactory
 
 _client_loader = RegistryLoader(ClientFactory, True)
-_client_modules = _data_loader.get_submodules_from_path("pybiscus.flower.client") 
+_client_modules = _data_loader.get_submodules_from_path("pybiscus.flower_fabric.client") 
 _client_modules += plugins_by_category["client"]
 _client_registry, _ClientConfig = _client_loader.register_modules( _client_modules )
 

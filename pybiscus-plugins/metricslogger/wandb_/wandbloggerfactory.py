@@ -7,7 +7,7 @@ from pydantic import BaseModel, ConfigDict
 
 import wandb
 
-from pybiscus.core.interfaces.metricsloggerfactory import MetricsLoggerFactory
+from pybiscus.interfaces.core.metricsloggerfactory import MetricsLoggerFactory
 
 class EnvVar(BaseModel):
 

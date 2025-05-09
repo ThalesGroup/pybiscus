@@ -2,7 +2,7 @@ from typing import ClassVar, Literal
 from pydantic import BaseModel, ConfigDict
 from rich.console import Console
 
-from pybiscus.core.interfaces.logger import LoggerFactory
+from pybiscus.interfaces.core.logger import LoggerFactory
 
 class ConfigRichLoggerFactoryData(BaseModel):
 

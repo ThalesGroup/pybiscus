@@ -1,12 +1,11 @@
-from collections.abc import Mapping
 from typing import Optional, ClassVar
 from typing_extensions import Annotated
 
 import torch
 from pydantic import BaseModel, ConfigDict
 
-from pybiscus.flower.config_computecontext import ConfigClientComputeContext
-from pybiscus.core.registries import ClientConfig, ModelConfig, DataConfig
+from pybiscus.flower_config.config_computecontext import ConfigClientComputeContext
+from pybiscus.plugin.registries import ClientConfig, ModelConfig, DataConfig
 
 torch.backends.cudnn.enabled = True
 
@@ -58,18 +57,19 @@ class ConfigFlowerClient(BaseModel):
     ----------
     server_address: str     = the server address and port
     ssl                     = the flower server ssl configuration
+    one_tera                = grpc config ( 1 Tb = 1_073_741_824 b)
     grpc_max_message_length = grpc config ( 1 Tb = 1_073_741_824 b)
-    client_class            = which class of FlowerClient to use 
+    alternate_client_class  = use an alternate subclass of FlowerClient 
     """
 
     PYBISCUS_CONFIG: ClassVar[str] = "flower_client"
 
     server_address:           str                        = "localhost:3333"
-    ssl:                      Optional[ConfigSslClient] = None
-    grpc_max_message_length : Optional[int]             = None
+    ssl:                      Optional[ConfigSslClient]  = None
+    # one_tera:                 str                        = "1 Tb = 1073741824 b"
+    # grpc_max_message_length : Optional[int]              = None
 
-    #TODO:
-    # alternate_client_class:   ClientConfig()  = None # pyright: ignore[reportInvalidTypeForm]
+    alternate_client_class:   Optional[ClientConfig()]   = None # pyright: ignore[reportInvalidTypeForm]
 
     model_config = ConfigDict(extra="forbid")
 
@@ -96,24 +96,3 @@ class ConfigClient(BaseModel):
     data:                   DataConfig() # pyright: ignore[reportInvalidTypeForm]
 
     model_config = ConfigDict(extra="forbid")
-
-def parse_optimizers(lightning_optimizers):
-    """
-    Parse the output of lightning configure_optimizers
-    https://lightning.ai/docs/pytorch/stable/api/lightning.pytorch.core.LightningModule.html#lightning.pytorch.core.LightningModule.configure_optimizers
-    To extract only the optimizers (and not the lr_schedulers)
-    """
-    optimizers = []
-    if lightning_optimizers:
-        if isinstance(lightning_optimizers, Mapping):
-            optimizers.append(lightning_optimizers['optimizer']) 
-        elif isinstance(lightning_optimizers, torch.optim.Optimizer):
-            optimizers.append(lightning_optimizers)
-        else:
-            for optmizers_conf in lightning_optimizers:
-                if isinstance(optmizers_conf, dict):
-                    optimizers.append(lightning_optimizers)
-                else:
-                    optimizers.append(optmizers_conf)
-    return optimizers
-

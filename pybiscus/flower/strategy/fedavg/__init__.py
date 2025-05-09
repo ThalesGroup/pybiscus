@@ -3,7 +3,7 @@ from typing import Dict, List, Tuple
 from pydantic import BaseModel
 
 from pybiscus.flower.strategy.fedavg.fedavgstrategy import ConfigFabricFedAvgStrategy, FabricFedAvgStrategyFactory
-from pybiscus.flower.interfaces.fabricstrategyfactory import FabricStrategyFactory
+from pybiscus.interfaces.flower.fabricstrategyfactory import FabricStrategyFactory
 
 def get_modules_and_configs() -> Tuple[Dict[str, FabricStrategyFactory], List[BaseModel]]:
 

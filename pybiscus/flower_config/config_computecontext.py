@@ -2,8 +2,8 @@ from enum import Enum
 from typing import ClassVar, Union
 from pydantic import BaseModel, ConfigDict
 
-from pybiscus.core.registries import MetricsLoggerConfig
-from pybiscus.flower.config_harware import ConfigHardware
+from pybiscus.plugin.registries import MetricsLoggerConfig
+from pybiscus.flower_config.config_hardware import ConfigHardware
 
 class ConfigServerComputeContext(BaseModel):
 

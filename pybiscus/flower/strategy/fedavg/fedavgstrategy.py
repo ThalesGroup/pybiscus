@@ -19,7 +19,7 @@ from lightning.pytorch import LightningModule
 from pydantic import BaseModel, ConfigDict
 
 from pybiscus.core.pybiscus_logger import pluggable_logger as console
-from pybiscus.flower.interfaces.fabricstrategyfactory import FabricStrategyFactory
+from pybiscus.interfaces.flower.fabricstrategyfactory import FabricStrategyFactory
 from pybiscus.flower.utils_server import evaluate_config, fit_config, get_evaluate_fn, weighted_average
 
 WARNING_MIN_AVAILABLE_CLIENTS_TOO_LOW = """

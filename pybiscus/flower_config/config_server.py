@@ -2,8 +2,8 @@ from typing import Optional, ClassVar
 
 from pydantic import BaseModel, ConfigDict
 
-from pybiscus.flower.config_computecontext import ConfigServerComputeContext
-from pybiscus.core.registries import LoggerConfig, ModelConfig, DataConfig, StrategyConfig
+from pybiscus.flower_config.config_computecontext import ConfigServerComputeContext
+from pybiscus.plugin.registries import LoggerConfig, ModelConfig, DataConfig, StrategyConfig
 
 
 class ConfigSslServer(BaseModel):
@@ -59,6 +59,7 @@ class ConfigFlowerServer(BaseModel):
     ----------
     server_listen_address = the server listen address and port
     ssl                   = the flower server ssl configuration
+    one_tera                = grpc config ( 1 Tb = 1_073_741_824 b)
     grpc_max_message_length = grpc config ( 1 Tb = 1_073_741_824 b)
     """
 
@@ -66,7 +67,8 @@ class ConfigFlowerServer(BaseModel):
 
     listen_address:     str = '[::]:3333'
     ssl:               Optional[ConfigSslServer] = None
-    grpc_max_message_length : Optional[int] = None
+    # one_tera: str = "1 Tb = 1073741824 b"
+    # grpc_max_message_length : Optional[int] = None
     
     model_config = ConfigDict(extra="forbid")
 

@@ -2,7 +2,7 @@
 from typing import ClassVar, Literal
 from pydantic import BaseModel, ConfigDict
 
-from pybiscus.core.interfaces.logger import LoggerFactory
+from pybiscus.interfaces.core.logger import LoggerFactory
 from pybiscus.core.logger.webhooklogger.webhooklogger import WebHookLogger
 
 class ConfigWebHookLoggerFactoryData(BaseModel):

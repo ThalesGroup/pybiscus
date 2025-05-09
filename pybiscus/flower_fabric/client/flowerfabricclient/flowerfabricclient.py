@@ -1,12 +1,32 @@
 from collections import OrderedDict
+from collections.abc import Mapping
 import flwr as fl
 from lightning import Fabric, LightningDataModule, LightningModule
 import torch
 
-from pybiscus.flower.config_client import parse_optimizers
-from pybiscus.flower.config_computecontext import ConfigClientComputeContext
+from pybiscus.flower_config.config_computecontext import ConfigClientComputeContext
 from pybiscus.ml.loops_fabric import test_loop, train_loop
 from pybiscus.core.pybiscus_logger import pluggable_logger as console
+
+def parse_optimizers(lightning_optimizers):
+    """
+    Parse the output of lightning configure_optimizers
+    https://lightning.ai/docs/pytorch/stable/api/lightning.pytorch.core.LightningModule.html#lightning.pytorch.core.LightningModule.configure_optimizers
+    To extract only the optimizers (and not the lr_schedulers)
+    """
+    optimizers = []
+    if lightning_optimizers:
+        if isinstance(lightning_optimizers, Mapping):
+            optimizers.append(lightning_optimizers['optimizer']) 
+        elif isinstance(lightning_optimizers, torch.optim.Optimizer):
+            optimizers.append(lightning_optimizers)
+        else:
+            for optmizers_conf in lightning_optimizers:
+                if isinstance(optmizers_conf, dict):
+                    optimizers.append(lightning_optimizers)
+                else:
+                    optimizers.append(optmizers_conf)
+    return optimizers
 
 class FlowerFabricClient(fl.client.NumPyClient):
     """A Fabric-based, modular Flower Client.

@@ -1,7 +1,7 @@
 from typing import Dict, List, Tuple
 from pydantic import BaseModel
 
-from pybiscus.core.interfaces.metricsloggerfactory import MetricsLoggerFactory
+from pybiscus.interfaces.core.metricsloggerfactory import MetricsLoggerFactory
 from pybiscus.core.metricslogger.webhook.webhookmetricsloggerfactory import ConfigWebHookMetricsLoggerFactory, WebHookMetricsLoggerFactory
 
 

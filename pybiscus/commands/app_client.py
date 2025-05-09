@@ -7,12 +7,12 @@ import typer
 from pydantic import ValidationError
 
 from pybiscus.core.pybiscus_logger import pluggable_logger as console
-from pybiscus.core.registries import client_registry, datamodule_registry, model_registry
-from pybiscus.flower.config_client import ConfigClient
+from pybiscus.flower_fabric.client.flowerfabricclient.flowerfabricclientfactory import FlowerFabricClientFactory
+from pybiscus.plugin.registries import client_registry, datamodule_registry, model_registry
+from pybiscus.flower_config.config_client import ConfigClient
 
 from pybiscus.commands.apps_common import load_config
-from pybiscus.flower.flowerfabricclient import FlowerFabricClient
-from pybiscus.flower.flowerfabricclientfactory import FlowerFabricClientFactory
+# from pybiscus.flower_fabric.client.flowerfabricclient.flowerfabricclient import FlowerFabricClient
 
 torch.backends.cudnn.enabled = True
 
@@ -160,24 +160,11 @@ def launch_config(
     model = model_class(**conf.model.config.model_dump())
 
     # load the client
-    # if conf.flower_client.alternate_client_class is None:
-    #     client_factory = FlowerFabricClientFactory(config,data,model,num_examples)
-    # else:
-    #     client_factory = client_registry()[conf.flower_client.alternate_client_class.name](config,data,model,num_examples)
-
-    # client_factory = FlowerFabricClientFactory(config,data,model,num_examples)
-    # client = client_factory.get_client()
-    
-    
-    client = FlowerFabricClient(
-        cid=conf.client_run.cid,
-        model=model,
-        data=data,
-        num_examples=num_examples,
-        conf_fabric=conf.client_compute_context.hardware,
-        pre_train_val=conf.client_run.pre_train_val,
-    )
-
+    if conf.flower_client.alternate_client_class is None:
+        client_factory = FlowerFabricClientFactory(conf,data,model,num_examples)
+    else:
+        client_factory = client_registry()[conf.flower_client.alternate_client_class.name](config,data,model,num_examples)
+    client = client_factory.get_client()
     client.initialize()
 
     if conf.flower_client.ssl is None:

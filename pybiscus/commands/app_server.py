@@ -9,9 +9,9 @@ from pydantic import ValidationError
 from typing import Annotated
 
 from pybiscus.core.pybiscus_logger import pluggable_logger as console
-from pybiscus.core.registries import datamodule_registry, logger_registry, metricslogger_registry, model_registry, strategy_registry
+from pybiscus.plugin.registries import datamodule_registry, logger_registry, metricslogger_registry, model_registry, strategy_registry
 
-from pybiscus.flower.config_server import ConfigServer
+from pybiscus.flower_config.config_server import ConfigServer
 
 from pybiscus.commands.apps_common import load_config
 
