@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Dashboard Logs & Metrics</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+    }
+
+    .dashboard-container {
+      display: flex;
+      justify-content: center;
+      gap: 2rem;
+      padding: 2rem;
+      flex-wrap: wrap;
+      align-items: stretch;
+    }
+
+    .section-container {
+      width: 500px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .list-box {
+      flex: 1;
+      overflow-y: auto;
+      border: 1px solid #ccc;
+      padding: 10px;
+      background: #f0f0f0;
+      border-radius: 5px;
+      min-height: 0;
+      max-height: 500px;
+    }
+
+    .entry {
+      background: #fff;
+      padding: 8px;
+      margin-bottom: 6px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      text-align: left;
+    }
+
+    .entry-source {
+      font-weight: bold;
+      color: #333;
+    }
+
+    .entry-message {
+      margin-top: 4px;
+      color: #555;
+    }
+
+    .btn {
+      margin-top: 10px;
+      margin-right: 10px;
+      padding: 6px 12px;
+      font-size: 14px;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+
+    .reset-btn {
+      background-color: #d9534f;
+    }
+
+    .reset-btn:hover {
+      background-color: #c9302c;
+    }
+
+    .pause-btn {
+      background-color: #5bc0de;
+    }
+
+    .pause-btn:hover {
+      background-color: #31b0d5;
+    }
+  </style>
+</head>
+<body>
+
+  <div id="dashboard" class="dashboard-container">
+    <!-- Logs -->
+    <div class="section-container">
+      <h3>Logs</h3>
+      <button id="reset-logs-btn" class="btn reset-btn">Reset</button>
+      <button id="pause-logs-btn" class="btn pause-btn">Pause</button>
+      <div id="log-list" class="list-box"></div>
+    </div>
+
+    <!-- Metrics -->
+    <div class="section-container">
+      <h3>Metrics</h3>
+      <button id="reset-metrics-btn" class="btn reset-btn">Reset</button>
+      <button id="pause-metrics-btn" class="btn pause-btn">Pause</button>
+      <div id="metrics-list" class="list-box"></div>
+    </div>
+  </div>
+
+  <script>
+    const LOGS_URL    = 'http://localhost:5555/logs';
+    const METRICS_URL = 'http://localhost:5555/metrics';
+
+    const logList = document.getElementById('log-list');
+    const metricsList = document.getElementById('metrics-list');
+
+    let displayedLogs = [];
+    let displayedMetrics = [];
+
+    let logsPaused = false;
+    let metricsPaused = false;
+
+    document.getElementById('reset-logs-btn').onclick = () => {
+      logList.innerHTML = '';
+      displayedLogs = [];
+    };
+
+    document.getElementById('reset-metrics-btn').onclick = () => {
+      metricsList.innerHTML = '';
+      displayedMetrics = [];
+    };
+
+    document.getElementById('pause-logs-btn').onclick = (e) => {
+      logsPaused = !logsPaused;
+      e.target.textContent = logsPaused ? 'Reprendre' : 'Pause';
+    };
+
+    document.getElementById('pause-metrics-btn').onclick = (e) => {
+      metricsPaused = !metricsPaused;
+      e.target.textContent = metricsPaused ? 'Reprendre' : 'Pause';
+    };
+
+    function addEntries(container, entriesArray, newItems, type) {
+      newItems.forEach(item => {
+        const div = document.createElement('div');
+        div.className = 'entry';
+
+        const src = document.createElement('span');
+        src.className = 'entry-source';
+        src.textContent = `[${item.source || type}] `;
+
+        const msg = document.createElement('span');
+        msg.className = 'entry-message';
+        msg.textContent = item.message || JSON.stringify(item);
+
+        div.appendChild(src);
+        div.appendChild(msg);
+        container.appendChild(div);
+        entriesArray.push(div);
+
+        if (entriesArray.length > 100) {
+          const removed = entriesArray.shift();
+          removed.remove();
+        }
+      });
+      container.scrollTop = container.scrollHeight;
+    }
+
+    function fetchLogs() {
+      if (logsPaused) return;
+      fetch(LOGS_URL)
+        .then(res => res.json())
+        .then(data => {
+          const newLogs = data;
+          if (newLogs.length) addEntries(logList, displayedLogs, newLogs, 'logs');
+        })
+        .catch(console.error);
+    }
+
+    function fetchMetrics() {
+      if (metricsPaused) return;
+      fetch(METRICS_URL)
+        .then(res => res.json())
+        .then(data => {
+          const newMetrics = data;
+          if (newMetrics.length) addEntries(metricsList, displayedMetrics, newMetrics, 'metrics');
+        })
+        .catch(console.error);
+    }
+
+    fetchLogs();
+    fetchMetrics();
+    setInterval(fetchLogs, 5000);
+    setInterval(fetchMetrics, 5000);
+  </script>
+</body>
+</html>

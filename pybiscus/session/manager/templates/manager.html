@@ -83,11 +83,36 @@
         <div class="left">
             <iframe src="/visualize"></iframe>
         </div>
+
         <div class="right">
-            <p>Pybiscus Server Agent URL: <strong>{{ server_url }}</strong></p>
-            <iframe src="{{server_url}}/session/config"></iframe>
+            <div id="button-container">
+                Pybiscus Server Agent URL : <strong>{{ server_url }}</strong>
+                <button id="btn-config" style="display: none;">Session Configuration</button>
+                <button id="btn-run">Session Run Information</button>
+            </div>
+
+            <iframe id="info-frame" src="{{server_url}}/session/config" width="100%" height="400px"></iframe>
         </div>
     </div>
 
+    <script>
+        const serverUrl = "{{server_url}}";  // template variable
+        const iframe = document.getElementById('info-frame');
+        const btnConfig = document.getElementById('btn-config');
+        const btnRun = document.getElementById('btn-run');
+
+        btnConfig.addEventListener('click', () => {
+            iframe.src = `${serverUrl}/session/config`;
+            btnConfig.style.display = 'none';
+            btnRun.style.display = 'inline-block';
+        });
+
+        btnRun.addEventListener('click', () => {
+            iframe.src = '/show_run';
+            btnRun.style.display = 'none';
+            btnConfig.style.display = 'inline-block';
+        });
+    </script>
 </body>
 </html>
+

@@ -55,6 +55,12 @@ def list_clients():
 def visualize():
     return render_template("visualize.html", server_url=server_url)
 
+# sub-view URL
+# visualize logs and metrics
+@app.route("/show_run")
+def show_run():
+    return render_template("show_run.html", server_url=server_url)
+
 # manager main URL
 # double view on :
 # - session content ( server + connected clients )
@@ -103,6 +109,35 @@ def get_logs():
 
     # Retourner les messages stockés sous forme de JSON
     return jsonify(_log_messages)
+
+metrics_messages = []  # Liste pour stocker les messages
+metrics_lock = Lock()  # Verrou pour gérer l'accès concurrent aux messages
+
+@app.route('/webhook/metrics', methods=['POST'])
+def receive_metrics():
+    data = request.json
+    metrics = data.get('metrics', '')
+    source = data.get('source', 'unknown')
+    log = { 'source' : source, 'message' : str(metrics) }
+
+    # Verrouiller l'accès pour éviter les problèmes de concurrence
+    with metrics_lock:
+        global metrics_messages
+        metrics_messages.append(log)
+
+    return jsonify({"status": "success"}), 200
+
+@app.route('/metrics', methods=['GET'])
+def get_metricss():
+
+    with metrics_lock:
+        global metrics_messages
+        _metrics_messages = metrics_messages
+        metrics_messages = []
+
+    # Retourner les messages stockés sous forme de JSON
+    return jsonify(_metrics_messages)
+
 
 def main():
     global server_url
