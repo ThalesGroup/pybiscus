@@ -1,7 +1,7 @@
 from typing_extensions import Annotated
 from pydantic import BaseModel
 from pydantic.fields import PydanticUndefined
-from typing import Optional, Union, Literal, get_args, get_origin
+from typing import Optional, Union, Literal, get_args, get_origin, get_type_hints
 from enum import Enum
 
 import inspect
@@ -64,7 +64,7 @@ def generate_tab_name(field_type, default) -> str:
     else:
         return default
 
-def generate_field_html(field_name: str, field_type, field_required: bool, field_default, field_description, inFieldSet: bool, prefix: str) -> str:
+def generate_field_html(field_name: str, field_type, field_required: bool, field_default, field_description, inFieldSet: bool, prefix: str, field_is_annotated: bool = False) -> str:
 
     field_html = ''
     opt_title = '' if (field_description is None or field_description is PydanticUndefined) else f' title="{html.escape(field_description)}" '
@@ -123,70 +123,31 @@ def generate_field_html(field_name: str, field_type, field_required: bool, field
     elif field_type is type(None):
         field_html += html_label( 'NONE' )
 
-    elif hasattr(field_type, '__origin__'):
+    elif hasattr(field_type, '__origin__') or field_is_annotated :
 
-        if field_type.__origin__ is list:
-
-            # ### list ###
-            
-            default_list_len = 5
-
-            if field_type.__args__[0] is int:
-                field_html += html_label( field_name, True )
-
-                #for i in range(default_list_len):  
-                #    field_html += f'  <input type="number" name="{field_name}_{i}" placeholder="integer">\n'
-
-                field_html += f'  <input type="text" {opt_title} {opt_value} placeholder="comma separated int list" {pybiscus_marker}>\n'
-
-            elif field_type.__args__[0] is str:
-                field_html += html_label( field_name, True )
-
-                #for i in range(default_list_len):  
-                for i in range(0):  
-                    field_html += f'  <input type="text" name="{field_name}_{i}" placeholder="string">\n'
-            field_html += f'  \n'
-
-        elif field_type.__origin__ is dict:
-
-            # ### dict ###
-            
-            key_type, value_type = field_type.__args__
-            field_html += html_label( field_name, True )
-            
-            if field_default is None or field_default is PydanticUndefined:
-                items = []
-            else:
-                items = list(field_default.items())
-
-            for index in range(1):
-
-                if len(items) > index:
-                    key, value = items[index]
-                    opt_key   = f' value="{key}" '
-                    opt_value = f' value="{value}" '
-                else:
-                    opt_key   = ''
-                    opt_value = ''
-
-                field_html += html_label( "key" )
-                field_html += f'  <input type="text" id="{field_name}_key_{index}" name="{field_name}_key_{index}" placeholder="key_{index}" {opt_key}>\n'
-                field_html += html_label( "value" )
-                field_html += f'  <input type="text" id="{field_name}_val_{index}" name="{field_name}_val_{index}" placeholder="value_{index}" {opt_value}>\n'
-
-        elif get_origin(field_type) is Annotated or get_origin(field_type) is Union:
+        if field_is_annotated or get_origin(field_type) is Union:
 
             # an Annotated field is handled as an Union of only one type
             # as is it simplified by python / typing
 
-            if get_origin(field_type) is Annotated:
+            if field_is_annotated:
 
                 # ### Annotated ###
 
-                # consider the inner field_type
-                field_type, *params = get_args(field_type)
+                from typing_extensions import ClassVar
 
-            if get_origin(field_type) is not Union:
+                class MyFieldType:
+                    pass
+
+                subtype = MyFieldType()
+                setattr(subtype, '__args__', [field_type] )
+
+                field_type = subtype
+
+                is_an_union = True
+                is_an_option = False
+
+            elif get_origin(field_type) is not Union:
 
                 is_an_union = False
                 is_an_option = False
@@ -335,6 +296,55 @@ def generate_field_html(field_name: str, field_type, field_required: bool, field
 
             field_html += '</fieldset>\n'
 
+        elif field_type.__origin__ is list:
+
+            # ### list ###
+            
+            default_list_len = 5
+
+            if field_type.__args__[0] is int:
+                field_html += html_label( field_name, True )
+
+                #for i in range(default_list_len):  
+                #    field_html += f'  <input type="number" name="{field_name}_{i}" placeholder="integer">\n'
+
+                field_html += f'  <input type="text" {opt_title} {opt_value} placeholder="comma separated int list" {pybiscus_marker}>\n'
+
+            elif field_type.__args__[0] is str:
+                field_html += html_label( field_name, True )
+
+                #for i in range(default_list_len):  
+                for i in range(0):  
+                    field_html += f'  <input type="text" name="{field_name}_{i}" placeholder="string">\n'
+            field_html += f'  \n'
+
+        elif field_type.__origin__ is dict:
+
+            # ### dict ###
+            
+            key_type, value_type = field_type.__args__
+            field_html += html_label( field_name, True )
+            
+            if field_default is None or field_default is PydanticUndefined:
+                items = []
+            else:
+                items = list(field_default.items())
+
+            for index in range(1):
+
+                if len(items) > index:
+                    key, value = items[index]
+                    opt_key   = f' value="{key}" '
+                    opt_value = f' value="{value}" '
+                else:
+                    opt_key   = ''
+                    opt_value = ''
+
+                field_html += html_label( "key" )
+                field_html += f'  <input type="text" id="{field_name}_key_{index}" name="{field_name}_key_{index}" placeholder="key_{index}" {opt_key}>\n'
+                field_html += html_label( "value" )
+                field_html += f'  <input type="text" id="{field_name}_val_{index}" name="{field_name}_val_{index}" placeholder="value_{index}" {opt_value}>\n'
+
         elif field_type.__origin__ is Literal:
 
             # ### Literal ###
@@ -367,7 +377,7 @@ def generate_model_html(model: BaseModel, inFieldSet: bool, prefix: str) -> str:
     model_html = ''
 
     if inFieldSet:
-        model_html += f'<fieldset>\n'
+        model_html += f'<fieldset class="__model__">\n'
 
         if hasattr(model, "PYBISCUS_CONFIG"):
             
@@ -383,16 +393,30 @@ def generate_model_html(model: BaseModel, inFieldSet: bool, prefix: str) -> str:
         else:
             model_html += f'<legend>{model.__name__}</legend>\n'
 
+    type_hints = get_type_hints(model, include_extras=True)
+
     for field_name, field_info in model.model_fields.items():
 
+        if field_name == "data" or field_name == "strategy":
+            print("###### ",field_name, field_info.annotation)
+
+        field_is_annotated = False
+        annotated_type = type_hints.get(field_name)
+
+        field_type = field_info.annotation
+
+        if get_origin(annotated_type) is Annotated and get_origin(field_type) is not Union:
+            field_is_annotated = True
+        
         model_html += generate_field_html(
-                                    field_name        = field_name, 
-                                    field_type        = field_info.annotation,
-                                    field_required    = field_info.is_required(), 
-                                    field_default     = field_info.default, 
-                                    field_description = get_basemodel_attribute_description(model,field_name),
-                                    inFieldSet        = True,
-                                    prefix            = prefix,
+                                    field_name         = field_name, 
+                                    field_type         = field_type,
+                                    field_required     = field_info.is_required(), 
+                                    field_default      = field_info.default, 
+                                    field_description  = get_basemodel_attribute_description(model,field_name),
+                                    inFieldSet         = True,
+                                    prefix             = prefix,
+                                    field_is_annotated = field_is_annotated
                                     )
    
     if inFieldSet:
