@@ -15,7 +15,7 @@ class RandomVectorDataset(Dataset):
         return self.num_samples
 
     def __getitem__(self, idx):
-        return self.data[idx], self.data[idx]  # Retourne le même vecteur comme "label"
+        return self.data[idx], self.data[idx]  # returns the same vector as label
 
 #               -------------------------------
 
@@ -28,7 +28,7 @@ class RandomVectorLightningDataModule(pl.LightningDataModule):
         self.seed = seed
 
     def setup(self, stage=None):
-        # Créer des datasets pour l'entraînement, la validation et le test
+        # Create datasets for training, validation and test
         self.train_dataset = RandomVectorDataset(self.num_samples, self.feature_dim, self.seed)
         self.val_dataset   = RandomVectorDataset(self.num_samples // 2, self.feature_dim, self.seed + 1)
         self.test_dataset  = RandomVectorDataset(self.num_samples // 2, self.feature_dim, self.seed + 2)
@@ -44,11 +44,11 @@ class RandomVectorLightningDataModule(pl.LightningDataModule):
 
 if __name__ == "__main__":
 
-    # Exemple d'utilisation
+    # Example use
     data_module = RandomVectorLightningDataModule(num_samples=20, feature_dim=1, batch_size=4)
     data_module.setup()
 
-    # Afficher un batch d'exemple
+    # print an example dataset
     train_loader = data_module.train_dataloader()
     batch = next(iter(train_loader))
     print(batch)

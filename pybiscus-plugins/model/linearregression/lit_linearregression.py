@@ -5,10 +5,21 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from pydantic import BaseModel, ConfigDict
+from pybiscus.core.pybiscus_logger import pluggable_logger as console
 
 # ------------------------------------------------------------------------------------
 
 class ConfigLinearRegression(BaseModel):
+    """
+    Configuration for a simple linear regression model.
+
+    Attributes:
+        input_dim (int) = Dimension of the input features.
+        output_dim (int) =  Dimension of the output targets.
+        learning_rate (float) =  Learning rate used during model training.
+        accuracy_threshold (float) = Threshold for early stopping based on accuracy.
+        logging (bool) = Enables or disables logging during training.
+    """
 
     PYBISCUS_CONFIG: ClassVar[str] = "config"
 
@@ -16,6 +27,7 @@ class ConfigLinearRegression(BaseModel):
     output_dim:         int = 1
     learning_rate:      float = 0.1
     accuracy_threshold: float = 0.001
+    _logging:           bool = True
 
     model_config = ConfigDict(extra="forbid")
 
@@ -37,7 +49,7 @@ class LinearRegressionSignature(TypedDict):
 
 #        --------------------
 
-# Définition du LightningModule
+# LightningModule définition
 class LitLinearRegression(pl.LightningModule):
 
     @override
@@ -48,10 +60,10 @@ class LitLinearRegression(pl.LightningModule):
 
         self._logging    = _logging
 
-        # Définir une simple couche linéaire
+        # define a simple linear layer
         self.linear = nn.Linear(input_dim, output_dim)
 
-        # Définir le critère de perte
+        # define loss criteria
         self.criterion = nn.MSELoss()
         self.accuracy_threshold = accuracy_threshold
 
@@ -73,7 +85,7 @@ class LitLinearRegression(pl.LightningModule):
         acc = self.calculate_accuracy(y_hat, y)
 
         if self._logging:
-            self.log('train_loss', loss)
+            console.log('train_loss', loss)
 
         return {"loss": loss, "accuracy": acc}
 
@@ -85,8 +97,8 @@ class LitLinearRegression(pl.LightningModule):
         acc = self.calculate_accuracy(y_hat, y)
 
         if self._logging:
-            self.log("val_loss", loss, prog_bar=True)
-            self.log("val_acc",  acc,  prog_bar=True)
+            console.log("val_loss", loss, prog_bar=True)
+            console.log("val_acc",  acc,  prog_bar=True)
         
         return {"loss": loss, "accuracy": acc}
 
@@ -96,12 +108,13 @@ class LitLinearRegression(pl.LightningModule):
         y_hat = self(x)
         loss = self.criterion(y_hat, y)
         
-        #self.log('test_loss', loss)
+        if self._logging:
+            console.log('test_loss', loss)
 
         return loss
 
     def calculate_accuracy(self, y_hat, y):
-        # Calculer l'accuracy basée sur un seuil
+        # compute accuracy based on a threshold
         correct = torch.abs(y_hat - y) < self.accuracy_threshold
         accuracy = correct.float().mean()
         return accuracy
@@ -112,19 +125,18 @@ class LitLinearRegression(pl.LightningModule):
 
 # if __name__ == "__main__":
 
-#     # Exemple d'utilisation
+#     # example
 #     input_dim = 1
 #     output_dim = 1
 
-#     # Initialiser le DataModule
+#     # Initialize the DataModule
 #     data_module = RandomVectorLightningDataModule(num_samples=320, feature_dim=input_dim, batch_size=32)
 
-#     # Initialiser le modèle
+#     # Initialize the model
 #     model = LitLinearRegression(input_dim=input_dim, output_dim=output_dim, _logging = True )
 
-#     # Initialiser le Trainer
+#     # Initialize the Trainer
 #     trainer = pl.Trainer(max_epochs=10)
 
-#     # Entraîner le modèle
+#     # train the model
 #     trainer.fit(model, datamodule=data_module)
-
