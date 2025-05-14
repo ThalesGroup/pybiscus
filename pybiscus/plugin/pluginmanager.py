@@ -42,17 +42,3 @@ def load_plugins(config, verbose=False):
 
     return result
 
-def get_plugins_by_category():
-    config_file_path = os.getenv('PYBISCUS_PLUGIN_CONF_PATH', "pybiscus-plugins-conf.yml")
-    print(f"🔍 [plugins] Using config file: {config_file_path}")
-    config = load_config(config_file_path)
-    plugins_by_category = load_plugins(config, verbose=True)
-    return plugins_by_category
-
-if __name__ == "__main__":
-
-    plugins_by_category = get_plugins_by_category()
-    print(plugins_by_category)
-    print(plugins_by_category["data"])
-    print(plugins_by_category["model"])
-    print(plugins_by_category["metricslogger"])

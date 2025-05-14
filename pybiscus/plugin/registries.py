@@ -1,14 +1,8 @@
 
-from collections import defaultdict
-from pybiscus.plugin.pluginmanager import get_plugins_by_category
 from pybiscus.plugin.registryloader import RegistryLoader
+from pybiscus.plugins_of_app.pybiscusplugins import get_plugins_by_category
 
-
-try:
-    plugins_by_category = get_plugins_by_category()
-except Exception as e:
-    print(f"❌ Can not load pybiscus plugins {e}")
-    plugins_by_category = defaultdict(list)
+plugins_by_category = get_plugins_by_category()
 
 #### --- Data ---
 
@@ -108,3 +102,6 @@ if __name__ == "__main__":
     print(f'Model plugins : {plugins_by_category["model"]} {_model_modules}')
     print(f'Strategy plugins : {plugins_by_category["strategy"]} {_strategy_modules }')
     print(f'Client plugins : {plugins_by_category["client"]} {_client_modules }')
+
+    from pybiscus.plugin.registries2 import _flowerfitresultsaggregator_modules
+    print(f'FlowerFitResultsAggregator plugins : {plugins_by_category["flowerfitresultsaggregator"]} {_flowerfitresultsaggregator_modules }')

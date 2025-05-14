@@ -19,4 +19,14 @@ model:
 strategy:
   - path: "./pybiscus-plugins/strategy"
     modules:
-      - fedavg
+      - fedavg2
+      - fedavg3
+#  - path: "./cypia"
+#    modules:
+#      - cypia.flower.strategy.phe_strategy
+# client:
+#   - path: "./cypia"
+#     modules:
+#       - cypia.flower.client.phe_client
+#       - cypia.flower.client.dp_client
+

@@ -8,15 +8,11 @@ from flwr.common import (
     MetricsAggregationFn,
     Parameters,
     Scalar,
-    ndarrays_to_parameters as flw_ndarrays_to_parameters,
     parameters_to_ndarrays as flw_parameters_to_ndarrays,
 )
 from flwr.common.logger import log
 from flwr.server.client_proxy import ClientProxy
-from flwr.server.strategy.aggregate import (
-    aggregate          as flw_aggregate,
-    weighted_loss_avg  as flw_weighted_loss_avg,
-)
+from flwr.server.strategy.aggregate import weighted_loss_avg  as flw_weighted_loss_avg
 
 from lightning.fabric import Fabric
 from lightning.pytorch import LightningModule
@@ -30,6 +26,7 @@ from pybiscus.flower.utils_server import (
     get_evaluate_fn    as pyb_get_evaluate_fn, 
     weighted_average   as pyb_weighted_average,
 )
+from pybiscus.plugin.registries2 import FlowerFitResultsAggregatorConfig, flowerfitresultsaggregator_registry
 
 WARNING_MIN_AVAILABLE_CLIENTS_TOO_LOW = """
 Setting `min_available_clients` lower than `min_fit_clients` or
@@ -46,7 +43,7 @@ than or equal to the values of `min_fit_clients` and `min_evaluate_clients`.
 # - pybiscus.core.pybiscus_logger.pluggable_logger as console
 # - Fabric.log
 
-class ConfigFabricFedAvgStrategyData2(BaseModel):
+class ConfigFabricFedAvgStrategyData3(BaseModel):
     """    fraction_fit : float, optional
         Fraction of clients used during training. In case `min_fit_clients`
         is larger than `fraction_fit * available_clients`, `min_fit_clients`
@@ -76,23 +73,24 @@ class ConfigFabricFedAvgStrategyData2(BaseModel):
     min_available_clients: int   = 2
     accept_failures:       bool  = True
     inplace:               bool  = True
+    flower_fit_results_aggregator: FlowerFitResultsAggregatorConfig() # pyright: ignore[reportInvalidTypeForm]
 
     model_config = ConfigDict(extra="forbid")
 
 # #############################################################################################
 
-class ConfigFabricFedAvgStrategy2(BaseModel):
+class ConfigFabricFedAvgStrategy3(BaseModel):
 
-    PYBISCUS_ALIAS: ClassVar[str] = "FedAvgExtended"
+    PYBISCUS_ALIAS: ClassVar[str] = "FedAvgExtended3"
 
-    name:   Literal["fedavgextended"]
-    config: ConfigFabricFedAvgStrategyData2
+    name:   Literal["fedavgextended3"]
+    config: ConfigFabricFedAvgStrategyData3
 
     model_config = ConfigDict(extra="forbid")
 
 # #############################################################################################
 
-class FabricFedAvgStrategy2(fl.server.strategy.FedAvg):
+class FabricFedAvgStrategy3(fl.server.strategy.FedAvg):
     """A reimplementation of the FedAvg Strategy using Fabric.
 
     FabricFedAvgStrategy replaces the base version of Flower by a Fabric-powered version.
@@ -126,6 +124,7 @@ class FabricFedAvgStrategy2(fl.server.strategy.FedAvg):
         fit_metrics_aggregation_fn: Optional[MetricsAggregationFn] = None,
         evaluate_metrics_aggregation_fn: Optional[MetricsAggregationFn] = None,
         inplace: bool = True,
+        flower_fit_results_aggregator,
     ) -> None:
         super().__init__(
             fraction_fit=fraction_fit,
@@ -145,6 +144,11 @@ class FabricFedAvgStrategy2(fl.server.strategy.FedAvg):
 
         self.model = model
         self.fabric = fabric
+
+        from pybiscus.flower.flowerfitresultsaggregator.flowerfitresultsaggregatorusingweightedaverage.flowerfitresultsaggregatorusingweightedaverage import FlowerFitResultsAggregatorUsingWeightedAverage
+
+        flowerfitresultsaggregator_class = flowerfitresultsaggregator_registry()[flower_fit_results_aggregator['name']]
+        self.flower_fit_results_aggregator = flowerfitresultsaggregator_class(**flower_fit_results_aggregator['config'])
 
     # -------------------------------------------------------------------------
 
@@ -186,13 +190,8 @@ class FabricFedAvgStrategy2(fl.server.strategy.FedAvg):
         if not self.accept_failures and failures:
             return None, {}
 
-        # Aggregate results : weighted average (with examples number as weight)
-        tuples_ndarrays_weight = [ (flw_parameters_to_ndarrays(fit_res.parameters), fit_res.num_examples) 
-            for _, fit_res in results ]
-        # TODO: add optional handling of 📥🧬 results
-        aggregated_results    = flw_aggregate(tuples_ndarrays_weight)
-        # TODO: add optional handling of 📤🧮🧬 aggregated result
-        parameters_aggregated = flw_ndarrays_to_parameters(aggregated_results)
+        # Aggregate results using configurated aggregator
+        parameters_aggregated = self.flower_fit_results_aggregator.aggregate( server_round, results, failures )
 
         # Aggregate custom metrics if aggregation fn was provided
         metrics_aggregated = {}
@@ -264,7 +263,7 @@ class FabricFedAvgStrategy2(fl.server.strategy.FedAvg):
         return loss_aggregated, metrics_aggregated
 
 # #############################################################################################
-class FabricFedAvgStrategyFactory2(FabricStrategyFactory):
+class FabricFedAvgStrategyFactory3(FabricStrategyFactory):
 
     def __init__(self,model,fabric,testset,initial_parameters,config,):
         self.model              = model
@@ -275,7 +274,7 @@ class FabricFedAvgStrategyFactory2(FabricStrategyFactory):
 
     def get_strategy(self):
 
-        return FabricFedAvgStrategy2(
+        return FabricFedAvgStrategy3(
             fit_metrics_aggregation_fn      = pyb_weighted_average,
             evaluate_metrics_aggregation_fn = pyb_weighted_average,
             model                           = self.model,

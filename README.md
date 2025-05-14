@@ -1,3 +1,5 @@
+![Pybiscus logo](/pybiscus/assets/images/logo_pybiscus.png)
+
 # Pybiscus: a flexible Federated Learning Framework
 
 ## Introduction
@@ -9,33 +11,37 @@ Pybiscus is built on top of Flower, a mature Federated Learning framework; Typer
 
 It is managed using the uv package manager
 
-## Get started using uv
+The architecture is built around a plugin system and extensible hooks, and we are continuously evolving the framework to maximize flexibility and adaptability across all aspects of the federated learning process.
+
+In addition to the pybiscus command-line application, we have introduced two key tools:
+
+- a lightweight client *agent* that dynamically generates the configuration interface;
+
+- a *session manager* that synchronizes configuration of the server and clients, and handles the orchestration of the training session.
+
+## Get started using uv 
+
+uv is a python project and package manager ( https://github.com/astral-sh/uv )
 
 extend your user's path to include the bin directory
+
+```bash
+
+source ./extend_path.sh
+```
+
 download the required packages
 
-```source ./extend_path.sh
+```bash
 
 uv sync
 ```
 
 You can find example launch scripts in ./launch/uv subdirectories
 
-## Get started using podman or docker
-
-extend your user's path to include the bin directory
-produce the image
-
-```source ./extend_path.sh
-
-cd ./container
-./build_pybiscus_container.sh
-```
-You can find example launch scripts in ./launch/container subdirectories
-
 ## Documentation
 
-Documentation is available at [docs](docs/).
+Documentation is available at [docs](docs/index.md).
 
 ## Contributing
 
