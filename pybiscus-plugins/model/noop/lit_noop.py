@@ -3,7 +3,6 @@ from pydantic import BaseModel, ConfigDict
 import lightning.pytorch as pl
 import torch
 import torch.nn as nn
-from dataclasses import dataclass
 
 class ConfigNoop(BaseModel):
     """A Pydantic Model to validate the LitNoop config given by the user.
@@ -14,9 +13,7 @@ class ConfigNoop(BaseModel):
     """
 
     PYBISCUS_CONFIG: ClassVar[str] = "config"
-
-    unused: bool = True
-    
+    empty_configuration: bool = True
     model_config = ConfigDict(extra="forbid")
 
 class ConfigModel_Noop(BaseModel):
@@ -29,10 +26,8 @@ class ConfigModel_Noop(BaseModel):
     """
 
     PYBISCUS_ALIAS: ClassVar[str] = "Noop"
-
     name: Literal["noop"]
     config: ConfigNoop
-
     model_config = ConfigDict(extra="forbid")
 
 class NoopModel(nn.Module):
@@ -54,7 +49,7 @@ class NoopModel(nn.Module):
         return x
 
 class LitNoop(pl.LightningModule):
-    def __init__(self, unused: bool):
+    def __init__(self, empty_configuration: bool):
         super().__init__()
         self.model = NoopModel()
         self.loss_fn = nn.MSELoss()

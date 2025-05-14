@@ -8,7 +8,7 @@ from omegaconf import OmegaConf
 from pydantic import ValidationError
 from typing import Annotated
 
-from pybiscus.core.pybiscus_logger import pluggable_logger as console
+import pybiscus.core.pybiscus_logger as logm
 from pybiscus.plugin.registries import datamodule_registry, logger_registry, metricslogger_registry, model_registry, strategy_registry
 
 from pybiscus.flower_config.config_server import ConfigServer
@@ -19,9 +19,9 @@ from pybiscus.commands.apps_common import load_config
 
 def check_and_build_server_config(conf_loaded: dict) -> ConfigServer :
 
-    console.log(conf_loaded)
+    logm.console.log(conf_loaded)
     _conf = ConfigServer(**conf_loaded)
-    console.log(_conf)
+    logm.console.log(_conf)
         
     return _conf
 
@@ -90,9 +90,9 @@ def check_server_config(
 
     try:
         _ = check_and_build_server_config(conf_loaded=conf_loaded)
-        console.log("This is a valid conf!")
+        logm.console.log("This is a valid conf!")
     except ValidationError as e:
-        console.log(f"This is not a valid config ! {e}")
+        logm.console.log(f"This is not a valid config ! {e}")
         raise e
 
 #                    ------------------------------------------------
@@ -114,17 +114,17 @@ def server_certificates(conf_ssl):
         try:
             root_certificate = Path(root_certificate_path).read_bytes()
         except Exception as e:
-            console.log(f"Can not read root_certificate from path {root_certificate_path} {e}")
+            logm.console.log(f"Can not read root_certificate from path {root_certificate_path} {e}")
 
         try:
             server_certificate = Path(server_certificate_path).read_bytes()
         except Exception as e:
-            console.log(f"Can not read server_certificate from path {server_certificate_path} {e}")
+            logm.console.log(f"Can not read server_certificate from path {server_certificate_path} {e}")
 
         try:
             server_private_key = Path(server_private_key_path).read_bytes()
         except Exception as e:
-            console.log(f"Can not read server_private_key from path {server_private_key_path} {e}")
+            logm.console.log(f"Can not read server_private_key from path {server_private_key_path} {e}")
 
         if root_certificate is not None and server_certificate is not None and server_private_key is not None:
             certificates = ( root_certificate, server_certificate, server_private_key )
@@ -176,7 +176,7 @@ def launch_config(
     # load the logger
     _logger_class = logger_registry()[conf.server_run.logger.name]
     print(conf.server_run.logger.config)
-    console = _logger_class(config=conf.server_run.logger.config).get_logger()
+    logm.console = _logger_class(config=conf.server_run.logger.config).get_logger()
 
     # load the metricslogger
     _metricslogger_class = metricslogger_registry()[conf.server_compute_context.metrics_logger.name]
@@ -212,7 +212,7 @@ def launch_config(
         [param.detach().cpu().numpy() for param in model.parameters()]
     )
     initial_parameters = fl.common.ndarrays_to_parameters(params)
-    console.log(initial_parameters_log_message)
+    logm.console.log(initial_parameters_log_message)
 
     # NB : if the initial_parameters had been None
     # the behaviour would have been : Requesting initial parameters from one random client
@@ -227,7 +227,7 @@ def launch_config(
         
     ).get_strategy()
 
-    console.log("start of flower server")
+    logm.console.log("start of flower server")
 
     # starting flower server
     fl.server.start_server(
@@ -237,7 +237,7 @@ def launch_config(
         certificates   = server_certificates(conf.flower_server.ssl),
     )
 
-    console.log("flower server ended")
+    logm.console.log("flower server ended")
 
     # optional checkpoint save
     if conf.server_run.save_on_train_end:
@@ -251,7 +251,7 @@ def launch_config(
     # optional clients config logging
     if conf.server_run.client_configs is not None:
         for client_conf in conf.server_run.client_configs:
-            console.log(client_conf)
+            logm.console.log(client_conf)
             _conf = OmegaConf.load(client_conf)
             with open(
                 fabric.logger.log_dir + f"/config_client_{_conf.client_run.cid}_launch.yml", "w"

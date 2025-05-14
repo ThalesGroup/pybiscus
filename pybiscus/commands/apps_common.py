@@ -10,7 +10,7 @@ def load_config( config: Path ) -> DictConfig:
         raise typer.Abort()
     if config.is_file():
         conf_loaded = OmegaConf.load(config)
-        # console.log(conf)
+        # logm.console.log(conf)
     elif config.is_dir():
         print("Config is a directory, will use all its config files")
         raise typer.Abort()

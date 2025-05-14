@@ -12,7 +12,7 @@ server_run:
   logger:
     name: rich
     config:
-      unused: true
+      empty_configuration: true
 strategy:
   name: fedavg
   config:

@@ -3,7 +3,7 @@ from typing import ClassVar, Literal
 from pydantic import BaseModel, ConfigDict
 from pybiscus.interfaces.core.metricsloggerfactory import MetricsLoggerFactory
 from lightning.fabric.loggers import TensorBoardLogger
-from pybiscus.core.pybiscus_logger import pluggable_logger as console
+import pybiscus.core.pybiscus_logger as logm
 
 class ConfigTensorBoardLoggerFactoryData(BaseModel):
 
@@ -39,6 +39,6 @@ class TensorBoardLoggerFactory(MetricsLoggerFactory):
     def get_loggers(self):
 
         log_dir = self.root_dir + self.config.subdir
-        console.log(f"Allocating TensorBoardLoggerFactory(rootidr={log_dir})")
+        logm.console.log(f"Allocating TensorBoardLoggerFactory(rootidr={log_dir})")
 
         return [TensorBoardLogger(root_dir=log_dir )]

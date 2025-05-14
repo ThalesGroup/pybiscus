@@ -18,7 +18,7 @@ from lightning.fabric import Fabric
 from lightning.pytorch import LightningModule
 from pydantic import BaseModel, ConfigDict
 
-from pybiscus.core.pybiscus_logger import pluggable_logger as console
+import pybiscus.core.pybiscus_logger as logm
 from pybiscus.interfaces.flower.fabricstrategyfactory import FabricStrategyFactory
 from pybiscus.flower.utils_server import evaluate_config, fit_config, get_evaluate_fn, weighted_average
 
@@ -116,7 +116,7 @@ class FabricFedAvgStrategy(fl.server.strategy.FedAvg):
             return None
         loss, metrics = eval_res
         for key, value in metrics.items():
-            console.log(f"Test at round {server_round}, {key} is {value:.3f}")
+            logm.console.log(f"Test at round {server_round}, {key} is {value:.3f}")
             self.fabric.log(f"val_{key}_glob", value, step=server_round)
         return loss, metrics
 
@@ -144,7 +144,7 @@ class FabricFedAvgStrategy(fl.server.strategy.FedAvg):
         metrics_aggregated = {}
         if self.fit_metrics_aggregation_fn:
             fit_metrics = [(res.num_examples, res.metrics) for _, res in results]
-            # console.log(f"Fit metrics: {fit_metrics}")
+            # logm.console.log(f"Fit metrics: {fit_metrics}")
             for _, res in results:
                 for key, value in res.metrics.items():
                     self.fabric.log(
@@ -181,7 +181,7 @@ class FabricFedAvgStrategy(fl.server.strategy.FedAvg):
         metrics_aggregated = {}
         if self.evaluate_metrics_aggregation_fn:
             eval_metrics = [(res.num_examples, res.metrics) for _, res in results]
-            # console.log(f"Val metrics: {eval_metrics}")
+            # logm.console.log(f"Val metrics: {eval_metrics}")
             for _, res in results:
                 for key, value in res.metrics.items():
                     self.fabric.log(

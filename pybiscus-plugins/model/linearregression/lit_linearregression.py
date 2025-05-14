@@ -5,7 +5,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from pydantic import BaseModel, ConfigDict
-from pybiscus.core.pybiscus_logger import pluggable_logger as console
+import pybiscus.core.pybiscus_logger as logm
 
 # ------------------------------------------------------------------------------------
 
@@ -85,7 +85,7 @@ class LitLinearRegression(pl.LightningModule):
         acc = self.calculate_accuracy(y_hat, y)
 
         if self._logging:
-            console.log('train_loss', loss)
+            logm.console.log('train_loss', loss)
 
         return {"loss": loss, "accuracy": acc}
 
@@ -97,8 +97,8 @@ class LitLinearRegression(pl.LightningModule):
         acc = self.calculate_accuracy(y_hat, y)
 
         if self._logging:
-            console.log("val_loss", loss, prog_bar=True)
-            console.log("val_acc",  acc,  prog_bar=True)
+            logm.console.log("val_loss", loss, prog_bar=True)
+            logm.console.log("val_acc",  acc,  prog_bar=True)
         
         return {"loss": loss, "accuracy": acc}
 
@@ -109,7 +109,7 @@ class LitLinearRegression(pl.LightningModule):
         loss = self.criterion(y_hat, y)
         
         if self._logging:
-            console.log('test_loss', loss)
+            logm.console.log('test_loss', loss)
 
         return loss
 

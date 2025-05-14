@@ -6,7 +6,7 @@ import torch
 
 from pybiscus.flower_config.config_computecontext import ConfigClientComputeContext
 from pybiscus.ml.loops_fabric import test_loop, train_loop
-from pybiscus.core.pybiscus_logger import pluggable_logger as console
+import pybiscus.core.pybiscus_logger as logm
 
 def parse_optimizers(lightning_optimizers):
     """
@@ -92,22 +92,22 @@ class FlowerFabricClient(fl.client.NumPyClient):
         )
 
     def get_parameters(self, config):
-        console.log(f"[Client] get_parameters, config: {config}")
+        logm.console.log(f"[Client] get_parameters, config: {config}")
         return [val.cpu().numpy() for _, val in self.model.state_dict().items()]
 
     def set_parameters(self, parameters):
-        console.log("[Client] set_parameters")
+        logm.console.log("[Client] set_parameters")
         params_dict = zip(self.model.state_dict().keys(), parameters)
         state_dict = OrderedDict({k: torch.tensor(v) for k, v in params_dict})
         self.model.load_state_dict(state_dict, strict=True)
 
     def fit(self, parameters, config):
-        console.log(f"[Client {self.cid}] fit, config: {config}")
+        logm.console.log(f"[Client {self.cid}] fit, config: {config}")
         self.set_parameters(parameters)
         metrics = {}
 
         if self.pre_train_val:
-            console.log(
+            logm.console.log(
                 f"Round {config['server_round']}, pre train validation started..."
             )
             results_pre_train = test_loop(
@@ -116,7 +116,7 @@ class FlowerFabricClient(fl.client.NumPyClient):
             for key, val in results_pre_train.items():
                 metrics[f"{key}_pre_train_val"] = val
 
-        console.log(f"Round {config['server_round']}, training Started...")
+        logm.console.log(f"Round {config['server_round']}, training Started...")
 
         results_train = train_loop(
             self.fabric,
@@ -126,21 +126,21 @@ class FlowerFabricClient(fl.client.NumPyClient):
             epochs=config["local_epochs"],
         )
             
-        console.log(f"Training Finished! Loss is {results_train['loss']}")
+        logm.console.log(f"Training Finished! Loss is {results_train['loss']}")
         metrics["cid"] = self.cid
         for key, val in results_train.items():
             metrics[key] = val
         return self.get_parameters(config={}), self.num_examples["trainset"], metrics
 
     def evaluate(self, parameters, config):
-        console.log(f"[Client {self.cid}] evaluate, config: {config}")
+        logm.console.log(f"[Client {self.cid}] evaluate, config: {config}")
         self.set_parameters(parameters)
         metrics = {}
-        console.log(f"Round {config['server_round']}, evaluation Started...")
+        logm.console.log(f"Round {config['server_round']}, evaluation Started...")
         results_evaluate = test_loop(
             self.fabric, self.model, self._validation_dataloader
         )
-        console.log(
+        logm.console.log(
             f"Evaluation finished! Loss is {results_evaluate['loss']}, metric {list(results_evaluate.keys())[0]} is {results_evaluate[list(results_evaluate.keys())[0]]}"
         )
         metrics["cid"] = self.cid

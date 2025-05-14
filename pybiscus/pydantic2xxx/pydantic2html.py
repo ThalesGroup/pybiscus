@@ -67,6 +67,7 @@ def generate_tab_name(field_type, default) -> str:
 def generate_field_html(field_name: str, field_type, field_required: bool, field_default, field_description, inFieldSet: bool, prefix: str, field_is_annotated: bool = False) -> str:
 
     field_html = ''
+
     opt_title = '' if (field_description is None or field_description is PydanticUndefined) else f' title="{html.escape(field_description)}" '
     opt_value = '' if field_default     is PydanticUndefined else f' value="{field_default}" '
     opt_required = "required" if field_required else ""
@@ -121,7 +122,8 @@ def generate_field_html(field_name: str, field_type, field_required: bool, field
         field_html += '</fieldset>\n'
         
     elif field_type is type(None):
-        field_html += html_label( 'NONE' )
+        # field_html += html_label( 'NONE' )
+        pass
 
     elif hasattr(field_type, '__origin__') or field_is_annotated :
 
@@ -368,6 +370,14 @@ def generate_field_html(field_name: str, field_type, field_required: bool, field
         field_html += f'  \n'
 
     field_html = f'<div class="pybiscus-field">\n{field_html}</div>\n'
+
+    # # special case : a field with empty_configuration name is hidden
+    if field_name == "empty_configuration":
+        field_html = f"""⚙️🈳 empty configuration 
+    <div style="display: none;">
+        {field_html}
+    </div>"""
+
 
     return field_html
 

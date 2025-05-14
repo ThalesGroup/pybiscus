@@ -17,7 +17,7 @@ from flwr.server.strategy.aggregate import aggregate as flw_aggregate
 
 class ConfigFlowerFitResultsAggregatorUsingAverageData(BaseModel):
     PYBISCUS_CONFIG: ClassVar[str] = "config"
-    empty_configuration: bool = False
+    empty_configuration: bool = True
     model_config = ConfigDict(extra="forbid")
 
 class ConfigFlowerFitResultsAggregatorUsingAverage(BaseModel):

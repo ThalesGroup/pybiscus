@@ -7,20 +7,14 @@ from pybiscus.interfaces.core.logger import LoggerFactory
 class ConfigRichLoggerFactoryData(BaseModel):
 
     PYBISCUS_CONFIG: ClassVar[str] = "config"
-    
-    unused: bool = True
-
+    empty_configuration: bool = True
     model_config = ConfigDict(extra="forbid")
 
 
 class ConfigRichLoggerFactory(BaseModel):
-
     name:   Literal["rich"]
-
     PYBISCUS_ALIAS: ClassVar[str] = "RichLogger"
-
     config: ConfigRichLoggerFactoryData
-
     model_config = ConfigDict(extra="forbid")
 
 

@@ -7,7 +7,7 @@ import torchvision.transforms as transforms
 from torch.utils.data import DataLoader
 from torchvision.datasets import CIFAR10
 
-from pybiscus.core.pybiscus_logger import pluggable_logger as console
+import pybiscus.core.pybiscus_logger as logm
 
 class CifarLightningDataModule(pl.LightningDataModule):
     """
@@ -210,17 +210,17 @@ class CifarLightningDataModule(pl.LightningDataModule):
 
         if stage == "fit" or stage is None:
             self.data_train = CIFAR10( root=self.data_dir_train, train=True,  download=True, transform=self.transform,)
-            console.log("x_train shape: ", self.data_train.data.shape)
+            logm.console.log("x_train shape: ", self.data_train.data.shape)
             self.data_val   = CIFAR10( root=self.data_dir_val,   train=False, download=True, transform=self.transform,)
-            console.log("y_train shape: ", self.data_val.data.shape)
+            logm.console.log("y_train shape: ", self.data_val.data.shape)
 
             # print number of targets and  values targets
-            console.log("Number of Targets :", len(np.unique(self.data_train.targets)))
-            console.log("Targets Values    :",     np.unique(self.data_train.targets))
+            logm.console.log("Number of Targets :", len(np.unique(self.data_train.targets)))
+            logm.console.log("Targets Values    :",     np.unique(self.data_train.targets))
 
         if stage == "test" or stage is None:
             self.data_test  = CIFAR10( root=self.data_dir_test,  train=False, download=True, transform=self.transform,)
-            console.log("x_test shape", self.data_test.data.shape)
+            logm.console.log("x_test shape", self.data_test.data.shape)
 
     @override
     def train_dataloader(self) -> DataLoader:

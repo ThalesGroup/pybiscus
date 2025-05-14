@@ -8,7 +8,7 @@ from flwr.common import Metrics, Scalar
 from lightning.fabric import Fabric
 from lightning.pytorch import LightningModule
 
-from pybiscus.core.pybiscus_logger import pluggable_logger as console
+import pybiscus.core.pybiscus_logger as logm
 from pybiscus.ml.loops_fabric import test_loop
 
 def set_params(model: torch.nn.ModuleList, params: list[np.ndarray]):
@@ -65,5 +65,5 @@ def weighted_average(metrics: list[tuple[int, Metrics]]) -> Metrics:
         key: sum(num * metric[key] / num_examples for num, metric in metrics)
         for key in _set_common_keys
     }
-    console.log(f"Averaged metrics: {outputs}")
+    logm.console.log(f"Averaged metrics: {outputs}")
     return outputs

@@ -19,7 +19,7 @@ from pybiscus.session.agent.tuples2yaml import parse_tuples_to_yaml_string
 from pybiscus.flower_config.config_server import ConfigServer
 from pybiscus.flower_config.config_client import ConfigClient
 from pybiscus.core.pybiscusexception import PybiscusInternalException, PybiscusValueException
-from pybiscus.core.pybiscus_logger import pluggable_logger as console
+import pybiscus.core.pybiscus_logger as logm
 from pybiscus.plugin.registries import datamodule_registry, model_registry, DataConfig, ModelConfig
 
 rest_server = Flask(__name__)
@@ -96,9 +96,9 @@ def run_typer_command(command: list[str]) -> str:
     return_code = process.wait()
 
     if return_code == 0:
-        console.log("Process has finished successfully.")
+        logm.console.log("Process has finished successfully.")
     else:
-        console.log(f"Processus {command} has failed with code {return_code}")
+        logm.console.log(f"Processus {command} has failed with code {return_code}")
         raise PybiscusInternalException(f"Processus {command} has failed with code {return_code}")
 
     return ''.join(lines)
@@ -177,15 +177,15 @@ def serverConfigDownload():
 
             param_js = generate_param_js(session_parameters)
 
-            console.log("server: received session parameters: ", session_parameters)
-            # console.log("generated params :\n", param_js)
+            logm.console.log("server: received session parameters: ", session_parameters)
+            # logm.console.log("generated params :\n", param_js)
 
         except Exception as e:
-            console.log( f"/server/config with bad param {str(e)}" )
+            logm.console.log( f"/server/config with bad param {str(e)}" )
             raise e
 
     else:
-        console.log("/server/config with no param")
+        logm.console.log("/server/config with no param")
 
     with importlib.resources.files("pybiscus.session.agent").joinpath("fold_fieldset.js").open('r') as file:
         fold_fieldsets = file.read()
@@ -228,7 +228,7 @@ def clientConfigDownload():
 
             param_js = generate_param_js(session_parameters)
 
-            console.log("client: downloaded parameters: ", session_parameters)
+            logm.console.log("client: downloaded parameters: ", session_parameters)
 
     with importlib.resources.files("pybiscus.session.agent").joinpath("fold_fieldset.js").open('r') as file:
         fold_fieldsets = file.read()

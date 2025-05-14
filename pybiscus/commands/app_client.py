@@ -6,7 +6,7 @@ import torch
 import typer
 from pydantic import ValidationError
 
-from pybiscus.core.pybiscus_logger import pluggable_logger as console
+import pybiscus.core.pybiscus_logger as logm
 from pybiscus.flower_fabric.client.flowerfabricclient.flowerfabricclientfactory import FlowerFabricClientFactory
 from pybiscus.plugin.registries import client_registry, datamodule_registry, model_registry
 from pybiscus.flower_config.config_client import ConfigClient
@@ -19,9 +19,9 @@ torch.backends.cudnn.enabled = True
 
 def check_and_build_client_config(config: dict) -> ConfigClient:
 
-    console.log(config)
+    logm.console.log(config)
     _conf = ConfigClient(**config)
-    console.log(_conf)
+    logm.console.log(_conf)
 
     return _conf
 
@@ -93,9 +93,9 @@ def check_client_config(
         conf_loaded["server_address"] = server_address
     try:
         _ = check_and_build_client_config(conf_loaded)
-        console.log("This is a valid config!")
+        logm.console.log("This is a valid config!")
     except ValidationError as e:
-        console.log("This is not a valid config!")
+        logm.console.log("This is not a valid config!")
         raise e
 
 
@@ -141,7 +141,7 @@ def launch_config(
         conf_loaded["root_dir"] = root_dir
     if server_address is not None:
         conf_loaded["flower_client"]["server_address"] = server_address
-    # console.log(f"Conf specified: {dict(conf)}")
+    # logm.console.log(f"Conf specified: {dict(conf)}")
 
     conf = check_and_build_client_config(config=conf_loaded)
 

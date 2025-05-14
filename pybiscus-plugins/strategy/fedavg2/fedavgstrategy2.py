@@ -24,7 +24,7 @@ from pydantic import BaseModel, ConfigDict
 
 from pybiscus.flower.flowerfitresultsaggregator.flowerfitresultsaggregatorusingweightedaverage.flowerfitresultsaggregatorusingweightedaverage import FlowerFitResultsAggregatorUsingWeightedAverage
 from pybiscus.interfaces.flower.fabricstrategyfactory import FabricStrategyFactory
-from pybiscus.core.pybiscus_logger import pluggable_logger as console
+import pybiscus.core.pybiscus_logger as logm
 from pybiscus.flower.utils_server import (
     evaluate_config    as pyb_evaluate_config, 
     fit_config         as pyb_fit_config, 
@@ -44,7 +44,7 @@ than or equal to the values of `min_fit_clients` and `min_evaluate_clients`.
 # TODO: loggers
 # there are 3 differents loggers used
 # - flwr.common.logger.log
-# - pybiscus.core.pybiscus_logger.pluggable_logger as console
+# - pybiscus.core.pybiscus_logger.console
 # - Fabric.log
 
 class ConfigFabricFedAvgStrategyData2(BaseModel):
@@ -148,8 +148,6 @@ class FabricFedAvgStrategy2(fl.server.strategy.FedAvg):
         self.fabric = fabric
 
         # load the FlowerFitResultsAggregator from registry
-        # flowerfitresultsaggregator_class = flowerfitresultsaggregator_registry()[flower_fit_results_aggregator.name]
-        # self.flower_fit_results_aggregator = flowerfitresultsaggregator_class(**flower_fit_results_aggregator.config.model_dump())
         self.flower_fit_results_aggregator = FlowerFitResultsAggregatorUsingWeightedAverage(empty_configuration=True)
 
     # -------------------------------------------------------------------------
@@ -171,7 +169,7 @@ class FabricFedAvgStrategy2(fl.server.strategy.FedAvg):
         loss, metrics = eval_res
         
         for key, value in metrics.items():
-            console.log(f"Test at round {server_round}, {key} is {value:.3f}")
+            logm.console.log(f"Test at round {server_round}, {key} is {value:.3f}")
             self.fabric.log(f"val_{key}_glob", value, step=server_round)
 
         return loss, metrics
@@ -209,7 +207,7 @@ class FabricFedAvgStrategy2(fl.server.strategy.FedAvg):
         if self.fit_metrics_aggregation_fn:
 
             tuples_weight_fitmetrics = [(res.num_examples, res.metrics) for _, res in results]
-            # console.log(f"Fit metrics: {tuples_weight_fitmetrics}")
+            # logm.console.log(f"Fit metrics: {tuples_weight_fitmetrics}")
             # TODO: add optional handling of 📥📈 metrics
 
             for _, res in results:
@@ -257,7 +255,7 @@ class FabricFedAvgStrategy2(fl.server.strategy.FedAvg):
         if self.evaluate_metrics_aggregation_fn:
 
             eval_metrics = [(res.num_examples, res.metrics) for _, res in results]
-            # console.log(f"Val metrics: {eval_metrics}")
+            # logm.console.log(f"Val metrics: {eval_metrics}")
             # TODO: add optional handling of 📥📈 metrics
 
             for _, res in results:
