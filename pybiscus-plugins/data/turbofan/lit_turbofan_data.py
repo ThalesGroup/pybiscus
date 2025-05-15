@@ -26,9 +26,10 @@ class ConfigTurbofanData(BaseModel):
     PYBISCUS_CONFIG: ClassVar[str] = "config"
 
     data_path: str = "turbofan.txt"
-    engines_train_list: list[int] = [52]
-    engines_val_list: list[int] = [64]
-    engines_test_list: list[int] = [69]
+    # TODO: check init
+    # engines_train_list: list[int] # = [52]
+    # engines_val_list: list[int] # = [64]
+    # engines_test_list: list[int] # = [69]
     window: int = 20
     batch_size: int = 8
     num_workers: int = 0

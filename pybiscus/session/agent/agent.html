@@ -52,8 +52,9 @@
     });
 
     // *** tab selection management ***
-    document.querySelectorAll('.pybiscus-tab-container').forEach(container => {
 
+    function handlePybiscusTabContainer(container) {
+ 
         const my_buttons  = ':scope > .pybiscus-tab-buttons > .pybiscus-tab-button'
         const my_contents = ':scope > .pybiscus-tab-content'
 
@@ -95,7 +96,9 @@
                 } );
             });
         });
-    });
+    };
+
+    document.querySelectorAll('.pybiscus-tab-container').forEach(handlePybiscusTabContainer);
 
     // *** radio buttons management ***
     const radioButtons = document.querySelectorAll('input[type="radio"].pybiscus_radiobutton');
@@ -141,13 +144,13 @@
                 if( element.tagName === "INPUT" ) {
                     if( element.type === "checkbox" ) {
                         //console.log( `${attributeValue} = ${element.checked}` );
-                        data = [ [ attributeValue, "", element.checked ], ...data ];
+                        data = [ [ attributeValue, element.checked ], ...data ];
                     } else if( element.type === "text" ) {
                         //console.log( `${attributeValue} = "${element.value}"` );
-                        data = [ [ attributeValue, "", element.value ], ...data ];
+                        data = [ [ attributeValue, element.value ], ...data ];
                     } else {
                         //console.log( `${attributeValue} = ${element.value}` );
-                        data = [ [ attributeValue, "", element.value ], ...data ];
+                        data = [ [ attributeValue, element.value ], ...data ];
                     }
                 } else {
                     console.log( "field is not an input" );

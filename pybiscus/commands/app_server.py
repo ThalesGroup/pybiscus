@@ -8,6 +8,7 @@ from omegaconf import OmegaConf
 from pydantic import ValidationError
 from typing import Annotated
 
+from pybiscus.core.logger.multiplelogger.multipleloggerfactory import MultipleLoggerFactory
 import pybiscus.core.pybiscus_logger as logm
 from pybiscus.plugin.registries import datamodule_registry, logger_registry, metricslogger_registry, model_registry, strategy_registry
 
@@ -173,10 +174,10 @@ def launch_config(
 
     conf = check_and_build_server_config(conf_loaded)
 
-    # load the logger
-    _logger_class = logger_registry()[conf.server_run.logger.name]
-    print(conf.server_run.logger.config)
-    logm.console = _logger_class(config=conf.server_run.logger.config).get_logger()
+    # load the loggers
+    _logger_classes = [ logger_registry()[logger.name](config=logger.config) for logger in conf.server_run.loggers ]
+    if len(_logger_classes) > 0:
+        logm.console = MultipleLoggerFactory(_logger_classes).get_logger()
 
     # load the metricslogger
     _metricslogger_class = metricslogger_registry()[conf.server_compute_context.metrics_logger.name]

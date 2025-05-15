@@ -45,9 +45,9 @@ class ConfigServerRun(BaseModel):
     PYBISCUS_CONFIG: ClassVar[str] = "server_run"
 
     num_rounds:        int = 10
-    client_configs:    list[str] = None
+    client_configs:    list[str] = []
     save_on_train_end: Optional[ConfigSaveWeights] = None
-    logger:            LoggerConfig() # pyright: ignore[reportInvalidTypeForm]
+    loggers:           list[LoggerConfig()] # pyright: ignore[reportInvalidTypeForm]
 
     model_config = ConfigDict(extra="forbid")
 

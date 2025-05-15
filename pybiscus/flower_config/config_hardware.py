@@ -26,6 +26,8 @@ class ConfigHardware(BaseModel):
 
     accelerator: Accelerator = "auto"
 
-    devices: Union[int, list[int], str] = "auto"
+    # TODO: check devices
+    # devices: Union[int, list[int], str] = "auto"
+    devices: Union[int, str] = "auto"
 
     model_config = ConfigDict(extra="forbid")

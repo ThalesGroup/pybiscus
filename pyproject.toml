@@ -19,6 +19,7 @@ dependencies = [
     "typer>=0.15.1",
     "wandb>=0.19.10",
     "pydeps>=3.0.1",
+    "dominate>=2.9.1",
 ]
 
 [build-system]

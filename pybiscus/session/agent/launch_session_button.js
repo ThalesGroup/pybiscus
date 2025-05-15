@@ -18,7 +18,7 @@ launch_session_button.addEventListener('click', function() {
     // generate configuration data (returns a list of 3-tuples)
     raw_data = traverseDOM(topDiv, []).reverse();
 
-    // console.log( raw_data );
+    console.log( raw_data );
 
     // transform configuration from format to session config
     // to either server or client HMI configuration actions
@@ -33,16 +33,16 @@ launch_session_button.addEventListener('click', function() {
     const exclude = ['flower_server.server_host', 'flower_server.server_port', 'flower_server.server_protocol', 'flower_server.server_listen_to'];
     const new_data = raw_data.filter(row => ! exclude.includes(row[0]));
 
-    const listen_address = server_listen_to[2] === "the whole internet" ? "[::]" : "[::1]";
+    const listen_address = server_listen_to[1] === "the whole internet" ? "[::]" : "[::1]";
 
     // special names of tab components for unions corresponding to an optional config field
     const optional_options_by_visibility = { true: ' ', false: '  ' };
 
-    const ssl_option_is_visible = optional_options_by_visibility[server_protocol[2] === 'https'];
+    const ssl_option_is_visible = optional_options_by_visibility[server_protocol[1] === 'https'];
 
     const values_set = { 
-        'flower_server.listen_address' : `${listen_address}:${server_port[2]}`,
-        'flower_client.server_address' : `${server_host[2]}:${server_port[2]}`,
+        'flower_server.listen_address' : `${listen_address}:${server_port[1]}`,
+        'flower_client.server_address' : `${server_host[1]}:${server_port[1]}`,
     };
     const values_lock  = [
         'root_dir', 

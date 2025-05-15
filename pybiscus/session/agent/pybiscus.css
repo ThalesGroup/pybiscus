@@ -241,6 +241,47 @@
 
 
 
+    /* management of pybiscus lists >>> begin >>> */
+
+    .pybiscus-list-contents {
+        display: flex;
+        gap: 0.5rem; /* optionnel : espace entre les éléments */
+        align-items: center; /* pour les aligner verticalement */
+        flex-wrap: wrap; /* ou nowrap selon le comportement désiré */
+    }
+          
+    .pybiscus-list-eraser {
+        display: inline-block;
+        background-color: #f2f2f2;
+        padding: 0.2em 0.2em;
+        border-radius: 2px;
+        font-size: 1.2em;
+        border: 1px solid orange;
+        border-radius: 6px;
+    }
+
+    .pybiscus-list-eraser:hover {
+        cursor: grab;
+    }
+
+    .pybiscus-list-generator {
+        display: inline-block;
+        background-color: #f2f2f2;
+        padding: 0.2em 0.2em;
+        border-radius: 2px;
+        font-size: 1.2em;
+        border: 1px solid orange;
+        border-radius: 6px;
+    }
+      
+    .pybiscus-list-generator:hover {
+        cursor: copy;
+    }
+    
+    /* management of pybiscus lists <<< end <<< */
+
+
+        
     /* management of pybiscus configuration items >>> begin >>> */
 
     .pybiscus-field {

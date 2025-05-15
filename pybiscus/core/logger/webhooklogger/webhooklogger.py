@@ -18,19 +18,19 @@ class WebHookLogger:
         
         :param msgs: Messages à loguer, qui seront concaténés et envoyés
         """
-        # Créer le message à envoyer
+        # create the message to be sent
         message = " ".join(str(msg) for msg in msgs)
         
-        # Créer la payload avec l'identifiant dans le champ 'source'
+        # create the payload with the id the field 'source'
         payload = {
             'content': message,
-            'source': self.logger_id  # Ajouter le champ 'source' avec l'identifiant du logger
+            'source': self.logger_id
         }
         
         try:
-            # Envoyer le message au webhook via une requête POST
+            # send the message to the webhook using a POST request
             response = requests.post(self.webhook_url, json=payload)
-            response.raise_for_status()  # Vérifie si la requête a échoué
+            response.raise_for_status()  # check error in case of error status
 
             print("✅ Log Webhook call success : ", payload)
 
@@ -45,12 +45,10 @@ class WebHookLogger:
 
 
 
-# Exemple d'utilisation
 if __name__ == "__main__":
     webhook_url = 'http://localhost:5555//webhook/logs'
-    logger_id = 'Logger123'  # Identifiant unique pour ce logger
+    logger_id = 'Logger123'
     logger = WebHookLogger(webhook_url, logger_id)
 
-    # Utilisation du logger pour envoyer des messages
     logger.log("C'est un message de log", "avec plusieurs parties", 123)
     logger.log("Un autre message de log")

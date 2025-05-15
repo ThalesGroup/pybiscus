@@ -5,8 +5,11 @@ from typing import Optional, Union, Literal, get_args, get_origin, get_type_hint
 from enum import Enum
 
 import inspect
-import html
+import html as html_module
 import importlib.resources
+import dominate
+from dominate.tags import *
+from dominate.util import raw
 
 from pybiscus.core.pybiscusexception import PybiscusInternalException
 from pybiscus.pydantic2xxx.heredoc import get_basemodel_attribute_description
@@ -68,7 +71,7 @@ def generate_field_html(field_name: str, field_type, field_required: bool, field
 
     field_html = ''
 
-    opt_title = '' if (field_description is None or field_description is PydanticUndefined) else f' title="{html.escape(field_description)}" '
+    opt_title = '' if (field_description is None or field_description is PydanticUndefined) else f' title="{html_module.escape(field_description)}" '
     opt_value = '' if field_default     is PydanticUndefined else f' value="{field_default}" '
     opt_required = "required" if field_required else ""
 
@@ -79,7 +82,7 @@ def generate_field_html(field_name: str, field_type, field_required: bool, field
 
     # generate HTML field according to type
     if field_type is str:
-        opt_value = '' if (field_default is PydanticUndefined or field_default is None ) else f' value="{html.escape(field_default)}" '
+        opt_value = '' if (field_default is PydanticUndefined or field_default is None ) else f' value="{html_module.escape(field_default)}" '
         field_html += html_label( field_name, True )
         field_html += f'  <input type="text" {opt_title} {opt_value} placeholder="string" {opt_required} {pybiscus_marker}>\n'
 
@@ -100,7 +103,7 @@ def generate_field_html(field_name: str, field_type, field_required: bool, field
     elif inspect.isclass(field_type) and issubclass(field_type, Enum):
         
         field_html += '<fieldset class="pybiscus-fieldset-container">\n'
-        field_html += f'  <legend><div class="pybiscus-config">{field_name}</div></legend>\n'
+        field_html += f'  <legend><label class="pybiscus-config">{field_name}</label></legend>\n'
 
         option_name= f"option-{new_index()}"
 
@@ -122,7 +125,7 @@ def generate_field_html(field_name: str, field_type, field_required: bool, field
         field_html += '</fieldset>\n'
         
     elif field_type is type(None):
-        # field_html += html_label( 'NONE' )
+
         pass
 
     elif hasattr(field_type, '__origin__') or field_is_annotated :
@@ -189,11 +192,11 @@ def generate_field_html(field_name: str, field_type, field_required: bool, field
             field_html += f'<fieldset class="pybiscus-fieldset-container {optional_fs_class}" data-pybiscus-prefix="{prefix[:-1]}">\n'
 
             if field_name != "":
-                field_html += f'  <legend><div class="pybiscus-config">{field_name}'
+                field_html += f'  <legend><label class="pybiscus-config">{field_name}'
                 if is_an_option:
                     opt_checked = "checked" if active_index == 1 else ""
                     field_html += f' ❓ <input type="checkbox" class="pybiscus-option-cb" {opt_checked} > '
-                field_html += '</div></legend>\n'
+                field_html += '</label></legend>\n'
 
             tab_nb = new_index()
 
@@ -298,28 +301,43 @@ def generate_field_html(field_name: str, field_type, field_required: bool, field
 
             field_html += '</fieldset>\n'
 
-        elif field_type.__origin__ is list:
+        elif get_origin(field_type) is list:
 
             # ### list ###
             
-            default_list_len = 5
+            list_type = get_args(field_type)[0]
 
-            if field_type.__args__[0] is int:
-                field_html += html_label( field_name, True )
+            if get_origin(list_type) is Annotated:
+                list_type = get_args(list_type)[0]
 
-                #for i in range(default_list_len):  
-                #    field_html += f'  <input type="number" name="{field_name}_{i}" placeholder="integer">\n'
+            list_fieldset = fieldset( cls='pybiscus-list-fs' )
 
-                field_html += f'  <input type="text" {opt_title} {opt_value} placeholder="comma separated int list" {pybiscus_marker}>\n'
+            with list_fieldset:
 
-            elif field_type.__args__[0] is str:
-                field_html += html_label( field_name, True )
+                with legend():
+                    label(field_name, cls="pybiscus-config" )
+                    label( "➕📝", cls='pybiscus-list-generator' )
 
-                #for i in range(default_list_len):  
-                for i in range(0):  
-                    field_html += f'  <input type="text" name="{field_name}_{i}" placeholder="string">\n'
-            field_html += f'  \n'
+                my_div = div( cls='pybiscus-list' )
 
+                with my_div:
+
+                    div( cls='pybiscus-list-contents' )
+
+                    with div( cls='pybiscus-list-template', style="display: none;", **{'data-pybiscus-status': 'ignored'} ):
+                        
+                        raw( generate_field_html(
+                                        field_name        = "#", 
+                                        field_type        = list_type, 
+                                        field_required    = False, 
+                                        field_default     = None, 
+                                        field_description = PydanticUndefined,
+                                        inFieldSet        = False,
+                                        prefix            = f"{prefix}{field_name}.",
+                                        ) )
+
+            field_html +=  list_fieldset.render()
+        
         elif field_type.__origin__ is dict:
 
             # ### dict ###
@@ -355,19 +373,17 @@ def generate_field_html(field_name: str, field_type, field_required: bool, field
 
         else:
 
-            # ### ??? ###
-            field_html += html_label( f'Field Type not handled !!! {field_type}' )
-            field_html += html_label( field_name )
+            # ### Type not handled ! ###
+            field_html += label( field_name ).render()
+            field_html += label( f'Field Type not handled !!! {field_type}' ).render()
 
     elif issubclass(field_type, BaseModel):
 
         field_html += generate_model_html(field_type, inFieldSet, prefix )
 
     else:
-        field_html += f' ????\n'
-
-        field_html += f'  <label>{field_name}:   [{type(field_type).__qualname__}]:{(field_type).__qualname__}]</label>\n'
-        field_html += f'  \n'
+        field_html += label( field_name ).render()
+        field_html += label( f'[{type(field_type).__qualname__}]:{(field_type).__qualname__}]' ).render()
 
     field_html = f'<div class="pybiscus-field">\n{field_html}</div>\n'
 
@@ -377,7 +393,6 @@ def generate_field_html(field_name: str, field_type, field_required: bool, field
     <div style="display: none;">
         {field_html}
     </div>"""
-
 
     return field_html
 
@@ -448,7 +463,7 @@ def generate_model_page(model: BaseModel, templatePath: str, templateName: str, 
 
     try:
         with importlib.resources.files(templatePath).joinpath(templateName).open('r') as file:
-            html = file.read()
+            _html = file.read()
         with importlib.resources.files("pybiscus.session.agent").joinpath("pybiscus.css").open('r') as file:
             css = file.read()
         with importlib.resources.files("pybiscus.session.agent").joinpath(f"{buttons_type}.html").open('r') as file:
@@ -458,14 +473,61 @@ def generate_model_page(model: BaseModel, templatePath: str, templateName: str, 
 
         body = generate_model_html(model, True, "")
 
-        html = html.replace( "CSS", css )
-        html = html.replace( "BODY", body )
-        html = html.replace( "BUTTONS_HTML", buttons_html )
-        html = html.replace( "BUTTONS_JS", buttons_js )
-        html = html.replace( "ON_DOCUMENT_LOAD_JS", on_document_load_js )
-        html = html.replace( "MODEL_NAME", modelName ).replace( "ACTION", action )
+        # TODO: use jinja2 templating
+
+        _html = _html.replace( "CSS", css )
+        _html = _html.replace( "BODY", body )
+        _html = _html.replace( "BUTTONS_HTML", buttons_html )
+        _html = _html.replace( "BUTTONS_JS", buttons_js )
+        _html = _html.replace( "ON_DOCUMENT_LOAD_JS", on_document_load_js )
+        _html = _html.replace( "MODEL_NAME", modelName ).replace( "ACTION", action )
 
     except Exception as e:
         raise PybiscusInternalException(f"Html generation error ! {e}")
 
-    return html
+    return _html
+
+def generate_field_html_by_name():
+
+    if False:    
+        type_full_typename = "pybiscus.core.logger.WebHookLogger"
+
+        import importlib
+        import builtins
+
+        if '.' not in type_full_typename:
+            # Tenter d'obtenir un type intégré comme 'str', 'int', etc.
+            try:
+                field_type = getattr(builtins, type_full_typename)
+            except AttributeError:
+                # raise ValueError(f"unknown builtin type : {type_full_typename}") from e
+                return str(div(f"unknown builtin type : {type_full_typename}"))
+                pass
+        else:
+            module_name, class_name = type_full_typename.rsplit('.', 1)
+            try:
+                module = importlib.import_module(module_name)
+                field_type = getattr(module, class_name)
+            except (ImportError, AttributeError) as e:
+                # raise ValueError(f"Class '{class_name}' not found in module '{module_name}'") from e
+                return str(div(f"BAD_RESULT for {type_full_typename}"))
+    else:
+        from pybiscus.plugin.registries import LoggerConfig
+
+        class MyConf(BaseModel):
+            
+            loggers: list[LoggerConfig()] # pyright: ignore[reportInvalidTypeForm]
+
+
+        field_type = MyConf
+
+    field_name: str          = "field_name"
+    field_default            = None
+    field_description        = "field_description"
+    inFieldSet: bool         = False
+    prefix: str              = "prefix"
+    field_is_annotated: bool = False
+    field_required           = False
+
+    # return generate_field_html(field_name, field_type, field_required, field_default, field_description, inFieldSet, prefix, field_is_annotated)
+    return generate_model_html(field_type, inFieldSet=inFieldSet, prefix=prefix)

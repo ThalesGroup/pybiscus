@@ -45,7 +45,10 @@ class FlowerFitResultsAggregatorUsingWeightedAverage(FlowerFitResultsAggregator)
         tuples_ndarrays_weight = [ (flw_parameters_to_ndarrays(fit_res.parameters), fit_res.num_examples) 
             for _, fit_res in results ]
 
-        logm.console.log( f"WeightedAverage round:{server_round}\n" + "\n".join(f"🆔{client.cid}⚖️{fit_res.num_examples}" for client, fit_res in results) )
+        logm.console.log(
+            f"WeightedAverage round:{server_round}" +
+            " | ".join(f"🆔{client.cid} ⚖️{fit_res.num_examples}" for client, fit_res in results)
+        )
 
         # handling of 📥🧬 results
         aggregated_results    = flw_aggregate(tuples_ndarrays_weight)

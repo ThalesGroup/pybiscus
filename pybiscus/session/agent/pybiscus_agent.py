@@ -13,7 +13,7 @@ import subprocess
 
 import urllib
 
-from pybiscus.pydantic2xxx.pydantic2html import generate_model_page
+from pybiscus.pydantic2xxx.pydantic2html import generate_field_html_by_name, generate_model_page
 from pybiscus.session.agent.ConfigSession import make_session_model
 from pybiscus.session.agent.tuples2yaml import parse_tuples_to_yaml_string
 from pybiscus.flower_config.config_server import ConfigServer
@@ -190,7 +190,10 @@ def serverConfigDownload():
     with importlib.resources.files("pybiscus.session.agent").joinpath("fold_fieldset.js").open('r') as file:
         fold_fieldsets = file.read()
 
-    return generate_model_page(ConfigServer,'pybiscus.session.agent','agent.html','check_exec_buttons', fold_fieldsets + param_js)
+    with importlib.resources.files("pybiscus.session.agent").joinpath("lists_management.js").open('r') as file:
+        lists_management = file.read()
+
+    return generate_model_page(ConfigServer,'pybiscus.session.agent','agent.html','check_exec_buttons', fold_fieldsets + lists_management + param_js)
 
 # ..........................................................
 # .... POST /server/config .................................
@@ -656,6 +659,16 @@ def session_parameters_waiting():
         check();
         </script>
     """, server_url=server_url)
+
+# ..........................................................
+# ............. GET /test/html .....
+# ..........................................................    
+
+@rest_server.route('/test/html')
+def test_html():
+    return generate_field_html_by_name()
+
+# ..........................................................    
 
 if __name__ == "__main__":
 

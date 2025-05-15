@@ -1,63 +1,64 @@
-
 import yaml
-from collections import defaultdict
 
-def nested_dict():
-    """Helper function to create a nested defaultdict."""
-    return defaultdict(nested_dict)
+def convert_defaultdict_to_dict(d):
+    if isinstance(d, dict):
+        return {k: convert_defaultdict_to_dict(v) for k, v in d.items()}
+    elif isinstance(d, list):
+        return [convert_defaultdict_to_dict(i) for i in d]
+    return d
 
-def add_to_dict(d, keys, value, is_list):
-    """Add a value to a nested dictionary based on a list of keys."""
-    for key in keys[:-1]:
-        d = d[key]
+def set_in_structure(structure, keys, value):
+    current = structure
+    for i, key in enumerate(keys):
+        is_last = i == len(keys) - 1
+        is_index = key.isdigit()
+        key_val = int(key) if is_index else key
 
-    # check if the value should be added to a list
-    if is_list:
-        key = keys[-1]
-        if key not in d or not isinstance(d[key], list):
-            d[key] = []
-        d[key].append(value)
-    else:
-        d[keys[-1]] = value
+        # Convert to list if needed
+        if is_index:
+            if not isinstance(current, list):
+                current_parent[last_key] = []
+                current = current_parent[last_key]
+            while len(current) <= key_val:
+                current.append({})
+            if is_last:
+                current[key_val] = value
+            else:
+                current = current[key_val]
+        else:
+            if is_last:
+                current[key_val] = value
+            else:
+                if key_val not in current or not isinstance(current[key_val], (dict, list)):
+                    current[key_val] = {}
+                current_parent = current
+                current = current[key_val]
+
+        last_key = key_val
 
 def parse_tuples_to_yaml(tuples):
-    """Convert a list of (key, list_indicator, value) tuples to a nested dictionary."""
-    data = nested_dict()
-
-    for key, list_indicator, value in tuples:
-        keys = key.split('.')
-        is_list = list_indicator == "-"
-        add_to_dict(data, keys, value, is_list)
-
-    # convert defaultdict to a regular dict before serializing to YAML
+    data = {}
+    for key_path, value in tuples:
+        keys = key_path.split(".")
+        set_in_structure(data, keys, value)
     return convert_defaultdict_to_dict(data)
 
 def parse_tuples_to_yaml_string(tuples):
-
-    # convert tuples tp YAML
     yaml_data = parse_tuples_to_yaml(tuples)
-
-    # convert to string
     return yaml.dump(yaml_data, default_flow_style=False, sort_keys=False)
-
-def convert_defaultdict_to_dict(d):
-    """Recursively convert a defaultdict to a regular dict."""
-    if isinstance(d, defaultdict):
-        d = {k: convert_defaultdict_to_dict(v) for k, v in d.items()}
-    return d
 
 if __name__ == "__main__":
 
     # test dataset
     tuples = [
-        ("a.b.c", "-", "v1"),
-        ("a.b.c", "-", "v2"),
-        ("server.host", "", "localhost"),
-        ("server.port", "", "8080"),
-        ("database.connection.host", "", "localhost"),
-        ("database.connection.port", "", "5432"),
-        ("database.connection.options.pool_size", "", "10"),
-        ("logging.level", "", "debug"),
+        ("d", [] ),
+        ("a.b.c.0", "v1"),
+        ("a.b.c.1", "v2"),
+        ("a.b.c.2", "v2"),
+        ("logger.0.name", "rich"),
+        ("logger.0.config.empty", True),
+        ("logger.1.name", "wandb"),
+        ("logger.1.config.key", "abc"),
     ]
 
     # convert tuples tp YAML
