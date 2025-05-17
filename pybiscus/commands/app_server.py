@@ -228,7 +228,7 @@ def launch_config(
         
     ).get_strategy()
 
-    logm.console.log("start of flower server")
+    logm.console.log("start of 🌺🖥️ flower server")
 
     # starting flower server
     fl.server.start_server(
@@ -238,7 +238,7 @@ def launch_config(
         certificates   = server_certificates(conf.flower_server.ssl),
     )
 
-    logm.console.log("flower server ended")
+    logm.console.log("🌺🖥️ flower server ended")
 
     # optional checkpoint save
     if conf.server_run.save_on_train_end:

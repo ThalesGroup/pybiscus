@@ -52,18 +52,33 @@ def get_evaluate_fn(
 
 
 def weighted_average(metrics: list[tuple[int, Metrics]]) -> Metrics:
+
+    # print(f"@@@@ metrics: {metrics}")
+
     _set_common_keys = set()
+
     for _, metric in metrics:
-        # the "cid" metric is a false one, need to pop it out
-        metric.pop("cid")
-        if _set_common_keys is set():
+        if not _set_common_keys:
             _set_common_keys = set(metric.keys())
         else:
             _set_common_keys = _set_common_keys.intersection(set(metric.keys()))
+        
+    # print(f"@@@@ keys1: {_set_common_keys}")
+    # the "cid" metric is a false one, need to pop it out
+    _set_common_keys.discard("cid")
+    # print(f"@@@@ keys2: {_set_common_keys}")
+
     num_examples = sum([num_examples for num_examples, _ in metrics])
-    outputs = {
-        key: sum(num * metric[key] / num_examples for num, metric in metrics)
-        for key in _set_common_keys
-    }
-    logm.console.log(f"Averaged metrics: {outputs}")
+    # print(f"@@@@ num: {num_examples}")
+
+    if num_examples == 0:
+        outputs = {}
+    else:
+        outputs = {
+            key: sum(num * metric[key] / num_examples for num, metric in metrics)
+            for key in _set_common_keys
+        }
+
+    # logm.console.log(f"Averaged metrics: {outputs}")
+    
     return outputs
