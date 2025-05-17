@@ -1,8 +1,10 @@
 
 from typing import ClassVar, Literal, Union
 
+import numpy as np
 from pydantic import BaseModel, ConfigDict
 from pybiscus.interfaces.flower.flowerfitresultsaggregator import FlowerFitResultsAggregator
+import pybiscus.core.pybiscus_logger as logm
 
 from flwr.common import (
     FitRes,
@@ -27,20 +29,17 @@ class ConfigFlowerFitResultsAggregatorUsingAverage(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
 
-def pyb_aggregate_unweighted(results):
+def pyb_aggregate_unweighted(ndarrays):
     """Aggregate model parameters with a simple average (non-weighted)."""
 
-    if not results:
+    if not ndarrays:
         return None
 
-    # extract weights from parameters
-    weights = [fit_res.parameters for _, fit_res in results]
-
     # weigths simple average
-    n = len(weights)
-    avg_weights = [ sum(layer) / n for layer in zip(*weights) ]
+    avg_weights = [np.mean(layer_group, axis=0) for layer_group in zip(*ndarrays)]
 
     return avg_weights
+
 
 
 class FlowerFitResultsAggregatorUsingAverage(FlowerFitResultsAggregator):
@@ -56,11 +55,16 @@ class FlowerFitResultsAggregatorUsingAverage(FlowerFitResultsAggregator):
             ) -> Parameters :
         """ Aggregate results : weighted average (with examples number as weight)"""
         
-        tuples_ndarrays_weight = [ (flw_parameters_to_ndarrays(fit_res.parameters), fit_res.num_examples) 
+        ndarrays = [ flw_parameters_to_ndarrays(fit_res.parameters) 
             for _, fit_res in results ]
 
+        logm.console.log(
+            f"🔁 Round:{server_round} Average\n" +
+            "\n".join(f"🆔{client.cid} ⚖️1" for client, _ in results)
+        )
+
         # handling of 📥🧬 results
-        aggregated_results    = pyb_aggregate_unweighted(tuples_ndarrays_weight)
+        aggregated_results    = pyb_aggregate_unweighted(ndarrays)
 
         # handling of 📤🧮🧬 aggregated result
         parameters_aggregated = flw_ndarrays_to_parameters(aggregated_results)

@@ -10,7 +10,7 @@ class ConfigServerComputeContext(BaseModel):
     PYBISCUS_CONFIG: ClassVar[str] = "server_compute_context"
 
     hardware: ConfigHardware
-    metrics_logger: MetricsLoggerConfig() # pyright: ignore[reportInvalidTypeForm]
+    metrics_loggers: list[MetricsLoggerConfig()] # pyright: ignore[reportInvalidTypeForm]
 
     model_config = ConfigDict(extra="forbid")
 

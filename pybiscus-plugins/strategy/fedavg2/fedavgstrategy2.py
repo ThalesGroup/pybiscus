@@ -1,3 +1,4 @@
+from collections import defaultdict
 from logging import WARNING
 from typing import Callable, Literal, Optional, Union, ClassVar
 
@@ -168,9 +169,16 @@ class FabricFedAvgStrategy2(fl.server.strategy.FedAvg):
         
         loss, metrics = eval_res
         
+        emo = defaultdict(str)
+        emo["loss"]     = "📉"
+        emo["accuracy"] = "🎯"
+        logmsg = ""
+
         for key, value in metrics.items():
-            logm.console.log(f"Test at round {server_round}, {key} is {value:.3f}")
+            logmsg += f"{emo[key]} {key}={value:.3f} "
             self.fabric.log(f"val_{key}_glob", value, step=server_round)
+
+        logm.console.log(f"🔁 Round {server_round} 🧪 Test {logmsg}")
 
         return loss, metrics
 

@@ -9,6 +9,7 @@ from pydantic import ValidationError
 from typing import Annotated
 
 from pybiscus.core.logger.multiplelogger.multipleloggerfactory import MultipleLoggerFactory
+from pybiscus.core.metricslogger.multiplemetricslogger.multiplemetricsloggerfactory import MultipleMetricsLoggerFactory
 import pybiscus.core.pybiscus_logger as logm
 from pybiscus.plugin.registries import datamodule_registry, logger_registry, metricslogger_registry, model_registry, strategy_registry
 
@@ -179,13 +180,11 @@ def launch_config(
     if len(_logger_classes) > 0:
         logm.console = MultipleLoggerFactory(_logger_classes).get_logger()
 
-    # load the metricslogger
-    _metricslogger_class = metricslogger_registry()[conf.server_compute_context.metrics_logger.name]
-    _metricsloggerFactory = _metricslogger_class(conf.root_dir,conf.server_compute_context.metrics_logger.config)
+    # load the metricsloggers
+    _metricslogger_classes = [ metricslogger_registry()[mlogger.name](conf.root_dir,config=mlogger.config) for mlogger in conf.server_compute_context.metrics_loggers ]
+    _metricslogger = MultipleMetricsLoggerFactory(conf.root_dir,_metricslogger_classes).get_metricslogger()
 
-    _metricsloggers = _metricsloggerFactory.get_loggers()
-
-    fabric = Fabric(**conf.server_compute_context.hardware.model_dump(), loggers=_metricsloggers)
+    fabric = Fabric(**conf.server_compute_context.hardware.model_dump(), loggers=[_metricslogger])
     fabric.launch()
 
     # load the model

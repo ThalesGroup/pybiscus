@@ -36,9 +36,9 @@ class TensorBoardLoggerFactory(MetricsLoggerFactory):
         self.root_dir = root_dir
         self.config = config
 
-    def get_loggers(self):
+    def get_metricslogger(self):
 
         log_dir = self.root_dir + self.config.subdir
         logm.console.log(f"Allocating TensorBoardLoggerFactory(rootidr={log_dir})")
 
-        return [TensorBoardLogger(root_dir=log_dir )]
+        return TensorBoardLogger(root_dir=log_dir )

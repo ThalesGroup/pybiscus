@@ -1,3 +1,4 @@
+from collections import defaultdict
 from logging import WARNING
 from typing import Callable, Literal, Optional, Union, ClassVar
 
@@ -9,7 +10,7 @@ from flwr.common import (
     Parameters,
     Scalar,
     ndarrays_to_parameters,
-    parameters_to_ndarrays,
+    parameters_to_ndarrays as flw_parameters_to_ndarrays,
 )
 from flwr.common.logger import log
 from flwr.server.client_proxy import ClientProxy
@@ -110,14 +111,24 @@ class FabricFedAvgStrategy(fl.server.strategy.FedAvg):
         if self.evaluate_fn is None:
             # No evaluation function provided
             return None
-        parameters_ndarrays = parameters_to_ndarrays(parameters)
+        parameters_ndarrays = flw_parameters_to_ndarrays(parameters)
         eval_res = self.evaluate_fn(server_round, parameters_ndarrays, {})
         if eval_res is None:
             return None
+        
         loss, metrics = eval_res
+
+        emo = defaultdict(str)
+        emo["loss"]     = "📉"
+        emo["accuracy"] = "🎯"
+        logmsg = ""
+
         for key, value in metrics.items():
-            logm.console.log(f"Test at round {server_round}, {key} is {value:.3f}")
+            logmsg += f"{emo[key]} {key}={value:.3f} "
             self.fabric.log(f"val_{key}_glob", value, step=server_round)
+
+        logm.console.log(f"🔁 Round {server_round} 🧪 Test {logmsg}")
+
         return loss, metrics
 
     def aggregate_fit(
@@ -134,11 +145,15 @@ class FabricFedAvgStrategy(fl.server.strategy.FedAvg):
             return None, {}
 
         # Convert results
-        weights_results = [
-            (parameters_to_ndarrays(fit_res.parameters), fit_res.num_examples)
-            for _, fit_res in results
-        ]
-        parameters_aggregated = ndarrays_to_parameters(aggregate(weights_results))
+        tuples_ndarrays_weight = [ (flw_parameters_to_ndarrays(fit_res.parameters), fit_res.num_examples) 
+            for _, fit_res in results ]
+
+        logm.console.log(
+            f"🔁 Round:{server_round} WeightedAverage\n" +
+            "\n".join(f"🆔{client.cid} ⚖️{fit_res.num_examples}" for client, fit_res in results)
+        )
+
+        parameters_aggregated = ndarrays_to_parameters(aggregate(tuples_ndarrays_weight))
 
         # Aggregate custom metrics if aggregation fn was provided
         metrics_aggregated = {}

@@ -96,7 +96,7 @@ class WandbLoggerFactory(MetricsLoggerFactory):
         self.root_dir = root_dir
         self.conf = conf
 
-    def get_loggers(self):
+    def get_metricslogger(self):
 
         if wandb.run is not None:
             return wandb.run
@@ -113,12 +113,12 @@ class WandbLoggerFactory(MetricsLoggerFactory):
             print("C'est un Undefined")
             wandb.init( )
         else:
-            return []
+            return None
 
         wandb_server_run = wandb.init(**self.conf.params.model_dump())
 
         if wandb_server_run is None:
-            return []
+            return None
         else:
-            return[wandb_server_run]
+            return wandb_server_run
         

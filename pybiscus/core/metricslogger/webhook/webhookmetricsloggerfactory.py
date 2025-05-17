@@ -32,6 +32,6 @@ class WebHookMetricsLoggerFactory(MetricsLoggerFactory):
         self.root_dir = root_dir
         self.config = config
 
-    def get_loggers(self):
+    def get_metricslogger(self):
 
-        return [ WebHookMetricsLogger(root_dir=self.root_dir,webhook_url=self.config.webhook_url,logger_id=self.config.logger_id) ]
+        return WebHookMetricsLogger(root_dir=self.root_dir,webhook_url=self.config.webhook_url,logger_id=self.config.logger_id)

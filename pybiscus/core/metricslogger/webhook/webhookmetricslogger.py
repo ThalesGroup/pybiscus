@@ -8,8 +8,11 @@ class WebHookMetricsLogger():
         self.webhook_url = webhook_url
         self.logger_id = logger_id
 
-    def log_metrics(self, metrics, step):
+    def log_metrics(self, metrics, step=-1):
         
+        if step is None:
+            step = -1
+
         try:
             _metrics = metrics.copy()
             _metrics['step'] = step

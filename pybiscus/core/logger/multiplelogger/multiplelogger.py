@@ -11,4 +11,4 @@ class MultipleLogger( ):
 
     def log(self, *msgs):
         for logger in self.loggers:
-            logger.log(msgs)
+            logger.log(*msgs)
