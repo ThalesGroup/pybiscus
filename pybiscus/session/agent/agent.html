@@ -131,6 +131,26 @@
     });
 
 
+    function getEmptyListAttribute(fsElement) {
+        if (!fsElement.classList.contains("pybiscus-list-fs")) return;
+
+        const contents = fsElement.querySelector(".pybiscus-list .pybiscus-list-contents");
+        if (!contents) return;
+
+        const contentItems = contents.querySelectorAll(":scope > .pybiscus-list-content");
+        if (contentItems.length > 0) return;
+
+        const container = fsElement.querySelector(".pybiscus-list .pybiscus-fieldset-container");
+        if (!container) return;
+
+        const prefix = container.dataset.pybiscusPrefix;
+        if (!prefix) return;
+
+        const strippedPrefix = prefix.slice(0, -2);
+
+        return strippedPrefix;
+    }
+
     function traverseDOM(element, data) {
 
         if (element.getAttribute('data-pybiscus-status') === 'ignored') {
@@ -158,9 +178,23 @@
 
             } else {
 
-                const children = element.children;
-                for (let i = 0; i < children.length; i++) {
-                    data = traverseDOM(children[i], data);
+                let process_children = true;
+
+                if (element.classList.contains("pybiscus-list-fs")) {
+                    const attributeValue = getEmptyListAttribute(element);
+
+                    if ( attributeValue !== undefined ) {
+
+                        data = [ [ attributeValue, [] ], ...data ];
+                        process_children = false;
+                    }                    
+                }
+
+                if (process_children) {
+                    const children = element.children;
+                    for (let i = 0; i < children.length; i++) {
+                        data = traverseDOM(children[i], data);
+                    }
                 }
             }
         }
