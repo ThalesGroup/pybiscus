@@ -18,7 +18,7 @@ launch_session_button.addEventListener('click', function() {
     // generate configuration data (returns a list of 3-tuples)
     raw_data = traverseDOM(topDiv, []).reverse();
 
-    console.log( raw_data );
+    // console.log( raw_data );
 
     // transform configuration from format to session config
     // to either server or client HMI configuration actions
@@ -32,6 +32,8 @@ launch_session_button.addEventListener('click', function() {
 
     const exclude = ['flower_server.server_host', 'flower_server.server_port', 'flower_server.server_protocol', 'flower_server.server_listen_to'];
     const new_data = raw_data.filter(row => ! exclude.includes(row[0]));
+
+    // console.log( new_data );
 
     const listen_address = server_listen_to[1] === "the whole internet" ? "[::]" : "[::1]";
 
@@ -57,7 +59,8 @@ launch_session_button.addEventListener('click', function() {
     
     const options_lock = ['flower_server.ssl', 'flower_client.ssl', ];
 
-    new_data.forEach(([key, _, value]) => {
+    new_data.forEach(([key, value]) => {
+        
         options_set[key] = value;
         options_lock.push(key);
     });
