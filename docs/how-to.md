@@ -4,8 +4,9 @@ Here are a few guides to update Pybiscus with new datasets, and models, and such
 
 ## Pybiscus plugins
 
-At launch, pybiscus looks for the file defined in PYBISCUS_PLUGIN_CONF_PATH
+At launch, pybiscus looks for the file defined in environment variable PYBISCUS_PLUGIN_CONF_PATH
 or by default at pybiscus-plugins-conf.yml .
+
 It contains the definition of plugins that will be loaded :
 
 data:
