@@ -9,6 +9,9 @@ data:
       - randomvector
       - turbofan
       - mnist
+  # - path: "./molan"
+  #   modules:
+  #     - molan.data.trigger_set
 model:
   - path: "./pybiscus-plugins/model"
     modules:
@@ -21,6 +24,9 @@ strategy:
     modules:
       - fedavg2
       - fedavg3
+  # - path: "./molan"
+  #   modules:
+  #     - molan.strategy.watermarkingstrategy
 #  - path: "./cypia"
 #    modules:
 #      - cypia.flower.strategy.phe_strategy
@@ -29,4 +35,7 @@ strategy:
 #     modules:
 #       - cypia.flower.client.phe_client
 #       - cypia.flower.client.dp_client
-
+strategydecorator:
+  - path: "./pybiscus-plugins/strategydecorator"
+    modules:
+      - basicstrategydecorator

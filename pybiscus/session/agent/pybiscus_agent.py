@@ -666,7 +666,22 @@ def session_parameters_waiting():
 
 @rest_server.route('/test/html')
 def test_html():
-    return generate_field_html_by_name()
+
+    from pydantic import BaseModel
+    from typing import Optional
+
+    class MyContent(BaseModel):
+        opt_int: Optional[int] # pyright: ignore[reportInvalidTypeForm]
+
+    class MyConf(BaseModel):
+    
+        # loggers: list[LoggerConfig()] # pyright: ignore[reportInvalidTypeForm]
+        # strategy: Optional[StrategyConfig()] # pyright: ignore[reportInvalidTypeForm]
+        # opt_int: Optional[int] # pyright: ignore[reportInvalidTypeForm]
+        content: MyContent
+
+    # return generate_field_html_by_name()
+    return generate_model_page(BaseModel,'pybiscus.session.agent','agent.html','check_exec_buttons', '')
 
 # ..........................................................    
 

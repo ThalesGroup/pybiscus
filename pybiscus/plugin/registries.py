@@ -49,6 +49,21 @@ def strategy_registry():
 def StrategyConfig():
     return _StrategyConfig
 
+#### --- StrategyDecorator ---
+
+from pybiscus.interfaces.flower.strategydecorator import StrategyDecorator
+
+_strategydecorator_loader = RegistryLoader(StrategyDecorator, True)
+_strategydecorator_modules = _data_loader.get_submodules_from_path("pybiscus.flower.strategydecorator") 
+_strategydecorator_modules += plugins_by_category["strategydecorator"]
+_strategydecorator_registry, _StrategyDecoratorConfig = _strategydecorator_loader.register_modules( _strategydecorator_modules )
+
+def strategydecorator_registry():
+    return _strategydecorator_registry
+
+def StrategyDecoratorConfig():
+    return _StrategyDecoratorConfig
+
 #### --- Metric Logger ---
 
 from pybiscus.interfaces.core.metricsloggerfactory import MetricsLoggerFactory
@@ -101,6 +116,7 @@ if __name__ == "__main__":
     print(f'Data plugins : {plugins_by_category["data"]} {_data_modules}')
     print(f'Model plugins : {plugins_by_category["model"]} {_model_modules}')
     print(f'Strategy plugins : {plugins_by_category["strategy"]} {_strategy_modules }')
+    print(f'StrategyDecorator plugins : {plugins_by_category["strategydecorator"]} {_strategydecorator_modules }')
     print(f'Client plugins : {plugins_by_category["client"]} {_client_modules }')
 
     from pybiscus.plugin.registries2 import _flowerfitresultsaggregator_modules

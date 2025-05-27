@@ -11,7 +11,7 @@ from typing import Annotated
 from pybiscus.core.logger.multiplelogger.multipleloggerfactory import MultipleLoggerFactory
 from pybiscus.core.metricslogger.multiplemetricslogger.multiplemetricsloggerfactory import MultipleMetricsLoggerFactory
 import pybiscus.core.pybiscus_logger as logm
-from pybiscus.plugin.registries import datamodule_registry, logger_registry, metricslogger_registry, model_registry, strategy_registry
+from pybiscus.plugin.registries import datamodule_registry, logger_registry, metricslogger_registry, model_registry, strategy_registry, strategydecorator_registry
 
 from pybiscus.flower_config.config_server import ConfigServer
 
@@ -218,15 +218,22 @@ def launch_config(
     # the behaviour would have been : Requesting initial parameters from one random client
     # Question: add this as a configuration option ?
 
-    strategy = strategy_registry()[conf.strategy.name]( 
+    strategy = strategy_registry()[conf.server_strategy.strategy.name]( 
         model=model,
         fabric=fabric,
         testset=test_set,
         initial_parameters=initial_parameters,
-        config=conf.strategy.config,
-        
+        config=conf.server_strategy.strategy.config,
     ).get_strategy()
 
+    logm.console.log(f"setting 🛠️ strategy <{conf.server_strategy.strategy.name}>")
+
+    # chaining strategy decorators
+    for conf_decorator in conf.server_strategy.decorators:
+        logm.console.log(f"setting 🛠️🎀 strategy decorator <{conf_decorator.name}>")
+        decorator_class = strategydecorator_registry()[conf_decorator.name]
+        strategy = decorator_class(strategy,conf_decorator.config)
+    
     logm.console.log("start of 🌺🖥️ flower server")
 
     # starting flower server

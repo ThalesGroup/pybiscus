@@ -6,18 +6,18 @@
 
     <style>
         
-        CSS
+        {{ css | safe }}
 
     </style>
 </head>
 
 <body>
 
-    BUTTONS_HTML
+    {{ buttons_html | safe }}
 
     <div id="top-div" data-pybiscus-status="valid">
 
-        BODY
+        {{ body | safe }}
 
     </div>
 <script>
@@ -185,6 +185,7 @@
 
                     if ( attributeValue !== undefined ) {
 
+                        // console.log( `${attributeValue} = []]` );
                         data = [ [ attributeValue, [] ], ...data ];
                         process_children = false;
                     }                    
@@ -227,7 +228,7 @@
         return result;
     }
 
-    BUTTONS_JS
+    {{ buttons_js | safe }}
 
     function set_option(prefix, value) {
 
@@ -351,7 +352,7 @@
 
     document.addEventListener("DOMContentLoaded", () => {
 
-        ON_DOCUMENT_LOAD_JS
+        {{ on_document_load_js | safe }}
     });
 
 </script>

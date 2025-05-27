@@ -21,7 +21,7 @@ check_button.addEventListener('click', function() {
     //console.log( data );
 
     // target URL for posting configuration
-    const url_conf = "/config/MODEL_NAME/json";
+    const url_conf = "/config/{{modelName}}/json";
 
     // request options
     const options = {
@@ -70,7 +70,7 @@ execute_button.addEventListener('click', function() {
     failureResultDiv.style.display = 'none';
     
     // target URL for posting configuration
-    const url_conf = "/ACTION";
+    const url_conf = "/{{action}}";
 
     // request options
     const options = {
@@ -86,7 +86,7 @@ execute_button.addEventListener('click', function() {
         return response.json();
       })
       .then(data => {
-        console.log("ACTION response:", data);
+        console.log("{{action}} response:", data);
 
         indicatorDiv.style.display = 'none';
         successResultDiv.style.display = 'block';
@@ -165,10 +165,10 @@ saveButton.addEventListener('click', function() {
             suggestedName: 'config.yml',
           };
         
-          // Convertir le texte en Blob
+          // convert the text to Blob
           const blob = new Blob([text], { type: 'text/yaml' });
         
-          // Tentative de showSaveFilePicker
+          // try showSaveFilePicker
           if (window.showSaveFilePicker) {
             try {
               const handle = await window.showSaveFilePicker(options);

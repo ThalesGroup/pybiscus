@@ -3,7 +3,7 @@ from typing import Optional, ClassVar
 from pydantic import BaseModel, ConfigDict
 
 from pybiscus.flower_config.config_computecontext import ConfigServerComputeContext
-from pybiscus.plugin.registries import LoggerConfig, ModelConfig, DataConfig, StrategyConfig
+from pybiscus.plugin.registries import LoggerConfig, ModelConfig, DataConfig, StrategyConfig, StrategyDecoratorConfig
 
 
 class ConfigSslServer(BaseModel):
@@ -72,6 +72,17 @@ class ConfigFlowerServer(BaseModel):
     
     model_config = ConfigDict(extra="forbid")
 
+# -----------------------------------------------
+
+class ConfigServerStrategy(BaseModel):
+
+    PYBISCUS_CONFIG: ClassVar[str] = "server_strategy"
+
+    decorators:    list[StrategyDecoratorConfig()] # pyright: ignore[reportInvalidTypeForm]
+    strategy:      StrategyConfig() # pyright: ignore[reportInvalidTypeForm]
+    
+    model_config = ConfigDict(extra="forbid")
+
 
 class ConfigServer(BaseModel):
     """A Pydantic Model to validate the Server configuration given by the user.
@@ -92,7 +103,7 @@ class ConfigServer(BaseModel):
     flower_server:          ConfigFlowerServer
     server_run:             ConfigServerRun
     server_compute_context: ConfigServerComputeContext
-    strategy:               StrategyConfig() # pyright: ignore[reportInvalidTypeForm]
+    server_strategy:        ConfigServerStrategy
     data:                   DataConfig() # pyright: ignore[reportInvalidTypeForm]
     model:                  ModelConfig() # pyright: ignore[reportInvalidTypeForm]
 
