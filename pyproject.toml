@@ -21,6 +21,7 @@ dependencies = [
     "pydeps>=3.0.1",
     "dominate>=2.9.1",
     "pillow>=11.0.0",
+    "onnx>=1.18.0",
 ]
 
 [build-system]

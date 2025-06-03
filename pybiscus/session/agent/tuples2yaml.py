@@ -1,4 +1,5 @@
-import yaml
+import yaml    
+
 
 def convert_defaultdict_to_dict(d):
     if isinstance(d, dict):
@@ -7,34 +8,37 @@ def convert_defaultdict_to_dict(d):
         return [convert_defaultdict_to_dict(i) for i in d]
     return d
 
+
 def set_in_structure(structure, keys, value):
     current = structure
-    for i, key in enumerate(keys):
-        is_last = i == len(keys) - 1
+    
+    for i, key in enumerate(keys[:-1]):  # all keys except the last
         is_index = key.isdigit()
         key_val = int(key) if is_index else key
-
-        # Convert to list if needed
+        
         if is_index:
             if not isinstance(current, list):
-                current_parent[last_key] = []
-                current = current_parent[last_key]
+                raise ValueError(f"Expected list but got {type(current)} at key {key}")
             while len(current) <= key_val:
                 current.append({})
-            if is_last:
-                current[key_val] = value
-            else:
-                current = current[key_val]
+            current = current[key_val]
         else:
-            if is_last:
-                current[key_val] = value
-            else:
-                if key_val not in current or not isinstance(current[key_val], (dict, list)):
-                    current[key_val] = {}
-                current_parent = current
-                current = current[key_val]
+            if key_val not in current:
+                # type is determined according to next key
+                next_key = keys[i + 1]
+                current[key_val] = [] if next_key.isdigit() else {}
+            current = current[key_val]
+    
+    # handle last key
+    final_key = keys[-1]
+    if final_key.isdigit():
+        key_val = int(final_key)
+        while len(current) <= key_val:
+            current.append(None)
+        current[key_val] = value
+    else:
+        current[final_key] = value
 
-        last_key = key_val
 
 def parse_tuples_to_yaml(tuples):
     data = {}
@@ -59,6 +63,15 @@ if __name__ == "__main__":
         ("logger.0.config.empty", True),
         ("logger.1.name", "wandb"),
         ("logger.1.config.key", "abc"),
+        ("config.database.host", "localhost"),
+        ("config.database.port", 5432),
+        ("config.database.ssl", True),
+        ("users.0.name", "Alice"),
+        ("users.0.age", 30),
+        ("users.1.name", "Bob"),
+        ("users.1.age", 25),
+        ("settings.debug", False),
+        ("settings.max_connections", 100),
     ]
 
     # convert tuples tp YAML

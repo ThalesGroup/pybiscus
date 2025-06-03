@@ -1,0 +1,17 @@
+<h1>Pybiscus session</h1>
+<p>Waiting to be registered in session</p>
+
+<script>
+    function checkStatus() {
+        fetch('/session/client/registration/check')
+            .then(res => res.json())
+            .then(data => {
+                if (data.redirect) {
+                    window.location.href = '/session/client/parameters/server_polling';
+                }
+            });
+    }
+
+    // check each 2s
+    setInterval(checkStatus, 2000);
+</script>

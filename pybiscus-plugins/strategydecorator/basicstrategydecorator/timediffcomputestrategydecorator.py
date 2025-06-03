@@ -48,7 +48,8 @@ class TimeDiffComputeStrategyDecorator(StrategyDecorator):
         current_time = time.time()
 
         if self.previous_time is None:
-            logm.console.log(f"⏱️⚖️⏱️ = 🧐🔢 previous time is None 🈚🕳️")
+            # logm.console.log(f"⏱️⚖️⏱️ = 🧐🔢 previous time is None 🈚🕳️")
+            pass
         else:
         
             logm.console.log(f"⏱️⚖️⏱️ = 🧐🔢 time diff is {current_time - self.previous_time:.2f}s")

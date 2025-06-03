@@ -9,7 +9,7 @@ class ConfigTensorBoardLoggerFactoryData(BaseModel):
 
     PYBISCUS_CONFIG: ClassVar[str] = "config"
 
-    subdir: str = "/experiments/node"
+    subdir: str = "/experiments/tensorboard"
 
     model_config = ConfigDict(extra="forbid")
 

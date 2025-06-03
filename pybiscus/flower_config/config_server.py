@@ -1,4 +1,5 @@
-from typing import Optional, ClassVar
+from enum import Enum
+from typing import List, Optional, ClassVar
 
 from pydantic import BaseModel, ConfigDict
 
@@ -27,10 +28,46 @@ class ConfigSslServer(BaseModel):
 
 class ConfigSaveWeights(BaseModel):
 
-    file_path: str = "/final_checkpoint.pt"
+    filename: str = "final_checkpoint.pt"
 
     model_config = ConfigDict(extra="forbid")
 
+
+class AxeKind(str, Enum):
+    input  = "input"
+    output = "output"
+
+class OnnxAxe(BaseModel):
+
+    name: str = ""
+    kind: AxeKind = AxeKind.input.value
+    dynamic: bool = True
+
+    model_config = ConfigDict(extra="forbid")
+
+class ConfigServerOnnxExport(BaseModel):
+
+    filename: str = "model.onnx"
+    axes: List[OnnxAxe] = []
+    opset: int = 13
+    post_validation: bool = False
+
+    model_config = ConfigDict(extra="forbid")
+
+
+class ConfigServerReporting(BaseModel):
+
+    PYBISCUS_CONFIG: ClassVar[str] = "reporting"
+
+    basedir: str = "${root_dir}/experiments"
+    add_timestamp_in_path: bool = True
+
+    server_config_filename : str = "config_server.yml"
+
+    save_on_train_end: Optional[ConfigSaveWeights] = None
+    onnx_export:       Optional[ConfigServerOnnxExport] = None
+
+    model_config = ConfigDict(extra="forbid")
 
 class ConfigServerRun(BaseModel):
     """A Pydantic Model to validate the server run configuration given by the user.
@@ -46,9 +83,8 @@ class ConfigServerRun(BaseModel):
 
     num_rounds:        int = 10
     client_configs:    list[str] = []
-    save_on_train_end: Optional[ConfigSaveWeights] = None
     loggers:           list[LoggerConfig()] # pyright: ignore[reportInvalidTypeForm]
-
+    reporting:         ConfigServerReporting
     model_config = ConfigDict(extra="forbid")
 
 
@@ -93,8 +129,8 @@ class ConfigServer(BaseModel):
     logger: str        = the config for the logger.
     strategy           = arguments for the needed Strategy
     fabric             = keywords for the Fabric instance
-    model              = keywords for the LightningModule used
     data               = keywords for the LightningDataModule used.
+    model              = keywords for the LightningModule used
     """
 
     PYBISCUS_ALIAS: ClassVar[str] = "Pybiscus server configuration"

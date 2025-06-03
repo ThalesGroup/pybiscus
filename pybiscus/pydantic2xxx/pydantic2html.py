@@ -1,6 +1,6 @@
 from jinja2 import Environment, BaseLoader
 from typing_extensions import Annotated
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from pydantic.fields import PydanticUndefined, FieldInfo
 
 from typing import Any, Dict, Iterable, List, Optional, Union, Literal, get_args, get_origin, get_type_hints
@@ -90,182 +90,16 @@ def is_sub_model(tp):      return inspect.isclass(tp) and issubclass(tp, BaseMod
 def is_optional_type(tp):  return get_origin(tp) is Union and type(None) in get_args(tp)
 def is_optional(tp):       return is_optional_type(unwrap_annotated(tp))
 
-# --------------------------------------------
-
-# def generate_field_html_dominate(name: str, field: FieldInfo, prefix: str) -> str:
-#     if is_union_type(field.annotation):
-#         return generate_tabulated_info_dominate(name, field, prefix)
-#     elif is_literal_type(field.annotation):
-#         return generate_literal_field_dominate(name, field, prefix)
-#     elif is_enum_type(field.annotation):
-#         return generate_enum_field_dominate(name, field, prefix)
-#     elif is_list_type(field.annotation):
-#         return generate_list_field_dominate(name, field, prefix)
-#     elif is_dict_type(field.annotation):
-#         return generate_dict_field_dominate(name, field, prefix)
-#     elif is_sub_model(field.annotation):
-#         return generate_model_field_dominate(name, field, prefix)
-#     else:
-#         return generate_primitive_field_dominate(name, field, prefix)
-
-# def generate_literal_field_dominate(name, field, prefix):
-#     pass
-# def generate_list_field_dominate(name, field, prefix):
-#     pass
-# def generate_dict_field_dominate(name, field, prefix):
-#     pass
-# def generate_model_field_dominate(name, field, prefix):
-#     pass
-
-# def generate_primitive_field_dominate(name, field, prefix):
-#     container = div(_class="field")
-#     input_name = f"{prefix}.{name}"
-
-#     # TODO:
-#     # container += label(html.escape(name), _for=input_name)
-#     # container += input_(
-#     #     type=input_type,
-#     #     name=input_name,
-#     #     value=str(field.default) if field.default is not None else "",
-#     # )
-#     return container
-
-# # --------------------------------------------
-
-# def generate_enum_field_dominate(name, field, prefix):
-#     enum_type = field.annotation
-#     input_name = f"{prefix}.{name}"
-
-#     container = div()
-#     container += label(name, _for=input_name)
-
-#     select_tag = select(name=input_name)
-#     for e in enum_type:
-#         selected = field.default == e
-#         select_tag += option(e.name, value=e.value, selected=selected)
-#     container += select_tag
-
-#     return container
-
-# # ---------------------------------------------------------------------
-# # ---------------------------------------------------------------------
-# # ---------------------------------------------------------------------
-
-# def generate_tabulated_info_dominate(
-#     field_name: str,
-#     field_default: Any,
-#     is_an_option: bool,
-#     subtypes: Iterable[Any],
-#     prefix: str
-# ) -> str:
-
-#     from dominate.document import document  # For inner rendering
-#     doc = document()
-    
-#     active_index = 1
-#     propagate_default = False
-
-#     # TODO: handle list case
-#     if field_default is not PydanticUndefined:
-#         field_default_type = type(field_default)
-#         for index, sub_type in enumerate(subtypes, 1):
-#             if sub_type is field_default_type:
-#                 active_index = index
-#                 propagate_default = True
-#                 break
-
-#     print(f"@@@@@ active index <- {active_index}")
-    
-#     # if prefix == "":
-#     #     prefix = field_name
-#     # else:
-#     #     prefix = f"{prefix}.{field_name}"
-#     prefix += f"{field_name}."
-
-
-#     fs_classes = ["pybiscus-fieldset-container"]
-#     if is_an_option:
-#         fs_classes.append("pybiscus-option-fs")
-
-#     fs = fieldset(cls=" ".join(fs_classes), **{"data-pybiscus-prefix": prefix[:-1]})
-
-#     if field_name:
-#         lg = legend()
-#         lbl = label(field_name, cls="pybiscus-config")
-
-#         if is_an_option:
-#             opt_checked = "checked" if active_index == 1 else None
-#             cb = input_(type="checkbox", cls="pybiscus-option-cb")
-#             if opt_checked:
-#                 cb["checked"] = ""
-#             lbl.add(" ❓ ", cb)
-#         lg.add(lbl)
-#         fs.add(lg)
-
-#     tab_nb = new_index()
-#     tab_container = div(cls="pybiscus-tab-container")
-#     tab_buttons   = div(cls="pybiscus-tab-buttons")
-
-#     for index, sub_type in enumerate(subtypes, 1):
-#         active = "active" if index == active_index else ""
-#         status = PydanticToHtml.valid_status_dict if index == active_index else PydanticToHtml.ignored_status_dict 
-        
-#         if is_an_option:
-#             tab_name = ' ' * index
-#         else:
-#             tab_name = generate_tab_name(sub_type, f'Tab {index}')
-
-#         btn = div(tab_name,
-#                     cls=f"pybiscus-tab-button {active}".strip(),
-#                     **{"data-tab": f"tab{tab_nb}-{index}"},
-#                     **status)
-#         tab_buttons.add(btn)
-
-#     tab_container.add(tab_buttons)
-
-#     # --- Tab Contents ---
-#     for index, sub_type in enumerate(subtypes, 1):
-#         is_active = (index == active_index)
-#         active_cls = "active" if is_active else ""
-#         opt_first = "" if index > 1 else "pybiscus-first-tab-content"
-#         status = "valid" if is_active else "ignored"
-
-#         content_div = div(cls=f"pybiscus-tab-content {active_cls} {opt_first}".strip(),
-#                             id=f"tab{tab_nb}-{index}",
-#                             **{"data-pybiscus-status": status})
-
-#         if hasattr(sub_type, 'PYBISCUS_MODULE_ORIGIN'):
-#             origin = sub_type.PYBISCUS_MODULE_ORIGIN
-#             if origin == 'core':
-#                 content_div.add(span("📦📚", style="background-color: black; border: 2px solid orange; margin-left : 20rem"))
-#             elif origin == 'plugin':
-#                 content_div.add(span("📦🧩", style="background-color: black; border: 2px solid orange; margin-left : 20rem"))
-
-#         sub_field_default = field_default if (propagate_default and is_active) else PydanticUndefined
-
-#         content_div.add(raw(generate_field_html(
-#             field_name="",
-#             field_type=sub_type,
-#             field_required=False,
-#             field_default=sub_field_default,
-#             field_description=PydanticUndefined,
-#             inFieldSet=False,
-#             prefix=prefix,
-#         )))
-#         tab_container.add(content_div)
-
-#     fs.add(tab_container)
-#     doc.body.add(fs)
-
-#     return str(fs)
-
 # ---------------------------------------------------------------------
 # ---------------------------------------------------------------------
 # ---------------------------------------------------------------------
+
+log_htmlgen = False
 
 def generate_field_html(field_name: str, field_type, field_required: bool, field_default, field_description, inFieldSet: bool, prefix: str, ) -> str:
 
-    print( f"generate_field_html({field_name})" )
+    if log_htmlgen:
+        print( f"generate_field_html({field_name})" )
 
     field_html = ''
 
@@ -332,6 +166,9 @@ def generate_field_html(field_name: str, field_type, field_required: bool, field
         # ### list ###
         
         list_type = get_args(field_type)[0]
+        
+        if log_htmlgen:
+            print(f"list fieldtype={field_type} listtype={list_type}")
 
         if get_origin(list_type) is Annotated:
             list_type = get_args(list_type)[0]
@@ -358,7 +195,7 @@ def generate_field_html(field_name: str, field_type, field_required: bool, field
                                     field_required    = False, 
                                     field_default     = None, 
                                     field_description = PydanticUndefined,
-                                    inFieldSet        = False,
+                                    inFieldSet        = True,
                                     prefix            = f"{prefix}{field_name}.",
                                     ) )
 
@@ -367,29 +204,71 @@ def generate_field_html(field_name: str, field_type, field_required: bool, field
     elif is_dict_type(field_type):
 
         # ### dict ###
+
+        the_dict_key_type, the_dict_value_type = get_args(field_type)
+
+        # handle annotated types
+        if get_origin(the_dict_key_type) is Annotated:
+            the_dict_key_type = get_args(the_dict_key_type)[0]
+        if get_origin(the_dict_value_type) is Annotated:
+            the_dict_value_type = get_args(the_dict_value_type)[0]
+
+        class the_dict_type(BaseModel):
+            # TODO: add an alias ?
+            key: the_dict_key_type # pyright: ignore[reportInvalidTypeForm]
+            value: the_dict_value_type # pyright: ignore[reportInvalidTypeForm]
+            model_config = ConfigDict(extra="forbid")
+
+        dict_fieldset = fieldset( cls='pybiscus-dict-fs' )
+
+        with dict_fieldset:
+
+            with legend():
+                label(field_name, cls="pybiscus-config" )
+                label( "➕🔑📖", cls='pybiscus-dict-generator' )
+
+            my_div = div( cls='pybiscus-dict' )
+
+            with my_div:
+
+                div( cls='pybiscus-dict-contents' )
+
+                with div( cls='pybiscus-dict-template', style="display: block;", **{'data-pybiscus-status': 'ignored'} ):
+
+                    raw( generate_field_html(
+                                        field_name        = "#", 
+                                        field_type        = the_dict_type, 
+                                        field_required    = False, 
+                                        field_default     = None, 
+                                        field_description = PydanticUndefined,
+                                        inFieldSet        = False,
+                                        prefix            = f"{prefix}{field_name}.",
+                                        ) )
+
+        field_html +=  dict_fieldset.render()
         
-        key_type, value_type = field_type.__args__
-        field_html += html_label( field_name, True )
+        # key_type, value_type = field_type.__args__
+        # field_html += html_label( field_name, True )
         
-        if field_default is None or field_default is PydanticUndefined:
-            items = []
-        else:
-            items = list(field_default.items())
+        # if field_default is None or field_default is PydanticUndefined:
+        #     items = []
+        # else:
+        #     items = list(field_default.items())
 
-        for index in range(1):
+        # for index in range(1):
 
-            if len(items) > index:
-                key, value = items[index]
-                opt_key   = f' value="{key}" '
-                opt_value = f' value="{value}" '
-            else:
-                opt_key   = ''
-                opt_value = ''
+        #     if len(items) > index:
+        #         key, value = items[index]
+        #         opt_key   = f' value="{key}" '
+        #         opt_value = f' value="{value}" '
+        #     else:
+        #         opt_key   = ''
+        #         opt_value = ''
 
-            field_html += html_label( "key" )
-            field_html += f'  <input type="text" id="{field_name}_key_{index}" name="{field_name}_key_{index}" placeholder="key_{index}" {opt_key}>\n'
-            field_html += html_label( "value" )
-            field_html += f'  <input type="text" id="{field_name}_val_{index}" name="{field_name}_val_{index}" placeholder="value_{index}" {opt_value}>\n'
+        #     field_html += html_label( "key" )
+        #     field_html += f'  <input type="text" id="{field_name}_key_{index}" name="{field_name}_key_{index}" placeholder="key_{index}" {opt_key}>\n'
+        #     field_html += html_label( "value" )
+        #     field_html += f'  <input type="text" id="{field_name}_val_{index}" name="{field_name}_val_{index}" placeholder="value_{index}" {opt_value}>\n'
 
     elif is_literal_type(field_type):
 
@@ -405,42 +284,58 @@ def generate_field_html(field_name: str, field_type, field_required: bool, field
 
     elif is_sub_model(field_type):
 
-        field_html += generate_model_html(field_type, inFieldSet, prefix )
+        # '#' is the special name for html list templates (upon insertion, it is replaced by the list element rank)
+        if field_name == '#':
+            field_html += generate_model_html(field_type, inFieldSet, prefix, model_contextual_name=field_name )
+        else:
+            field_html += generate_model_html(field_type, inFieldSet, prefix )
 
     else:
         field_is_annotated = False
 
         if is_optional(field_type):
-            print(f"@@@@@@@@@@ OPTIONAL : {field_type}")
+            
+            if log_htmlgen:
+                print(f"@@@@@@@@@@ OPTIONAL : {field_type}")
 
         elif not is_union_type(field_type):
 
             if is_annotated_type(field_type):
-                
-                print(f"@@@@@@@@@@ Annotated 1 : {field_type}")
+
+                if log_htmlgen:
+                    print(f"@@@@@@@@@@ Annotated 1 : {field_type}")
+
                 subfield_type = get_args(field_type)[0]
-                print(f"@@@@@@@@@@ Annotated 1 Annotated inner type: {subfield_type}")
+
+                if log_htmlgen:
+                    print(f"@@@@@@@@@@ Annotated 1 Annotated inner type: {subfield_type}")
 
                 if get_origin(subfield_type) is Union:
-                    print(f"@@@@@@@@@@ Annotated 1 is an union !")
-                    pass
+                    if log_htmlgen:
+                        print(f"@@@@@@@@@@ Annotated 1 is an union !")
                 else:
-                    print(f"@@@@@@@@@@ Annotated 1 is NOT an union !")
+                    if log_htmlgen:
+                        print(f"@@@@@@@@@@ Annotated 1 is NOT an union !")
                     field_is_annotated = True
 
                 field_type = subfield_type
                 
             elif is_annotated_type_with_hints(field_type):
 
-                print(f"@@@@@@@@@@ Annotated 2 : {field_type}")
+                if log_htmlgen:
+                    print(f"@@@@@@@@@@ Annotated 2 : {field_type}")
+
                 subfield_type = get_type_with_hints(field_type)
-                print(f"@@@@@@@@@@ Annotated 2 inner type: {subfield_type}")
+
+                if log_htmlgen:
+                    print(f"@@@@@@@@@@ Annotated 2 inner type: {subfield_type}")
 
                 if get_origin(subfield_type) is Union:
-                    print(f"@@@@@@@@@@ Annotated 2 is an union !")
-                    pass
+                    if log_htmlgen:
+                        print(f"@@@@@@@@@@ Annotated 2 is an union !")
                 else:
-                    print(f"@@@@@@@@@@ Annotated 2 is NOT an union !")
+                    if log_htmlgen:
+                        print(f"@@@@@@@@@@ Annotated 2 is NOT an union !")
                     field_is_annotated = True
 
                 field_type = subfield_type
@@ -468,6 +363,8 @@ def generate_field_html(field_name: str, field_type, field_required: bool, field
                 is_an_option = False
 
             elif get_origin(field_type) is not Union:
+
+                # TODO: suppress this case
 
                 print(f"@@@@@@@@@@ IMPOSSIBLE CASE : {field_type}")
 
@@ -639,14 +536,20 @@ def generate_field_html(field_name: str, field_type, field_required: bool, field
 # ---------------------------------------------------------------------
 # ---------------------------------------------------------------------
 
-def generate_model_html(model: BaseModel, inFieldSet: bool, prefix: str) -> str:
+def generate_model_html(model: BaseModel, inFieldSet: bool, prefix: str, model_contextual_name: Optional[str] = None) -> str:
 
     model_html = ''
 
     if inFieldSet:
+
         model_html += f'<fieldset class="__model__">\n'
 
-        if hasattr(model, "PYBISCUS_CONFIG"):
+        if model_contextual_name is not None:
+
+            model_html += f'<legend><div class="pybiscus-config">{model_contextual_name}</div></legend>\n'
+            prefix += f"{model_contextual_name}."
+
+        elif hasattr(model, "PYBISCUS_CONFIG"):
             
             pybiscus_config = model.PYBISCUS_CONFIG
             model_html += f'<legend><div class="pybiscus-config">{pybiscus_config}</div></legend>\n'
@@ -664,18 +567,15 @@ def generate_model_html(model: BaseModel, inFieldSet: bool, prefix: str) -> str:
 
     for field_name, field_info in model.model_fields.items():
 
-        # if field_name == "data" or field_name == "strategy":
-        #     print("###### ",field_name, field_info.annotation)
-
         annotated_type = type_hints.get(field_name)
 
         field_type = field_info.annotation
 
         if get_origin(annotated_type) is Annotated:
         
-            print("###### Model : ANNOTATED field : ",field_name, field_type, annotated_type)
+            if log_htmlgen:
+                print("###### Model : ANNOTATED field : ",field_name, field_type, annotated_type)
 
-            # TODO: ICI
             field_type = annotated_type
 
         model_html += generate_field_html(

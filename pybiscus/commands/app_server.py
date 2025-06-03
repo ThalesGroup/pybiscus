@@ -8,14 +8,22 @@ from omegaconf import OmegaConf
 from pydantic import ValidationError
 from typing import Annotated
 
+import pybiscus.core.pybiscus_logger as logm
 from pybiscus.core.logger.multiplelogger.multipleloggerfactory import MultipleLoggerFactory
 from pybiscus.core.metricslogger.multiplemetricslogger.multiplemetricsloggerfactory import MultipleMetricsLoggerFactory
-import pybiscus.core.pybiscus_logger as logm
 from pybiscus.plugin.registries import datamodule_registry, logger_registry, metricslogger_registry, model_registry, strategy_registry, strategydecorator_registry
-
 from pybiscus.flower_config.config_server import ConfigServer
-
+from pybiscus.commands.onnx_mngt import to_onnx_with_datamodule
 from pybiscus.commands.apps_common import load_config
+
+#                    ------------------------------------------------
+
+def ensure_dir_exists(path):
+    path.mkdir(parents=True, exist_ok=True)
+
+# for a file : create the parent directory
+def ensure_file_dir_exists(file_path):
+    ensure_dir_exists(file_path.parent)
 
 #                    ------------------------------------------------
 
@@ -246,26 +254,56 @@ def launch_config(
 
     logm.console.log("🌺🖥️ flower server ended")
 
-    # optional checkpoint save
-    if conf.server_run.save_on_train_end:
-        state = {"model": model}
-        fabric.save(fabric.logger.log_dir + "/checkpoint.pt", state)
+    # produce reporting
+    if conf.server_run.reporting:
 
-    # server config logging
-    with open(fabric.logger.log_dir + "/config_server_launch.yml", "w") as file:
-        OmegaConf.save(config=conf_loaded, f=file)
+        reporting_path = Path(conf.server_run.reporting.basedir)
+
+        if conf.server_run.reporting.add_timestamp_in_path:
+            from datetime import datetime
+            timestamp = datetime.now().isoformat()
+            reporting_path = reporting_path / timestamp
+
+        ensure_dir_exists(reporting_path)
+
+        # optional checkpoint save
+        if conf.server_run.reporting.save_on_train_end:
+            state = {"model": model}
+
+            checkpoint_path = reporting_path / conf.server_run.reporting.save_on_train_end.filename
+            ensure_file_dir_exists(checkpoint_path)
+            fabric.save(checkpoint_path, state)
+            logm.console.log(f"[fabric] save checkpoint 💾📍🗄️to : {checkpoint_path}")
+
+        # optional onnx export
+        if conf.server_run.reporting.onnx_export:
+            onnx_path = reporting_path / conf.server_run.reporting.onnx_export.filename
+            ensure_file_dir_exists(onnx_path)
+            to_onnx_with_datamodule( model, data, onnx_path, conf.server_run.reporting.onnx_export)
+
+            if conf.server_run.reporting.onnx_export.post_validation:
+                # validate_onnx_export(onnx_path: str, model, input_sample: torch.Tensor)
+                pass
+
+        # server config logging
+        serverconfig_path = reporting_path / conf.server_run.reporting.server_config_filename
+        ensure_file_dir_exists(serverconfig_path)
+        with open(serverconfig_path, "w") as file:
+            OmegaConf.save(config=conf_loaded, f=file)
+            logm.console.log(f"[pybiscus] save server config 💾🖧⚙️ to : {serverconfig_path}")
+
 
     # optional clients config logging
+    # TODO: manage dynamically clients config (HTTP put)
     if conf.server_run.client_configs is not None:
         for client_conf in conf.server_run.client_configs:
             logm.console.log(client_conf)
             _conf = OmegaConf.load(client_conf)
-            with open(
-                fabric.logger.log_dir + f"/config_client_{_conf.client_run.cid}_launch.yml", "w"
-            ) as file:
+
+            clientconfig_path = reporting_path / f"/config_client_{_conf.client_run.cid}_launch.yml"
+            ensure_file_dir_exists(clientconfig_path)
+            with open(clientconfig_path, "w") as file:
                 OmegaConf.save(config=_conf, f=file)
-
-
 
 if __name__ == "__main__":
     app()

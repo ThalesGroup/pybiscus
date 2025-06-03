@@ -1,5 +1,4 @@
-from enum import Enum
-from typing import ClassVar, Union
+from typing import ClassVar
 from pydantic import BaseModel, ConfigDict
 
 from pybiscus.plugin.registries import MetricsLoggerConfig

@@ -6,17 +6,17 @@
           const buttonGroups = container.querySelectorAll('.pybiscus-tab-buttons');
           const contentGroups = container.querySelectorAll('.pybiscus-tab-content');
 
-          // Générer un identifiant de base unique pour ce container
+          // generate an uniq base id for this container
           const baseId = `tab-${Date.now()}-${Math.floor(Math.random() * 10000)}-${containerIndex}`;
           console.log(`baseId: ${baseId}`);
 
           contentGroups.forEach((contentEl, i) => {
-              // Génère un nouvel ID unique pour ce contenu
+              // generate a new unique id for this content
               const newId = `${baseId}-${i}`;
               console.log(`content id: ${contentEl.id} -> ${newId}`);
               contentEl.id = newId;
 
-              // Trouve le bouton correspondant (même rang dans les .pybiscus-tab-buttons)
+              // find the associated button (same rank in ).pybiscus-tab-buttons)
               buttonGroups.forEach(buttonGroup => {
                   const buttons = buttonGroup.querySelectorAll('.pybiscus-tab-button');
                   if (buttons[i]) {
@@ -67,6 +67,38 @@
       });
   }
 
+  function renameRadioButtons(container) {
+
+    // console.log(`rename buttons of ${container.outerHTML}`)
+    let nameMap = {}
+
+    // select all container inputs with class pybiscus-radiobutton set
+    const inputs = container.querySelectorAll('input.pybiscus_radiobutton');
+
+    inputs.forEach(input => {
+        const originalName = input.name;
+
+        // console.log(`* button of ${originalName}`)
+
+        // get the associated name if it already exists
+        if (!nameMap[originalName]) {
+
+            // otherwise generate a uniq one
+            const uniqueName = `option-${Date.now()}-${Math.floor(Math.random() * 10000)}-${originalName}`;
+
+            nameMap[originalName] = uniqueName;
+        }
+
+        // rename the radio button input
+        input.name = nameMap[originalName];
+
+        console.log( `button name ${originalName} -> ${input.name}`);
+
+        // init : set callback and parent's div status
+        newRadioButtonInit( input );
+    });
+}
+
   document.querySelectorAll('.pybiscus-list-generator').forEach(generator => {
 
       generator.addEventListener('click', () => {
@@ -97,6 +129,7 @@
         });
     
         // clone .pybiscus-list-template children
+        // console.log(`list mngt ${template.classList}`)
         const templateChildren = Array.from(template.children).map(child => child.cloneNode(true));
     
         // gather elements
@@ -119,6 +152,9 @@
         // renum tab and tab contents
         fixPybiscusTabs(newContent);
 
+        // rename radio buttons
+        renameRadioButtons(newContent);
+      
         // set click callback on new contents
         newContent.querySelectorAll('.pybiscus-tab-container').forEach(handlePybiscusTabContainer);
 

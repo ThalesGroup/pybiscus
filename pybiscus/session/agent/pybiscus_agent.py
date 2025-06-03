@@ -1,7 +1,7 @@
 
 import importlib
 import json
-from flask import Flask, jsonify, request, render_template_string
+from flask import Flask, jsonify, render_template, request, render_template_string, send_from_directory
 from flask_cors import CORS
 
 from rich import print as rich_print
@@ -562,25 +562,7 @@ def session_registration_waiting():
 
     reset_session()
 
-    return render_template_string("""
-        <h1>Pybiscus session</h1>
-        <p>Waiting to be registered in session</p>
-
-        <script>
-            function checkStatus() {
-                fetch('/session/client/registration/check')
-                    .then(res => res.json())
-                    .then(data => {
-                        if (data.redirect) {
-                            window.location.href = '/session/client/parameters/server_polling';
-                        }
-                    });
-            }
-
-            // Vérifie toutes les 2 secondes
-            setInterval(checkStatus, 2000);
-        </script>
-    """)
+    return send_from_directory('static','session_client_registration_waiting.html') 
 
 # ..........................................................
 # ............ POST /session/client/registration ...........
@@ -625,40 +607,7 @@ def session_parameters_waiting():
     global session_server_url
     server_url=session_server_url
 
-    return render_template_string("""
-        <h1>Pybiscus session</h1>
-        <p>Waiting that server sets global configuration parameters</p>
-
-        <script>
-        async function check() {
-            const res = await fetch('{{server_url}}/session/server/parameters/check');
-            const data = await res.json();
-            if (data.ready) {
-                
-                console.log( "Session parameters are available !" );
-   
-                fetch('/session/client/parameters', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify(data.params)
-                })
-                .then(response => response.json()) // ou .text() selon ce que le backend retourne
-                .then(data => {
-                    console.log("Server response :", data);
-                    window.location.href = "/client/config";
-                })
-                .catch(error => {
-                    console.error("POST error: ", error);
-                });
-            } else {
-                setTimeout(check, 1000);
-            }
-        }
-        check();
-        </script>
-    """, server_url=server_url)
+    return render_template( 'session_client_parameters_server_polling.html', server_url=server_url)
 
 # ..........................................................
 # ............. GET /test/html .....
@@ -668,10 +617,14 @@ def session_parameters_waiting():
 def test_html():
 
     from pydantic import BaseModel
-    from typing import Optional
+    from typing import Optional, List
+    from pybiscus.flower_config.config_server import ConfigServerOnnxExport, OnnxAxe
 
     class MyContent(BaseModel):
-        opt_int: Optional[int] # pyright: ignore[reportInvalidTypeForm]
+        #opt_int: Optional[int] # pyright: ignore[reportInvalidTypeForm]
+        # onnx_export: ConfigServerOnnxExport
+        an_axe: OnnxAxe
+        axes: List[OnnxAxe]
 
     class MyConf(BaseModel):
     
@@ -679,9 +632,13 @@ def test_html():
         # strategy: Optional[StrategyConfig()] # pyright: ignore[reportInvalidTypeForm]
         # opt_int: Optional[int] # pyright: ignore[reportInvalidTypeForm]
         content: MyContent
+        # label_de_cadix: int = 0
+
+    with importlib.resources.files("pybiscus.session.agent").joinpath("lists_management.js").open('r') as file:
+        lists_management = file.read()
 
     # return generate_field_html_by_name()
-    return generate_model_page(BaseModel,'pybiscus.session.agent','agent.html','check_exec_buttons', '')
+    return generate_model_page(MyConf,'pybiscus.session.agent','agent.html','check_exec_buttons', lists_management)
 
 # ..........................................................    
 

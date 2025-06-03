@@ -101,35 +101,39 @@
     document.querySelectorAll('.pybiscus-tab-container').forEach(handlePybiscusTabContainer);
 
     // *** radio buttons management ***
-    const radioButtons = document.querySelectorAll('input[type="radio"].pybiscus_radiobutton');
 
-    // add a listener to each input radio
-    radioButtons.forEach(function(radio) {
+    function updateRadioStatus(event) {
+        const radio = event.target;
+        const radiosWithSameName = document.querySelectorAll(`input[type="radio"][name="${radio.name}"]`);
 
-        radio.addEventListener('change', function() {
-            
-            const radiosWithSameName = document.querySelectorAll(`input[type="radio"][name="${radio.name}"]`);
-
-            // iteration on same name buttons
-            radiosWithSameName.forEach(function(radioButton) {
-
-                const parentDiv = radioButton.parentElement;
-                parentDiv.setAttribute('data-pybiscus-status', 'ignored');
-            });
-
-            // select the input radio parent
-            const parentDiv = radio.parentElement;
-            parentDiv.setAttribute('data-pybiscus-status', 'valid');
+        radiosWithSameName.forEach(function(radioButton) {
+            const parentDiv = radioButton.parentElement;
+            parentDiv.setAttribute('data-pybiscus-status', 'ignored');
         });
 
-        // initialisation on page loading
+        const parentDiv = radio.parentElement;
+        parentDiv.setAttribute('data-pybiscus-status', 'valid');
+    }
+
+    function initializeRadioStatus(radio) {
         if (radio.checked) {
             radio.parentElement.setAttribute('data-pybiscus-status', 'valid');
         } else {
             radio.parentElement.setAttribute('data-pybiscus-status', 'ignored');
         }
-    });
+    }
 
+    function newRadioButtonInit(radio) {
+        // add a listener to each input radio
+        radio.addEventListener('change', updateRadioStatus);
+        // init its parent div status
+        initializeRadioStatus(radio);
+    }
+
+    // init all existing radio buttons
+    const radioButtons = document.querySelectorAll('input[type="radio"].pybiscus_radiobutton');
+
+    radioButtons.forEach(newRadioButtonInit);
 
     function getEmptyListAttribute(fsElement) {
         if (!fsElement.classList.contains("pybiscus-list-fs")) return;
