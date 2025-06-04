@@ -562,7 +562,34 @@ def session_registration_waiting():
 
     reset_session()
 
-    return send_from_directory('static','session_client_registration_waiting.html') 
+    return render_template( 'session_client_waiting.html',
+                           state = 'Connecting to session',
+                           action = 'Registration',
+                           explanation = 'Your client is waiting to be accepted and registered in the FL session.',
+                           callback = '''
+
+        // status check function
+        function checkStatus() {
+            fetch("/session/client/registration/check")
+                .then(res => res.json())
+                .then(data => {
+                    if (data.redirect) {
+                        // Exit animation before redirect
+                        document.querySelector('.container').style.animation = 'slideUp 0.5s ease-in reverse';
+                        setTimeout(() => {
+                            window.location.href = '/session/client/parameters/server_polling';
+                        }, 500);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error checking status:', error);
+                });
+        }
+
+        // Check every 2 seconds
+        setInterval(checkStatus, 2000);
+'''
+                           )
 
 # ..........................................................
 # ............ POST /session/client/registration ...........
@@ -605,9 +632,44 @@ def check_registration():
 def session_parameters_waiting():
 
     global session_server_url
-    server_url=session_server_url
 
-    return render_template( 'session_client_parameters_server_polling.html', server_url=server_url)
+    callback_template = """
+
+    async function check() {
+        const res = await fetch('""" + session_server_url + """/session/server/parameters/check');
+        const data = await res.json();
+        if (data.ready) {
+            console.log("Session parameters are available !");
+            
+            fetch('/session/client/parameters', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(data.params)
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log("Server response :", data);
+                window.location.href = "/client/config";
+            })
+            .catch(error => {
+                console.error("POST error: ", error);
+            });
+        } else {
+            setTimeout(check, 1000);
+        }
+    }
+
+    check();
+
+"""
+
+    return render_template('session_client_waiting.html',
+                       state='Waiting for session parameters',
+                       action='Server request',
+                       explanation='Your client is requesting the server to provide the FL session parameters.',
+                       callback=callback_template)
 
 # ..........................................................
 # ............. GET /test/html .....
