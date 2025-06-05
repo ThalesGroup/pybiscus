@@ -1,8 +1,10 @@
 import argparse
 from flask import Flask, render_template, request, jsonify, render_template_string
 import requests
+from flask_cors import CORS
 
 app = Flask(__name__)
+CORS(app, origins="*")
 
 # global variable that contains the application context
 registered_clients = {}
@@ -48,6 +50,13 @@ def register():
 @app.route("/clients", methods=["GET"])
 def list_clients():
     return jsonify({"clients": registered_clients})
+
+@app.route("/clients", methods=["DELETE"])
+def revoke_clients():
+    global registered_clients
+    registered_clients = {}
+
+    return jsonify({"status": "success"}), 200
 
 # sub-view URL
 # visualize a graph of session participants

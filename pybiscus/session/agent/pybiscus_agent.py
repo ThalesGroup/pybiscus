@@ -40,6 +40,9 @@ def generate_new_cid():
     return str(session_client_id_counter)
 
 def reset_session():
+
+    print("Reset session !!!")
+
     global session_parameters
     session_parameters = {}
     global session_client_id_counter
@@ -130,6 +133,9 @@ def sessionConfigDownload():
     the button calls the /server/config?param={json} service
     in order to get a customized server config
     """
+
+    reset_session()
+    
     models_names = list(model_registry().keys())
     data_names = list(datamodule_registry().keys())
 
@@ -590,6 +596,19 @@ def session_registration_waiting():
         setInterval(checkStatus, 2000);
 '''
                            )
+
+
+# ..........................................................
+# ............ GET  /session/client/registration ...........
+# ..........................................................    
+
+@rest_server.route('/session/client/registration', methods=['GET'])
+def session_registration():
+
+    reset_session()
+
+    return render_template( 'session_client_registration.html',
+    )
 
 # ..........................................................
 # ............ POST /session/client/registration ...........

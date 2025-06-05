@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pybiscus Client Registration</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .particles {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .particle {
+            position: absolute;
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            animation: float 6s ease-in-out infinite;
+            box-shadow: 0 0 10px rgba(255, 255, 255, 0.2);
+        }
+
+        .particle:nth-child(odd) {
+            background: rgba(255, 255, 255, 0.2);
+            animation-direction: reverse;
+        }
+
+        .particle:nth-child(3n) {
+            background: rgba(102, 126, 234, 0.3);
+            animation-duration: 8s;
+            box-shadow: 0 0 15px rgba(102, 126, 234, 0.3);
+        }
+
+        .particle:nth-child(4n) {
+            background: rgba(118, 75, 162, 0.3);
+            animation-duration: 10s;
+            box-shadow: 0 0 15px rgba(118, 75, 162, 0.3);
+        }
+
+        @keyframes float {
+            0%, 100% {
+                transform: translateY(0px) rotate(0deg);
+                opacity: 0.8;
+            }
+            25% {
+                transform: translateY(-30px) rotate(90deg);
+                opacity: 1;
+            }
+            50% {
+                transform: translateY(-60px) rotate(180deg);
+                opacity: 0.9;
+            }
+            75% {
+                transform: translateY(-30px) rotate(270deg);
+                opacity: 1;
+            }
+        }
+
+        .container {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            border-radius: 24px;
+            padding: 3rem;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            max-width: 600px;
+            width: 100%;
+            animation: slideUp 0.8s ease-out;
+            position: relative;
+            z-index: 1;
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 2.5rem;
+        }
+
+        .logo {
+            width: 80px;
+            height: 80px;
+            margin: 0 auto 2rem;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+
+        .logo::before {
+            content: "P";
+            color: white;
+            font-size: 1.25rem;
+            font-weight: bold;
+        }
+
+        h1 {
+            color: #2d3748;
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .subtitle {
+            color: #4a5568;
+            font-size: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: #2d3748;
+            font-weight: 500;
+            font-size: 0.875rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        input[type="text"], input[type="url"] {
+            width: 100%;
+            padding: 0.875rem 1rem;
+            border: 2px solid #e2e8f0;
+            border-radius: 12px;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+            background: white;
+        }
+
+        input[type="text"]:focus, input[type="url"]:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+            transform: translateY(-1px);
+        }
+
+        .input-group {
+            position: relative;
+            display: flex;
+            align-items: center;
+            border: 2px solid #e2e8f0;
+            border-radius: 12px;
+            background: white;
+            transition: all 0.3s ease;
+        }
+
+        .input-group:focus-within {
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+            transform: translateY(-1px);
+        }
+
+        .input-prefix {
+            padding: 0.875rem 0 0.875rem 1rem;
+            color: #718096;
+            font-size: 1rem;
+            line-height: 1;
+            user-select: none;
+        }
+
+        .input-with-prefix {
+            border: none;
+            padding: 0.875rem 1rem 0.875rem 0.5rem;
+            flex: 1;
+            background: transparent;
+        }
+
+        .input-with-prefix:focus {
+            outline: none;
+            border: none;
+            box-shadow: none;
+            transform: none;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 1rem 2rem;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .spinner {
+            display: none;
+            width: 20px;
+            height: 20px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-top: 2px solid white;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 0.5rem;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .result {
+            margin-top: 2rem;
+            padding: 1rem;
+            border-radius: 12px;
+            display: none;
+        }
+
+        .result.success {
+            background: rgba(16, 185, 129, 0.1);
+            border: 1px solid rgba(16, 185, 129, 0.2);
+            color: #047857;
+        }
+
+        .result.error {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.2);
+            color: #dc2626;
+        }
+
+        .result-icon {
+            display: inline-block;
+            margin-right: 0.5rem;
+            font-size: 1.125rem;
+        }
+
+        @media (max-width: 640px) {
+            .container {
+                padding: 2rem 1.5rem;
+            }
+            
+            h1 {
+                font-size: 1.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="particles" id="particles"></div>
+    
+    <div class="container">
+        <div class="header">
+            <div class="logo"></div>
+            <h1>FL Client Registration</h1>
+            <p class="subtitle">Register a client to the Federated Learning manager</p>
+        </div>
+
+        <form id="registrationForm">
+            <div class="form-group">
+                <label for="name">Client Name</label>
+                <input type="text" id="name" name="name" required value="cortaix-labs-01">
+            </div>
+
+            <div class="form-group">
+                <label for="clientUrl">Client URL</label>
+                <div class="input-group">
+                    <span class="input-prefix">🌐</span>
+                    <input type="url" id="clientUrl" name="clientUrl" class="input-with-prefix" required 
+                           value="http://localhost:5001">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="managerUrl">Manager URL</label>
+                <div class="input-group">
+                    <span class="input-prefix">⚙️</span>
+                    <input type="url" id="managerUrl" name="managerUrl" class="input-with-prefix" required 
+                           value="http://localhost:5555">
+                </div>
+            </div>
+
+            <button type="submit" class="btn" id="submitBtn">
+                <span class="spinner" id="spinner"></span>
+                Register Client
+            </button>
+        </form>
+
+        <div class="result" id="result">
+            <span class="result-icon" id="resultIcon"></span>
+            <span id="resultMessage"></span>
+        </div>
+    </div>
+
+    <script>
+        function showResult(success, message) {
+            const result = document.getElementById('result');
+            const icon = document.getElementById('resultIcon');
+            const messageEl = document.getElementById('resultMessage');
+            
+            result.className = `result ${success ? 'success' : 'error'}`;
+            icon.textContent = success ? '✅' : '❌';
+            messageEl.textContent = message;
+            result.style.display = 'block';
+        }
+
+        function hideResult() {
+            document.getElementById('result').style.display = 'none';
+        }
+
+        function setLoading(loading) {
+            const btn = document.getElementById('submitBtn');
+            const spinner = document.getElementById('spinner');
+            
+            btn.disabled = loading;
+            spinner.style.display = loading ? 'inline-block' : 'none';
+            btn.textContent = loading ? ' Registering...' : 'Register Client';
+            
+            if (loading) {
+                btn.prepend(spinner);
+            }
+        }
+
+        async function notifyClientNode(name, clientUrl, managerUrl, serverUrl) {
+            const endpoint = `${clientUrl.replace(/\/$/, '')}/session/client/registration`;
+            const payload = {
+                client_name: name,
+                manager_url: managerUrl,
+                server_url: serverUrl
+            };
+
+            try {
+                const response = await fetch(endpoint, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status} - ${response.statusText}`);
+                }
+
+                const theJson = await response.json();
+                console.log(`📡 Client response:`, theJson);
+
+                if (theJson.status === "ok") {
+                    console.log(`✅ Client '${name}' acked.`);
+                    return { success: true, message: `Client '${name}' acknowledged successfully` };
+                } else {
+                    console.log('❌ Client nacked');
+                    return { success: false, message: 'Client did not acknowledge (nacked)' };
+                }
+
+            } catch (error) {
+                console.log(`❌ Registration failed: ${error.message}`);
+                return { success: false, message: `Registration failed: ${error.message}` };
+            }
+        }
+
+        async function registerClient(name, clientUrl, managerUrl) {
+            const payload = {
+                name: name,
+                client_url: clientUrl,
+                manager_url: managerUrl
+            };
+
+            const registrationUrl = `${managerUrl.replace(/\/$/, '')}/register`;
+            
+            const response = await fetch(registrationUrl, {
+                method: 'POST',
+                mode: 'cors',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify({
+                    name: name,
+                    client_url: clientUrl
+                })
+            });
+
+            if (!response.ok) {
+                let errorMessage;
+                try {
+                    const errorData = await response.json();
+                    errorMessage = errorData.message || errorData.error || `HTTP ${response.status}`;
+                } catch {
+                    errorMessage = `HTTP ${response.status} - ${response.statusText}`;
+                }
+                throw new Error(errorMessage);
+            }
+
+            const data = await response.json();
+            return [data.message || 'Client registered successfully', data];
+        }
+
+        document.getElementById('registrationForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            hideResult();
+            setLoading(true);
+
+            const formData = new FormData(e.target);
+            const name = formData.get('name');
+            const clientUrl = formData.get('clientUrl');
+            const managerUrl = formData.get('managerUrl');
+
+            try {
+                const [message, payload] = await registerClient(name, clientUrl, managerUrl);
+                showResult(true, message);
+
+                let serverUrl = payload.server
+                
+                notifyClientNode(name, clientUrl, managerUrl, serverUrl);
+
+                setTimeout(() => {
+                    window.location.href = "/session/client/parameters/server_polling";
+                }, 1000); // 1000 ms = 1 s
+
+            } catch (error) {
+                showResult(false, error.message);
+            } finally {
+                setLoading(false);
+            }
+        });
+
+        // create animated particles
+        function createParticles() {
+            const particlesContainer = document.getElementById('particles');
+            const particleCount = 100;
+
+            for (let i = 0; i < particleCount; i++) {
+                const particle = document.createElement('div');
+                particle.className = 'particle';
+                
+                const size = Math.random() * 8 + 4;
+                particle.style.width = `${size}px`;
+                particle.style.height = `${size}px`;
+                
+                const leftPos = Math.random() * 100;
+                const topPos = Math.random() * 100;
+                particle.style.left = `${leftPos}%`;
+                particle.style.top = `${topPos}%`;
+                
+                particle.style.animationDelay = `${Math.random() * 6}s`;
+                
+                const duration = Math.random() * 4 + 6;
+                particle.style.animationDuration = `${duration}s`;
+                
+                particlesContainer.appendChild(particle);
+            }
+        }
+
+        window.addEventListener('load', createParticles);
+
+        // Add some input validation and formatting
+        document.getElementById('name').addEventListener('input', (e) => {
+            // Auto-generate name suggestion
+            const value = e.target.value;
+            if (value && !value.includes('-')) {
+                // Could suggest format like "cortaix-labs-XX"
+            }
+        });
+    </script>
+</body>
+</html>

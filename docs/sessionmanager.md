@@ -33,13 +33,11 @@ launch the client1 agent :
  ./launch/agent/cli/5001.sh
 ```
 
-connect to http://localhost:5001/session/client/registration/waiting
+connect to http://localhost:5001/session/client/registration
 
-the client 1 declares itself to the session manager :
+![Client registration](images/client_registration.png "Client registration")
 
-```bash
-./launch/session/start1.sh
-```
+and the client 1 registers to the session
 
 ### Init of the session : client 2 side
 
@@ -49,13 +47,9 @@ launch the client2 agent :
  ./launch/agent/cli/5002.sh
 ```
 
-connect to http://localhost:5002/session/client/registration/waiting
+connect to http://localhost:5002/session/client/registration
 
-client2 enters the session :
-
-```bash
-./launch/session/start2.sh
-```
+and the client 2 registers to the session
 
 ### Session shared parameters setting
 
