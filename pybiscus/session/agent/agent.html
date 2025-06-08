@@ -357,7 +357,344 @@
     document.addEventListener("DOMContentLoaded", () => {
 
         {{ on_document_load_js | safe }}
+        
     });
+
+    // Menu à deux niveaux pour gestion des fieldsets foldables
+    document.addEventListener('DOMContentLoaded', function() {
+        
+        // Fonction pour initialiser le menu à deux niveaux
+        function initializeTwoLevelMenu() {
+            const menuItems = document.querySelectorAll('.menu-item-level-1');
+            const foldableFieldsets = document.querySelectorAll('fieldset.foldable');
+
+            if (foldableFieldsets.length === 0) {
+                console.log('Aucun fieldset.foldable trouvé');
+                return;
+            }
+
+            // Gestion des clics sur les éléments du menu
+            menuItems.forEach(item => {
+                item.addEventListener('click', function(event) {
+                    event.preventDefault();
+                    
+                    // Retirer la classe active de tous les éléments de menu
+                    menuItems.forEach(mi => mi.classList.remove('active'));
+                    
+                    // Ajouter la classe active à l'élément cliqué
+                    this.classList.add('active');
+
+                    // Récupérer l'ID du fieldset cible
+                    const targetId = this.getAttribute('data-target');
+                    const targetFieldset = document.getElementById(targetId);
+                    
+                    if (targetFieldset && targetFieldset.classList.contains('foldable')) {
+                        // Gérer les classes collapsed sur tous les fieldsets
+                        handleFieldsetVisibility(targetFieldset);
+
+                        // Déclencher un événement personnalisé pour compatibilité
+                        const customEvent = new CustomEvent('pybiscusMenuChange', {
+                            detail: {
+                                activeItem: this,
+                                targetFieldset: targetFieldset,
+                                fieldsetId: targetId
+                            }
+                        });
+                        document.dispatchEvent(customEvent);
+                    }
+                });
+            });
+        }
+
+        // Fonction pour créer le menu à partir des fieldsets existants
+        function createMenuFromFieldsets() {
+            const foldableFieldsets = document.querySelectorAll('fieldset.foldable');
+            
+            if (foldableFieldsets.length === 0) {
+                console.log('Aucun fieldset.foldable trouvé pour la création du menu');
+                return;
+            }
+
+            console.log(`Création du menu pour ${foldableFieldsets.length} fieldsets`);
+
+            // Créer le container du menu s'il n'existe pas
+            let menuContainer = document.querySelector('.level-1-menu');
+            if (!menuContainer) {
+                menuContainer = document.createElement('div');
+                menuContainer.className = 'level-1-menu';
+                
+                // Insérer le menu avant le premier fieldset
+                const firstFieldset = foldableFieldsets[0];
+                firstFieldset.parentNode.insertBefore(menuContainer, firstFieldset);
+            }
+
+            let firstSection = true;
+
+            // Créer les éléments de menu pour chaque fieldset
+            foldableFieldsets.forEach((fieldset, index) => {
+                const legend = fieldset.querySelector('legend');
+                if (!legend) return;
+
+                // Assurer que le fieldset a un ID
+                if (!fieldset.id) {
+                    fieldset.id = `fieldset-${index}`;
+                }
+
+                // Créer l'élément de menu niveau 1
+                const menuItem = document.createElement('div');
+                menuItem.className = `menu-item-level-1 ${firstSection ? 'active' : ''}`;
+                menuItem.setAttribute('data-target', fieldset.id);
+                menuItem.innerHTML = legend.innerHTML;
+
+                menuContainer.appendChild(menuItem);
+
+                // Initialiser l'état collapsed des fieldsets - FORCER le premier à être visible
+                if (firstSection) {
+                    fieldset.classList.remove('collapsed');
+                    fieldset.style.display = 'block'; // Forcer l'affichage
+                    console.log(`Premier fieldset ${fieldset.id} rendu visible`);
+                } else {
+                    fieldset.classList.add('collapsed');
+                    fieldset.style.display = 'none'; // Forcer le masquage
+                }
+
+                firstSection = false;
+            });
+
+            console.log('État initial des fieldsets appliqué');
+        }
+
+        // Fonction pour gérer la visibilité des fieldsets
+        function handleFieldsetVisibility(activeFieldset) {
+            const allFoldableFieldsets = document.querySelectorAll('fieldset.foldable');
+            
+            // Ajouter la classe collapsed à tous les fieldsets sauf celui actif
+            allFoldableFieldsets.forEach(fieldset => {
+                if (fieldset === activeFieldset) {
+                    fieldset.classList.remove('collapsed');
+                } else {
+                    fieldset.classList.add('collapsed');
+                }
+            });
+
+            // Mettre à jour la visibilité
+            updateFieldsetVisibility();
+        }
+
+        // Fonction pour mettre à jour la visibilité des fieldsets
+        function updateFieldsetVisibility() {
+            const foldableFieldsets = document.querySelectorAll('fieldset.foldable');
+            let visibleCount = 0;
+            
+            foldableFieldsets.forEach(fieldset => {
+                if (fieldset.classList.contains('collapsed')) {
+                    // Masquer le fieldset collapsed
+                    fieldset.style.display = 'none';
+                    console.log(`Fieldset ${fieldset.id} masqué`);
+                } else {
+                    // Afficher le fieldset non collapsed
+                    fieldset.style.display = 'block';
+                    visibleCount++;
+                    console.log(`Fieldset ${fieldset.id} affiché`);
+                }
+            });
+            
+            // S'assurer qu'au moins un fieldset est visible
+            if (visibleCount === 0 && foldableFieldsets.length > 0) {
+                console.warn('Aucun fieldset visible détecté, forcer l\'affichage du premier');
+                const firstFieldset = foldableFieldsets[0];
+                firstFieldset.classList.remove('collapsed');
+                firstFieldset.style.display = 'block';
+                
+                // Mettre à jour le menu correspondant
+                const firstMenuItem = document.querySelector('.menu-item-level-1');
+                if (firstMenuItem) {
+                    document.querySelectorAll('.menu-item-level-1').forEach(item => item.classList.remove('active'));
+                    firstMenuItem.classList.add('active');
+                }
+            }
+            
+            console.log(`${visibleCount} fieldset(s) visible(s) sur ${foldableFieldsets.length}`);
+        }
+
+        // Fonction pour maintenir la compatibilité avec l'ancien système
+        function maintainBackwardCompatibility() {
+            // Émulation des événements de l'ancien système de fieldsets
+            document.addEventListener('pybiscusMenuChange', function(event) {
+                const { fieldsetId, activeItem, targetFieldset } = event.detail;
+                
+                // Déclencher les mêmes événements que l'ancien système
+                const oldStyleEvent = new CustomEvent('fieldsetToggle', {
+                    detail: {
+                        fieldsetId: fieldsetId,
+                        isExpanded: true,
+                        legend: activeItem.textContent,
+                        activeFieldset: targetFieldset
+                    }
+                });
+                document.dispatchEvent(oldStyleEvent);
+            });
+
+            // Fonction globale pour la compatibilité
+            window.pybiscusNavigation = {
+                goToFieldset: function(fieldsetId) {
+                    const menuItem = document.querySelector(`[data-target="${fieldsetId}"]`);
+                    if (menuItem) {
+                        menuItem.click();
+                    }
+                },
+                
+                getCurrentFieldset: function() {
+                    const activeFieldset = document.querySelector('fieldset.foldable:not(.collapsed)');
+                    return activeFieldset ? activeFieldset.id : null;
+                },
+                
+                getAllFieldsets: function() {
+                    return Array.from(document.querySelectorAll('fieldset.foldable')).map(fs => ({
+                        id: fs.id,
+                        legend: fs.querySelector('legend')?.textContent || 'Sans titre',
+                        isCollapsed: fs.classList.contains('collapsed')
+                    }));
+                }
+            };
+        }
+
+        // Fonction principale d'initialisation
+        function initialize() {
+            // Vérifier si on a déjà un menu ou s'il faut le créer
+            const existingMenu = document.querySelector('.level-1-menu');
+            const foldableFieldsets = document.querySelectorAll('fieldset.foldable');
+
+            if (existingMenu && existingMenu.children.length > 0) {
+                // Menu déjà en place, juste initialiser la navigation
+                console.log('Menu existant détecté, initialisation de la navigation');
+                // Initialiser l'état des fieldsets - S'assurer qu'au moins un soit visible
+                let hasVisibleFieldset = false;
+                foldableFieldsets.forEach((fieldset, index) => {
+                    if (index === 0) {
+                        fieldset.classList.remove('collapsed');
+                        fieldset.style.display = 'block';
+                        hasVisibleFieldset = true;
+                        console.log(`Premier fieldset ${fieldset.id} rendu visible`);
+                    } else {
+                        fieldset.classList.add('collapsed');
+                        fieldset.style.display = 'none';
+                    }
+                });
+                
+                if (!hasVisibleFieldset && foldableFieldsets.length > 0) {
+                    console.warn('Forcer la visibilité du premier fieldset');
+                    foldableFieldsets[0].classList.remove('collapsed');
+                    foldableFieldsets[0].style.display = 'block';
+                }
+                
+                initializeTwoLevelMenu();
+            } else if (foldableFieldsets.length > 0) {
+                // Créer le menu à partir des fieldsets
+                createMenuFromFieldsets();
+                initializeTwoLevelMenu();
+            } else {
+                // Aucune structure détectée
+                console.warn('Aucun fieldset.foldable détecté');
+            }
+
+            // Maintenir la compatibilité
+            maintainBackwardCompatibility();
+
+            // Gestion du redimensionnement pour le responsive
+            let resizeTimer;
+            window.addEventListener('resize', function() {
+                clearTimeout(resizeTimer);
+                resizeTimer = setTimeout(function() {
+                    // Réajuster la navigation si nécessaire
+                    const menu = document.querySelector('.level-1-menu');
+                    if (menu && menu.scrollWidth > menu.clientWidth) {
+                        menu.classList.add('scrollable');
+                    } else if (menu) {
+                        menu.classList.remove('scrollable');
+                    }
+                }, 250);
+            });
+        }
+
+        // Lancer l'initialisation
+        initialize();
+
+        // Exposer les fonctions pour le debugging
+        if (window.console && window.console.log) {
+            window.pybiscusDebug = {
+                reinitialize: initialize,
+                createMenu: createMenuFromFieldsets,
+                navigation: window.pybiscusNavigation,
+                showFieldset: function(fieldsetId) {
+                    window.pybiscusNavigation.goToFieldset(fieldsetId);
+                }
+            };
+        }
+    });
+
+    // CSS pour le menu à deux niveaux et les fieldsets
+    const menuStyles = `
+        .level-1-menu {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 20px;
+            padding: 10px;
+            background-color: #f5f5f5;
+            border-radius: 8px;
+        }
+        
+        .menu-item-level-1 {
+            padding: 10px 15px;
+            background-color: #fff;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            user-select: none;
+        }
+        
+        .menu-item-level-1:hover {
+            background-color: #e9f4ff;
+            border-color: #0066cc;
+        }
+        
+        .menu-item-level-1.active {
+            background-color: #0066cc;
+            color: white;
+            border-color: #0066cc;
+        }
+        
+        .level-1-menu.scrollable {
+            overflow-x: auto;
+            box-shadow: inset -10px 0 10px -10px rgba(0,0,0,0.1);
+        }
+        
+        .level-1-menu.scrollable::after {
+            content: '→';
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--color-gray-400);
+            pointer-events: none;
+        }
+        
+        fieldset.foldable:not(.collapsed) {
+            animation: fadeIn 0.3s ease-out;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    `;
+
+    // Injecter les styles
+    const styleSheet = document.createElement('style');
+    styleSheet.textContent = menuStyles;
+    document.head.appendChild(styleSheet);
 
 </script>
 
