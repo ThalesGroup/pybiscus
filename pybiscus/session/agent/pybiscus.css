@@ -1,427 +1,802 @@
-
-    * {
-        border-radius: 6px;
-        font-size: 1rem;
-    }
-
-    fieldset {
-        border-width: 2px;
-        border-style: solid;
-        border-color: #333;
-        padding: 1em;
-    }
-
-    body > div > fieldset > legend {
-        font-size: 1.5rem;
-        font-weight: bold;
-        color: #2c3e50;
-        padding: 0.5rem 0.5rem;
-        background-color: whitesmoke;
-        border-radius: 8px;
-        border-color: black;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-        text-align: center;
-        margin-bottom: 1rem;
-    }
-
-    /* management of union fields >>> begin >>> */
-
-    .pybiscus-fieldset-container {
-        display: flex;
-        flex-direction: row;
-        gap: 10px;
-    }
-    .pybiscus-tab-container {
-        width: 100%;
-        border-bottom: 1px solid #ccc;
-    }
-    .pybiscus-tab-buttons {
-        display: flex;
-        border-bottom: 1px solid #ccc;
-    }
-    .pybiscus-tab-button {
-        padding: 10px 20px;
-        cursor: pointer;
-        border: 1px solid #ccc;
-        border-bottom: none;
-        margin-right: 5px;
-    }
-    .pybiscus-tab-button.active___ {
-        background-color: #e0e0e0;
-    }
-    .pybiscus-tab-content {
-        padding: 20px;
-        border-top: 1px solid #ccc;
-        opacity: 1;
-        transition: opacity 0.2s ease;
-    }
-    .pybiscus-tab-content:not(.active) {
-        display: none;
-    }
-    .pybiscus-tab-content.hidden {
-        opacity: 0;
-    }
-
-    [data-pybiscus-status="ignored"] {
-        background-color: #f0f0f0; /* light grey */
-    }
-
-    [data-pybiscus-status="valid"] {
-        background-color: #e0f7fa; /* very light blue */
-    }
-
-    /* management of union fieds <<< end <<< */
-
-
-
-    /* management of optional fieds >>> begin >>> */
-
-    .pybiscus-option-cb {
-        accent-color: red;
-    }
-
-    .pybiscus-camouflaged-fieldset {
-        border: none;
-        padding: 0;
-        margin: 0;
-    }
-
-    .pybiscus-option-fs.pybiscus-camouflaged-fieldset > *:not(legend) {
-        display: none;
-    }
-
-    .pybiscus-option-fs:not(.pybiscus-camouflaged-fieldset) 
-        > .pybiscus-tab-container {
-
-        display: flex;
-        flex-wrap: nowrap;
-        gap: 8px;
-        border-bottom: initial;
-    }
-
-    .pybiscus-option-fs:not(.pybiscus-camouflaged-fieldset) 
-        > .pybiscus-tab-container 
-        > .pybiscus-tab-buttons {
-
-        display: inline;
-        border-bottom: initial;
-    }
-
-    .pybiscus-option-fs:not(.pybiscus-camouflaged-fieldset) 
-        > .pybiscus-tab-container 
-        > .pybiscus-tab-buttons
-        > .pybiscus-tab-button {
-
-        border: initial;
-        padding: initial;
-        cursor: auto;
-        border-bottom: initial;
-        margin-right: initial;
-        display: inline;
-    }
-
-    .pybiscus-option-fs:not(.pybiscus-camouflaged-fieldset) 
-        > .pybiscus-tab-container 
-        > .pybiscus-tab-content {
-
-        padding: initial;
-        border-top: initial;
-    }
-
-    .pybiscus-option-fs:not(.pybiscus-camouflaged-fieldset) 
-        > .pybiscus-tab-container 
-        > .pybiscus-tab-buttons
-        > .pybiscus-tab-button:last-of-type {
-
-        display: none;
-    }
-
-    /* management of optional fieds <<< end <<< */
-
-
-
-    /* management of fieldset locking >>> begin >>> */
-
-    .pybiscus-fieldset-container.pybiscus-locked > legend .pybiscus-config::after {
-        content: " 🔒 ";
-        font-size: 0.9em;
-        color: #555;
-    }
-        
-    .pybiscus-fieldset-container.pybiscus-locked > .pybiscus-tab-container > .pybiscus-tab-buttons > .pybiscus-tab-button:not(.active) {
-        display: none;
-    }
-
-    /* locking an optional removes the checkbox that permits switching between type and None */
-    .pybiscus-fieldset-container.pybiscus-locked > legend input[type="checkbox"] {
-        display: none;
-    }
-
-    /* management of fieldset locking <<< end <<< */
-        
-
+/* CSS Variables for consistency - Modern Design System */
+:root {
+    /* Border Radius */
+    --border-radius: 8px;
+    --border-radius-large: 12px;
+    --border-radius-xl: 16px;
     
-    /* management of fieldset folding >>> begin >>> */
+    /* Typography */
+    --font-size-base: 1rem;
+    --font-size-large: 1.25rem;
+    --font-size-xl: 1.5rem;
+    --font-weight-normal: 400;
+    --font-weight-medium: 500;
+    --font-weight-semibold: 600;
+    --font-weight-bold: 700;
+    
+    /* Color System - Modern Neutral Palette */
+    --color-primary: #1e293b;
+    --color-primary-light: #334155;
+    --color-accent: #3b82f6;
+    --color-accent-light: #60a5fa;
+    --color-accent-dark: #2563eb;
+    
+    /* Semantic Colors */
+    --color-success: #10b981;
+    --color-success-light: #34d399;
+    --color-success-bg: #ecfdf5;
+    --color-warning: #f59e0b;
+    --color-warning-light: #fbbf24;
+    --color-warning-bg: #fffbeb;
+    --color-error: #ef4444;
+    --color-error-light: #f87171;
+    --color-error-bg: #fef2f2;
+    --color-info: #06b6d4;
+    --color-info-light: #22d3ee;
+    --color-info-bg: #f0fdff;
+    
+    /* Neutral Colors */
+    --color-white: #ffffff;
+    --color-gray-50: #f8fafc;
+    --color-gray-100: #f1f5f9;
+    --color-gray-200: #e2e8f0;
+    --color-gray-300: #cbd5e1;
+    --color-gray-400: #94a3b8;
+    --color-gray-500: #64748b;
+    --color-gray-600: #475569;
+    --color-gray-700: #334155;
+    --color-gray-800: #1e293b;
+    --color-gray-900: #0f172a;
+    
+    /* Legacy Variable Mapping */
+    --color-border: var(--color-gray-300);
+    --color-border-light: var(--color-gray-200);
+    --color-bg-light: var(--color-gray-50);
+    --color-bg-valid: var(--color-success-bg);
+    --color-bg-whitesmoke: var(--color-gray-50);
+    
+    /* Spacing System */
+    --spacing-xs: 0.25rem;
+    --spacing-sm: 0.5rem;
+    --spacing-md: 1rem;
+    --spacing-lg: 1.5rem;
+    --spacing-xl: 2rem;
+    --spacing-2xl: 3rem;
+    
+    /* Shadows */
+    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    
+    /* Transitions */
+    --transition-fast: 0.15s ease-in-out;
+    --transition-standard: 0.3s ease-in-out;
+    --transition-slow: 0.5s ease-in-out;
+}
 
-    #top-div > fieldset {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 8px;
-        align-items: flex-start;
-        justify-content: flex-start;
-    }
+/* Reset and base styles */
+* {
+    border-radius: var(--border-radius);
+    font-size: var(--font-size-base);
+    box-sizing: border-box;
+}
 
-    #top-div > fieldset > div:not(:has(> fieldset.foldable)) {
-        flex-basis: 100%;
-    }
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    line-height: 1.6;
+    color: var(--color-gray-800);
+    background-color: var(--color-gray-50);
+}
 
-    #top-div > fieldset > div:has(> fieldset.foldable.collapsed) {
-        flex: 0 0 auto;
+/* Main fieldsets */
+fieldset {
+    border: 1px solid var(--color-border);
+    background-color: var(--color-white);
+    padding: var(--spacing-lg);
+    margin: 0;
+    box-shadow: var(--shadow-sm);
+    transition: box-shadow var(--transition-standard);
+}
 
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        height: 100%;
-      
-        /* border: 1px dashed red;
-        background-color: rgba(255, 0, 0, 0.05); */
-    }
+fieldset:hover {
+    box-shadow: var(--shadow-md);
+}
 
-    #top-div > fieldset > div:has(> fieldset.foldable:not(.collapsed)) {
-        flex-basis: 100%;
+body > div > fieldset > legend {
+    font-size: var(--font-size-xl);
+    font-weight: var(--font-weight-bold);
+    color: var(--color-primary);
+    padding: var(--spacing-md) var(--spacing-lg);
+    background: linear-gradient(135deg, var(--color-white) 0%, var(--color-gray-50) 100%);
+    border-radius: var(--border-radius-large);
+    border: 1px solid var(--color-border);
+    box-shadow: var(--shadow-sm);
+    text-align: center;
+    margin-bottom: var(--spacing-lg);
+    position: relative;
+}
 
-        display: flex;
-        justify-content: flex-start;
-        align-items: center;
-        height: 100%;
+body > div > fieldset > legend::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, var(--color-accent) 0%, var(--color-accent-light) 100%);
+    border-radius: var(--border-radius-large) var(--border-radius-large) 0 0;
+}
 
-        /* border: 1px dashed red;
-        background-color: rgba(255, 0, 0, 0.05); */
-    }
+/* management of union fields >>> begin >>> */
+.pybiscus-fieldset-container {
+    display: flex;
+    flex-direction: row;
+    gap: var(--spacing-md);
+    align-items: stretch;
+}
 
-    fieldset.foldable.collapsed {
-        max-height: 100%;
-        width: auto;
-        box-sizing: border-box;
+.pybiscus-tab-container {
+    width: 100%;
+    border-bottom: 1px solid var(--color-border-light);
+    display: flex;
+    flex-direction: column;
+    background-color: var(--color-white);
+    border-radius: var(--border-radius-large);
+    overflow: hidden;
+    box-shadow: var(--shadow-sm);
+}
 
-        border: none;          /* Supprime la bordure autour du fieldset */
-        padding: 0; 
-    }
+.pybiscus-tab-buttons {
+    display: flex;
+    border-bottom: 1px solid var(--color-border-light);
+    align-items: center;
+    flex-wrap: wrap;
+    background-color: var(--color-gray-50);
+    padding: var(--spacing-xs);
+    gap: var(--spacing-xs);
+}
 
-    fieldset.foldable.collapsed {
-        flex-basis: 100%;
-    }
+.pybiscus-tab-button {
+    padding: var(--spacing-sm) var(--spacing-md);
+    cursor: pointer;
+    border: 1px solid transparent;
+    border-radius: var(--border-radius);
+    background-color: transparent;
+    transition: all var(--transition-fast);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: var(--font-weight-medium);
+    color: var(--color-gray-600);
+    position: relative;
+    overflow: hidden;
+}
 
-    fieldset.foldable > legend {
-        cursor: pointer;
-        user-select: none;
-    }
+.pybiscus-tab-button::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.6), transparent);
+    transition: left var(--transition-standard);
+}
 
-    fieldset.foldable.collapsed > *:not(legend) {
-        display: none;
-    }
+.pybiscus-tab-button:hover::before {
+    left: 100%;
+}
 
-    fieldset.foldable > legend .pybiscus-config::before {
-        content: '🔽 ';
-    }
+.pybiscus-tab-button:hover {
+    background-color: var(--color-white);
+    color: var(--color-accent);
+    border-color: var(--color-border-light);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-sm);
+}
 
-    fieldset.foldable.collapsed > legend .pybiscus-config::before {
-        content: '▶️ ';
-    }
+.pybiscus-tab-button.active___ {
+    background-color: var(--color-white);
+    color: var(--color-accent);
+    border-color: var(--color-accent-light);
+    box-shadow: var(--shadow-md);
+    z-index: 1;
+    position: relative;
+    font-weight: var(--font-weight-semibold);
+}
 
-    fieldset.foldable:not(.collapsed)  {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 1rem;
-        align-items: flex-start;
-    }
+.pybiscus-tab-button.active___::after {
+    content: '';
+    position: absolute;
+    bottom: -1px;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, var(--color-accent) 0%, var(--color-accent-light) 100%);
+}
 
-    fieldset.foldable:not(.collapsed) > div.pybiscus-field {
-        flex-basis: 100%;
+.pybiscus-tab-content {
+    padding: var(--spacing-xl);
+    border-top: none;
+    opacity: 1;
+    transition: opacity var(--transition-standard);
+    flex: 1;
+    background-color: var(--color-white);
+}
+
+.pybiscus-tab-content:not(.active) {
+    display: none;
+}
+
+.pybiscus-tab-content.hidden {
+    opacity: 0;
+}
+
+/* management of union fields <<< end <<<
+
+
+/* management of optional fields >>> begin >>> */
+.pybiscus-option-cb {
+    accent-color: var(--color-accent);
+    margin-right: var(--spacing-sm);
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+    transition: transform var(--transition-fast);
+}
+
+.pybiscus-option-cb:hover {
+    transform: scale(1.1);
+}
+
+.pybiscus-camouflaged-fieldset {
+    border: none;
+    padding: 0;
+    margin: 0;
+    background: none;
+    box-shadow: none;
+}
+
+.pybiscus-camouflaged-fieldset > *:not(legend) {
+    display: none;
+}
+
+.pybiscus-option-fs:not(.pybiscus-camouflaged-fieldset) .pybiscus-tab-container {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: var(--spacing-sm);
+    border-bottom: initial;
+    align-items: center;
+    background: none;
+    box-shadow: none;
+}
+
+.pybiscus-option-fs:not(.pybiscus-camouflaged-fieldset) .pybiscus-tab-buttons {
+    display: inline-flex;
+    border-bottom: initial;
+    align-items: center;
+    background: none;
+    padding: 0;
+}
+
+.pybiscus-option-fs:not(.pybiscus-camouflaged-fieldset) .pybiscus-tab-button {
+    border: initial;
+    padding: initial;
+    cursor: auto;
+    border-bottom: initial;
+    margin-right: initial;
+    display: inline-flex;
+    align-items: center;
+    background: none;
+}
+
+.pybiscus-option-fs:not(.pybiscus-camouflaged-fieldset) .pybiscus-tab-content {
+    padding: initial;
+    border-top: initial;
+    background: none;
+}
+
+.pybiscus-option-fs:not(.pybiscus-camouflaged-fieldset) .pybiscus-tab-button:last-of-type {
+    display: none;
+}
+
+/* management of optional fields <<< end <<<
+
+
+/* management of fieldset locking >>> begin >>> */
+.pybiscus-fieldset-container.pybiscus-locked > legend .pybiscus-config::after {
+    content: " 🔒 ";
+    font-size: 0.9em;
+    color: var(--color-warning);
+    vertical-align: middle;
+    filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.1));
+}
+
+.pybiscus-fieldset-container.pybiscus-locked .pybiscus-tab-button:not(.active) {
+    display: none;
+}
+
+.pybiscus-fieldset-container.pybiscus-locked legend input[type="checkbox"] {
+    display: none;
+}
+
+.pybiscus-fieldset-container.pybiscus-locked {
+    opacity: 0.8;
+    filter: grayscale(0.2);
+}
+
+/* management of fieldset locking <<< end <<<
+
+
+/* management of fieldset folding >>> begin >>> */
+#top-div > fieldset {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--spacing-md);
+    align-items: flex-start;
+    justify-content: flex-start;
+}
+
+#top-div > fieldset > div:not(:has(> fieldset.foldable)) {
+    flex: 1 1 100%;
+}
+
+#top-div > fieldset > div:has(> fieldset.foldable.collapsed) {
+    flex: 0 0 auto;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 80px;
+}
+
+#top-div > fieldset > div:has(> fieldset.foldable:not(.collapsed)) {
+    flex: 1 1 100%;
+    display: flex;
+    justify-content: flex-start;
+    align-items: flex-start;
+    min-height: auto;
+}
+
+fieldset.foldable {
+    transition: all var(--transition-standard);
+    border-radius: var(--border-radius-large);
+}
+
+fieldset.foldable.collapsed {
+    max-height: 80px;
+    width: auto;
+    border: 1px solid var(--color-border-light);
+    padding: var(--spacing-sm);
+    overflow: hidden;
+    background: linear-gradient(135deg, var(--color-gray-50) 0%, var(--color-white) 100%);
+    box-shadow: var(--shadow-sm);
+}
+
+fieldset.foldable.collapsed:hover {
+    box-shadow: var(--shadow-md);
+    transform: translateY(-1px);
+}
+
+fieldset.foldable > legend {
+    cursor: pointer;
+    user-select: none;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    transition: color var(--transition-fast);
+}
+
+fieldset.foldable > legend:hover {
+    color: var(--color-accent);
+}
+
+fieldset.foldable.collapsed > *:not(legend) {
+    display: none;
+}
+
+fieldset.foldable > legend .pybiscus-config::before {
+    content: '🔽 ';
+    margin-right: var(--spacing-xs);
+    transition: transform var(--transition-standard);
+    display: inline-block;
+}
+
+fieldset.foldable.collapsed > legend .pybiscus-config::before {
+    content: '▶️ ';
+    margin-right: var(--spacing-xs);
+    transform: rotate(0deg);
+}
+
+fieldset.foldable:not(.collapsed) > legend .pybiscus-config::before {
+    transform: rotate(180deg);
+}
+
+fieldset.foldable:not(.collapsed) {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--spacing-md);
+    align-items: flex-start;
+}
+
+fieldset.foldable:not(.collapsed) > div.pybiscus-field {
+    flex: 1 1 100%;
+}
+
+fieldset.foldable:not(.collapsed) > div.pybiscus-field:has(> fieldset) {
+    flex: 0 1 auto;
+}
+
+/* management of fieldset folding <<< end <<<
+
+
+/* management of pybiscus lists >>> begin >>> */
+.pybiscus-list-contents {
+    display: flex;
+    gap: var(--spacing-sm);
+    align-items: center;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+}
+
+.pybiscus-list-eraser,
+.pybiscus-list-generator {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, var(--color-white) 0%, var(--color-gray-50) 100%);
+    padding: var(--spacing-sm);
+    border-radius: var(--border-radius);
+    font-size: 1.2em;
+    border: 1px solid var(--color-border);
+    min-height: 40px;
+    min-width: 40px;
+    transition: all var(--transition-fast);
+    position: relative;
+    overflow: hidden;
+}
+
+.pybiscus-list-eraser::before,
+.pybiscus-list-generator::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.6), transparent);
+    transition: left var(--transition-standard);
+}
+
+.pybiscus-list-eraser:hover::before,
+.pybiscus-list-generator:hover::before {
+    left: 100%;
+}
+
+.pybiscus-list-eraser:hover {
+    cursor: grab;
+    background: linear-gradient(135deg, var(--color-error-bg) 0%, var(--color-white) 100%);
+    border-color: var(--color-error-light);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+
+.pybiscus-list-generator:hover {
+    cursor: copy;
+    background: linear-gradient(135deg, var(--color-success-bg) 0%, var(--color-white) 100%);
+    border-color: var(--color-success-light);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+
+.pybiscus-list-eraser:active,
+.pybiscus-list-generator:active {
+    transform: translateY(0) scale(0.95);
+}
+
+/* management of pybiscus lists <<< end <<<
+
+
+/* management of pybiscus configuration items >>> begin >>> */
+.pybiscus-field {
+    margin-bottom: var(--spacing-lg);
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-sm);
+}
+
+.pybiscus-config {
+    background: linear-gradient(135deg, var(--color-gray-700) 0%, var(--color-gray-800) 100%);
+    color: var(--color-white);
+    border: 1px solid var(--color-accent-light);
+    padding: var(--spacing-sm) var(--spacing-lg);
+    margin: var(--spacing-xs) 0;
+    display: inline-flex;
+    align-items: center;
+    border-radius: var(--border-radius);
+    font-weight: var(--font-weight-medium);
+    font-size: 0.9rem;
+    box-shadow: var(--shadow-sm);
+    transition: all var(--transition-fast);
+    position: relative;
+    overflow: hidden;
+}
+
+.pybiscus-config::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, var(--color-accent) 0%, var(--color-accent-light) 100%);
+}
+
+.pybiscus-config:hover {
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-md);
+}
+
+.pybiscus-config.pybiscus-locked::after {
+    content: " 🔒 ";
+    font-size: 0.9em;
+    color: var(--color-warning-light);
+    margin-left: var(--spacing-xs);
+    filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.3));
+}
+
+.pybiscus-config.pybiscus-locked + input[readonly] {
+    color: var(--color-gray-400);
+    background: linear-gradient(135deg, var(--color-gray-100) 0%, var(--color-gray-200) 100%);
+    cursor: not-allowed;
+    opacity: 0.7;
+    border-color: var(--color-gray-300);
+}
+
+/* management of pybiscus configuration items <<< end <<<
+
+
+/* management of pybiscus action buttons >>> begin >>> */
+.pybiscus-control-container {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+    flex-wrap: wrap;
+    padding: var(--spacing-md);
+    background: linear-gradient(135deg, var(--color-gray-50) 0%, var(--color-white) 100%);
+    border-radius: var(--border-radius-large);
+    border: 1px solid var(--color-border-light);
+}
+
+.pybiscus-indicator,
+.pybiscus-success,
+.pybiscus-failure {
+    display: none;
+    font-size: 0.9rem;
+    align-self: center;
+    font-weight: var(--font-weight-medium);
+    padding: var(--spacing-xs) var(--spacing-sm);
+    border-radius: var(--border-radius);
+}
+
+.pybiscus-success {
+    color: var(--color-success);
+    background-color: var(--color-success-bg);
+    border: 1px solid var(--color-success-light);
+}
+
+.pybiscus-failure {
+    color: var(--color-error);
+    background-color: var(--color-error-bg);
+    border: 1px solid var(--color-error-light);
+}
+
+.pybiscus-indicator {
+    color: var(--color-info);
+    background-color: var(--color-info-bg);
+    border: 1px solid var(--color-info-light);
+}
+
+.pybiscus-box {
+    background: linear-gradient(135deg, var(--color-white) 0%, var(--color-gray-50) 100%);
+    padding: var(--spacing-lg);
+    border-radius: var(--border-radius-xl);
+    box-shadow: var(--shadow-lg);
+    border: 1px solid var(--color-border-light);
+}
+
+.pybiscus-columns {
+    display: flex;
+    gap: var(--spacing-2xl);
+    justify-content: center;
+    flex-wrap: wrap;
+    align-items: flex-start;
+}
+
+.pybiscus-control-stack {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-md);
+    align-items: stretch;
+}
+
+.pybiscus-button {
+    padding: var(--spacing-md) var(--spacing-lg);
+    font-size: var(--font-size-base);
+    font-weight: var(--font-weight-semibold);
+    border: none;
+    border-radius: var(--border-radius-large);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 48px;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+    box-shadow: var(--shadow-sm);
+}
+
+.pybiscus-button::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+    transition: left var(--transition-standard);
+}
+
+.pybiscus-button:hover::before {
+    left: 100%;
+}
+
+.pybiscus-button:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+
+.pybiscus-button:active {
+    transform: translateY(0) scale(0.98);
+}
+
+.pybiscus-button.check {
+    background: linear-gradient(135deg, var(--color-success-light) 0%, var(--color-success) 100%);
+    color: var(--color-white);
+    border: 1px solid var(--color-success);
+}
+
+.pybiscus-button.check:hover {
+    background: linear-gradient(135deg, var(--color-success) 0%, var(--color-success-light) 100%);
+    box-shadow: 0 8px 25px -8px var(--color-success);
+}
+
+.pybiscus-button.execute {
+    background: linear-gradient(135deg, var(--color-info-light) 0%, var(--color-info) 100%);
+    color: var(--color-white);
+    border: 1px solid var(--color-info);
+}
+
+.pybiscus-button.execute:hover {
+    background: linear-gradient(135deg, var(--color-info) 0%, var(--color-info-light) 100%);
+    box-shadow: 0 8px 25px -8px var(--color-info);
+}
+
+.pybiscus-button.save {
+    background: linear-gradient(135deg, var(--color-warning-light) 0%, var(--color-warning) 100%);
+    color: var(--color-white);
+    border: 1px solid var(--color-warning);
+}
+
+.pybiscus-button.save:hover {
+    background: linear-gradient(135deg, var(--color-warning) 0%, var(--color-warning-light) 100%);
+    box-shadow: 0 8px 25px -8px var(--color-warning);
+}
+
+.pybiscus-button.load {
+    background: linear-gradient(135deg, var(--color-error-light) 0%, var(--color-error) 100%);
+    color: var(--color-white);
+    border: 1px solid var(--color-error);
+}
+
+.pybiscus-button.load:hover {
+    background: linear-gradient(135deg, var(--color-error) 0%, var(--color-error-light) 100%);
+    box-shadow: 0 8px 25px -8px var(--color-error);
+}
+
+/* management of pybiscus action buttons <<< end <<<
+
+
+/* Field states */
+[data-pybiscus-status="ignored"] {
+    background: linear-gradient(135deg, var(--color-gray-50) 0%, var(--color-gray-100) 100%);
+    border-color: var(--color-gray-300);
+    opacity: 0.8;
+}
+
+[data-pybiscus-status="valid"] {
+    background: linear-gradient(135deg, var(--color-success-bg) 0%, rgba(16, 185, 129, 0.1) 100%);
+    border-color: var(--color-success-light);
+    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+}
+
+/* Input field improvements */
+input, textarea, select {
+    padding: var(--spacing-sm) var(--spacing-md);
+    border: 1px solid var(--color-border);
+    border-radius: var(--border-radius);
+    font-size: var(--font-size-base);
+    transition: all var(--transition-fast);
+    background-color: var(--color-white);
+    color: var(--color-gray-800);
+}
+
+input:focus, textarea:focus, select:focus {
+    outline: none;
+    border-color: var(--color-accent);
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    transform: translateY(-1px);
+}
+
+input:hover, textarea:hover, select:hover {
+    border-color: var(--color-accent-light);
+}
+
+/* === RESPONSIVE === */
+@media (max-width: 768px) {
+    :root {
+        --spacing-xl: 1.5rem;
+        --spacing-2xl: 2rem;
     }
     
-    fieldset.foldable:not(.collapsed) > div.pybiscus-field:has(> fieldset ) {
-        flex: 0 1 auto;
-    }
-    
-    /* management of fieldset folding <<< end <<< */
-
-
-
-    /* management of pybiscus lists >>> begin >>> */
-
-    .pybiscus-list-contents {
-        display: flex;
-        gap: 0.5rem; /* optionnel : espace entre les éléments */
-        align-items: center; /* pour les aligner verticalement */
-        flex-wrap: wrap; /* ou nowrap selon le comportement désiré */
-    }
-          
-    .pybiscus-list-eraser {
-        display: inline-block;
-        background-color: #f2f2f2;
-        padding: 0.2em 0.2em;
-        border-radius: 2px;
-        font-size: 1.2em;
-        border: 1px solid orange;
-        border-radius: 6px;
-    }
-
-    .pybiscus-list-eraser:hover {
-        cursor: grab;
-    }
-
-    .pybiscus-list-generator {
-        display: inline-block;
-        background-color: #f2f2f2;
-        padding: 0.2em 0.2em;
-        border-radius: 2px;
-        font-size: 1.2em;
-        border: 1px solid orange;
-        border-radius: 6px;
-    }
-      
-    .pybiscus-list-generator:hover {
-        cursor: copy;
-    }
-    
-    /* management of pybiscus lists <<< end <<< */
-
-
-        
-    /* management of pybiscus configuration items >>> begin >>> */
-
-    .pybiscus-field {
-        /* display: flex; */
-        /* justify-content: space-between; /* Espace entre le label et l'input */
-        /* align-items: center; /* Centrer verticalement */
-        margin-bottom: 1rem; /* Ajouter de l'espace entre les champs */
-    }
-
-    /* marker */
-    .pybiscus-config {
-        background-color: gray;
-        color: orange;
-        border: 1px solid orange;
-        padding: 6px;
-        padding-left: 24px;
-        padding-right: 24px;
-        margin-top: 4px;
-        margin-bottom: 4px;
-    }
-    
-
-    .pybiscus-config.pybiscus-locked::after {
-        content: " 🔒 ";
-        font-size: 0.9em;
-        color: #555;
-    }
-
-    .pybiscus-config.pybiscus-locked + input[readonly] {
-        color: #f5f5f5;
-        background-color: #555;
-        cursor: not-allowed;
-        opacity: 0.8;
-    }
-
-    /* management of pybiscus configuration items <<< end <<< */
-
-
-
-    /* management of pybiscus action buttons >>> begin >>> */
-
-    .pybiscus-control-container {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-    }
-    .pybiscus-indicator {
-        display: none;
-        color: orange;
-    }
-    .pybiscus-success {
-        display: none;
-        color: green;
-    }
-    .pybiscus-failure {
-        display: none;
-        color: red;
-    }
-
-    .pybiscus-box {
-        background-color: #f6f1f1;
-        padding: 8px;  
-        border-radius: 8px;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-    }
-
     .pybiscus-columns {
-        display: flex;
-        gap: 2rem;
-        justify-content: center;
-        flex-wrap: wrap;
-    }
-
-    .pybiscus-control-stack {
-        display: flex;
         flex-direction: column;
-        gap: 1rem;
-        align-items: start;
+        gap: var(--spacing-lg);
     }
-
+    
+    .pybiscus-fieldset-container {
+        flex-direction: column;
+    }
+    
+    .pybiscus-tab-buttons {
+        flex-wrap: wrap;
+        gap: var(--spacing-xs);
+    }
+    
+    .pybiscus-control-container {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
     .pybiscus-button {
-        padding: 0.7rem 1.2rem;
-        font-size: 1rem;
-        font-weight: 600;
-        border: none;
-        border-radius: 8px;
-        cursor: pointer;
-        transition: 
-            background-color 0.3s ease,
-            transform 0.3s ease; /* Add transform animation */
-    }
-
-    /* Animation on clic */
-    .pybiscus-button:active {
-        transform: scale(0.95);
-    }
-
-    .pybiscus-button.check {
-        background-color: #d1e7dd;
-        color: #0f5132;
-    }
-    .pybiscus-button.check:hover {
-        background-color: #bcd0c7;
-    }
-
-    .pybiscus-button.execute {
-        background-color: #cff4fc;
-        color: #055160;
-    }
-    .pybiscus-button.execute:hover {
-        background-color: #b6e5ef;
-    }
-
-    .pybiscus-button.save {
-        background-color: #fde2e2;
-        color: #611a15;
-    }
-    .pybiscus-button.save:hover {
-        background-color: #f7c8c8;
-    }
-
-    .pybiscus-button.load {
-        background-color: #f8d7da;
-        color: #842029;
-    }
-    .pybiscus-button.load:hover {
-        background-color: #f1c0c5;
-    }
-
-    .pybiscus-indicator,
-    .pybiscus-success,
-    .pybiscus-failure {
+        min-height: 44px;
         font-size: 0.9rem;
     }
+    
+    fieldset {
+        padding: var(--spacing-md);
+    }
+    
+    body > div > fieldset > legend {
+        font-size: var(--font-size-large);
+        padding: var(--spacing-sm) var(--spacing-md);
+    }
+}
 
-    /* management of pybiscus action buttons <<< end <<< */
+@media (max-width: 480px) {
+    .pybiscus-list-contents {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .pybiscus-tab-buttons {
+        flex-direction: column;
+    }
+    
+    .pybiscus-tab-button {
+        width: 100%;
+        justify-content: center;
+    }
+}
