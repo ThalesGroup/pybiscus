@@ -6,6 +6,8 @@ You can find here a short documentation on how to use and adapt Pybiscus. The to
 
 ## Project layout
 
+[Overall Pybiscus plugin architecture](../pybiscus/plugin/pybiscus_architecture.html)
+
 Here are the main directories of the Pybiscus project:
 
 * the **pybiscus** directory - the sources of the Pybiscus project :

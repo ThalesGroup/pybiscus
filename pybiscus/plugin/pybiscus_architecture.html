@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Architecture Pybiscus/Flower Federated Learning</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+        }
+
+        .title {
+            text-align: center;
+            font-size: 2.5em;
+            font-weight: bold;
+            color: #2c3e50;
+            margin-bottom: 40px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .architecture {
+            display: flex;
+            flex-direction: column;
+            gap: 40px;
+            align-items: center;
+        }
+
+        .server {
+            background: linear-gradient(145deg, #3498db, #2980b9);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 15px 30px rgba(52, 152, 219, 0.3);
+            width: 100%;
+            max-width: 1200px;
+            color: white;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .server::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, #e74c3c, #f39c12, #2ecc71, #9b59b6);
+        }
+
+        .server-title {
+            text-align: center;
+            font-size: 2em;
+            font-weight: bold;
+            margin-bottom: 30px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .superlink {
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 25px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .superlink-title {
+            font-size: 1.3em;
+            font-weight: bold;
+            text-align: center;
+            margin-bottom: 5px;
+        }
+
+        .superlink-subtitle {
+            text-align: center;
+            opacity: 0.9;
+            font-style: italic;
+        }
+
+        .server-app {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 25px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .plugins-row {
+            display: flex;
+            justify-content: space-between;
+            gap: 20px;
+            margin-bottom: 25px;
+            flex-wrap: wrap;
+        }
+
+        .plugin-box {
+            background: linear-gradient(145deg, #e74c3c, #c0392b);
+            border-radius: 12px;
+            padding: 20px;
+            flex: 1;
+            min-width: 200px;
+            text-align: center;
+            box-shadow: 0 8px 16px rgba(231, 76, 60, 0.3);
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .plugin-box:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 12px 24px rgba(231, 76, 60, 0.4);
+        }
+
+        .plugin-box.metrics {
+            background: linear-gradient(145deg, #2ecc71, #27ae60);
+            box-shadow: 0 8px 16px rgba(46, 204, 113, 0.3);
+        }
+
+        .plugin-box.metrics:hover {
+            box-shadow: 0 12px 24px rgba(46, 204, 113, 0.4);
+        }
+
+        .plugin-box.decorator {
+            background: linear-gradient(145deg, #f39c12, #e67e22);
+            box-shadow: 0 8px 16px rgba(243, 156, 18, 0.3);
+        }
+
+        .plugin-box.decorator:hover {
+            box-shadow: 0 12px 24px rgba(243, 156, 18, 0.4);
+        }
+
+        .plugin-box.aggregator {
+            background: linear-gradient(145deg, #9b59b6, #8e44ad);
+            box-shadow: 0 8px 16px rgba(155, 89, 182, 0.3);
+        }
+
+        .plugin-box.aggregator:hover {
+            box-shadow: 0 12px 24px rgba(155, 89, 182, 0.4);
+        }
+
+        .plugin-box.logger {
+            background: linear-gradient(145deg, #34495e, #2c3e50);
+            box-shadow: 0 8px 16px rgba(52, 73, 94, 0.3);
+        }
+
+        .plugin-box.logger:hover {
+            box-shadow: 0 12px 24px rgba(52, 73, 94, 0.4);
+        }
+
+        .plugin-title {
+            font-weight: bold;
+            font-size: 1.1em;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .aggregation-box {
+            background: linear-gradient(145deg, #16a085, #1abc9c);
+            border-radius: 12px;
+            padding: 25px;
+            margin: 20px 0;
+            box-shadow: 0 10px 20px rgba(22, 160, 133, 0.3);
+        }
+
+        .aggregation-title {
+            font-size: 1.4em;
+            font-weight: bold;
+            text-align: center;
+            margin-bottom: 15px;
+            text-transform: uppercase;
+        }
+
+        .aggregation-list {
+            list-style: none;
+            padding: 0;
+        }
+
+        .aggregation-list li {
+            padding: 8px 0;
+            padding-left: 20px;
+            position: relative;
+            font-size: 1.05em;
+        }
+
+        .aggregation-list li::before {
+            content: '•';
+            position: absolute;
+            left: 0;
+            color: #f1c40f;
+            font-size: 1.5em;
+            top: 2px;
+        }
+
+        .connection-arrow {
+            width: 4px;
+            height: 60px;
+            background: linear-gradient(180deg, #3498db, #2ecc71);
+            margin: 0 auto;
+            border-radius: 2px;
+            position: relative;
+        }
+
+        .connection-arrow::after {
+            content: '';
+            position: absolute;
+            bottom: -10px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 0;
+            height: 0;
+            border-left: 10px solid transparent;
+            border-right: 10px solid transparent;
+            border-top: 15px solid #2ecc71;
+        }
+
+        .clients-container {
+            display: flex;
+            justify-content: space-around;
+            gap: 30px;
+            flex-wrap: wrap;
+            width: 100%;
+            max-width: 1200px;
+        }
+
+        .client {
+            background: linear-gradient(145deg, #95a5a6, #7f8c8d);
+            border-radius: 15px;
+            padding: 25px;
+            flex: 1;
+            min-width: 280px;
+            max-width: 350px;
+            box-shadow: 0 15px 30px rgba(127, 140, 141, 0.3);
+            color: white;
+            transition: all 0.3s ease;
+        }
+
+        .client:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 20px 40px rgba(127, 140, 141, 0.4);
+        }
+
+        .client-title {
+            text-align: center;
+            font-size: 1.4em;
+            font-weight: bold;
+            margin-bottom: 20px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .client-component {
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 15px;
+            text-align: center;
+            backdrop-filter: blur(5px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            transition: all 0.3s ease;
+        }
+
+        .client-component:hover {
+            background: rgba(255, 255, 255, 0.25);
+            transform: scale(1.02);
+        }
+
+        .client-component-title {
+            font-weight: bold;
+            margin-bottom: 5px;
+            font-size: 1.1em;
+        }
+
+        .data-flow {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .flow-arrow {
+            width: 2px;
+            height: 20px;
+            background: #f1c40f;
+            border-radius: 1px;
+            position: relative;
+        }
+
+        .flow-arrow::after {
+            content: '';
+            position: absolute;
+            bottom: -5px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 0;
+            height: 0;
+            border-left: 5px solid transparent;
+            border-right: 5px solid transparent;
+            border-top: 8px solid #f1c40f;
+        }
+
+        .task-label {
+            text-align: center;
+            font-style: italic;
+            color: #2c3e50;
+            margin: 20px 0;
+            font-size: 1.1em;
+            font-weight: 500;
+        }
+
+        @media (max-width: 768px) {
+            .plugins-row {
+                flex-direction: column;
+            }
+            
+            .clients-container {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            .title {
+                font-size: 2em;
+            }
+            
+            .server-title {
+                font-size: 1.5em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="title">PYBISCUS/FLOWER FEDERATED LEARNING ARCHITECTURE</h1>
+        
+        <div class="architecture">
+            <!-- SERVER -->
+            <div class="server">
+                <div class="server-title">SERVER</div>
+                
+                <!-- SuperLink -->
+                <div class="superlink">
+                    <div class="superlink-title">SuperLink</div>
+                    <div class="superlink-subtitle">(Network Communication)</div>
+                </div>
+                
+                <!-- ServerApp -->
+                <div class="server-app">
+                    <!-- Top row plugins -->
+                    <div class="plugins-row">
+                        <div class="plugin-box">
+                            <div class="plugin-title">Strategy</div>
+                            <div class="plugin-title">Plugins</div>
+                        </div>
+                        <div class="plugin-box metrics">
+                            <div class="plugin-title">MetricsLogger</div>
+                            <div class="plugin-title">Plugins</div>
+                        </div>
+                    </div>
+                    
+                    <!-- Second row plugins -->
+                    <div class="plugins-row">
+                        <div class="plugin-box decorator">
+                            <div class="plugin-title">StrategyDecorator</div>
+                            <div class="plugin-title">Plugins</div>
+                        </div>
+                        <div class="plugin-box aggregator">
+                            <div class="plugin-title">FlowerFitResults</div>
+                            <div class="plugin-title">Aggregator Plugins</div>
+                        </div>
+                    </div>
+                    
+                    <!-- Aggregation -->
+                    <div class="aggregation-box">
+                        <div class="aggregation-title">Aggregation & Coordination</div>
+                        <ul class="aggregation-list">
+                            <li>Client selection</li>
+                            <li>Model aggregation (decorated strategies)</li>
+                            <li>Fit results aggregation (custom aggregators)</li>
+                            <li>Metrics collection and logging</li>
+                        </ul>
+                    </div>
+                    
+                    <!-- Logger Plugin -->
+                    <div class="plugins-row">
+                        <div class="plugin-box logger" style="margin: 0 auto; max-width: 300px;">
+                            <div class="plugin-title">Logger</div>
+                            <div class="plugin-title">Plugins</div>
+                            <div style="margin-top: 10px; font-size: 0.9em;">
+                                <div>• Rich output</div>
+                                <div>• Webhook calls</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Connection Arrow -->
+            <div class="connection-arrow"></div>
+            <div class="task-label">Task Instructions & Model Updates</div>
+            
+            <!-- CLIENTS -->
+            <div class="clients-container">
+                <div class="client">
+                    <div class="client-title">CLIENT 1</div>
+                    <div class="data-flow">
+                        <div class="client-component">
+                            <div class="client-component-title">SuperNode</div>
+                            <div>(Network)</div>
+                        </div>
+                        <div class="flow-arrow"></div>
+                        <div class="client-component">
+                            <div class="client-component-title">ClientApp</div>
+                        </div>
+                        <div class="flow-arrow"></div>
+                        <div class="client-component">
+                            <div class="client-component-title">Client</div>
+                            <div class="client-component-title">Plugin</div>
+                        </div>
+                        <div class="flow-arrow"></div>
+                        <div class="client-component">
+                            <div class="client-component-title">Data</div>
+                            <div class="client-component-title">Plugin</div>
+                        </div>
+                        <div class="flow-arrow"></div>
+                        <div class="client-component">
+                            <div class="client-component-title">Model</div>
+                            <div class="client-component-title">Plugin</div>
+                        </div>
+                        <div class="flow-arrow"></div>
+                        <div class="client-component">
+                            <div class="client-component-title">Local</div>
+                            <div class="client-component-title">Train & Eval</div>
+                        </div>
+                    </div>
+                    <div style="text-align: center; margin-top: 15px; font-style: italic;">
+                        Local Data
+                    </div>
+                </div>
+                
+                <div class="client">
+                    <div class="client-title">CLIENT 2</div>
+                    <div class="data-flow">
+                        <div class="client-component">
+                            <div class="client-component-title">SuperNode</div>
+                            <div>(Network)</div>
+                        </div>
+                        <div class="flow-arrow"></div>
+                        <div class="client-component">
+                            <div class="client-component-title">ClientApp</div>
+                        </div>
+                        <div class="flow-arrow"></div>
+                        <div class="client-component">
+                            <div class="client-component-title">Client</div>
+                            <div class="client-component-title">Plugin</div>
+                        </div>
+                        <div class="flow-arrow"></div>
+                        <div class="client-component">
+                            <div class="client-component-title">Data</div>
+                            <div class="client-component-title">Plugin</div>
+                        </div>
+                        <div class="flow-arrow"></div>
+                        <div class="client-component">
+                            <div class="client-component-title">Model</div>
+                            <div class="client-component-title">Plugin</div>
+                        </div>
+                        <div class="flow-arrow"></div>
+                        <div class="client-component">
+                            <div class="client-component-title">Local</div>
+                            <div class="client-component-title">Train & Eval</div>
+                        </div>
+                    </div>
+                    <div style="text-align: center; margin-top: 15px; font-style: italic;">
+                        Local Data
+                    </div>
+                </div>
+                
+                <div class="client">
+                    <div class="client-title">CLIENT N</div>
+                    <div class="data-flow">
+                        <div class="client-component">
+                            <div class="client-component-title">SuperNode</div>
+                            <div>(Network)</div>
+                        </div>
+                        <div class="flow-arrow"></div>
+                        <div class="client-component">
+                            <div class="client-component-title">ClientApp</div>
+                        </div>
+                        <div class="flow-arrow"></div>
+                        <div class="client-component">
+                            <div class="client-component-title">Client</div>
+                            <div class="client-component-title">Plugin</div>
+                        </div>
+                        <div class="flow-arrow"></div>
+                        <div class="client-component">
+                            <div class="client-component-title">Data</div>
+                            <div class="client-component-title">Plugin</div>
+                        </div>
+                        <div class="flow-arrow"></div>
+                        <div class="client-component">
+                            <div class="client-component-title">Model</div>
+                            <div class="client-component-title">Plugin</div>
+                        </div>
+                        <div class="flow-arrow"></div>
+                        <div class="client-component">
+                            <div class="client-component-title">Local</div>
+                            <div class="client-component-title">Train & Eval</div>
+                        </div>
+                    </div>
+                    <div style="text-align: center; margin-top: 15px; font-style: italic;">
+                        Local Data
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
