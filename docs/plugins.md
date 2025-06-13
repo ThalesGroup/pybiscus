@@ -1,6 +1,6 @@
 # Plugins information
 
-[Overall Pybiscus plugin architecture](../pybiscus/plugin/pybiscus_architecture.html)
+![Overall Pybiscus plugin architecture](images/pybiscus_architecture.jpeg)
 
 Their source code can in several locations according to their type: 
 - in a specific package pybiscus source tree (for those of general interest)

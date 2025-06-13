@@ -4,9 +4,9 @@
 
 You can find here a short documentation on how to use and adapt Pybiscus. The tool is aimed at being modular and as simple as possible. [getting started](getting_started.md).
 
-## Project layout
+![Overall Pybiscus plugin architecture](images/pybiscus_architecture.jpeg)
 
-[Overall Pybiscus plugin architecture](../pybiscus/plugin/pybiscus_architecture.html)
+## Project layout
 
 Here are the main directories of the Pybiscus project:
 
