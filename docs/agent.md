@@ -8,6 +8,9 @@ source ./extend_path.sh
 
 Lightweight client-based configuration: Server and client setup can now be performed using a local webapp. On each participating site, one simply launches pybiscus-agent and accesses the local web interface to configure and start federated learning participants.
 
+In any case, you can export the yaml configuration file by pressing the <span style="color: orange;">💾 Save Config</span> button in order to use it in CLI mode, or for a new GUI session with the <span style="color: red;">🔄 Load Config</span> button _(not yet implemented)_.
+
+
 launch the server agent :
 
 ```bash

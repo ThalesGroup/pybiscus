@@ -5,6 +5,8 @@ and connect with a browser to its services to produce them at URLs :
 - http://localhost:5000/server/config 
 - http://localhost:5000/client/config
 
+More info on the documention of [agent](agent.md) or [session](session.md)
+
 # Details about config files
 
 Here are a few hints about how to use and customize the config files (server, client).

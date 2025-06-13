@@ -23,12 +23,13 @@ This all-in-one command creates a virtual environment, downloads and installs th
 
 ### Pre-commit
 
-**Pre-commit** allows for ensuring that formatting and linting rules are conformed at each new commit, merge and the like. No need then to call Ruff or Black yourself, just let pre-commit do that for you! You can find more informations here https://pre-commit.com
+**Note: deprecated* as we switched to uv*
 
-Once installed, do
-```bash
-poetry run pre-commit install
-```
+
+~~**Pre-commit** allows for ensuring that formatting and linting rules are conformed at each new commit, merge and the like. No need then to call Ruff or Black yourself, just let pre-commit do that for you! You can find more informations here~~ https://pre-commit.com
+
+~~Once installed, do~~
+~~poetry run pre-commit install~~
 
 ### Linters
 
@@ -44,4 +45,14 @@ We suggest to create a directory `experiments` to hold checkpoints and other art
 
 ### Print statements
 
-Please use `console.log` instead of print! The Rich Console is really better at this.
+Please use `logm.console.log` instead of print !
+
+```python
+import pybiscus.core.pybiscus_logger as logm
+
+logm.console.log(config)
+```
+
+It will use a configurable logger. By default, the Rich Console which is really far better at this in CLI mode.
+However, it can be configured to support multiplexing, notably enabling output to be sent to a supervision webhook for GUI mode
+
