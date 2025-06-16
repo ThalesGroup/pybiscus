@@ -2,6 +2,12 @@
 
 Here are a few guides to update Pybiscus with new datasets, and models, and such.
 
+# How to add models in Pybiscus
+
+For a comprehensive step-by-step guide to creating both models and data providers for PyBiscus, see [PyBiscus Integration Guide](pybiscus_model_guide.md).
+
+This chapter covers the specific implementation details for model registration...
+
 ## Pybiscus plugins
 
 At launch, pybiscus looks for the file defined in environment variable PYBISCUS_PLUGIN_CONF_PATH

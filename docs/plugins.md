@@ -1,5 +1,14 @@
 # Plugins information
 
+# Plugin Development
+
+## Model and Data Provider Development
+
+For detailed instructions on creating custom models and data providers, refer to the [PyBiscus Integration Guide](pybiscus_model_guide.md).
+
+This document covers plugin directory structure and registration mechanisms...
+
+
 ![Overall Pybiscus plugin architecture](images/pybiscus_architecture.jpeg)
 
 Their source code can be located in several locations according to their type: 
