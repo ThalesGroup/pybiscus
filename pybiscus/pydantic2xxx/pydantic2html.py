@@ -96,7 +96,7 @@ def is_optional(tp):       return is_optional_type(unwrap_annotated(tp))
 
 log_htmlgen = False
 
-def generate_field_html(field_name: str, field_type, field_required: bool, field_default, field_description, inFieldSet: bool, prefix: str, ) -> str:
+def generate_field_html(field_name: str, field_type, field_default, field_description, inFieldSet: bool, prefix: str, ) -> str:
 
     if log_htmlgen:
         print( f"generate_field_html({field_name})" )
@@ -105,7 +105,6 @@ def generate_field_html(field_name: str, field_type, field_required: bool, field
 
     opt_title = '' if (field_description is None or field_description is PydanticUndefined) else f' title="{html_module.escape(field_description)}" '
     opt_value = '' if field_default     is PydanticUndefined else f' value="{field_default}" '
-    opt_required = "required" if field_required else ""
 
     prefixed_name = prefix+field_name
     if prefixed_name.endswith("."):
@@ -116,15 +115,15 @@ def generate_field_html(field_name: str, field_type, field_required: bool, field
     if field_type is str:
         opt_value = '' if (field_default is PydanticUndefined or field_default is None ) else f' value="{html_module.escape(field_default)}" '
         field_html += html_label( field_name, True )
-        field_html += f'  <input type="text" {opt_title} {opt_value} placeholder="string" {opt_required} {pybiscus_marker}>\n'
+        field_html += f'  <input type="text" {opt_title} {opt_value} placeholder="string" {pybiscus_marker}>\n'
 
     elif field_type is int:
         field_html += html_label( field_name, True )
-        field_html += f'  <input type="number" {opt_title} {opt_value} placeholder="integer" {opt_required} {pybiscus_marker}>\n'
+        field_html += f'  <input type="number" {opt_title} {opt_value} placeholder="integer" {pybiscus_marker}>\n'
 
     elif field_type is float:
         field_html += html_label( field_name, True )
-        field_html += f'  <input type="number" {opt_title} {opt_value} placeholder="float" {opt_required} step="0.001" {pybiscus_marker}>\n'
+        field_html += f'  <input type="number" {opt_title} {opt_value} placeholder="float" step="0.001" {pybiscus_marker}>\n'
 
     elif field_type is bool:
         opt_checked = "checked" if True == field_default else ""
@@ -192,7 +191,6 @@ def generate_field_html(field_name: str, field_type, field_required: bool, field
                     raw( generate_field_html(
                                     field_name        = "#", 
                                     field_type        = list_type, 
-                                    field_required    = False, 
                                     field_default     = None, 
                                     field_description = PydanticUndefined,
                                     inFieldSet        = True,
@@ -254,7 +252,6 @@ def generate_field_html(field_name: str, field_type, field_required: bool, field
                     key_html = generate_field_html(
                         field_name="", 
                         field_type=the_dict_key_type, 
-                        field_required=True, 
                         field_default=None, 
                         field_description=PydanticUndefined,
                         inFieldSet=True,
@@ -272,7 +269,6 @@ def generate_field_html(field_name: str, field_type, field_required: bool, field
                     value_html = generate_field_html(
                         field_name="@", 
                         field_type=the_dict_value_type, 
-                        field_required=False, 
                         field_default=None, 
                         field_description=PydanticUndefined,
                         inFieldSet=True,
@@ -483,7 +479,6 @@ def generate_field_html(field_name: str, field_type, field_required: bool, field
                 field_html += generate_field_html(
                                 field_name        = "", 
                                 field_type        = sub_type, 
-                                field_required    = False, 
                                 field_default     = sub_field_default, 
                                 field_description = PydanticUndefined,
                                 inFieldSet        = False,
@@ -519,7 +514,6 @@ def generate_field_html(field_name: str, field_type, field_required: bool, field
                     field_html += generate_field_html(
                                     field_name        = "", 
                                     field_type        = sub_type, 
-                                    field_required    = False, 
                                     field_default     = sub_field_default, 
                                     field_description = PydanticUndefined,
                                     inFieldSet        = False,
@@ -607,7 +601,6 @@ def generate_model_html(model: BaseModel, inFieldSet: bool, prefix: str, model_c
         model_html += generate_field_html(
                                     field_name         = field_name, 
                                     field_type         = field_type,
-                                    field_required     = field_info.is_required(), 
                                     field_default      = field_info.default, 
                                     field_description  = get_basemodel_attribute_description(model,field_name),
                                     inFieldSet         = True,
@@ -713,6 +706,5 @@ def generate_field_html_by_name():
     inFieldSet: bool         = False
     prefix: str              = "prefix"
     field_is_annotated: bool = False
-    field_required           = False
 
     return generate_model_html(field_type, inFieldSet=inFieldSet, prefix=prefix)
