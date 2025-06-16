@@ -163,7 +163,34 @@
 
             if (element.hasAttribute('data-pybiscus-name')) {
 
-                const attributeValue = element.getAttribute('data-pybiscus-name');
+                let attributeValue = element.getAttribute('data-pybiscus-name');
+
+                // Check if this element is inside a pybiscus-dict-value div
+                const dictValueDiv = element.closest('.pybiscus-dict-value');
+                if (dictValueDiv) {
+                    // Find the corresponding key field in the same dict item
+                    const dictContainer = dictValueDiv.closest('.pybiscus-list-content') || 
+                                        dictValueDiv.closest('.pybiscus-dict-item') ||
+                                        dictValueDiv.parentElement;
+                    
+                    if (dictContainer) {
+                        const keyDiv = dictContainer.querySelector('.pybiscus-dict-key');
+                        if (keyDiv) {
+                            const keyInput = keyDiv.querySelector('input, select, textarea');
+                            if (keyInput && keyInput.value) {
+                                // Replace the final @ with the key value
+                                attributeValue = attributeValue.replace(/\.@$/, '.' + keyInput.value);
+                            }
+                        }
+                    }
+                }
+
+                // Skip elements inside pybiscus-dict-key divs (they shouldn't generate YAML)
+                const dictKeyDiv = element.closest('.pybiscus-dict-key');
+                if (dictKeyDiv) {
+                    // Don't process this element for YAML generation
+                    return data;
+                }
 
                 if( element.tagName === "INPUT" ) {
                     if( element.type === "checkbox" ) {
@@ -207,7 +234,7 @@
         return data;
     }
 
-
+    
     function selected_option(prefix) {
         const fieldset = document.querySelector(`.pybiscus-fieldset-container[data-pybiscus-prefix="${prefix}"]`);
         if (!fieldset) return null;

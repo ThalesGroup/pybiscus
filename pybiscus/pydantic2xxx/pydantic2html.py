@@ -80,7 +80,7 @@ def is_union_type(tp):     return getattr(tp, '__origin__', None) is Union
 def is_literal_type(tp):   return getattr(tp, '__origin__', None) is Literal
 def is_enum_type(tp):      return inspect.isclass(tp) and issubclass(tp, Enum)
 def is_list_type(tp):      return getattr(tp, '__origin__', None) in (list, List)
-def is_dict_type(tp):      return getattr(tp, '__origin__', None) in (dict, Dict)
+def is_dict_type(tp):      return (getattr(tp, '__origin__', None) in (dict, Dict)) or (tp is dict)      
 def is_none_type(tp):      return inspect.isclass(tp) and tp is type(None)
 def is_annotated_type(tp): return get_origin(tp) is Annotated
 def is_annotated_type_with_hints(tp): return is_annotated_type(get_type_with_hints(tp))
@@ -205,7 +205,28 @@ def generate_field_html(field_name: str, field_type, field_required: bool, field
 
         # ### dict ###
 
-        the_dict_key_type, the_dict_value_type = get_args(field_type)
+        if log_htmlgen:
+            print(f"DEBUG DICT: {field_name} -> {field_type}")
+            print(f"  Args: {get_args(field_type)}")
+            print(f"  Default: {field_default}")
+
+        dict_args = get_args(field_type)
+
+        # Handle missing type parameters - default to Dict[str, str]
+        if len(dict_args) == 0:
+            if log_htmlgen:
+                print(f"  No type args found, defaulting to Dict[str, str]")
+            the_dict_key_type = str
+            the_dict_value_type = str
+        elif len(dict_args) == 2:
+            the_dict_key_type, the_dict_value_type = dict_args
+            if log_htmlgen:
+                print(f"  Args: key={the_dict_key_type}, value={the_dict_value_type}")
+        else:
+            if log_htmlgen:
+                print(f"WARNING: Unexpected dict args count: {len(dict_args)}, defaulting to Dict[str, str]")
+            the_dict_key_type = str
+            the_dict_value_type = str
 
         # handle annotated types
         if get_origin(the_dict_key_type) is Annotated:
@@ -213,74 +234,67 @@ def generate_field_html(field_name: str, field_type, field_required: bool, field
         if get_origin(the_dict_value_type) is Annotated:
             the_dict_value_type = get_args(the_dict_value_type)[0]
 
-        class the_dict_type(BaseModel):
-            # TODO: add an alias ?
-            key: the_dict_key_type # pyright: ignore[reportInvalidTypeForm]
-            value: the_dict_value_type # pyright: ignore[reportInvalidTypeForm]
-            model_config = ConfigDict(extra="forbid")
-
-        dict_fieldset = fieldset( cls='pybiscus-dict-fs' )
+        dict_fieldset = fieldset( cls='pybiscus-list-fs' )
 
         with dict_fieldset:
-
+                    
             with legend():
                 label(field_name, cls="pybiscus-config" )
-                label( "➕🔑📖", cls='pybiscus-dict-generator' )
+                label( "➕🔑📖", cls='pybiscus-list-generator' )
 
-            my_div = div( cls='pybiscus-dict' )
+            my_div = div( cls='pybiscus-list' )
 
             with my_div:
 
-                div( cls='pybiscus-dict-contents' )
+                div( cls='pybiscus-list-contents' )
 
-                with div( cls='pybiscus-dict-template', style="display: block;", **{'data-pybiscus-status': 'ignored'} ):
+                with div( cls='pybiscus-list-template', style="display: none;", **{'data-pybiscus-status': 'ignored'} ):
 
-                    raw( generate_field_html(
-                                        field_name        = "#", 
-                                        field_type        = the_dict_type, 
-                                        field_required    = False, 
-                                        field_default     = None, 
-                                        field_description = PydanticUndefined,
-                                        inFieldSet        = False,
-                                        prefix            = f"{prefix}{field_name}.",
-                                        ) )
+                    # Key field - no .pybiscus-field class, special handling
+                    key_html = generate_field_html(
+                        field_name="", 
+                        field_type=the_dict_key_type, 
+                        field_required=True, 
+                        field_default=None, 
+                        field_description=PydanticUndefined,
+                        inFieldSet=True,
+                        prefix=f"{prefix}{field_name}.",
+                    )
+                    
+                    # Remove .pybiscus-field from key and add special class
+                    # TODO: to harden
+                    key_html_modified = key_html.replace(
+                        '<div class="pybiscus-field">',
+                        '<div class="pybiscus-dict-key">'
+                    )
+
+                    # Value field - keep .pybiscus-field but add special class for dynamic naming
+                    value_html = generate_field_html(
+                        field_name="@", 
+                        field_type=the_dict_value_type, 
+                        field_required=False, 
+                        field_default=None, 
+                        field_description=PydanticUndefined,
+                        inFieldSet=True,
+                        prefix=f"{prefix}{field_name}.",
+                    )
+                    
+                    # Add special class to value field for dynamic data-pybiscus-name handling
+                    # TODO: to harden
+                    value_html_modified = value_html.replace(
+                        '<div class="pybiscus-field">',
+                        '<div class="pybiscus-field pybiscus-dict-value">'
+                    )
+                
+                    raw(key_html_modified + value_html_modified)
 
         field_html +=  dict_fieldset.render()
-        
-        # key_type, value_type = field_type.__args__
-        # field_html += html_label( field_name, True )
-        
-        # if field_default is None or field_default is PydanticUndefined:
-        #     items = []
-        # else:
-        #     items = list(field_default.items())
-
-        # for index in range(1):
-
-        #     if len(items) > index:
-        #         key, value = items[index]
-        #         opt_key   = f' value="{key}" '
-        #         opt_value = f' value="{value}" '
-        #     else:
-        #         opt_key   = ''
-        #         opt_value = ''
-
-        #     field_html += html_label( "key" )
-        #     field_html += f'  <input type="text" id="{field_name}_key_{index}" name="{field_name}_key_{index}" placeholder="key_{index}" {opt_key}>\n'
-        #     field_html += html_label( "value" )
-        #     field_html += f'  <input type="text" id="{field_name}_val_{index}" name="{field_name}_val_{index}" placeholder="value_{index}" {opt_value}>\n'
 
     elif is_literal_type(field_type):
 
         # ### Literal ###
         field_html += html_label( field_name, True )
         field_html += f'<input type="text" value="{field_type.__args__[0]}" {pybiscus_marker} readonly>\n'
-
-    # else:
-
-    #     # ### Type not handled ! ###
-    #     field_html += label( field_name ).render()
-    #     field_html += label( f'Field Type not handled !!! {field_type}' ).render()
 
     elif is_sub_model(field_type):
 
@@ -518,12 +532,24 @@ def generate_field_html(field_name: str, field_type, field_required: bool, field
             field_html += '</fieldset>\n'
 
         else:
+
+            if log_htmlgen:
+                print(f"DEBUG TYPE CHECK for {field_name}:")
+                print(f"  field_type: {field_type}")
+                print(f"  type(field_type): {type(field_type)}")
+                print(f"  get_origin(field_type): {get_origin(field_type)}")
+                print(f"  is_dict_type result: {is_dict_type(field_type)}")
+                print(f"  field_type.__origin__ if hasattr: {getattr(field_type, '__origin__', 'NO_ORIGIN')}")
+            
             field_html += label( field_name ).render()
             field_html += label( f'[{type(field_type).__qualname__}]:{(field_type).__qualname__}]' ).render()
 
-    field_html = f'<div class="pybiscus-field">\n{field_html}</div>\n'
+    # special case : a field that is a dict key is not a pybiscus-field
+    # TODO: to be fixed
+    if field_name != "🔑":
+        field_html = f'<div class="pybiscus-field">\n{field_html}</div>\n'
 
-    # # special case : a field with empty_configuration name is hidden
+    # special case : a field with empty_configuration name is hidden
     if field_name == "empty_configuration":
         field_html = f"""⚙️🈳 empty configuration 
     <div style="display: none;">
