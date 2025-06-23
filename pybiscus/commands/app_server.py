@@ -294,7 +294,7 @@ def launch_config(
 
 
     # optional clients config logging
-    # TODO: manage dynamically clients config (HTTP put)
+    # manage statically clients config (path defined in server config: legacy CLI mode)
     if conf.server_run.client_configs is not None:
         for client_conf in conf.server_run.client_configs:
             logm.console.log(client_conf)
@@ -304,6 +304,21 @@ def launch_config(
             ensure_file_dir_exists(clientconfig_path)
             with open(clientconfig_path, "w") as file:
                 OmegaConf.save(config=_conf, f=file)
+
+    # manage dynamically clients config (agent mode )
+    # HTTP POSTed files are stored in ./experiments/config_clients/client_name.yml
+    import shutil
+
+    # clients config directory is moved from well-known path 
+    # (as the server agent does not use its yaml conf file)
+    # into reporting_path
+    # from pathlib import Path
+
+    clients_config_dir = Path("./experiments/config_clients")
+
+    if clients_config_dir.exists() and clients_config_dir.is_dir():
+        logm.console.log(f"[pybiscus] save clients config 💾🖥️⚙️ as : {reporting_path / "config_clients"}")
+        shutil.move(clients_config_dir, reporting_path)
 
 if __name__ == "__main__":
     app()

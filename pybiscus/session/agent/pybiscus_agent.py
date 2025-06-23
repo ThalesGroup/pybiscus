@@ -13,6 +13,7 @@ import subprocess
 
 import urllib
 
+from pybiscus.commands.app_server import ensure_file_dir_exists
 from pybiscus.pydantic2xxx.pydantic2html import generate_field_html_by_name, generate_model_page
 from pybiscus.session.agent.ConfigSession import make_session_model
 from pybiscus.session.agent.tuples2yaml import parse_tuples_to_yaml_string
@@ -270,7 +271,12 @@ def server():
     """run in server mode using the uploaded configuration"""
 
     try:
+        # supress storage path as it can be an old one
+        import shutil
+        shutil.rmtree("./experiments/config_clients", ignore_errors=True)
+
         return interpretConfigurationFile( "server", uploaded_file_path )
+    
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
@@ -283,7 +289,17 @@ def client():
     """run in client mode using the uploaded configuration"""
 
     try:
-        return interpretConfigurationFile( "client", uploaded_file_path )
+        global session_server_url
+        global session_client_name
+        global uploaded_file_path
+
+        # upload the client configuration yaml file to the server
+        # which is in charge of storing it into the session context
+        server_url = f"{session_server_url}/session/log/client/{session_client_name}/runconfig"
+        send_yaml_file(uploaded_file_path, server_url)
+    
+        return interpretConfigurationFile( "client", str(uploaded_file_path) )
+    
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
@@ -358,6 +374,33 @@ def interpretConfigurationFile( mode: str, file_path: str ):
         return jsonify({"error": str(e)}), 500
 
     return jsonify({mode: "yaml file interpreted successfully"}), 200
+
+
+def send_yaml_file(yaml_file, url, timeout=10):
+
+    import requests
+    from requests.exceptions import RequestException, Timeout
+
+    try:
+        with open(yaml_file, "rb") as f:
+            files = {
+                "file": (f.name, f, "application/x-yaml")
+            }
+
+            response = requests.post(url, files=files, timeout=timeout)
+            response.raise_for_status()
+
+            print("✅ Status:", response.status_code)
+            print("📝 Response:", response.text)
+
+    except FileNotFoundError:
+        print(f"❌ Fichier introuvable : {yaml_file}")
+    except Timeout:
+        print(f"⏱️ Timeout après {timeout} secondes")
+    except RequestException as e:
+        print(f"❌ Erreur HTTP : {e}")
+    except Exception as e:
+        print(f"❗ Erreur inattendue : {e}")
 
 # ..........................................................
 # ............ POST /config/json/to_yaml ...................
@@ -689,6 +732,35 @@ def session_parameters_waiting():
                        action='Server request',
                        explanation='Your client is requesting the server to provide the FL session parameters.',
                        callback=callback_template)
+
+# ..........................................................
+# ... POST /session/log/client/<client_name>/runconfig .....
+# ..........................................................
+
+@rest_server.route("/session/log/client/<client_name>/runconfig", methods=["POST"])
+def log_client_runconfig(client_name: str):
+    """ the client agent front-end after setting its run configuration
+    send it to the server which stores them
+    """
+
+    if "file" not in request.files:
+        return jsonify({"error": "no file sent"}), 400
+
+    file = request.files["file"]
+
+    # check YAML extension
+    if not file.filename.endswith((".yaml", ".yml")):
+        return jsonify({"error": "Bad file format: yaml file required"}), 400
+
+    # define storage path
+    file_path = Path(f"experiments/config_clients/{client_name}.yml")
+
+    # create the directory
+    ensure_file_dir_exists(file_path)
+
+    file.save(file_path)
+
+    return jsonify({"message": "yaml file received", "path": str(file_path)})
 
 # ..........................................................
 # ............. GET /test/html .....

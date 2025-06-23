@@ -4,6 +4,14 @@ const check_button = document.getElementById('check-config-button');
 // add an button event listener
 check_button.addEventListener('click', function() {
 
+    const execute_indicatorDiv = document.getElementById('execute-indicator');
+    const execute_successResultDiv = document.getElementById('execute-success-result');
+    const execute_failureResultDiv = document.getElementById('execute-failure-result');
+
+    execute_indicatorDiv.style.display = 'none';
+    execute_successResultDiv.style.display = 'none';
+    execute_failureResultDiv.style.display = 'none';
+
     const indicatorDiv = document.getElementById('check-indicator');
     const successResultDiv = document.getElementById('check-success-result');
     const failureResultDiv = document.getElementById('check-failure-result');
@@ -60,6 +68,14 @@ const execute_button = document.getElementById('execute-button');
 
 // add an button event listener
 execute_button.addEventListener('click', function() {
+
+    const check_indicatorDiv = document.getElementById('check-indicator');
+    const check_successResultDiv = document.getElementById('check-success-result');
+    const check_failureResultDiv = document.getElementById('check-failure-result');
+
+    check_indicatorDiv.style.display = 'none';
+    check_successResultDiv.style.display = 'none';
+    check_failureResultDiv.style.display = 'none';
 
     const indicatorDiv = document.getElementById('execute-indicator');
     const successResultDiv = document.getElementById('execute-success-result');
