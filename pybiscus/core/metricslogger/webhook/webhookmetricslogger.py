@@ -3,8 +3,7 @@ from requests.exceptions import RequestException, Timeout
 
 class WebHookMetricsLogger():
 
-    def __init__(self, root_dir, webhook_url, logger_id):
-        self.log_dir = root_dir
+    def __init__(self, webhook_url, logger_id):
         self.webhook_url = webhook_url
         self.logger_id = logger_id
 

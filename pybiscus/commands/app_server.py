@@ -183,14 +183,31 @@ def launch_config(
 
     conf = check_and_build_server_config(conf_loaded)
 
+    # compute the reporting path
+    if conf.server_run.reporting:
+
+        reporting_path = Path(conf.server_run.reporting.basedir)
+
+        if conf.server_run.reporting.add_timestamp_in_path:
+            from datetime import datetime
+            timestamp = datetime.now().isoformat()
+            reporting_path = reporting_path / timestamp
+
+        ensure_dir_exists(reporting_path)
+
+    else:
+        reporting_path = conf.root_dir
+
+    logm.console.log(f"reporting 💾 path is set to : {reporting_path}")
+
     # load the loggers
     _logger_classes = [ logger_registry()[logger.name](config=logger.config) for logger in conf.server_run.loggers ]
     if len(_logger_classes) > 0:
         logm.console = MultipleLoggerFactory(_logger_classes).get_logger()
 
     # load the metricsloggers
-    _metricslogger_classes = [ metricslogger_registry()[mlogger.name](conf.root_dir,config=mlogger.config) for mlogger in conf.server_compute_context.metrics_loggers ]
-    _metricslogger = MultipleMetricsLoggerFactory(conf.root_dir,_metricslogger_classes).get_metricslogger()
+    _metricslogger_classes = [ metricslogger_registry()[mlogger.name](config=mlogger.config) for mlogger in conf.server_compute_context.metrics_loggers ]
+    _metricslogger = MultipleMetricsLoggerFactory(_metricslogger_classes).get_metricslogger(reporting_path)
 
     fabric = Fabric(**conf.server_compute_context.hardware.model_dump(), loggers=[_metricslogger])
     fabric.launch()
@@ -256,15 +273,6 @@ def launch_config(
 
     # produce reporting
     if conf.server_run.reporting:
-
-        reporting_path = Path(conf.server_run.reporting.basedir)
-
-        if conf.server_run.reporting.add_timestamp_in_path:
-            from datetime import datetime
-            timestamp = datetime.now().isoformat()
-            reporting_path = reporting_path / timestamp
-
-        ensure_dir_exists(reporting_path)
 
         # optional checkpoint save
         if conf.server_run.reporting.save_on_train_end:

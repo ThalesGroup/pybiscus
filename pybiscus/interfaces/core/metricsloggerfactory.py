@@ -45,5 +45,5 @@ print(logger.log_dir)    # logs/my_model/version_0
 """
 class MetricsLoggerFactory:
     
-    def get_metricslogger(self):
+    def get_metricslogger(self,reporting_path):
         pass

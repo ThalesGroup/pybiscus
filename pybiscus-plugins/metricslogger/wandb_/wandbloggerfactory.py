@@ -91,12 +91,10 @@ class ConfigWandbLoggerFactory(BaseModel):
 
 class WandbLoggerFactory(MetricsLoggerFactory):
 
-    def __init__(self, root_dir, conf ):
-
-        self.root_dir = root_dir
+    def __init__(self, conf ):
         self.conf = conf
 
-    def get_metricslogger(self):
+    def get_metricslogger(self,reporting_path):
 
         if wandb.run is not None:
             return wandb.run

@@ -27,11 +27,10 @@ class ConfigWebHookMetricsLoggerFactory(BaseModel):
 
 class WebHookMetricsLoggerFactory(MetricsLoggerFactory):
 
-    def __init__(self, root_dir, config):
+    def __init__(self, config):
         super().__init__()
-        self.root_dir = root_dir
         self.config = config
 
-    def get_metricslogger(self):
+    def get_metricslogger(self,reporting_path):
 
-        return WebHookMetricsLogger(root_dir=self.root_dir,webhook_url=self.config.webhook_url,logger_id=self.config.logger_id)
+        return WebHookMetricsLogger(webhook_url=self.config.webhook_url,logger_id=self.config.logger_id)

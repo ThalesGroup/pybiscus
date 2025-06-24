@@ -6,10 +6,13 @@ from lightning.fabric.loggers import TensorBoardLogger
 import pybiscus.core.pybiscus_logger as logm
 
 class ConfigTensorBoardLoggerFactoryData(BaseModel):
+    """The subdir is relative to the path defined by : 
+server_run.reporting.basedir 
+whose default is $(root_dir)/experiments/date-hour/"""
 
     PYBISCUS_CONFIG: ClassVar[str] = "config"
 
-    subdir: str = "/experiments/tensorboard"
+    subdir: str = "tensorboard"
 
     model_config = ConfigDict(extra="forbid")
 
@@ -31,14 +34,17 @@ class ConfigTensorBoardLoggerFactory(BaseModel):
 
 class TensorBoardLoggerFactory(MetricsLoggerFactory):
 
-    def __init__(self, root_dir, config):
+    def __init__(self, config):
         super().__init__()
-        self.root_dir = root_dir
         self.config = config
 
-    def get_metricslogger(self):
+    def get_metricslogger(self,reporting_path):
 
-        log_dir = self.root_dir + self.config.subdir
-        logm.console.log(f"Allocating TensorBoardLoggerFactory(rootidr={log_dir})")
+        from pybiscus.commands.app_server import ensure_dir_exists
+        from pathlib import Path
 
-        return TensorBoardLogger(root_dir=log_dir )
+        log_dir = Path(reporting_path) / Path(self.config.subdir)
+        ensure_dir_exists(log_dir)
+
+        logm.console.log(f"TensorBoardLogger allocated with 💾 root_dir={str(log_dir)}")
+        return TensorBoardLogger(root_dir=str(log_dir) )

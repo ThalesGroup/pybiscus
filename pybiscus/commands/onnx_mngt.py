@@ -421,14 +421,13 @@ def to_onnx_with_datamodule(model, data_module, onnx_path: Path, configServerOnn
             do_constant_folding=True,  # Optimization
             verbose=False,
         )
-        logm.console.log("[onnx] successfull export")
         return result
         
     except Exception as e:
         logm.console.log(f"[onnx] export failure: {e}")
         raise
 
-
+# This code is currently unused !!! => onnxruntime dependancy is not fulfilled
 def validate_onnx_export(onnx_path: str, model, input_sample: torch.Tensor, tolerance: float = 1e-5):
     """optional validation of ONNX export"""
     try:
