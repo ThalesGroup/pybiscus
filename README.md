@@ -49,7 +49,7 @@ If you are interested in contributing to the Pybiscus project, start by reading 
 
 ## Who uses Pybiscus
 
-Pybiscus is on active development at Thales, both for internal use and on some collaborative projects. One major use is in the Europeean Project [PAROMA-MED](https://paroma-med.eu), dedicated to Federated Learning in the context of medical data distributed among several Hospitals.
+Pybiscus is on active development at Thales, both for internal use and on some collaborative projects. One major use is in the European Project [PAROMA-MED](https://paroma-med.eu), dedicated to Federated Learning in the context of medical data distributed among several Hospitals.
 
 ## License
 

@@ -8,6 +8,9 @@ from omegaconf import OmegaConf
 from pydantic import ValidationError
 from typing import Annotated
 
+from pybiscus.core.logger.filelogger.filelogger import FileLoggerFactory
+from pybiscus.core.logger.richlogger.richloggerfactory import RichLoggerFactory
+from pybiscus.core.metricslogger.file.filemetricslogger import FileMetricsLoggerFactory
 import pybiscus.core.pybiscus_logger as logm
 from pybiscus.core.logger.multiplelogger.multipleloggerfactory import MultipleLoggerFactory
 from pybiscus.core.metricslogger.multiplemetricslogger.multiplemetricsloggerfactory import MultipleMetricsLoggerFactory
@@ -202,11 +205,28 @@ def launch_config(
 
     # load the loggers
     _logger_classes = [ logger_registry()[logger.name](config=logger.config) for logger in conf.server_run.loggers ]
+
+    # additional factory for logging into reporting directory
+    _file_logger_factory = FileLoggerFactory( reporting_path / Path("server_logs.txt") )
+
     if len(_logger_classes) > 0:
-        logm.console = MultipleLoggerFactory(_logger_classes).get_logger()
+        # add this factory to the list
+        _logger_classes.append( _file_logger_factory )
+    else:
+        # default is : log to the console and to reporting directory
+        _logger_classes = [ RichLoggerFactory(), _file_logger_factory ]
+
+    logm.console = MultipleLoggerFactory(_logger_classes).get_logger()
 
     # load the metricsloggers
     _metricslogger_classes = [ metricslogger_registry()[mlogger.name](config=mlogger.config) for mlogger in conf.server_compute_context.metrics_loggers ]
+
+    # additional factory for logging metrics into reporting directory
+    _file_metrics_logger_factory = FileMetricsLoggerFactory( "metrics.txt" )
+
+    # add this factory to the list
+    _metricslogger_classes.append( _file_metrics_logger_factory )
+
     _metricslogger = MultipleMetricsLoggerFactory(_metricslogger_classes).get_metricslogger(reporting_path)
 
     fabric = Fabric(**conf.server_compute_context.hardware.model_dump(), loggers=[_metricslogger])
