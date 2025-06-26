@@ -163,7 +163,7 @@ def launch_config(
     if conf.flower_client.alternate_client_class is None:
         client_factory = FlowerFabricClientFactory(conf,data,model,num_examples)
     else:
-        client_factory = client_registry()[conf.flower_client.alternate_client_class.name](config,data,model,num_examples)
+        client_factory = client_registry()[conf.flower_client.alternate_client_class.name](conf,data,model,num_examples)
     client = client_factory.get_client()
     client.initialize()
 

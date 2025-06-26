@@ -1,4 +1,4 @@
-
+import sys
 import importlib
 import json
 from flask import Flask, jsonify, render_template, request, render_template_string, send_from_directory
@@ -338,7 +338,7 @@ def checkConfigurationFile( mode: str, file_path: str ):
             raise PybiscusInternalException( f"Config file not found : {file_path}" )
 
         if mode == "server" or mode == "client":
-            output = run_typer_command( ["uv", "run", "python", "pybiscus/main.py", mode, "check", file_path ] )
+            output = run_typer_command( ["uv", "run", "pybiscus", mode, "check", file_path ] )
         else:
             raise PybiscusValueException( f"Invalid mode : {mode} (should be server or client)" )
 
@@ -360,7 +360,7 @@ def interpretConfigurationFile( mode: str, file_path: str ):
             raise PybiscusInternalException( f"Config file not found : {file_path}" )
 
         if mode == "server" or mode == "client":
-            output = run_typer_command( ["uv", "run", "python", "pybiscus/main.py", mode, "launch", file_path ] )
+            output = run_typer_command( ["uv", "run", "pybiscus", mode, "launch", file_path ] )
         else:
             raise PybiscusInternalException( f"Invalid mode : {mode} (should be server or client)" )
 
@@ -795,11 +795,14 @@ def test_html():
 
 # ..........................................................    
 
-if __name__ == "__main__":
-
+def main():
+    """Point d'entrée principal pour le serveur REST."""
     if len(sys.argv) > 1:
         portNumber = int(sys.argv[1])
     else:
         portNumber = 5000
 
     rest_server.run(debug=True, host="0.0.0.0", port=portNumber)
+
+if __name__ == "__main__":
+    main()

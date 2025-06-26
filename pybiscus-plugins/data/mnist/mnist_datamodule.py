@@ -28,9 +28,9 @@ class ConfigMnistData(BaseModel):
 
     PYBISCUS_CONFIG: ClassVar[str] = "config"
 
-    dir_train: str = "${root_dir}/datasets/train/"
-    dir_val: str = "${root_dir}/datasets/val/"
-    dir_test: Optional[str] = "${root_dir}/datasets/test/"
+    dir_train: str          = "${root_dir}/datasets/mnist/train/"
+    dir_val: str            = "${root_dir}/datasets/mnist/val/"
+    dir_test: Optional[str] = "${root_dir}/datasets/mnist/test/"
     batch_size: int = 64
     num_workers: int = 2
 

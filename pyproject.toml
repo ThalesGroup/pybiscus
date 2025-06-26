@@ -24,6 +24,11 @@ dependencies = [
     "onnx>=1.18.0",
 ]
 
+[project.scripts]
+pybiscus        = "pybiscus.main:main"
+pybiscus_agent  = "pybiscus.session.agent.pybiscus_agent:main"
+session_manager = "pybiscus.session.manager.start_manager:main"
+
 [build-system]
 requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"

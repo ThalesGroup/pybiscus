@@ -27,14 +27,6 @@ strategy:
   # - path: "./molan"
   #   modules:
   #     - molan.strategy.watermarkingstrategy
-#  - path: "./cypia"
-#    modules:
-#      - cypia.flower.strategy.phe_strategy
-# client:
-#   - path: "./cypia"
-#     modules:
-#       - cypia.flower.client.phe_client
-#       - cypia.flower.client.dp_client
 strategydecorator:
   - path: "./pybiscus-plugins/strategydecorator"
     modules:
