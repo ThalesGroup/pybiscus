@@ -4,7 +4,10 @@ version = "0.6.0"
 description = "A flexible Federated Learning framework"
 readme = "README.md"
 requires-python = ">=3.10"
-#authors = ["Baptiste MORISSE <baptiste.morisse@thalesgroup.com>"]
+authors = [
+    {name = "Baptiste MORISSE", email = "baptiste.morisse@thalesgroup.com"},
+    {name = "Laurent Morel", email = "laurent.morel@thalesgroup.com"},
+]
 dependencies = [
     "einops>=0.8.0",
     "flask-cors>=5.0.1",

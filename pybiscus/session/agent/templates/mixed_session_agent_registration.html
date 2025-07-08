@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pybiscus Client Registration</title>
+    <title>Pybiscus Agent Registration</title>
     <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}" type="image/x-icon">
     <style>
         * {
@@ -109,11 +109,11 @@
         }
 
         .logo {
-            width: 80px;
+            width: 320px;
             height: 80px;
             margin: 0 auto 2rem;
             background: linear-gradient(135deg, #667eea, #764ba2);
-            border-radius: 50%;
+            border-radius: 20px;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -127,7 +127,7 @@
         }
 
         .logo::before {
-            content: "P";
+            content: "Pybiscus Agent Registration";
             color: white;
             font-size: 1.25rem;
             font-weight: bold;
@@ -146,7 +146,7 @@
 
         .subtitle {
             color: #4a5568;
-            font-size: 1rem;
+            font-size: 1.25rem;
             margin-bottom: 1rem;
         }
 
@@ -164,7 +164,7 @@
             letter-spacing: 0.05em;
         }
 
-        input[type="text"], input[type="url"] {
+        input[type="text"], input[type="url"], input[type="number"], select {
             width: 100%;
             padding: 0.875rem 1rem;
             border: 2px solid #e2e8f0;
@@ -174,7 +174,7 @@
             background: white;
         }
 
-        input[type="text"]:focus, input[type="url"]:focus {
+        input[type="text"]:focus, input[type="url"]:focus, input[type="number"]:focus, select:focus {
             outline: none;
             border-color: #667eea;
             box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
@@ -217,6 +217,47 @@
             border: none;
             box-shadow: none;
             transform: none;
+        }
+
+        .geo-location-toggle {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .toggle-btn {
+            padding: 0.5rem 1rem;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            background: white;
+            color: #4a5568;
+            cursor: pointer;
+            font-size: 0.875rem;
+            transition: all 0.3s ease;
+        }
+
+        .toggle-btn.active {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border-color: #667eea;
+        }
+
+        .coordinates-group {
+            display: none;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+
+        .coordinates-group.active {
+            display: grid;
+        }
+
+        .text-location-group {
+            display: block;
+        }
+
+        .text-location-group.hidden {
+            display: none;
         }
 
         .btn {
@@ -300,6 +341,10 @@
             h1 {
                 font-size: 1.5rem;
             }
+
+            .coordinates-group {
+                grid-template-columns: 1fr;
+            }
         }
     </style>
 </head>
@@ -309,37 +354,89 @@
     <div class="container">
         <div class="header">
             <div class="logo"></div>
-            <h1>FL Client Registration</h1>
-            <p class="subtitle">Register a client to the Federated Learning manager</p>
+            <p class="subtitle">to Kukkavalvo 💐 Federated Learning 🌐 manager 👨‍🌾</p>
         </div>
 
         <form id="registrationForm">
-            <div class="form-group">
-                <label for="name">Client Name</label>
-                <input type="text" id="name" name="name" required value="cortaix-labs-01">
-            </div>
 
             <div class="form-group">
-                <label for="clientUrl">Client URL</label>
-                <div class="input-group">
-                    <span class="input-prefix">🌐</span>
-                    <input type="url" id="clientUrl" name="clientUrl" class="input-with-prefix" required 
-                           value="http://localhost:5001">
-                </div>
-            </div>
-
-            <div class="form-group">
-                <label for="managerUrl">Manager URL</label>
+                <label for="managerUrl">👨‍🌾🌐 Manager URL</label>
                 <div class="input-group">
                     <span class="input-prefix">⚙️</span>
                     <input type="url" id="managerUrl" name="managerUrl" class="input-with-prefix" required 
-                           value="http://localhost:5555">
+                           value="{{ config.get('manager_url', 'http://manager.pybiscus.org:5555') }}">
                 </div>
+            </div>
+
+            <div class="form-group">
+                <label for="name">🤖🏷️ Agent Name</label>
+                <input type="text" id="name" name="name" required value="{{ config.get('agent_name', 'cortaix-labs-01') }}">
+            </div>
+
+            <div class="form-group">
+                <label for="baseUrl">🤖🌐 Agent URL</label>
+                <div class="input-group">
+                    <span class="input-prefix">🔗</span>
+                    <input type="url" id="baseUrl" name="baseUrl" class="input-with-prefix" required 
+                        value="{{ config.get('agent_url', 'http://agent.pybiscus.org:5001') }}">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="bouquet">💐🏷️ Bouquet Tags</label>
+                <input type="text" id="bouquet" name="bouquet" required 
+                    value="{{ config.get('bouquet', 'europe-west-cluster') }}">
+            </div>
+
+            <div class="form-group">
+                <label for="location">📍 Location</label>
+                <input type="text" id="location" name="location" required 
+                    value="{{ config.get('location', 'paris-dc-01') }}">
+            </div>
+
+            <div class="form-group">
+                <label>🌐 Geo Location</label>
+                <div class="geo-location-toggle">
+                    <button type="button" class="toggle-btn {% if config.get('geo_location', {}).get('type', 'text') == 'text' %}active{% endif %}" id="textToggle">📝 Text</button>
+                    <button type="button" class="toggle-btn {% if config.get('geo_location', {}).get('type', 'text') == 'coordinates' %}active{% endif %}" id="coordsToggle">🗺️ Coordinates</button>
+                </div>
+                
+                <div class="text-location-group" id="textLocationGroup">
+                    <input type="text" id="geoLocationText" name="geoLocationText" required 
+                        value="{{ config.get('geo_location', {}).get('text', 'Paris, France') }}">
+                </div>
+                
+                <div class="coordinates-group" id="coordinatesGroup">
+                    <div>
+                        <label for="latitude">🌐 Latitude</label>
+                        <input type="number" id="latitude" name="latitude" step="any" 
+                            placeholder="48.8566" value="{{ config.get('geo_location', {}).get('latitude', 48.8566) }}">
+                    </div>
+                    <div>
+                        <label for="longitude">🌐 Longitude</label>
+                        <input type="number" id="longitude" name="longitude" step="any" 
+                            placeholder="2.3522" value="{{ config.get('geo_location', {}).get('longitude', 2.3522) }}">
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="organisation">🏢 Organisation</label>
+                <input type="text" id="organisation" name="organisation" required 
+                    value="{{ config.get('organisation', 'CortaiX Labs') }}">
+            </div>
+
+            <div class="form-group">
+                <label for="role">🎭 Role</label>
+                <select id="role" name="role" required>
+                    <option value="client" {% if config.get('role', 'client') == 'client' %}selected{% endif %}>Client</option>
+                    <option value="server" {% if config.get('role', 'client') == 'server' %}selected{% endif %}>Server</option>
+                </select>
             </div>
 
             <button type="submit" class="btn" id="submitBtn">
                 <span class="spinner" id="spinner"></span>
-                Register Client
+                Register Agent
             </button>
         </form>
 
@@ -350,6 +447,74 @@
     </div>
 
     <script>
+        // Configuration from server
+        const serverConfig = {
+            geoLocationType: "{{ config.get('geo_location', {}).get('type', 'text') }}"
+        };
+        
+        // Geo location toggle functionality
+        let isCoordinatesMode = serverConfig.geoLocationType === 'coordinates';
+
+        document.getElementById('textToggle').addEventListener('click', () => {
+            isCoordinatesMode = false;
+            updateGeoLocationMode();
+        });
+
+        document.getElementById('coordsToggle').addEventListener('click', () => {
+            isCoordinatesMode = true;
+            updateGeoLocationMode();
+        });
+
+        function updateGeoLocationMode() {
+            const textToggle = document.getElementById('textToggle');
+            const coordsToggle = document.getElementById('coordsToggle');
+            const textGroup = document.getElementById('textLocationGroup');
+            const coordsGroup = document.getElementById('coordinatesGroup');
+            const textInput = document.getElementById('geoLocationText');
+            const latInput = document.getElementById('latitude');
+            const lngInput = document.getElementById('longitude');
+
+            if (isCoordinatesMode) {
+                textToggle.classList.remove('active');
+                coordsToggle.classList.add('active');
+                textGroup.classList.add('hidden');
+                coordsGroup.classList.add('active');
+                textInput.removeAttribute('required');
+                latInput.setAttribute('required', 'required');
+                lngInput.setAttribute('required', 'required');
+            } else {
+                textToggle.classList.add('active');
+                coordsToggle.classList.remove('active');
+                textGroup.classList.remove('hidden');
+                coordsGroup.classList.remove('active');
+                textInput.setAttribute('required', 'required');
+                latInput.removeAttribute('required');
+                lngInput.removeAttribute('required');
+            }
+        }
+
+        function getGeoLocationValue(formData) {
+            if (isCoordinatesMode) {
+                const latitude = parseFloat(formData.get('latitude'));
+                const longitude = parseFloat(formData.get('longitude'));
+                
+                if (isNaN(latitude) || isNaN(longitude)) {
+                    throw new Error('Invalid latitude or longitude values');
+                }
+                
+                return {
+                    latitude: latitude,
+                    longitude: longitude
+                };
+            } else {
+                const textValue = formData.get('geoLocationText');
+                if (!textValue || textValue.trim() === '') {
+                    throw new Error('Geo location text cannot be empty');
+                }
+                return textValue.trim();
+            }
+        }
+
         function showResult(success, message) {
             const result = document.getElementById('result');
             const icon = document.getElementById('resultIcon');
@@ -371,17 +536,27 @@
             
             btn.disabled = loading;
             spinner.style.display = loading ? 'inline-block' : 'none';
-            btn.textContent = loading ? ' Registering...' : 'Register Client';
+            btn.textContent = loading ? ' Registering...' : 'Register Agent';
             
             if (loading) {
                 btn.prepend(spinner);
             }
         }
 
-        async function notifyClientNode(name, clientUrl, managerUrl, serverUrl) {
-            const endpoint = `${clientUrl.replace(/\/$/, '')}/session/client/registration`;
+        async function notifyAgentNode(formData, managerUrl, serverUrl) {
+            const agentUrl = formData.get('baseUrl');
+            const endpoint = `${agentUrl.replace(/\/$/, '')}/session/agent/registration`;
+            
+            const geoLocation = getGeoLocationValue(formData);
+            
             const payload = {
-                client_name: name,
+                name: formData.get('name'),
+                agent_url: formData.get('baseUrl'),
+                bouquet: formData.get('bouquet'),
+                location: formData.get('location'),
+                geo_location: geoLocation,
+                organisation: formData.get('organisation'),
+                role: formData.get('role'),
                 manager_url: managerUrl,
                 server_url: serverUrl
             };
@@ -401,14 +576,15 @@
                 }
 
                 const theJson = await response.json();
-                console.log(`📡 Client response:`, theJson);
+                console.log(`📡 Agent response:`, theJson);
 
                 if (theJson.status === "ok") {
-                    console.log(`✅ Client '${name}' acked.`);
-                    return { success: true, message: `Client '${name}' acknowledged successfully` };
+                    const name = formData.get('name');
+                    console.log(`✅ Agent '${name}' acknowledged.`);
+                    return { success: true, message: `Agent '${name}' acknowledged successfully` };
                 } else {
-                    console.log('❌ Client nacked');
-                    return { success: false, message: 'Client did not acknowledge (nacked)' };
+                    console.log('❌ Agent rejected acknowledgment');
+                    return { success: false, message: 'Agent did not acknowledge (rejected)' };
                 }
 
             } catch (error) {
@@ -417,14 +593,20 @@
             }
         }
 
-        async function registerClient(name, clientUrl, managerUrl) {
+        async function registerAgent(formData, managerUrl) {
+            const registrationUrl = `${managerUrl.replace(/\/$/, '')}/session/agent/registration`;
+            
+            const geoLocation = getGeoLocationValue(formData);
+            
             const payload = {
-                name: name,
-                client_url: clientUrl,
-                manager_url: managerUrl
+                name: formData.get('name'),
+                agent_url: formData.get('baseUrl'),
+                bouquet: formData.get('bouquet'),
+                location: formData.get('location'),
+                geo_location: geoLocation,
+                organisation: formData.get('organisation'),
+                role: formData.get('role')
             };
-
-            const registrationUrl = `${managerUrl.replace(/\/$/, '')}/register`;
             
             const response = await fetch(registrationUrl, {
                 method: 'POST',
@@ -433,10 +615,7 @@
                     'Content-Type': 'application/json',
                     'Accept': 'application/json'
                 },
-                body: JSON.stringify({
-                    name: name,
-                    client_url: clientUrl
-                })
+                body: JSON.stringify(payload)
             });
 
             if (!response.ok) {
@@ -451,7 +630,7 @@
             }
 
             const data = await response.json();
-            return [data.message || 'Client registered successfully', data];
+            return data.message || 'Agent registered successfully';
         }
 
         document.getElementById('registrationForm').addEventListener('submit', async (e) => {
@@ -460,21 +639,19 @@
             setLoading(true);
 
             const formData = new FormData(e.target);
-            const name = formData.get('name');
-            const clientUrl = formData.get('clientUrl');
             const managerUrl = formData.get('managerUrl');
+            const agentName = formData.get('name');
 
             try {
-                const [message, payload] = await registerClient(name, clientUrl, managerUrl);
+                const message = await registerAgent(formData, managerUrl);
                 showResult(true, message);
 
-                let serverUrl = payload.server
-                
-                notifyClientNode(name, clientUrl, managerUrl, serverUrl);
+                const encodedUrlManager = encodeURIComponent(managerUrl);
+                const encodedAgentName = encodeURIComponent(agentName);
 
                 setTimeout(() => {
-                    window.location.href = "/session/client/parameters/server_polling";
-                }, 1000); // 1000 ms = 1 s
+                    window.location.href = `/mixedsession/agent/parameters/manager_polling?managerUrl=${encodedUrl}:agentName=${encodedAgentName}`;
+                }, 1000);
 
             } catch (error) {
                 showResult(false, error.message);
@@ -520,6 +697,9 @@
                 // Could suggest format like "cortaix-labs-XX"
             }
         });
+
+        // Initialize the geo location mode
+        updateGeoLocationMode();
     </script>
 </body>
 </html>

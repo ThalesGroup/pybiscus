@@ -1,0 +1,15 @@
+# Agent registration configuration
+manager_url: "http://localhost:5555"
+agent_name: "cortaix-labs-01"
+agent_url: "http://localhost:5001"
+bouquet: "cortaixlabs-cluster"
+location: "palaiseau-dc-01"
+
+geo_location:
+  type: "text"  # "text" or "coordinates"
+  text: "Palaiseau, France"
+  latitude: 48.71439
+  longitude: 2.20278
+
+organisation: "CortaiX Labs"
+role: "client"  # "client" or "server"

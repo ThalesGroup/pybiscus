@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Pybiscus - Connecting</title>
+    <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}" type="image/x-icon">
     <style>
         * {
             margin: 0;
@@ -74,11 +75,11 @@
         }
 
         .logo {
-            width: 80px;
+            width: 160px;
             height: 80px;
             margin: 0 auto 2rem;
             background: linear-gradient(135deg, #667eea, #764ba2);
-            border-radius: 50%;
+            border-radius: 20px;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -92,7 +93,7 @@
         }
 
         .logo::before {
-            content: "P";
+            content: "Pybiscus";
             color: white;
             font-size: 2rem;
             font-weight: bold;

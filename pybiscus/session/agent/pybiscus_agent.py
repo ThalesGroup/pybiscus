@@ -1,7 +1,7 @@
 import sys
 import importlib
 import json
-from flask import Flask, jsonify, render_template, request, render_template_string, send_from_directory
+from flask import Flask, jsonify, render_template, request
 from flask_cors import CORS
 
 from rich import print as rich_print
@@ -12,9 +12,10 @@ import os
 import subprocess
 
 import urllib
+import argparse
 
 from pybiscus.commands.app_server import ensure_file_dir_exists
-from pybiscus.pydantic2xxx.pydantic2html import generate_field_html_by_name, generate_model_page
+from pybiscus.pydantic2xxx.pydantic2html import generate_model_page
 from pybiscus.session.agent.ConfigSession import make_session_model
 from pybiscus.session.agent.tuples2yaml import parse_tuples_to_yaml_string
 from pybiscus.flower_config.config_server import ConfigServer
@@ -795,14 +796,38 @@ def test_html():
 
 # ..........................................................    
 
-def main():
-    """Point d'entrée principal pour le serveur REST."""
-    if len(sys.argv) > 1:
-        portNumber = int(sys.argv[1])
-    else:
-        portNumber = 5000
+def parse_args():
+    """Parse command-line arguments for configuration and port."""
+    parser = argparse.ArgumentParser(description="Start Pybiscus-Agent.")
+    parser.add_argument(
+        '--port',
+        type=int,
+        default=5000,
+        help="Listening port (default: 5000)"
+    )
+    parser.add_argument(
+        '--config',
+        type=str,
+        default=None,
+        help="Path to the YAML configuration file"
+    )
+    return parser.parse_args()
 
-    rest_server.run(debug=True, host="0.0.0.0", port=portNumber)
+def main():
+    """Main entry point for launching the Flask server."""
+    args = parse_args()
+
+    # Store the config path in the Flask app config (accessible via current_app.config)
+    rest_server.config['CONFIG_PATH'] = args.config
+
+    print(f"[INFO] Starting Pybiscus-Agent on port {args.port}")
+
+    if args.config is None:
+        print(f"[INFO] Using no configuration file")
+    else:
+        print(f"[INFO] Using configuration file: {args.config}")
+
+    rest_server.run(debug=True, host='0.0.0.0', port=args.port)
 
 if __name__ == "__main__":
     main()
