@@ -1,6 +1,7 @@
 
 from typing import ClassVar, Literal
 from pydantic import BaseModel, ConfigDict
+from pybiscus.core.metricslogger.tensorboard.filteredtensorboardlogger import create_filtered_tensorboard_logger
 from pybiscus.interfaces.core.metricsloggerfactory import MetricsLoggerFactory
 from lightning.fabric.loggers import TensorBoardLogger
 import pybiscus.core.pybiscus_logger as logm
@@ -47,4 +48,11 @@ class TensorBoardLoggerFactory(MetricsLoggerFactory):
         ensure_dir_exists(log_dir)
 
         logm.console.log(f"TensorBoardLogger allocated with 💾 root_dir={str(log_dir)}")
-        return TensorBoardLogger(root_dir=str(log_dir) )
+
+        # Create original logger
+        original_logger = TensorBoardLogger(root_dir=str(log_dir) )
+        
+        # Wrap with filter
+        filtered_logger = create_filtered_tensorboard_logger(original_logger, verbose=True)
+
+        return filtered_logger
