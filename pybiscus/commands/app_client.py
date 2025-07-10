@@ -12,7 +12,6 @@ from pybiscus.plugin.registries import client_registry, datamodule_registry, mod
 from pybiscus.flower_config.config_client import ConfigClient
 
 from pybiscus.commands.apps_common import load_config
-# from pybiscus.flower_fabric.client.flowerfabricclient.flowerfabricclient import FlowerFabricClient
 
 torch.backends.cudnn.enabled = True
 

@@ -25,3 +25,8 @@ strategydecorator:
   - path: "./pybiscus-plugins/strategydecorator"
     modules:
       - basicstrategydecorator
+      - filewritingdecorator
+client:
+  - path: "./pybiscus-plugins/client"
+    modules:
+      - relayclient

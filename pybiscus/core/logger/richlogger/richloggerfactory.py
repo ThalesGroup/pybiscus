@@ -21,7 +21,7 @@ class ConfigRichLoggerFactory(BaseModel):
 
 class RichLoggerFactory(LoggerFactory):
     
-    def __init__(self, config):
+    def __init__(self, config = ConfigRichLoggerFactoryData() ):
         super().__init__()
         self.config = config
 

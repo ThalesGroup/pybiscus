@@ -13,10 +13,6 @@ class FlowerFabricClientFactory(ClientFactory):
 
     def get_client(self):
 
-        # print(f"@@@@@1 {self.config}")
-        # print(f"@@@@@2 {self.config.client_run}")
-        # print(f"@@@@@3 {self.config.client_run.cid}")
-
         return FlowerFabricClient(
             cid=self.config.client_run.cid,
             model=self.model,

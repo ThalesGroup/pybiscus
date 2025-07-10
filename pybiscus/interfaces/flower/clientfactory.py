@@ -1,5 +1,5 @@
 
 class ClientFactory:
 
-    def get_client():
+    def get_client(self):
         pass

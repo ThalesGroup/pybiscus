@@ -159,8 +159,9 @@ class FabricFedAvgStrategy(fl.server.strategy.FedAvg):
         metrics_aggregated = {}
         if self.fit_metrics_aggregation_fn:
             fit_metrics = [(res.num_examples, res.metrics) for _, res in results]
-            # logm.console.log(f"Fit metrics: {fit_metrics}")
+            logm.console.log(f"Fit metrics: {fit_metrics}")
             for _, res in results:
+                logm.console.log(f"Res metrics: {res.metrics}")
                 for key, value in res.metrics.items():
                     self.fabric.log(
                         f"fit_{key}_{res.metrics['cid']}", value, step=server_round
