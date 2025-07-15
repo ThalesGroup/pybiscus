@@ -1,8 +1,8 @@
 # Agent registration configuration
 manager_url: "http://localhost:5555"
-agent_name: "cortaix-labs-00"
-agent_url: "http://localhost:5000"
-bouquet: "cortaixlabs-cluster"
+agent_name: "relay-cortaixlabs-hq"
+agent_url: "http://localhost:5007"
+bouquet: "paris-cluster"
 location: "palaiseau-dc"
 
 geo_location:
@@ -11,5 +11,6 @@ geo_location:
   latitude: 48.71439
   longitude: 2.20278
 
-organisation: "CortaiX Labs"
-role: "server"  # "client" or "server"
+organisation: "HQ"
+role: "client"  # "client" or "server"
+

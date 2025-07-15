@@ -2,6 +2,7 @@ import argparse
 from flask import Flask, render_template, request, jsonify, render_template_string
 import requests
 from flask_cors import CORS
+from threading import Lock
 
 app = Flask(__name__)
 CORS(app, origins="*")
@@ -26,14 +27,12 @@ def register():
                     "status": "success",
                     "message": f"Client '{name}' already registered.",
                     "server" : server_url,
-                    # "registered_clients": list(registered_clients.keys())
                 })
 
             else:
                 return jsonify({
                     "status": "error",
                     "message": f"Client '{name}' already registered with a different URL.",
-                    # "registered_clients": list(registered_clients.keys())
                 })
 
         registered_clients[name] = client_url
@@ -42,7 +41,6 @@ def register():
             "status": "success",
             "message": f"Client '{name}' registered.",
             "server" : server_url,
-            # "registered_clients": list(registered_clients.keys())
         })
     else:
         return jsonify({"status": "error", "message": "Missing 'name' or 'client_url'"}), 400
@@ -86,14 +84,43 @@ def ping_server():
     except Exception as e:
         return jsonify({"message": f"Error contacting server: {e}"}), 500
 
-# **********************
-# *** Log management ***
-# **********************
+# ************************
+# *** Agent management ***
+# ************************
 
-from threading import Lock
+agent_messages = []  # stored messages list
+agent_lock = Lock()  # lock used to prevent agent logs concurrent access
 
-log_messages = []  # Liste pour stocker les messages
-log_lock = Lock()  # Verrou pour gérer l'accès concurrent aux messages
+@app.route('/webhook/agents', methods=['POST'])
+def receive_agents():
+    data = request.json
+    message = data.get('content', '')
+    source = data.get('source', 'unknown')
+
+    # private section
+    with agent_lock:
+        global agent_messages
+        agent_messages.append({'source': source, 'message': message})
+
+    return jsonify({"status": "success"}), 200
+
+@app.route('/agents', methods=['GET'])
+def get_agents():
+
+    with agent_lock:
+        global agent_messages
+        _agent_messages = agent_messages
+        agent_messages = []
+
+    # return json encoded messages
+    return jsonify(_agent_messages)
+
+# *******************************
+# *** Pybiscus Log management ***
+# *******************************
+
+log_messages = []  # stored messages list
+log_lock = Lock()  # lock used to prevent logs concurrent access
 
 @app.route('/webhook/logs', methods=['POST'])
 def receive_log():
@@ -101,7 +128,7 @@ def receive_log():
     message = data.get('content', '')
     source = data.get('source', 'unknown')
 
-    # Verrouiller l'accès pour éviter les problèmes de concurrence
+    # private section
     with log_lock:
         global log_messages
         log_messages.append({'source': source, 'message': message})
@@ -116,11 +143,15 @@ def get_logs():
         _log_messages = log_messages
         log_messages = []
 
-    # Retourner les messages stockés sous forme de JSON
+    # return json encoded messages
     return jsonify(_log_messages)
 
-metrics_messages = []  # Liste pour stocker les messages
-metrics_lock = Lock()  # Verrou pour gérer l'accès concurrent aux messages
+# ***********************************
+# *** Pybiscus Metrics management ***
+# ***********************************
+
+metrics_messages = []  # stored metrics list
+metrics_lock = Lock()  # lock used to prevent metrics concurrent access
 
 @app.route('/webhook/metrics', methods=['POST'])
 def receive_metrics():
@@ -129,7 +160,7 @@ def receive_metrics():
     source = data.get('source', 'unknown')
     log = { 'source' : source, 'message' : str(metrics) }
 
-    # Verrouiller l'accès pour éviter les problèmes de concurrence
+    # private section
     with metrics_lock:
         global metrics_messages
         metrics_messages.append(log)
@@ -144,9 +175,10 @@ def get_metricss():
         _metrics_messages = metrics_messages
         metrics_messages = []
 
-    # Retourner les messages stockés sous forme de JSON
+    # return json encoded messages
     return jsonify(_metrics_messages)
 
+# **************************
 
 def main():
     global server_url

@@ -1,0 +1,16 @@
+# Agent registration configuration
+manager_url: "http://localhost:5555"
+agent_name: "relay-centredetransfert-hq"
+agent_url: "http://localhost:5008"
+bouquet: "paris-cluster"
+location: "compiègne-dc"
+
+geo_location:
+  type: "coordinates"  # "text" or "coordinates"
+  text: "Compiègne, France"
+  latitude: 49.40082
+  longitude: 2.79522
+
+organisation: "HQ"
+role: "client"  # "client" or "server"
+

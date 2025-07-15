@@ -1,0 +1,16 @@
+# Agent registration configuration
+manager_url: "http://localhost:5555"
+agent_name: "server-HQ"
+agent_url: "http://localhost:5006"
+bouquet: "paris-cluster"
+location: "paris-city"
+
+geo_location:
+  type: "coordinates"  # "text" or "coordinates"
+  text: "Paris, France"
+  latitude: 48.85830
+  longitude: 2.29446
+
+organisation: "HQ"
+role: "server"  # "client" or "server"
+

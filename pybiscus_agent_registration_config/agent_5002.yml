@@ -3,7 +3,7 @@ manager_url: "http://localhost:5555"
 agent_name: "cortaix-labs-02"
 agent_url: "http://localhost:5002"
 bouquet: "cortaixlabs-cluster"
-location: "palaiseau-dc-01"
+location: "palaiseau-dc"
 
 geo_location:
   type: "text"  # "text" or "coordinates"

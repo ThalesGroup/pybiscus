@@ -1,0 +1,15 @@
+# Agent registration configuration
+manager_url: "http://localhost:5555"
+agent_name: "centre-transfert-00"
+agent_url: "http://localhost:5003"
+bouquet: "UTC-cluster"
+location: "compiègne-dc"
+
+geo_location:
+  type: "coordinates"  # "text" or "coordinates"
+  text: "Compiègne, France"
+  latitude: 49.40082
+  longitude: 2.79522
+
+organisation: "Centre de transfert"
+role: "server"  # "client" or "server"

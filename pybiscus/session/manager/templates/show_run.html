@@ -86,6 +86,15 @@
 <body>
 
   <div id="dashboard" class="dashboard-container">
+
+    <!-- Agents -->
+    <div class="section-container">
+      <h3>Agents</h3>
+      <button id="reset-agents-btn" class="btn reset-btn">Reset</button>
+      <button id="pause-agents-btn" class="btn pause-btn">Pause</button>
+      <div id="agents-list" class="list-box"></div>
+    </div>
+
     <!-- Logs -->
     <div class="section-container">
       <h3>Logs</h3>
@@ -104,17 +113,26 @@
   </div>
 
   <script>
+    const AGENTS_URL  = 'http://localhost:5555/agents';
     const LOGS_URL    = 'http://localhost:5555/logs';
     const METRICS_URL = 'http://localhost:5555/metrics';
 
+    const agentsList = document.getElementById('agents-list');
     const logList = document.getElementById('log-list');
     const metricsList = document.getElementById('metrics-list');
 
+    let displayedAgents = [];
     let displayedLogs = [];
     let displayedMetrics = [];
 
+    let agentsPaused = false;
     let logsPaused = false;
     let metricsPaused = false;
+
+    document.getElementById('reset-agents-btn').onclick = () => {
+      agentsList.innerHTML = '';
+      displayedAgents = [];
+    };
 
     document.getElementById('reset-logs-btn').onclick = () => {
       logList.innerHTML = '';
@@ -126,14 +144,19 @@
       displayedMetrics = [];
     };
 
+    document.getElementById('pause-agents-btn').onclick = (e) => {
+      agentsPaused = !agentsPaused;
+      e.target.textContent = agentsPaused ? 'Resume' : 'Pause';
+    };
+
     document.getElementById('pause-logs-btn').onclick = (e) => {
       logsPaused = !logsPaused;
-      e.target.textContent = logsPaused ? 'Reprendre' : 'Pause';
+      e.target.textContent = logsPaused ? 'Resume' : 'Pause';
     };
 
     document.getElementById('pause-metrics-btn').onclick = (e) => {
       metricsPaused = !metricsPaused;
-      e.target.textContent = metricsPaused ? 'Reprendre' : 'Pause';
+      e.target.textContent = metricsPaused ? 'Resume' : 'Pause';
     };
 
     function addEntries(container, entriesArray, newItems, type) {
@@ -162,6 +185,17 @@
       container.scrollTop = container.scrollHeight;
     }
 
+    function fetchAgents() {
+      if (agentsPaused) return;
+      fetch(AGENTS_URL)
+        .then(res => res.json())
+        .then(data => {
+          const newAgents = data;
+          if (newAgents.length) addEntries(agentsList, displayedAgents, newAgents, 'agents');
+        })
+        .catch(console.error);
+    }
+
     function fetchLogs() {
       if (logsPaused) return;
       fetch(LOGS_URL)
@@ -184,8 +218,10 @@
         .catch(console.error);
     }
 
+    fetchAgents();
     fetchLogs();
     fetchMetrics();
+    setInterval(fetchAgents, 5000);
     setInterval(fetchLogs, 5000);
     setInterval(fetchMetrics, 5000);
   </script>

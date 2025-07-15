@@ -15,7 +15,7 @@ import argparse
 from pybiscus.pydantic2xxx.pydantic2html import generate_model_page
 from pybiscus.session.agent.tuples2yaml import parse_tuples_to_yaml_string
 from pybiscus.core.pybiscusexception import PybiscusInternalException, PybiscusValueException
-import pybiscus.core.pybiscus_logger as logm
+from pybiscus.session.agent import agent_weblog
 
 rest_server = Flask(__name__)
 
@@ -86,6 +86,9 @@ def run_typer_command(command: list[str]) -> str:
         validation_error_index = line.find("This is not a valid config!")
 
         if validation_error_index != -1:
+            
+            agent_weblog.agent_logger.log("Invalid configuration !")
+
             raise PybiscusValueException(f"Invalid configuration")
 
         lines.append(line)
@@ -96,9 +99,10 @@ def run_typer_command(command: list[str]) -> str:
     return_code = process.wait()
 
     if return_code == 0:
-        logm.console.log("Process has finished successfully.")
+        agent_weblog.agent_logger.log("Process has finished.")
     else:
-        logm.console.log(f"Processus {command} has failed with code {return_code}")
+        agent_weblog.agent_logger.log(f"Processus {command} has failed with code {return_code}")
+
         raise PybiscusInternalException(f"Processus {command} has failed with code {return_code}")
 
     return ''.join(lines)
@@ -153,6 +157,9 @@ def checkConfigurationFile( mode: str, file_path: str ):
             raise PybiscusInternalException( f"Config file not found : {file_path}" )
 
         if mode == "server" or mode == "client":
+            
+            agent_weblog.agent_logger.log("checking yaml file")
+
             output = run_typer_command( ["uv", "run", "pybiscus", mode, "check", file_path ] )
         else:
             raise PybiscusValueException( f"Invalid mode : {mode} (should be server or client)" )
@@ -160,12 +167,16 @@ def checkConfigurationFile( mode: str, file_path: str ):
         validation_error_index = output.find("Validation error")
 
         if validation_error_index != -1:
+
+            agent_weblog.agent_logger.log("Validation error !")
+
             validation_error = output[validation_error_index:]
             return jsonify({"error": validation_error}), 400
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+    agent_weblog.agent_logger.log("yaml file checked successfully")
     return jsonify({mode: "yaml file checked successfully"}), 200
 
 
@@ -176,6 +187,9 @@ def interpretConfigurationFile( mode: str, file_path: str ):
             raise PybiscusInternalException( f"Config file not found : {file_path}" )
 
         if mode == "server" or mode == "client":
+
+            agent_weblog.agent_logger.log(f"launching pybiscus {mode}")
+
             output = run_typer_command( ["uv", "run", "pybiscus", mode, "launch", file_path ] )
         else:
             raise PybiscusInternalException( f"Invalid mode : {mode} (should be server or client)" )
@@ -183,13 +197,17 @@ def interpretConfigurationFile( mode: str, file_path: str ):
         validation_error_index = output.find("Validation error")
 
         if validation_error_index != -1:
+
+            agent_weblog.agent_logger.log("Validation error !")
+
             validation_error = output[validation_error_index:]
             return jsonify({"error": validation_error}), 400
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-    return jsonify({mode: "yaml file interpreted successfully"}), 200
+    agent_weblog.agent_logger.log("pybiscus run completed")
+    return jsonify({mode: "pybiscus run completed"}), 200
 
 
 # ..........................................................
@@ -408,12 +426,26 @@ def main():
     # Store the config path in the Flask app config (accessible via current_app.config)
     rest_server.config['CONFIG_PATH'] = args.config
 
-    print(f"[INFO] Starting Pybiscus-Agent on port {args.port}")
+    if args.config is not None:
+
+        try:
+            import yaml
+            with open(args.config, 'r', encoding='utf-8') as file:
+                config = yaml.safe_load(file)
+
+                from pybiscus.session.agent.agent_weblog import initAgentLogger
+
+                initAgentLogger( f'{config["manager_url"]}/webhook/agents', config["bouquet"], config["agent_name"] )
+
+        except Exception as e:
+            print(f"YAML config loading error : {e}")
+
+    agent_weblog.agent_logger.log(f"Starting Pybiscus-Agent on port {args.port}")
 
     if args.config is None:
-        print(f"[INFO] Using no configuration file")
+        print(f"Using no configuration file")
     else:
-        print(f"[INFO] Using configuration file: {args.config}")
+        print(f"Using configuration file: {args.config}")
 
     rest_server.run(debug=True, host='0.0.0.0', port=args.port)
 

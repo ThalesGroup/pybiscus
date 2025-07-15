@@ -65,7 +65,6 @@ def weighted_average_old(metrics: list[tuple[int, Metrics]]) -> Metrics:
         
     print(f"@@@@ keys1: {_set_common_keys}")
     # the "cid" metric is a false one, need to pop it out
-    # Q: should we do the same for all metrics that are str ?
     _set_common_keys.discard("cid")
     print(f"@@@@ keys2: {_set_common_keys}")
 
@@ -147,6 +146,8 @@ def weighted_average_v2(metrics: list[tuple[int, Metrics]]) -> Metrics:
             numeric_keys.add(key)
     
     _set_common_keys = numeric_keys
+    # the "cid" metric is a false one, need to pop it out
+    _set_common_keys.discard("cid")
     print(f"@@@@ keys2: {_set_common_keys}")
 
     num_examples = sum([num_examples for num_examples, _ in metrics])
@@ -191,8 +192,10 @@ def weighted_average(metrics: list[tuple[int, Metrics]]) -> Metrics:
                 print(f"  -> KEEPING {key}")
             else:
                 print(f"  -> FILTERING OUT {key} (type: {type(first_value)})")
-    
+
     _set_common_keys = numeric_keys
+    # the "cid" metric is a false one, need to pop it out
+    _set_common_keys.discard("cid")
     print(f"@@@@ keys2: {_set_common_keys}")
 
     num_examples = sum([num_examples for num_examples, _ in metrics])
