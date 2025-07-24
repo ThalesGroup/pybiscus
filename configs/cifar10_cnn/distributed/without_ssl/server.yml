@@ -1,22 +1,50 @@
 root_dir: ${oc.env:PWD}
+flower_server:
+  listen_address: '[::]:3333'
+server_run:
+  num_rounds: '10'
+  loggers:
+  - name: rich
+    config:
+      empty_configuration: true
+  - name: webhook
+    config:
+      webhook_url: http://localhost:5555/webhook/logs
+      logger_id: "\U0001F5A7"
+  reporting:
+    basedir: ${root_dir}/experiments
+    add_timestamp_in_path: true
+    server_config_filename: config_server.yml
+    save_on_train_end:
+      filename: final_checkpoint.pt
+    onnx_export:
+      filename: model.onnx
+      opset: '13'
+      post_validation: false
 server_compute_context:
   hardware:
     accelerator: auto
     devices: auto
-  metrics_logger:
-    name: tensorboard
+  metrics_loggers:
+  - name: tensorboard
     config:
-      subdir: /experiments/node
-server_run:
-  num_rounds: '10'
-  logger:
-    name: rich
+      subdir: tensorboard
+  - name: webhook
+    config:
+      webhook_url: http://localhost:5555/webhook/metrics
+      logger_id: "\U0001F5A7"
+server_strategy:
+  decorators:
+  - name: metricdiffcompute
     config:
       empty_configuration: true
-strategy:
-  name: fedavg
-  config:
-    min_fit_clients: '2'
+  - name: timediffcompute
+    config:
+      empty_configuration: true
+  strategy:
+    name: fedavg
+    config:
+      min_fit_clients: '2'
 data:
   name: cifar
   config:
@@ -32,5 +60,3 @@ model:
     mid_shape: '6'
     n_classes: '10'
     lr: '0.001'
-flower_server:
-  listen_address: '[::]:3333'

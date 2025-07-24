@@ -1,4 +1,6 @@
 root_dir: ${oc.env:PWD}
+flower_client:
+  server_address: localhost:3333
 client_run:
   cid: '1'
   pre_train_val: false
@@ -21,5 +23,3 @@ data:
     dir_test: ${root_dir}/datasets/test/
     batch_size: '32'
     num_workers: '0'
-flower_client:
-  server_address: localhost:3333
