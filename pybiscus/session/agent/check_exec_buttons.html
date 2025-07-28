@@ -1,8 +1,9 @@
 <div class="pybiscus-box">
     <div class="pybiscus-columns">
+
         <!-- Col 1 -->
         <div class="pybiscus-control-stack">
-            <button class="pybiscus-button check" id="check-config-button">✅ Check Config</button>
+            <button class="pybiscus-button check" id="check-config-button"><span class="emoji">✅</span> Check Config</button>
             <span id="check-indicator" class="pybiscus-indicator">Running check...</span>
             <span id="check-success-result" class="pybiscus-success">Check success!</span>
             <span id="check-failure-result" class="pybiscus-failure">Check failure.</span>
@@ -10,7 +11,7 @@
 
         <!-- Col 2 -->
         <div class="pybiscus-control-stack">
-            <button class="pybiscus-button execute" id="execute-button">🚀 Execute Config</button>
+            <button class="pybiscus-button execute" id="execute-button"><span class="emoji">🚀</span> Execute Config</button>
             <span id="execute-indicator" class="pybiscus-indicator">Running launch...</span>
             <span id="execute-success-result" class="pybiscus-success">Launch success!</span>
             <span id="execute-failure-result" class="pybiscus-failure">Launch failure.</span>
@@ -18,9 +19,20 @@
 
         <!-- Col 3 -->
         <div class="pybiscus-control-stack">
-            <button class="pybiscus-button save" id="save-config-button">💾 Save Config</button>
-            <button class="pybiscus-button load" id="load-config-button">🔄 Load Config</button>
+            <button class="pybiscus-button save" id="save-config-button"><span class="emoji">💾</span> Save Config to disk</button>
         </div>
+
+        <!-- Col 4 -->
+        <div class="pybiscus-control-stack pybiscus-server-only">
+            <span class="pybiscus-button pybiscus-origin" id="origin-config-button"></span>
+        </div>
+
+        <!-- Col 5 -->
+        <div class="pybiscus-control-stack pybiscus-server-only">
+            <button class="pybiscus-button blank" id="blank-config-button"><span class="emoji">🧹</span> Blank Config</button>
+            <button class="pybiscus-button pin" id="pin-config-button"><span class="emoji">📌</span> Pin Config</button>
+        </div>
+
     </div>
 </div>
 

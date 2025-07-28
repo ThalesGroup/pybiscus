@@ -662,6 +662,13 @@ fieldset.foldable:not(.collapsed) > div.pybiscus-field:has(> fieldset) {
     transform: translateY(0) scale(0.98);
 }
 
+.pybiscus-origin {
+    cursor: not-allowed;
+    background: var(--color-gray-200);
+    color: var(--color-black);
+    border: 1px solid var(--color-black);
+}
+
 .pybiscus-button.check {
     background: linear-gradient(135deg, var(--color-success-light) 0%, var(--color-success) 100%);
     color: var(--color-white);
@@ -679,7 +686,7 @@ fieldset.foldable:not(.collapsed) > div.pybiscus-field:has(> fieldset) {
     border: 1px solid var(--color-info);
 }
 
-.pybiscus-button.execute:hover {
+.pybiscus-button.execute:hover:not(:disabled) {
     background: linear-gradient(135deg, var(--color-info) 0%, var(--color-info-light) 100%);
     box-shadow: 0 8px 25px -8px var(--color-info);
 }
@@ -695,15 +702,58 @@ fieldset.foldable:not(.collapsed) > div.pybiscus-field:has(> fieldset) {
     box-shadow: 0 8px 25px -8px var(--color-warning);
 }
 
-.pybiscus-button.load {
+.pybiscus-button.pin {
     background: linear-gradient(135deg, var(--color-error-light) 0%, var(--color-error) 100%);
     color: var(--color-white);
     border: 1px solid var(--color-error);
 }
 
-.pybiscus-button.load:hover {
+.pybiscus-button.pin:hover {
     background: linear-gradient(135deg, var(--color-error) 0%, var(--color-error-light) 100%);
     box-shadow: 0 8px 25px -8px var(--color-error);
+}
+
+.pybiscus-button.blank {
+    background: linear-gradient(135deg, var(--color-gray-300) 0%, var(--color-gray-600) 100%);
+    color: var(--color-white);
+    border: 1px solid var(--color-gray-900);
+}
+
+.pybiscus-button.blank:hover {
+    background: linear-gradient(135deg, var(--color-gray-600) 0%, var(--color-gray-300) 100%);
+    box-shadow: 0 8px 25px -8px var(--color-gray-900);
+}
+
+.emoji_square {
+  background-color: rgba(255, 255, 255, 0.75); /* small halo */
+  border-radius: 4px;
+  padding: 0 4px;
+}
+
+.emoji {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  width: 2em;
+  height: 2em;
+
+  background-color: rgba(255, 255, 255, 0.75); /* halo */
+  border-radius: 50%;
+  
+  font-size: 1em; /* adapt to match surrounding text */
+  line-height: 1;
+
+  margin-right: 0.4em; /* spacing from text */
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.pybiscus-server-only {
+  display: none;
 }
 
 /* management of pybiscus action buttons <<< end <<<

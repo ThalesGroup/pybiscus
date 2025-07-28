@@ -4,19 +4,19 @@ class WebHookLogger:
 
     def __init__(self, webhook_url, logger_id):
         """
-        Initialise le logger avec l'URL du webhook et l'identifiant unique du logger.
+        Initialise the logger with the webhook URL and the logger unique id.
         
-        :param webhook_url: URL du webhook pour envoyer les messages
-        :param logger_id: Identifiant unique à ajouter dans la payload sous 'source'
+        :param webhook_url: webhook URL used to send messages
+        :param logger_id: unique id to add into payload as 'source'
         """
         self.webhook_url = webhook_url
         self.logger_id = logger_id
 
     def log(self, *msgs):
         """
-        Envoie un message de log au webhook en ajoutant un champ 'source' à la payload.
+        Send a log message to the webhook, add the 'source' field to the payload
         
-        :param msgs: Messages à loguer, qui seront concaténés et envoyés
+        :param msgs: messages to log, they are concatenated before sending
         """
         # create the message to be sent
         message = " ".join(str(msg) for msg in msgs)
@@ -50,5 +50,5 @@ if __name__ == "__main__":
     logger_id = 'Logger123'
     logger = WebHookLogger(webhook_url, logger_id)
 
-    logger.log("C'est un message de log", "avec plusieurs parties", 123)
-    logger.log("Un autre message de log")
+    logger.log("Log message", " multi-part", 123)
+    logger.log("A simple log message")

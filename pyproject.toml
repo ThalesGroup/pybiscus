@@ -30,7 +30,7 @@ dependencies = [
 [project.scripts]
 pybiscus        = "pybiscus.main:main"
 pybiscus_agent  = "pybiscus.session.agent.pybiscus_agent:main"
-session_manager = "pybiscus.session.manager.start_manager:main"
+session_manager = "pybiscus.session.manager.session_manager:main"
 
 [build-system]
 requires = ["setuptools>=61.0"]

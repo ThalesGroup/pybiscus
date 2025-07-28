@@ -23,7 +23,7 @@ launch the session manager :
 ./launch/session/run_manager.sh
 ```
 
-connect to http://localhost:5555/manage
+connect to http://localhost:5555/pybiscus-session/manage
 
 ### Init of the session : client 1 side
 

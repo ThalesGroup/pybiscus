@@ -4,14 +4,6 @@ const launch_session_button = document.getElementById('launch-session-button');
 // add an button event listener
 launch_session_button.addEventListener('click', function() {
 
-    const indicatorDiv     = document.getElementById('check-indicator');
-    const successResultDiv = document.getElementById('check-success-result');
-    const failureResultDiv = document.getElementById('check-failure-result');
-
-    indicatorDiv.style.display     = 'block';
-    successResultDiv.style.display = 'none';
-    failureResultDiv.style.display = 'none';
-
     // Select top-div ided element
     const topDiv = document.getElementById('top-div');
 

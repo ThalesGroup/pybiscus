@@ -7,10 +7,10 @@
 
 -- access the manager front-end : 
 
-    browse http://localhost:5555/manage
+    browse http://localhost:5555/pybiscus-session/manage
 
     which loads html pages :
-        HTTP GET manager_url/visualize
+        HTTP GET manager_url/pybiscus-session/visualize
         HTTP GET server_url/session/config
 
 *3* launch client1 :

@@ -1,32 +1,28 @@
-import argparse
-from flask import Flask, render_template, request, jsonify, render_template_string
+from flask import render_template, request, jsonify
 import requests
-from flask_cors import CORS
 from threading import Lock
+import pybiscus.session.manager.session_manager
+from pybiscus.session.manager.session_manager import pybiscus_manager_app
 
-app = Flask(__name__)
-CORS(app, origins="*")
+# **************************
 
-# global variable that contains the application context
-registered_clients = {}
-server_url = None
-manager_port = None
+@pybiscus_manager_app.route("/pybiscus-session/client", methods=["POST"])
+def pybiscus_manager_register_client():
 
-@app.route("/register", methods=["POST"])
-def register():
     data = request.json
-    name = data.get("name")
+
+    name       = data.get("name")
     client_url = data.get("client_url")
 
     if name and client_url:
 
-        if name in registered_clients:
+        if name in pybiscus.session.manager.session_manager.registered_clients:
             
-            if registered_clients[name] == client_url:
+            if pybiscus.session.manager.session_manager.registered_clients[name] == client_url:
                 return jsonify({
                     "status": "success",
                     "message": f"Client '{name}' already registered.",
-                    "server" : server_url,
+                    "server" : pybiscus.session.manager.session_manager.server_url,
                 })
 
             else:
@@ -35,51 +31,62 @@ def register():
                     "message": f"Client '{name}' already registered with a different URL.",
                 })
 
-        registered_clients[name] = client_url
+        pybiscus.session.manager.session_manager.registered_clients[name] = client_url
 
         return jsonify({
             "status": "success",
             "message": f"Client '{name}' registered.",
-            "server" : server_url,
+            "server" : pybiscus.session.manager.session_manager.server_url,
         })
     else:
         return jsonify({"status": "error", "message": "Missing 'name' or 'client_url'"}), 400
 
-@app.route("/clients", methods=["GET"])
-def list_clients():
-    return jsonify({"clients": registered_clients})
+# **************************
 
-@app.route("/clients", methods=["DELETE"])
-def revoke_clients():
-    global registered_clients
-    registered_clients = {}
+@pybiscus_manager_app.route("/pybiscus-session/clients", methods=["GET"])
+def pybiscus_manager_list_clients():
+    return jsonify({"clients": pybiscus.session.manager.session_manager.registered_clients})
+
+# **************************
+
+@pybiscus_manager_app.route("/pybiscus-session/clients", methods=["DELETE"])
+def pybiscus_manager_revoke_clients():
+    pybiscus.session.manager.session_manager.registered_clients = {}
 
     return jsonify({"status": "success"}), 200
 
+# **************************
+
 # sub-view URL
 # visualize a graph of session participants
-@app.route("/visualize")
-def visualize():
-    return render_template("visualize.html", server_url=server_url)
+@pybiscus_manager_app.route("/pybiscus-session/visualize")
+def pybiscus_manager_visualize():
+    return render_template("visualize.html", server_url=pybiscus.session.manager.session_manager.server_url)
+
+# **************************
 
 # sub-view URL
 # visualize logs and metrics
-@app.route("/show_run")
-def show_run():
-    return render_template("show_run.html", manager_port=manager_port)
+@pybiscus_manager_app.route("/pybiscus-session/show_run")
+def pybiscus_manager_show_run():
+    return render_template("show_run.html", manager_port=pybiscus.session.manager.session_manager.manager_port)
+
+# **************************
 
 # manager main URL
 # double view on :
 # - session content ( server + connected clients )
 # - ConfigSession ( cnx to Pybiscus server )
-@app.route("/manage")
-def manage():
-    return render_template("manager.html", server_url=server_url)
+@pybiscus_manager_app.route("/pybiscus-session/manage")
+def pybiscus_manager_manage():
+    return render_template("manager.html", server_url=pybiscus.session.manager.session_manager.server_url)
 
-@app.route("/ping-server")
-def ping_server():
+# **************************
+
+@pybiscus_manager_app.route("/pybiscus-session/ping-server")
+def pybiscus_manager_ping_server():
     try:
-        res = requests.get(server_url)
+        res = requests.get(pybiscus.session.manager.session_manager.server_url)
         return jsonify({"message": res.text})
     except Exception as e:
         return jsonify({"message": f"Error contacting server: {e}"}), 500
@@ -91,21 +98,24 @@ def ping_server():
 agent_messages = []  # stored messages list
 agent_lock = Lock()  # lock used to prevent agent logs concurrent access
 
-@app.route('/webhook/agents', methods=['POST'])
-def receive_agents():
+# **************************
+
+@pybiscus_manager_app.route('/webhook/agents', methods=['POST'])
+def pybiscus_manager_receive_agents():
     data = request.json
     message = data.get('content', '')
     source = data.get('source', 'unknown')
 
     # private section
     with agent_lock:
-        global agent_messages
         agent_messages.append({'source': source, 'message': message})
 
     return jsonify({"status": "success"}), 200
 
-@app.route('/agents', methods=['GET'])
-def get_agents():
+# **************************
+
+@pybiscus_manager_app.route('/pybiscus-session/agents', methods=['GET'])
+def pybiscus_manager_get_agents():
 
     with agent_lock:
         global agent_messages
@@ -122,21 +132,24 @@ def get_agents():
 log_messages = []  # stored messages list
 log_lock = Lock()  # lock used to prevent logs concurrent access
 
-@app.route('/webhook/logs', methods=['POST'])
-def receive_log():
+# **************************
+
+@pybiscus_manager_app.route('/webhook/logs', methods=['POST'])
+def pybiscus_manager_receive_log():
     data = request.json
     message = data.get('content', '')
     source = data.get('source', 'unknown')
 
     # private section
     with log_lock:
-        global log_messages
         log_messages.append({'source': source, 'message': message})
 
     return jsonify({"status": "success"}), 200
 
-@app.route('/logs', methods=['GET'])
-def get_logs():
+# **************************
+
+@pybiscus_manager_app.route('/pybiscus-session/logs', methods=['GET'])
+def pybiscus_manager_get_logs():
 
     with log_lock:
         global log_messages
@@ -153,8 +166,10 @@ def get_logs():
 metrics_messages = []  # stored metrics list
 metrics_lock = Lock()  # lock used to prevent metrics concurrent access
 
-@app.route('/webhook/metrics', methods=['POST'])
-def receive_metrics():
+# **************************
+
+@pybiscus_manager_app.route('/webhook/metrics', methods=['POST'])
+def pybiscus_manager_receive_metrics():
     data = request.json
     metrics = data.get('metrics', '')
     source = data.get('source', 'unknown')
@@ -162,13 +177,14 @@ def receive_metrics():
 
     # private section
     with metrics_lock:
-        global metrics_messages
         metrics_messages.append(log)
 
     return jsonify({"status": "success"}), 200
 
-@app.route('/metrics', methods=['GET'])
-def get_metricss():
+# **************************
+
+@pybiscus_manager_app.route('/pybiscus-session/metrics', methods=['GET'])
+def pybiscus_manager_get_metrics():
 
     with metrics_lock:
         global metrics_messages
@@ -177,25 +193,3 @@ def get_metricss():
 
     # return json encoded messages
     return jsonify(_metrics_messages)
-
-# **************************
-
-def main():
-
-    parser = argparse.ArgumentParser(description="Start the Federated Learning Manager Server.")
-    parser.add_argument("--port", type=int, default=5555, help="Port to run the manager on")
-    parser.add_argument("--server-url", type=str, required=True, help="URL of the central server (e.g. http://localhost:5555)")
-    args = parser.parse_args()
-
-    # memo url server in order to be able to send it to connecting clients
-    global server_url
-    server_url = args.server_url
-
-    global manager_port
-    manager_port=args.port
-
-    print(f"🚀 Manager starting on port {manager_port}, connected to server: {server_url}")
-    app.run(port=manager_port)
-
-if __name__ == "__main__":
-    main()

@@ -71,7 +71,7 @@
         }
 
         function updateGraph() {
-            fetch('/clients')
+            fetch('/pybiscus-session/clients')
                 .then(res => res.json())
                 .then(data => {
                     const clients = Object.keys(data.clients);
@@ -82,13 +82,13 @@
         function spreadSessionParams() {
 
             /*
-            fetch('/ping-server')
+            fetch('/pybiscus-session/ping-server')
                 .then(res => res.json())
                 .then(data => alert("Server says: " + data.message))
                 .catch(err => alert("Error contacting server"));
                 */
 
-            fetch('/clients')
+            fetch('/pybiscus-session/clients')
                 .then(res => res.json())
                 .then(data => {
                     const clients = Object.keys(data.clients);
@@ -102,7 +102,7 @@
 
         document.getElementById("revokeBtn").addEventListener("click", async () => {
         try {
-            const response = await fetch("/clients", {
+            const response = await fetch("/pybiscus-session/clients", {
             method: "DELETE",
             headers: {
                 "Content-Type": "application/json"

@@ -1,14 +1,70 @@
 
 import importlib
 import json
-from flask import jsonify, request
+from flask import Response, jsonify, request
 import urllib
+import os
 
 from pybiscus.flower_config.config_server import ConfigServer
 from pybiscus.pydantic2xxx.pydantic2html import generate_model_page
 from pybiscus.session.agent.pybiscus_agent import checkConfigurationFile, generate_param_js, interpretConfigurationFile, rest_server, saveConfigFromRequest
 import pybiscus.core.pybiscus_logger as logm
 import pybiscus.session.agent.pybiscus_agent as pybagent
+
+server_cache_path = ".pybiscus-cache/html-config/server.html"
+
+# ..........................................................
+# .... HEAD /server/config/html ............................
+# ..........................................................
+
+@rest_server.route('/server/config/html', methods=['HEAD', 'GET'])
+def check_html_cache():
+
+    if os.path.isfile(server_cache_path):
+
+        return Response(status=200)
+    else:
+        return Response(status=404)
+
+# ..........................................................
+# .... POST /server/config/html ............................
+# ..........................................................
+
+@rest_server.route('/server/config/html', methods=['POST'])
+def pinConfigHtml():
+    data = request.get_json()
+    html = data.get("html", "")
+
+    with open(server_cache_path, "w", encoding="utf-8") as f:
+        f.write(html)
+    return {"status": "ok"}
+
+# ..........................................................
+# .... DELETE /server/config/html ..........................
+# ..........................................................
+
+@rest_server.route('/server/config/html', methods=['DELETE'])
+def deleteConfigHtml():
+
+    try:
+        os.remove(server_cache_path)
+        return {"status": "deleted"}, 200
+    except FileNotFoundError:
+        return {"status": "not found"}, 404
+    except Exception as e:
+        return {"status": "error", "message": str(e)}, 500
+
+# -----------------------------
+
+def serverConfigHtmlFromCache():
+
+    if os.path.exists(server_cache_path):
+        with open(server_cache_path, encoding="utf-8") as f:
+            contenu_html = f.read()
+
+        return contenu_html
+    
+    return None
 
 # ..........................................................
 # .... GET /server/config ..................................
@@ -35,6 +91,18 @@ def serverConfigDownload():
      
     """
 
+    #                      -----------------
+
+    cachedConfig = serverConfigHtmlFromCache()
+
+    if cachedConfig is not None:
+        logm.console.log("server: configuration read from cache")
+        return cachedConfig
+    else:
+        logm.console.log("server: configuration generated")
+    
+    #                      -----------------
+
     param_js = "console.log(\"generate_model_page() called from HTTP GET @ /server/config\" );"
 
     param_raw = request.args.get("param")
@@ -59,13 +127,18 @@ def serverConfigDownload():
     else:
         logm.console.log("/server/config with no param")
 
+    with importlib.resources.files("pybiscus.session.agent").joinpath("show_server_items.js").open('r') as file:
+        show_server_items = file.read()
+
     with importlib.resources.files("pybiscus.session.agent").joinpath("fold_fieldset.js").open('r') as file:
         fold_fieldsets = file.read()
 
     with importlib.resources.files("pybiscus.session.agent").joinpath("lists_management.js").open('r') as file:
         lists_management = file.read()
 
-    return generate_model_page(ConfigServer,'pybiscus.session.agent','agent.html','check_exec_buttons', fold_fieldsets + lists_management + param_js)
+    js_code = show_server_items + fold_fieldsets + lists_management + param_js
+
+    return generate_model_page(ConfigServer,'pybiscus.session.agent','agent.html','check_exec_buttons', js_code)
 
 # ..........................................................
 # .... POST /server/config .................................
@@ -100,4 +173,3 @@ def server():
     
     except Exception as e:
         return jsonify({"error": str(e)}), 500
-

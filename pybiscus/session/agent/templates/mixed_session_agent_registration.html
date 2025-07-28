@@ -650,7 +650,7 @@
                 const encodedAgentName = encodeURIComponent(agentName);
 
                 setTimeout(() => {
-                    window.location.href = `/mixedsession/agent/parameters/manager_polling?managerUrl=${encodedUrl}:agentName=${encodedAgentName}`;
+                    window.location.href = `/mixedsession/agent/parameters/manager_polling?managerUrl=${encodedUrlManager}:agentName=${encodedAgentName}`;
                 }, 1000);
 
             } catch (error) {
