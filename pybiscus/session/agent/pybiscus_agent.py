@@ -25,16 +25,32 @@ CORS(rest_server, origins="*")
 
 uploaded_file_path = None
 
-session_parameters = {}
-session_client_id_counter = 0
-session_server_url  = None
-session_manager_url = None
-session_client_name = None
+#######################################
+########## Session context ############
+#######################################
 
+# server part
+server_session_client_id_counter = 0
+
+#  common part
+registration_parameters = {}
+session_parameters = {}
+
+#  client part
+session_server_url  = None
+
+# server specific
 def generate_new_cid():
-    global session_client_id_counter
-    session_client_id_counter += 1
-    return str(session_client_id_counter)
+    global server_session_client_id_counter
+    server_session_client_id_counter += 1
+    return str(server_session_client_id_counter)
+
+def reset_registration():
+
+    print("Reset registration !!!")
+
+    global registration_parameters
+    registration_parameters = {}
 
 def reset_session():
 
@@ -42,14 +58,13 @@ def reset_session():
 
     global session_parameters
     session_parameters = {}
-    global session_client_id_counter
-    session_client_id_counter = 0
+    global server_session_client_id_counter
+    server_session_client_id_counter = 0
     global session_server_url
     session_server_url = None
-    global session_manager_url
-    session_manager_url = None
-    global session_client_name
-    session_client_name = None
+
+#######################################
+#######################################
 
 def shutdown_server():
     """Arrête proprement le serveur Flask."""

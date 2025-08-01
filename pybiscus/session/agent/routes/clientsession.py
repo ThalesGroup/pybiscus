@@ -12,6 +12,9 @@ import pybiscus.core.pybiscus_logger as logm
 # ..........................................................
 # .... GET /client/config ..................................
 # ..........................................................
+# called by client front-end to get the configuration HTML page
+# always a dynamically generated one (vanilla)
+# ..........................................................
 
 @rest_server.route("/client/config", methods=["GET"])
 def clientConfigDownload():
@@ -38,6 +41,9 @@ def clientConfigDownload():
 # ..........................................................
 # .... POST /client/config .................................
 # ..........................................................
+# called by client front-end to store the pybiscus yaml configuration
+# for a further execution
+# ..........................................................
 
 @rest_server.route("/client/config", methods=["POST"])
 def clientConfigUpload():
@@ -54,6 +60,8 @@ def clientConfigUpload():
 # ..........................................................
 # .... GET /client .........................................
 # ..........................................................
+# called by client front-end to run pybiscus in server mode
+# ..........................................................
 
 @rest_server.route("/client", methods=["GET"])
 def client():
@@ -63,7 +71,7 @@ def client():
 
         # upload the client configuration yaml file to the server
         # which is in charge of storing it into the session context
-        server_url = f"{pybagent.session_server_url}/session/log/client/{pybagent.session_client_name}/runconfig"
+        server_url = f"{pybagent.session_server_url}/session/log/client/{pybagent.registration_parameters['name']}/runconfig"
         send_yaml_file(pybagent.uploaded_file_path, server_url)
     
         return interpretConfigurationFile( "client", str(pybagent.uploaded_file_path) )
@@ -100,6 +108,9 @@ def send_yaml_file(yaml_file, url, timeout=10):
 # ..........................................................
 # ............ POST /session/client/parameters .............
 # ..........................................................
+# called by client front-end to store the json HMI 
+# defining the  HMI session common configurations
+# ..........................................................
 
 @rest_server.route('/session/client/parameters', methods=['POST'])
 def set_parameters():
@@ -119,5 +130,4 @@ def set_parameters():
     
     else:
         return jsonify({"status": "ko"})
-
 

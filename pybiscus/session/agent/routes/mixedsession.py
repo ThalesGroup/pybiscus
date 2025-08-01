@@ -13,7 +13,7 @@ registration_resume = ""
 @rest_server.route('/mixedsession/agent/registration', methods=['GET'])
 def mixed_session_agent_registration():
 
-    reset_session()
+    # reset_session()
 
     default_config = {
         'manager_url': 'http://localhost:5555',
@@ -69,7 +69,7 @@ def mixed_session_agent_parameters_manager_polling():
 #     callback_template = """
 
 #     async function check() {
-#         const res = await fetch('""" + session_server_url + """/session/server/parameters/check');
+#         const res = await fetch('""" + session_server_url + """/session/parameters/check');
 #         const data = await res.json();
 #         if (data.ready) {
 #             console.log("Session parameters are available !");
@@ -100,7 +100,7 @@ def mixed_session_agent_parameters_manager_polling():
 
     global registration_resume
 
-    return render_template('session_client_waiting.html',
+    return render_template('session_agent_waiting.html',
                        state='Pending registration by Session Manager',
                        action=registration_resume,
                        explanation='Your agent is waiting to be accepted in the FL session parameters.',

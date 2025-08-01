@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Manager Dashboard</title>
+    <style>
+        canvas { margin-top: 0rem; border: 1px solid #ccc; background: #f9f9f9; }
+        body { font-family: Arial, sans-serif; text-align: center; }
+
+        .section-container {
+        width: 600px;
+        display: flex;
+        flex-direction: column;
+        }
+
+        .list-box {
+        flex: 1;
+        overflow-y: auto;
+        border: 1px solid #ccc;
+        padding: 10px;
+        background: #f0f0f0;
+        border-radius: 5px;
+        min-height: 0;
+        max-height: 500px;
+        }
+
+        .entry {
+        background: #fff;
+        padding: 8px;
+        margin-bottom: 6px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        text-align: left;
+        }
+
+        .entry-source {
+        font-weight: bold;
+        color: #333;
+        }
+
+        .entry-message {
+        margin-top: 4px;
+        color: #555;
+        white-space: pre-line;
+        }
+
+        .btn {
+        margin-top: 10px;
+        margin-right: 10px;
+        padding: 6px 12px;
+        font-size: 14px;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        }
+
+        .reset-btn {
+        background-color: #d9534f;
+        }
+
+        .reset-btn:hover {
+        background-color: #c9302c;
+        }
+
+        .pause-btn {
+        background-color: #5bc0de;
+        }
+
+        .pause-btn:hover {
+        background-color: #31b0d5;
+        }
+
+    </style>
+</head>
+<body>
+    <canvas id="graph" width="600" height="400"></canvas><br>
+    <button id="revokeBtn">Clear Graph</button>
+    <div id="resultat"></div>
+
+    <!-- Agents -->
+    <div class="section-container">
+      <h3>Agents</h3>
+      <button id="reset-agents-btn" class="btn reset-btn">Reset</button>
+      <button id="pause-agents-btn" class="btn pause-btn">Pause</button>
+      <div id="agents-list" class="list-box"></div>
+    </div>
+
+    <script>
+
+        // ******************************
+        // **** agents log **************
+        // ******************************
+
+        const AGENTS_URL  = 'http://localhost:{{manager_port}}/pybiscus-session/agents_logs';
+        const agentsList = document.getElementById('agents-list');
+        let displayedAgents = [];
+        let agentsPaused = false;
+
+        document.getElementById('reset-agents-btn').onclick = () => {
+        agentsList.innerHTML = '';
+        displayedAgents = [];
+        };
+
+        document.getElementById('pause-agents-btn').onclick = (e) => {
+        agentsPaused = !agentsPaused;
+        e.target.textContent = agentsPaused ? 'Resume' : 'Pause';
+        };
+
+        function addEntries(container, entriesArray, newItems, type) {
+            newItems.forEach(item => {
+                const div = document.createElement('div');
+                div.className = 'entry';
+
+                const src = document.createElement('span');
+                src.className = 'entry-source';
+                src.textContent = `[${item.source || type}] `;
+
+                const msg = document.createElement('span');
+                msg.className = 'entry-message';
+                msg.textContent = item.message || JSON.stringify(item);
+
+                div.appendChild(src);
+                div.appendChild(msg);
+                container.appendChild(div);
+                entriesArray.push(div);
+
+                if (entriesArray.length > 100) {
+                const removed = entriesArray.shift();
+                removed.remove();
+                }
+            });
+            container.scrollTop = container.scrollHeight;
+        }
+
+        function fetchAgents() {
+            if (agentsPaused) return;
+            fetch(AGENTS_URL)
+                .then(res => res.json())
+                .then(data => {
+                const newAgents = data;
+                if (newAgents.length) addEntries(agentsList, displayedAgents, newAgents, 'agents');
+                })
+                .catch(console.error);
+        }
+
+        fetchAgents();
+        setInterval(fetchAgents, 5000);
+
+        // ******************************
+        // **** graph management ********
+        // ******************************
+
+        const canvas = document.getElementById('graph');
+        const ctx = canvas.getContext('2d');
+        let server_url = ""
+        let rotation = 0; 
+
+        function drawGraph(servers,clients) {
+            
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            const centerX = canvas.width / 2;
+            const centerY = canvas.height / 2;
+
+            const radius = 120;
+            const angleStep = (2 * Math.PI) / clients.length;
+
+            // ctx.strokeStyle = "rgba(100, 100, 100, 0.8)";
+            ctx.strokeStyle = "orange";
+
+            // clients circle
+            ctx.setLineDash([5, 5]); // dashed circle
+            ctx.lineWidth = 2.5;
+
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
+            ctx.stroke();
+
+            ctx.setLineDash([]); // reset dash style
+            // ctx.lineWidth = 2.5;
+
+            servers.forEach((server, i) => {
+
+                // Draw server
+                ctx.beginPath();
+                ctx.arc(centerX, centerY, 30, 0, 2 * Math.PI);
+                ctx.fillStyle = "blue";
+                ctx.fill();
+                ctx.stroke();
+                ctx.fillStyle = "white";
+                ctx.font = "12px Arial";
+                ctx.textAlign = "center";
+                ctx.fillText("Server", centerX, centerY + 4);
+
+                ctx.fillStyle = "black";
+                ctx.fillText(server, centerX, centerY + 48);
+            });
+
+            clients.forEach((client, i) => {
+                const angle = rotation + i * angleStep;
+                const x = centerX + radius * Math.cos(angle);
+                const y = centerY + radius * Math.sin(angle);
+
+                // Draw client
+                ctx.beginPath();
+                ctx.arc(x, y, 20, 0, 2 * Math.PI);
+                ctx.fillStyle = "lightgray";
+                ctx.fill();
+                ctx.stroke();
+                ctx.fillStyle = "black";
+                ctx.font = "12px Arial";
+                ctx.textAlign = "center";
+                ctx.fillText(client, x, y + 32);
+            });
+
+            rotation += 0.05;
+        }
+
+        function updateGraph() {
+            fetch('/pybiscus-session/agents')
+                .then(res => res.json())
+                .then(data => {
+
+                    const servers_names = Object.keys(data.servers);
+                    const clients_names = Object.keys(data.clients);
+                    drawGraph(servers_names,clients_names);
+
+                    // propagate first server URL definition
+                    if( server_url === "" && servers_names.length > 0 ) {
+
+                        const servers_data = Object.values(data.servers);
+
+                        // info stored : name -> url
+                        server_url = servers_data[0];
+                        window.parent.postMessage({ type: "server_url", value: server_url }, "*");
+                    }
+                });
+        }
+
+        setInterval(updateGraph, 2000);  // Refresh every 2 seconds
+        updateGraph();
+
+        document.getElementById("revokeBtn").addEventListener("click", async () => {
+        try {
+            const response = await fetch("/pybiscus-session/agents", {
+            method: "DELETE",
+            headers: {
+                "Content-Type": "application/json"
+            }
+            });
+
+            if (!response.ok) {
+            throw new Error(`Erreur HTTP : ${response.status}`);
+            }
+
+            const data = await response.json();
+            // document.getElementById("resultat").textContent = "Clients révoqués : " + JSON.stringify(data);
+        } catch (error) {
+            console.error("Error :", error);
+            // document.getElementById("resultat").textContent = "Échec de la révocation : " + error.message;
+        }
+        });
+
+    </script>
+</body>
+</html>

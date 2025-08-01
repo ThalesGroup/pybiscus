@@ -6,22 +6,150 @@ from pybiscus.session.manager.session_manager import pybiscus_manager_app
 
 # **************************
 
-@pybiscus_manager_app.route("/pybiscus-session/client", methods=["POST"])
-def pybiscus_manager_register_client():
+@pybiscus_manager_app.route("/pybiscus-session/run", methods=["GET"])
+def pybiscus_manager_run_session():
+
+    pybiscus.session.manager.session_manager.session_is_running = True
+
+# **************************
+
+@pybiscus_manager_app.route("/pybiscus-session/agent", methods=["POST"])
+def pybiscus_manager_register_agent():
 
     data = request.json
 
-    name       = data.get("name")
-    client_url = data.get("client_url")
+    name = data.get("name")
 
-    if name and client_url:
+    if name is None:
+        return jsonify({"status": "error", "message": "Missing 'name'"}), 400
+
+    agent_url = data.get("agent_url")
+
+    if agent_url is None:
+        return jsonify({"status": "error", "message": "Missing 'agent_url'"}), 400
+
+    role = data.get("role")
+
+    if role is None:
+        return jsonify({"status": "error", "message": "Missing 'role'"}), 400
+
+    if role == "server":
+
+        if name in pybiscus.session.manager.session_manager.registered_servers:
+            
+            if pybiscus.session.manager.session_manager.registered_servers[name] == agent_url:
+                return jsonify({
+                    "status": "success",
+                    "message": f"Server '{name}' already registered.",
+                })
+
+            else:
+                return jsonify({
+                    "status": "error",
+                    "message": f"Server '{name}' already registered with a different URL.",
+                }), 400
+
+        pybiscus.session.manager.session_manager.registered_servers[name] = agent_url
+
+        return jsonify({
+            "status": "success",
+            "message": f"Server '{name}' registered.",
+        })
+
+    if role == "client":
 
         if name in pybiscus.session.manager.session_manager.registered_clients:
             
-            if pybiscus.session.manager.session_manager.registered_clients[name] == client_url:
+            if pybiscus.session.manager.session_manager.registered_clients[name] == agent_url:
                 return jsonify({
                     "status": "success",
                     "message": f"Client '{name}' already registered.",
+                })
+
+            else:
+                return jsonify({
+                    "status": "error",
+                    "message": f"Client '{name}' already registered with a different URL.",
+                }), 400
+
+        pybiscus.session.manager.session_manager.registered_clients[name] = agent_url
+
+        return jsonify({
+            "status": "success",
+            "message": f"Client '{name}' registered.",
+        })
+
+    else:
+        return jsonify({"status": "error", "message": f"Bad role={role}, it should be server or client"}), 400
+
+# **************************
+
+@pybiscus_manager_app.route("/pybiscus-session/params", methods=["GET"])
+def pybiscus_manager_get_session_params():
+
+    if not pybiscus.session.manager.session_manager.session_is_running:
+        return jsonify({"status": "error", "message": "session is not running yet"})
+
+    first_item = next(iter(pybiscus.session.manager.session_manager.registered_servers.items()))
+    _, first_item_value = first_item
+
+    return jsonify({
+        "status" : "success",
+        "message": "session is running",
+        "server" : first_item_value,
+    })
+
+    #TODO: check return value
+    
+    data = request.json
+
+    name = data.get("name")
+
+    if name is None:
+        return jsonify({"status": "error", "message": "Missing 'name'"}), 400
+
+    agent_url = data.get("agent_url")
+
+    if agent_url is None:
+        return jsonify({"status": "error", "message": "Missing 'agent_url'"}), 400
+
+    role = data.get("role")
+
+    if role is None:
+        return jsonify({"status": "error", "message": "Missing 'role'"}), 400
+
+    if role == "server":
+
+        if name in pybiscus.session.manager.session_manager.registered_servers:
+            
+            if pybiscus.session.manager.session_manager.registered_servers[name] == agent_url:
+                return jsonify({
+                    "status": "success",
+                    "message": "session is running",
+                    "role"   : role,
+                    "server" : pybiscus.session.manager.session_manager.server_url,
+                })
+
+            else:
+                return jsonify({
+                    "status": "error",
+                    "message": f"Server '{name}' already registered with a different URL.",
+                }), 400
+
+        return jsonify({
+            "status": "error",
+            "message": f"Server '{name}' not registered.",
+        }), 400
+
+    if role == "client":
+
+        if name in pybiscus.session.manager.session_manager.registered_clients:
+            
+            if pybiscus.session.manager.session_manager.registered_clients[name] == agent_url:
+                return jsonify({
+                    "status": "success",
+                    "message": "session is running",
+                    "role"   : role,
                     "server" : pybiscus.session.manager.session_manager.server_url,
                 })
 
@@ -29,28 +157,30 @@ def pybiscus_manager_register_client():
                 return jsonify({
                     "status": "error",
                     "message": f"Client '{name}' already registered with a different URL.",
-                })
-
-        pybiscus.session.manager.session_manager.registered_clients[name] = client_url
+                }), 400
 
         return jsonify({
-            "status": "success",
-            "message": f"Client '{name}' registered.",
-            "server" : pybiscus.session.manager.session_manager.server_url,
-        })
+            "status": "error",
+            "message": f"Client '{name}' not registered.",
+        }), 400
+
     else:
-        return jsonify({"status": "error", "message": "Missing 'name' or 'client_url'"}), 400
+        return jsonify({"status": "error", "message": f"Bad role={role}, it should be server or client"}), 400
 
 # **************************
 
-@pybiscus_manager_app.route("/pybiscus-session/clients", methods=["GET"])
+@pybiscus_manager_app.route("/pybiscus-session/agents", methods=["GET"])
 def pybiscus_manager_list_clients():
-    return jsonify({"clients": pybiscus.session.manager.session_manager.registered_clients})
+    return jsonify({
+        "clients": pybiscus.session.manager.session_manager.registered_clients,
+        "servers": pybiscus.session.manager.session_manager.registered_servers,
+    })
 
 # **************************
 
-@pybiscus_manager_app.route("/pybiscus-session/clients", methods=["DELETE"])
+@pybiscus_manager_app.route("/pybiscus-session/agents", methods=["DELETE"])
 def pybiscus_manager_revoke_clients():
+    pybiscus.session.manager.session_manager.registered_servers = {}
     pybiscus.session.manager.session_manager.registered_clients = {}
 
     return jsonify({"status": "success"}), 200
@@ -58,18 +188,24 @@ def pybiscus_manager_revoke_clients():
 # **************************
 
 # sub-view URL
-# visualize a graph of session participants
-@pybiscus_manager_app.route("/pybiscus-session/visualize")
-def pybiscus_manager_visualize():
-    return render_template("visualize.html", server_url=pybiscus.session.manager.session_manager.server_url)
+# show session participant agents graph and logs
+@pybiscus_manager_app.route("/pybiscus-session/show_agents")
+def pybiscus_manager_show_agents():
+    return render_template("show_agents.html", manager_port=pybiscus.session.manager.session_manager.manager_port)
 
 # **************************
 
 # sub-view URL
-# visualize logs and metrics
+# show logs and metrics
 @pybiscus_manager_app.route("/pybiscus-session/show_run")
 def pybiscus_manager_show_run():
     return render_template("show_run.html", manager_port=pybiscus.session.manager.session_manager.manager_port)
+
+# **************************
+
+@pybiscus_manager_app.route("/pybiscus-session/show_blank")
+def pybiscus_manager_show_blank():
+    return render_template("show_blank.html")
 
 # **************************
 
@@ -79,7 +215,7 @@ def pybiscus_manager_show_run():
 # - ConfigSession ( cnx to Pybiscus server )
 @pybiscus_manager_app.route("/pybiscus-session/manage")
 def pybiscus_manager_manage():
-    return render_template("manager.html", server_url=pybiscus.session.manager.session_manager.server_url)
+    return render_template("manager.html")
 
 # **************************
 
@@ -114,7 +250,7 @@ def pybiscus_manager_receive_agents():
 
 # **************************
 
-@pybiscus_manager_app.route('/pybiscus-session/agents', methods=['GET'])
+@pybiscus_manager_app.route('/pybiscus-session/agents_logs', methods=['GET'])
 def pybiscus_manager_get_agents():
 
     with agent_lock:

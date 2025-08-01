@@ -80,27 +80,61 @@
     </header>
     
     <div class="split-container">
+
         <div class="left">
-            <iframe src="/pybiscus-session/visualize"></iframe>
+            <iframe id="agent-frame" src="/pybiscus-session/show_agents"></iframe>
         </div>
+
+    <script>
+        let serverUrl = "?";
+    </script>
 
         <div class="right">
             <div id="button-container">
-                Pybiscus Server Agent URL : <strong>{{ server_url }}</strong>
-                <button id="btn-config" style="display: none;">Session Configuration</button>
-                <button id="btn-run">Session Run Information</button>
+                Pybiscus Server Agent URL : <strong  id="server-url-display"></strong>
+                <button id="btn-config">Session Configuration</button>
+                <button id="btn-run" style="display: none;">Session Run Information</button>
             </div>
 
-            <iframe id="info-frame" src="{{server_url}}/session/config" width="100%" height="400px"></iframe>
+            <iframe id="info-frame" src="/pybiscus-session/show_blank" width="100%" height="400px"></iframe>
         </div>
     </div>
 
     <script>
-        const serverUrl = "{{server_url}}";  // template variable
-        const iframe = document.getElementById('info-frame');
+        // const aframe    = document.getElementById('agent-frame');
+        const iframe    = document.getElementById('info-frame');
         const btnConfig = document.getElementById('btn-config');
-        const btnRun = document.getElementById('btn-run');
+        const btnRun    = document.getElementById('btn-run');
+        const serverUrldisplay = document.getElementById("server-url-display");
 
+        serverUrldisplay.textContent = serverUrl;
+
+        window.addEventListener("message", (event) => {
+
+            if (event.data?.type === "server_url") {
+
+                if( serverUrl === "?" ) {
+                    serverUrl = event.data.value;
+                    serverUrldisplay.textContent = serverUrl;
+
+                    iframe.src = `${serverUrl}/session/config`;
+                }
+
+            } else if (event.data?.type === "session_config") {
+
+                iframe.src = '/pybiscus-session/show_run';
+                
+                console.log("EVT session_config")
+
+                // say to back-end that session is running
+                fetch("/pybiscus-session/run")
+                .catch(error => {
+                    console.error('Error running pybiscus session:', error);
+                });
+            }
+        });
+
+        //TODO: supress buttons
         btnConfig.addEventListener('click', () => {
             iframe.src = `${serverUrl}/session/config`;
             btnConfig.style.display = 'none';
@@ -115,4 +149,3 @@
     </script>
 </body>
 </html>
-

@@ -25,10 +25,11 @@ def notify_client_node( name: str, client_url: str, manager_url: str, server_url
         print(f"❌ Registration failed: {e}")
 
 def register_client(name: str, client_url: str, manager_url: str):
-    endpoint = f"{manager_url}/pybiscus-session/client"
+    endpoint = f"{manager_url}/pybiscus-session/agent"
     payload = {
         "name": name,
-        "client_url": client_url
+        "agent_url": client_url,
+        "role" : "Client",
     }
 
     try:
