@@ -5,7 +5,7 @@ from threading import Lock
 
 import urllib
 import pybiscus.session.manager.session_manager
-from pybiscus.session.manager.session_manager import pybiscus_manager_app
+from pybiscus.session.manager.session_manager import generate_new_cid, pybiscus_manager_app
 
 # **************************
 
@@ -133,10 +133,15 @@ def pybiscus_manager_get_session_params():
     if not pybiscus.session.manager.session_manager.session_is_running:
         return jsonify({"status": "error", "message": "session is not running yet"})
 
+    custom_presets = pybiscus.session.manager.session_manager.agent_gui_json_presets.copy()
+
+    custom_presets["values_set"]["client_run.cid"] = generate_new_cid();
+    custom_presets["values_lock"] += [ "client_run.cid" ]    
+
     return jsonify({
         "status" : "success",
         "message": "session is running",
-        "presets": pybiscus.session.manager.session_manager.agent_gui_json_presets,
+        "presets": custom_presets,
     })
 
 # **************************

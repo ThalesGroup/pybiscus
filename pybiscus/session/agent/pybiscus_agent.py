@@ -29,20 +29,11 @@ uploaded_file_path = None
 ########## Session context ############
 #######################################
 
-# server part
-server_session_client_id_counter = 0
-
 #  common part
 registration_parameters = {}
 
 #  client part
 session_server_url  = None
-
-# server specific
-def generate_new_cid():
-    global server_session_client_id_counter
-    server_session_client_id_counter += 1
-    return str(server_session_client_id_counter)
 
 def reset_registration():
 
@@ -55,8 +46,6 @@ def reset_session():
 
     print("Reset session !!!")
 
-    global server_session_client_id_counter
-    server_session_client_id_counter = 0
     global session_server_url
     session_server_url = None
 

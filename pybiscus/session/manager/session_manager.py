@@ -15,6 +15,12 @@ registered_servers = {}
 manager_port = None
 session_is_running = False
 agent_gui_json_presets = None
+session_client_id_counter = 0
+
+def generate_new_cid():
+    global session_client_id_counter
+    session_client_id_counter += 1
+    return str(session_client_id_counter)
 
 # **************************
 
