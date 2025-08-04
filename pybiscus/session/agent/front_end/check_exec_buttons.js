@@ -7,6 +7,7 @@ const execute_button = document.getElementById('execute-button');
 const pin_Button     = document.getElementById('pin-config-button');
 const blank_Button   = document.getElementById('blank-config-button');
 
+check_button.disabled   = false;
 execute_button.disabled = true;
 
 // ***********************************************************************************************
@@ -53,7 +54,7 @@ check_button.addEventListener('click', function() {
     const successResultDiv = document.getElementById('check-success-result');
     const failureResultDiv = document.getElementById('check-failure-result');
 
-    indicatorDiv.style.display = 'block';
+    indicatorDiv.style.display     = 'block';
     successResultDiv.style.display = 'none';
     failureResultDiv.style.display = 'none';
 
@@ -110,6 +111,7 @@ check_button.addEventListener('click', function() {
 // add an button event listener
 execute_button.addEventListener('click', function() {
 
+    check_button.disabled   = true;
     execute_button.disabled = true;
 
     const check_indicatorDiv     = document.getElementById('check-indicator');
@@ -147,7 +149,7 @@ execute_button.addEventListener('click', function() {
       .then(data => {
         console.log("{{action}} response:", data);
 
-        indicatorDiv.style.display = 'none';
+        indicatorDiv.style.display     = 'none';
         successResultDiv.style.display = 'block';
         failureResultDiv.style.display = 'none';
       })

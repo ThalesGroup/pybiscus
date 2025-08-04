@@ -1,6 +1,9 @@
+import json
 from flask import render_template, request, jsonify
 import requests
 from threading import Lock
+
+import urllib
 import pybiscus.session.manager.session_manager
 from pybiscus.session.manager.session_manager import pybiscus_manager_app
 
@@ -8,8 +11,48 @@ from pybiscus.session.manager.session_manager import pybiscus_manager_app
 
 @pybiscus_manager_app.route("/pybiscus-session/run", methods=["GET"])
 def pybiscus_manager_run_session():
+    """    an optional "presets" of type json customizes the html :
+    - options values to be set
+    - options to be locked to the active value (change not permitted)
 
+    Format to know which actions to perform : 
+
+    {
+        "options_set": {
+            "model" : "Cifar 10",
+            "data" : "Cifar 10"
+            "ssl" : "None",
+        },
+
+        "options_lock": [ "model", "data", "ssl" ]
+    }
+    """
+     
+    presets_raw = request.args.get("presets")
+    
+    if presets_raw:
+        try:
+            # decode and parse JSON param
+            decoded = urllib.parse.unquote(presets_raw)
+
+            # store them into context
+            pybiscus.session.manager.session_manager.agent_gui_json_presets = json.loads(decoded)
+
+            print("session back-end received session json presets: ", pybiscus.session.manager.session_manager.agent_gui_json_presets)
+
+        except Exception as e:
+            print( f"/pybiscus-session/run with bad param {str(e)}" )
+            raise e
+
+    else:
+        print("/pybiscus-session/run with no param")
+
+    # set the session running flag
     pybiscus.session.manager.session_manager.session_is_running = True
+
+    return jsonify({ 
+        "status": "success",
+    }), 200
 
 # **************************
 
@@ -90,82 +133,11 @@ def pybiscus_manager_get_session_params():
     if not pybiscus.session.manager.session_manager.session_is_running:
         return jsonify({"status": "error", "message": "session is not running yet"})
 
-    first_item = next(iter(pybiscus.session.manager.session_manager.registered_servers.items()))
-    _, first_item_value = first_item
-
     return jsonify({
         "status" : "success",
         "message": "session is running",
-        "server" : first_item_value,
+        "presets": pybiscus.session.manager.session_manager.agent_gui_json_presets,
     })
-
-    #TODO: check return value
-    
-    data = request.json
-
-    name = data.get("name")
-
-    if name is None:
-        return jsonify({"status": "error", "message": "Missing 'name'"}), 400
-
-    agent_url = data.get("agent_url")
-
-    if agent_url is None:
-        return jsonify({"status": "error", "message": "Missing 'agent_url'"}), 400
-
-    role = data.get("role")
-
-    if role is None:
-        return jsonify({"status": "error", "message": "Missing 'role'"}), 400
-
-    if role == "server":
-
-        if name in pybiscus.session.manager.session_manager.registered_servers:
-            
-            if pybiscus.session.manager.session_manager.registered_servers[name] == agent_url:
-                return jsonify({
-                    "status": "success",
-                    "message": "session is running",
-                    "role"   : role,
-                    "server" : pybiscus.session.manager.session_manager.server_url,
-                })
-
-            else:
-                return jsonify({
-                    "status": "error",
-                    "message": f"Server '{name}' already registered with a different URL.",
-                }), 400
-
-        return jsonify({
-            "status": "error",
-            "message": f"Server '{name}' not registered.",
-        }), 400
-
-    if role == "client":
-
-        if name in pybiscus.session.manager.session_manager.registered_clients:
-            
-            if pybiscus.session.manager.session_manager.registered_clients[name] == agent_url:
-                return jsonify({
-                    "status": "success",
-                    "message": "session is running",
-                    "role"   : role,
-                    "server" : pybiscus.session.manager.session_manager.server_url,
-                })
-
-            else:
-                return jsonify({
-                    "status": "error",
-                    "message": f"Client '{name}' already registered with a different URL.",
-                }), 400
-
-        return jsonify({
-            "status": "error",
-            "message": f"Client '{name}' not registered.",
-        }), 400
-
-    else:
-        return jsonify({"status": "error", "message": f"Bad role={role}, it should be server or client"}), 400
 
 # **************************
 

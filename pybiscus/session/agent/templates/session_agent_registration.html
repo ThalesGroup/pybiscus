@@ -660,46 +660,6 @@
             }
         });
         
-        // TODO: delete code
-        // async function notifyClientNode(name, clientUrl, managerUrl, serverUrl) {
-        //     const endpoint = `${clientUrl.replace(/\/$/, '')}/session/client/registration`;
-        //     const payload = {
-        //         client_name: name,
-        //         manager_url: managerUrl,
-        //         server_url: serverUrl
-        //     };
-
-        //     try {
-        //         const response = await fetch(endpoint, {
-        //             method: 'POST',
-        //             headers: {
-        //                 'Content-Type': 'application/json',
-        //                 'Accept': 'application/json'
-        //             },
-        //             body: JSON.stringify(payload)
-        //         });
-
-        //         if (!response.ok) {
-        //             throw new Error(`HTTP ${response.status} - ${response.statusText}`);
-        //         }
-
-        //         const theJson = await response.json();
-        //         console.log(`📡 Client response:`, theJson);
-
-        //         if (theJson.status === "ok") {
-        //             console.log(`✅ Client '${name}' acked.`);
-        //             return { success: true, message: `Client '${name}' acknowledged successfully` };
-        //         } else {
-        //             console.log('❌ Client nacked');
-        //             return { success: false, message: 'Client did not acknowledge (nacked)' };
-        //         }
-
-        //     } catch (error) {
-        //         console.log(`❌ Registration failed: ${error.message}`);
-        //         return { success: false, message: `Registration failed: ${error.message}` };
-        //     }
-        // }
-
         // create animated particles
         function createParticles() {
             const particlesContainer = document.getElementById('particles');

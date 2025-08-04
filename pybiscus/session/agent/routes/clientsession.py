@@ -1,7 +1,9 @@
 
 
 import importlib
+import json
 from flask import jsonify, request
+import urllib
 
 from pybiscus.flower_config.config_client import ConfigClient
 from pybiscus.pydantic2xxx.pydantic2html import generate_model_page
@@ -18,25 +20,34 @@ import pybiscus.core.pybiscus_logger as logm
 
 @rest_server.route("/client/config", methods=["GET"])
 def clientConfigDownload():
-    """get the client parameters form
-    if the global session_parameters dict is defined :
-    - options can be set
-    - options can be locked to the active value with change not permitted
-    - values can be set
-    - values can be locked as the input field is set read only
-    """
-    param_js = "console.log(\"generate_model_page() called from HTTP GET @ /client/config\" );"
+    """get the client parameters form"""
+    
+    param_js = "console.log(\"generate_model_page() called from HTTP GET @ /client/config\" );\n"
 
-    if pybagent.session_parameters:
+    presets_raw = request.args.get("presets")
+    
+    if presets_raw:
+        try:
+            # decode and parse JSON param
+            decoded = urllib.parse.unquote(presets_raw)
 
-            param_js = generate_param_js(pybagent.session_parameters)
+            session_parameters = json.loads(decoded)
 
-            logm.console.log("client: downloaded parameters: ", pybagent.session_parameters)
+            param_js = generate_param_js(session_parameters)
 
-    with importlib.resources.files("pybiscus.session.agent").joinpath("fold_fieldset.js").open('r') as file:
+            logm.console.log("server: received session parameters: ", session_parameters)
+            # logm.console.log("generated params :\n", param_js)
+
+        except Exception as e:
+            logm.console.log( f"/server/config with bad param {str(e)}" )
+            raise e
+    else:
+        logm.console.log("/server/config with no param")
+
+    with importlib.resources.files("pybiscus.session.agent.front_end").joinpath("fold_fieldset.js").open('r') as file:
         fold_fieldsets = file.read()
 
-    return generate_model_page(ConfigClient,'pybiscus.session.agent','agent.html','check_exec_buttons', fold_fieldsets + param_js)
+    return generate_model_page(ConfigClient,'pybiscus.session.agent.front_end','agent.html','check_exec_buttons', fold_fieldsets + param_js)
 
 # ..........................................................
 # .... POST /client/config .................................
@@ -71,8 +82,8 @@ def client():
 
         # upload the client configuration yaml file to the server
         # which is in charge of storing it into the session context
-        server_url = f"{pybagent.session_server_url}/session/log/client/{pybagent.registration_parameters['name']}/runconfig"
-        send_yaml_file(pybagent.uploaded_file_path, server_url)
+        target_url = f"{pybagent.session_server_url}/session/log/client/{pybagent.registration_parameters['name']}/runconfig"
+        send_yaml_file(pybagent.uploaded_file_path, target_url)
     
         return interpretConfigurationFile( "client", str(pybagent.uploaded_file_path) )
     
@@ -104,30 +115,3 @@ def send_yaml_file(yaml_file, url, timeout=10):
         print(f"❌ Erreur HTTP : {e}")
     except Exception as e:
         print(f"❗ Erreur inattendue : {e}")
-
-# ..........................................................
-# ............ POST /session/client/parameters .............
-# ..........................................................
-# called by client front-end to store the json HMI 
-# defining the  HMI session common configurations
-# ..........................................................
-
-@rest_server.route('/session/client/parameters', methods=['POST'])
-def set_parameters():
-    """ the client agent front-end after getting access to the session configuration
-    send it to the backend by posting it to this URL 
-    which stores it into ist context
-    """
-
-    if request.json:
-
-        print(f"received json : {request.json}")
-
-        pybagent.session_parameters = request.json
-
-        print(f"Stored parameters : \n@@@@@@\n{pybagent.session_parameters}\n@@@@@@")
-        return jsonify({"status": "ok"})
-    
-    else:
-        return jsonify({"status": "ko"})
-

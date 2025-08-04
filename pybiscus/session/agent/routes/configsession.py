@@ -12,10 +12,6 @@ client_registration_resume = ""
 @rest_server.route('/session/agent/registration/waiting')
 def session_registration_waiting():
 
-    # reset_session()
-    print(f"WAITING {pybagent.registration_parameters}")
-    print(f"WAITING2 {pybagent.registration_parameters['role']}")
-
     manager_url = pybagent.registration_parameters['manager_url']
     role        = pybagent.registration_parameters['role']
 
@@ -30,32 +26,26 @@ def session_registration_waiting():
                 .then(res => {{
                     if (!res.ok) {{
                         return res.json().then(err => {{
-                            console.warn("⏳ En attente : " + err.message);
+                            console.warn("⏳ /pybiscus-session/params : " + err.message);
                             throw new Error(err.message);
                         }});
                     }}
                     return res.json();
                 }})
                 .then(data => {{
-                    console.log("✅ Session params :", data);
+                    console.log("✅ Received session params :", data);
 
                     if( data.status === "success" ) {{
-
-                        const server_url  = data.server; // TODO: send it to BE
-                        console.log("1 server url is : ", server_url);
-                        const role    = "{role}";
-                        console.log("2 server url is : ", server_url);
+                        const role = "{role}";
                         console.log("role is ", role);
-                        console.log("3 server url is : ", server_url);
-                        const role_url = `/${{role}}/config`;
-                        console.log("4 server url is : ", server_url);
-                        console.log("role_url is ", role_url);
-                        //const message = data.message;
-
+                        
+                        const query = new URLSearchParams({{ presets: JSON.stringify(data.presets) }}).toString();
+                        console.log("query = ", query);
+                        const role_url = `/${{role}}/config?${{query}}`;
+                        console.log("role_url = ", role_url);
+                        
                         window.location.href = role_url;
                         
-                        // Check every 2 seconds
-                        //setInterval(checkSessionRun, 2000);
                     }}
                     else {{
                         setTimeout(() => pollSessionParams(interval), interval);
@@ -69,23 +59,6 @@ def session_registration_waiting():
         pollSessionParams(3000);
 
 ''' )
-
-#         // session run check function
-#         function checkSessionRun() {
-#             fetch("/session/client/registration/check")
-#                 .then(res => res.json())
-#                 .then(data => {
-#                     // Exit animation before redirect
-#                     document.querySelector('.container').style.animation = 'slideUp 0.5s ease-in reverse';
-#                     setTimeout(() => {
-#                         window.location.href = '/session/client/parameters/server_polling';
-#                     }, 500);
-#                 })
-#                 .catch(error => {
-#                     console.error('Error checking status:', error);
-#                 });
-#         }
-
 
 # ..........................................................
 # ............ GET  /session/client/registration ...........
@@ -147,86 +120,17 @@ def session_registration_parameters():
 
     the_json = request.json
 
+    # TODO: remove prints
     print(f"REGISTER before {pybagent.registration_parameters}")
 
     if the_json:
 
-        #TODO: remove comment
-        # REGISTERED: {
-        #      'name': 'cortaix-labs-00', 
-        #      'agent_url': 'http://localhost:5000', 
-        #      'bouquet': 'cortaixlabs-cluster', 
-        #      'location': 'palaiseau-dc', 
-        #      'geo_location': {'latitude': 48.71439, 'longitude': 2.20278}, 
-        #      'organisation': 'CortaiX Labs', ''
-        #      'role': 'server', 
-        #      'manager_url': 'http://localhost:5555'
-        #      }
         pybagent.registration_parameters = the_json
 
         print(f"REGISTER after {pybagent.registration_parameters}")
-
-        #TODO: se server_url n'est pas connu au moment du recording !!!
-        # pybagent.session_server_url  = the_json["server_url"]
 
         return jsonify({"status": "ok"})
     
     else:
         return jsonify({"status": "ko"}), 400
-
-# ..........................................................
-# ............. GET /session/client/registration/check .....
-# ..........................................................    
-
-#TODO:
-# @rest_server.route('/session/client/registration/check')
-# def check_registration():
-#     return jsonify({'redirect': pybagent.session_client_name is not None })
-
-# ..........................................................
-# ...... GET /session/client/parameters/server_polling .....
-# ..........................................................    
-
-#TODO: check if used
-
-@rest_server.route('/session/client/parameters/server_polling')
-def session_parameters_waiting():
-
-    callback_template = f"""
-
-    async function check() {{
-        const res = await fetch('{pybagent.session_server_url}/session/parameters/check');
-        const data = await res.json();
-        if (data.ready) {{
-            console.log("Session parameters are available !");
-
-            fetch('/session/client/parameters', {{
-                method: 'POST',
-                headers: {{
-                    'Content-Type': 'application/json'
-                }},
-                body: JSON.stringify(data.params)
-            }})
-            .then(response => response.json())
-            .then(data => {{
-                console.log("Server response :", data);
-                window.location.href = "/client/config";
-            }})
-            .catch(error => {{
-                console.error("POST error: ", error);
-            }});
-        }} else {{
-            setTimeout(check, 1000);
-        }}
-    }}
-
-    check();
-
-"""
-
-    return render_template('session_agent_waiting.html',
-                       state='Waiting for session parameters',
-                       action='Server request',
-                       explanation='Your client is requesting the server to provide the FL session parameters.',
-                       callback=callback_template)
 

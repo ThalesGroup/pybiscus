@@ -88,24 +88,7 @@ def serverConfigHtmlFromCache():
 
 @rest_server.route("/server/config", methods=["GET"])
 def serverConfigDownload():
-    """get the server parameters form
-    an optional "param" of type json customizes the html :
-    - options values to be set
-    - options to be locked to the active value (change not permitted)
-
-    Format to know which actions to perform : 
-
-    {
-        "options_set": {
-            "model" : "Cifar 10",
-            "data" : "Cifar 10"
-            "ssl" : "None",
-        },
-
-        "options_lock": [ "model", "data", "ssl" ]
-    }
-     
-    """
+    """get the server parameters form"""
 
     #                      -----------------
 
@@ -121,12 +104,12 @@ def serverConfigDownload():
 
     param_js = "console.log(\"generate_model_page() called from HTTP GET @ /server/config\" );"
 
-    param_raw = request.args.get("param")
+    presets_raw = request.args.get("presets")
     
-    if param_raw:
+    if presets_raw:
         try:
             # decode and parse JSON param
-            decoded = urllib.parse.unquote(param_raw)
+            decoded = urllib.parse.unquote(presets_raw)
 
             # store them into context
             pybagent.session_parameters = json.loads(decoded)
@@ -139,22 +122,21 @@ def serverConfigDownload():
         except Exception as e:
             logm.console.log( f"/server/config with bad param {str(e)}" )
             raise e
-
     else:
         logm.console.log("/server/config with no param")
 
-    with importlib.resources.files("pybiscus.session.agent").joinpath("show_server_items.js").open('r') as file:
+    with importlib.resources.files("pybiscus.session.agent.front_end").joinpath("show_server_items.js").open('r') as file:
         show_server_items = file.read()
 
-    with importlib.resources.files("pybiscus.session.agent").joinpath("fold_fieldset.js").open('r') as file:
+    with importlib.resources.files("pybiscus.session.agent.front_end").joinpath("fold_fieldset.js").open('r') as file:
         fold_fieldsets = file.read()
 
-    with importlib.resources.files("pybiscus.session.agent").joinpath("lists_management.js").open('r') as file:
+    with importlib.resources.files("pybiscus.session.agent.front_end").joinpath("lists_management.js").open('r') as file:
         lists_management = file.read()
 
     js_code = show_server_items + fold_fieldsets + lists_management + param_js
 
-    return generate_model_page(ConfigServer,'pybiscus.session.agent','agent.html','check_exec_buttons', js_code)
+    return generate_model_page(ConfigServer,'pybiscus.session.agent.front_end','agent.html','check_exec_buttons', js_code)
 
 # ..........................................................
 # .... POST /server/config .................................
@@ -215,26 +197,7 @@ def sessionConfigDownload():
 
     config_session = make_session_model(models_names, ModelConfig(), data_names, DataConfig() )
 
-    return generate_model_page(config_session,'pybiscus.session.agent','agent.html','launch_session_button')
-
-# ..........................................................
-# ............. GET /session/parameters/check ..............
-# ..........................................................    
-# called by client to obtain its set of run parameters
-# ..........................................................    
-
-@rest_server.route('/session/parameters/check')
-def check_parameters():
-
-    if pybagent.session_parameters:
-
-        client_params = pybagent.session_parameters.copy()
-        client_params["values_set"]["client_run.cid"] = generate_new_cid();
-        client_params["values_lock"] += [ "client_run.cid" ]    
-
-        return jsonify({"ready": True, "params": client_params})
-    else:
-        return jsonify({"ready": False})
+    return generate_model_page(config_session,'pybiscus.session.agent.front_end','agent.html','launch_session_button')
 
 # ..........................................................
 # ... POST /session/log/client/<client_name>/runconfig .....

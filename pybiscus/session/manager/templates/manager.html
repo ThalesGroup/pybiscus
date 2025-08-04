@@ -84,16 +84,9 @@
         <div class="left">
             <iframe id="agent-frame" src="/pybiscus-session/show_agents"></iframe>
         </div>
-
-    <script>
-        let serverUrl = "?";
-    </script>
-
         <div class="right">
             <div id="button-container">
                 Pybiscus Server Agent URL : <strong  id="server-url-display"></strong>
-                <button id="btn-config">Session Configuration</button>
-                <button id="btn-run" style="display: none;">Session Run Information</button>
             </div>
 
             <iframe id="info-frame" src="/pybiscus-session/show_blank" width="100%" height="400px"></iframe>
@@ -101,10 +94,10 @@
     </div>
 
     <script>
-        // const aframe    = document.getElementById('agent-frame');
+
+        let serverUrl = "";
+
         const iframe    = document.getElementById('info-frame');
-        const btnConfig = document.getElementById('btn-config');
-        const btnRun    = document.getElementById('btn-run');
         const serverUrldisplay = document.getElementById("server-url-display");
 
         serverUrldisplay.textContent = serverUrl;
@@ -113,7 +106,7 @@
 
             if (event.data?.type === "server_url") {
 
-                if( serverUrl === "?" ) {
+                if( serverUrl === "" ) {
                     serverUrl = event.data.value;
                     serverUrldisplay.textContent = serverUrl;
 
@@ -126,26 +119,16 @@
                 
                 console.log("EVT session_config")
 
+                const presets = encodeURIComponent(JSON.stringify(event.data?.value));
+
                 // say to back-end that session is running
-                fetch("/pybiscus-session/run")
+                fetch(`/pybiscus-session/run?presets=${presets}`)
                 .catch(error => {
                     console.error('Error running pybiscus session:', error);
                 });
             }
         });
 
-        //TODO: supress buttons
-        btnConfig.addEventListener('click', () => {
-            iframe.src = `${serverUrl}/session/config`;
-            btnConfig.style.display = 'none';
-            btnRun.style.display = 'inline-block';
-        });
-
-        btnRun.addEventListener('click', () => {
-            iframe.src = '/pybiscus-session/show_run';
-            btnRun.style.display = 'none';
-            btnConfig.style.display = 'inline-block';
-        });
     </script>
 </body>
 </html>

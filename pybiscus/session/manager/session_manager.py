@@ -14,6 +14,7 @@ registered_clients = {}
 registered_servers = {}
 manager_port = None
 session_is_running = False
+agent_gui_json_presets = None
 
 # **************************
 

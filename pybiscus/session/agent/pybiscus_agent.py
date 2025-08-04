@@ -34,7 +34,6 @@ server_session_client_id_counter = 0
 
 #  common part
 registration_parameters = {}
-session_parameters = {}
 
 #  client part
 session_server_url  = None
@@ -56,8 +55,6 @@ def reset_session():
 
     print("Reset session !!!")
 
-    global session_parameters
-    session_parameters = {}
     global server_session_client_id_counter
     server_session_client_id_counter = 0
     global session_server_url
@@ -409,11 +406,11 @@ def test_html():
         content: MyContent
         # label_de_cadix: int = 0
 
-    with importlib.resources.files("pybiscus.session.agent").joinpath("lists_management.js").open('r') as file:
+    with importlib.resources.files("pybiscus.session.agent.front_end").joinpath("lists_management.js").open('r') as file:
         lists_management = file.read()
 
     # return generate_field_html_by_name()
-    return generate_model_page(MyConf,'pybiscus.session.agent','agent.html','check_exec_buttons', lists_management)
+    return generate_model_page(MyConf,'pybiscus.session.agent.front_end','agent.html','check_exec_buttons', lists_management)
 
 # ..........................................................    
 
