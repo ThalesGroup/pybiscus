@@ -1,83 +1,207 @@
 
-*1* launch the server :
- ./launch/agent/cli/5000.sh
-
-*2* launch the manager back-end :
-./launch/session/run_manager.sh
-
--- access the manager front-end : 
-
-    browse http://localhost:5555/pybiscus-session/manage
-
-    which loads html pages :
-        HTTP GET manager_url/pybiscus-session/visualize
-        HTTP GET server_url/session/config
-
-*3* launch client1 :
- ./launch/agent/cli/5001.sh
-
--- access the client1 front-end : 
-
-    browse http://localhost:5001/session/client/registration/waiting
-
-    poll back-end : 
-        HTTP GET /session/client/registration/check
-        <- {'redirect': boolean }
+Site: https://www.plantuml.com/
 
 
-*4* declare client1 :
-./launch/session/start1.sh
-
-    client1 back-end -> manager
-        HTTP POST manager_url/register { "name": name, "client_url": client_url }
-
-    negative response:
-        <- { "status": "error", "message": message }
-
-    positive response:
-        <- { "status": "success", "message": message, "server" : server_url }
-
-        post registration info to the client back-end
-        HTTP POST client_url/session/client/registration { "client_name": name, "manager_url": manager_url,"server_url": server_url }
-
-        which conducts client front-end, polling on /session/client/registration/check
-        to redirect to /session/client/parameters/server_polling
-
-
-*5* launch client2 :
- ./launch/agent/cli/5002.sh
-
--- access the client2 front-end : 
-
-    browse http://localhost:5002/session/client/registration/waiting
-
-    ...
-
-*6* declare client2 :
-./launch/session/start2.sh
-
-    client2 back-end -> manager
-        HTTP POST manager_url/register { "name": name, "client_url": client_url }
-
-    ...
+            json_payload = {
+                application:  'Pybiscus'
+                name:         name
+                agent_url:    baseUrl
+                bouquet:      bouquet
+                location:     location
+                geo_location: geoLocation
+                organisation: organisation
+                role:         role
+            };
 
 
 
+@startuml
+hide footbox
 
-*** Set the session parameters from the server_url/session/config page viewed in manager front-end
+actor Actor #red
 
-    redirect server front-end to : HTTP GET /server/config?param=paramStr
+participant ManagerBack [
+    = Session Manager
+    ----
+    http://localhost:5555
+]
 
-*** client front-end poll the server 
-        HTTP GET server_url/session/server/parameters/check'
-        <- {"ready": True, "params": session_parameters}
-        or
-        <- {"ready": False}
+participant ManagerFront [
+    = Manager FrontEnd
+]
 
-        if True:
+participant ServerBack[
+    = Pybiscus Server
+    ----
+    http://localhost:5000
+]
 
-            send the session parameters to its back-end
-            HTTP POST /session/client/parameters session_parameters
+participant ServerFront[
+    = Server FrontEnd
+]
 
-            redirect to /client/config
+participant Client1Back[
+    = Pybiscus Client 1
+    ----
+    http://localhost:5001
+]
 
+participant Client1Front[
+    = Client1 FrontEnd
+]
+
+participant Client2Back[
+    = Pybiscus Client 2
+    ----
+    http://localhost:5002
+]
+
+
+ == Launch backends ==
+
+Actor -> ManagerBack: ./launch/session/run_manager.sh
+activate ManagerBack #Blue
+
+Actor -> ServerBack: ./launch/agent/cli/5000.sh
+activate ServerBack #LightBlue
+
+Actor -> Client1Back: ./launch/agent/cli/5001.sh
+activate Client1Back #LightBlue
+
+Actor -> Client2Back: ./launch/agent/cli/5002.sh
+activate Client2Back #LightBlue
+
+ == Access frontends ==
+
+create ManagerFront
+Actor -> ManagerFront: browse /pybiscus-session/manage
+activate ManagerFront #DarkSalmon
+
+ManagerFront -> ManagerBack: GET /pybiscus-session/manage
+
+
+ManagerFront -> ManagerBack: GET /pybiscus-session/show_blank
+
+ManagerFront -> ManagerBack: GET /pybiscus-session/show_agents
+
+ManagerFront ->o ManagerFront
+
+loop#Gold #LightBlue every 2s
+ManagerFront -> ManagerBack: GET /pybiscus-session/agents
+ManagerBack -> ManagerFront: [Json servers, clients]
+end
+
+
+
+create ServerFront
+Actor -> ServerFront: browse /session/agent/registration
+activate ServerFront #DarkSalmon
+
+ServerFront -> ServerBack: /session/agent/registration
+
+create Client1Front
+Actor -> Client1Front: browse /session/agent/registration
+activate Client1Front #DarkSalmon
+
+Client1Front -> Client1Back: /session/agent/registration
+
+participant Client2Front[
+    = Client2 FrontEnd
+]
+
+create Client2Front
+Actor -> Client2Front: browse /session/agent/registration
+activate Client2Front #DarkSalmon
+
+Client2Front -> Client2Back: /session/agent/registration
+
+ == Agents registration ==
+
+Actor -> ServerFront: Register
+ServerFront -> ManagerBack : POST /pybiscus-session/agent [Json Registration parameters]
+ServerFront -> ServerBack : POST /session/agent/registration [Json Registration parameters]
+ServerFront -> ServerBack: GET /session/agent/registration/waiting
+ServerBack ->o ServerFront
+ServerFront ->o ServerFront
+
+loop#Gold #LightBlue every ?s
+ServerFront -> ManagerBack: GET /pybiscus-session/params
+
+    alt#Gold #LightGreen Successful case
+    ManagerBack-> ServerFront: Session running
+    else #Pink Failure
+    ManagerBack-> ServerFront: Session not running
+    end
+end
+
+
+Actor -> Client1Front: Register
+Client1Front -> ManagerBack : POST /pybiscus-session/agent [Json Registration parameters]
+Client1Front -> Client1Back : POST /session/agent/registration [Json Registration parameters]
+Client1Front -> Client1Back: GET /session/agent/registration/waiting
+Client1Back ->o Client1Front
+Client1Front ->o Client1Front
+
+loop#Gold #LightBlue every ?s
+Client1Front -> ManagerBack: GET /pybiscus-session/params
+
+    alt#Gold #LightGreen Successful case
+    ManagerBack-> Client1Front: Session running
+    else #Pink Failure
+    ManagerBack-> Client1Front: Session not running
+    end
+end
+
+
+Actor -> Client2Front: Register
+Client2Front -> ManagerBack : POST /pybiscus-session/agent [Json Registration parameters]
+Client2Front -> Client2Back : POST /session/agent/registration [Json Registration parameters]
+Client2Front -> Client2Back: GET /session/agent/registration/waiting
+Client2Back ->o Client2Front
+Client2Front ->o Client2Front
+
+loop#Gold #LightBlue every ?s
+Client2Front -> ManagerBack: GET /pybiscus-session/params
+
+    alt#Gold #LightGreen Successful case
+    ManagerBack-> Client2Front: Session running
+    else #Pink Failure
+    ManagerBack-> Client2Front: Session not running
+    end
+end
+
+ == upon Server registration ==
+
+loop#Gold #LightBlue every 2s
+ManagerFront -> ManagerBack: GET /pybiscus-session/agents
+ManagerBack -> ManagerFront: [Json servers, clients]
+end
+
+ == upon Session common parameters definition ==
+
+loop#Gold #LightBlue every ?s
+ServerFront -> ManagerBack: GET /pybiscus-session/params
+
+    alt#Gold #LightGreen Successful case
+    ManagerBack-> ServerFront: Session running
+    end
+end
+
+loop#Gold #LightBlue every ?s
+Client1Front -> ManagerBack: GET /pybiscus-session/params
+
+    alt#Gold #LightGreen Successful case
+    ManagerBack-> Client1Front: Session running
+    end
+end
+
+loop#Gold #LightBlue every ?s
+Client2Front -> ManagerBack: GET /pybiscus-session/params
+
+    alt#Gold #LightGreen Successful case
+    ManagerBack-> Client2Front: Session running
+    end
+end
+
+ == End of session ==
+@enduml

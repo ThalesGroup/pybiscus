@@ -310,6 +310,13 @@ def upload_yaml():
     return jsonify({"message": "yaml file received", "path": uploaded_file_path})
 
 
+PRESETS_BEGIN="// Presets --- begin ---"
+PRESETS_END="// Presets --- end ---"
+
+def PRESETS(text):
+    return f"{PRESETS_BEGIN}\n{text}\n{PRESETS_END}\n"
+
+
 def generate_param_js(payload):
     """generates the js source that matches json-described action to perform
     ie: set selected options by label, lock options so they can not be changed
@@ -346,6 +353,7 @@ def generate_param_js(payload):
     value_lock_lines = "\n".join(f'lock_value("{opt}");' for opt in values_lock)
 
     param_js = f'''
+
         const prefixes = [{prefixes_str}];
 
         /* let selected = selected_options(prefixes);
@@ -363,15 +371,31 @@ def generate_param_js(payload):
         set_values( new_values );
 
         {value_lock_lines}
-'''.strip()
+
+'''
 
     return param_js
 
-def store_parameters():
-    pass
+# ..........................................................
+# ............. POST /server-url ...........................
+# ..........................................................    
+
+@rest_server.route('/server-url', methods=['POST'])
+def set_server_url():
+    data = request.get_json()
+
+    server_url = data.get('server_url')
+
+    if server_url:
+        global session_server_url
+        session_server_url = server_url
+
+        return jsonify({"message": "server_url set", "server_url": server_url})
+    else:
+        return jsonify({"error": "server_url is required"}), 400
 
 # ..........................................................
-# ............. GET /test/html .....
+# ............. GET /test/html .............................
 # ..........................................................    
 
 @rest_server.route('/test/html')

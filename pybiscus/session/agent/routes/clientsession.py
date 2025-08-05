@@ -21,11 +21,11 @@ import pybiscus.core.pybiscus_logger as logm
 @rest_server.route("/client/config", methods=["GET"])
 def clientConfigDownload():
     """get the client parameters form"""
-    
-    param_js = "console.log(\"generate_model_page() called from HTTP GET @ /client/config\" );\n"
 
     presets_raw = request.args.get("presets")
-    
+
+    from pybiscus.session.agent.pybiscus_agent import PRESETS
+
     if presets_raw:
         try:
             # decode and parse JSON param
@@ -33,10 +33,10 @@ def clientConfigDownload():
 
             session_parameters = json.loads(decoded)
 
-            param_js = generate_param_js(session_parameters)
+            presets_js = PRESETS(generate_param_js(session_parameters))
 
             logm.console.log("server: received session parameters: ", session_parameters)
-            # logm.console.log("generated params :\n", param_js)
+            # logm.console.log("generated params :\n", presets_js)
 
         except Exception as e:
             logm.console.log( f"/server/config with bad param {str(e)}" )
@@ -44,10 +44,12 @@ def clientConfigDownload():
     else:
         logm.console.log("/server/config with no param")
 
+        presets_js = PRESETS("    console.log(\"generate_model_page() called from HTTP GET @ /client/config\" );\n")
+
     with importlib.resources.files("pybiscus.session.agent.front_end").joinpath("fold_fieldset.js").open('r') as file:
         fold_fieldsets = file.read()
 
-    return generate_model_page(ConfigClient,'pybiscus.session.agent.front_end','agent.html','check_exec_buttons', fold_fieldsets + param_js)
+    return generate_model_page(ConfigClient,'pybiscus.session.agent.front_end','agent.html','check_exec_buttons', fold_fieldsets + presets_js)
 
 # ..........................................................
 # .... POST /client/config .................................

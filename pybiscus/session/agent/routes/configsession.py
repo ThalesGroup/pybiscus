@@ -20,7 +20,34 @@ def session_registration_waiting():
                            action = 'Registration',
                            explanation = 'Your agent is waiting to be accepted and registered in the FL session.',
                            callback = f'''
-                           
+
+        function sendServerURL(serverURL) {{
+        
+            const data = {{
+                server_url: serverURL
+            }};
+
+            fetch('/server-url', {{
+                method: 'POST',
+                headers: {{
+                'Content-Type': 'application/json'
+                }},
+                body: JSON.stringify(data)
+            }})
+            .then(response => {{
+                if (!response.ok) {{
+                    throw new Error(`HTTP error ${{response.status}}`);
+                }}
+                return response.json();
+            }})
+            .then(result => {{
+                console.log('✅ sendServerURL: Agent response :', result);
+            }})
+            .catch(error => {{
+                console.error('❌ sendServerURL: Agent error :', error);
+            }});
+        }}
+                                   
         function pollSessionParams(interval = 2000) {{
             fetch('{manager_url}/pybiscus-session/params')
                 .then(res => {{
@@ -38,7 +65,9 @@ def session_registration_waiting():
                     if( data.status === "success" ) {{
                         const role = "{role}";
                         console.log("role is ", role);
-                        
+
+                        sendServerURL(data.server_url);
+
                         const query = new URLSearchParams({{ presets: JSON.stringify(data.presets) }}).toString();
                         console.log("query = ", query);
                         const role_url = `/${{role}}/config?${{query}}`;
@@ -56,7 +85,7 @@ def session_registration_waiting():
                 }});
         }}
 
-        pollSessionParams(3000);
+        pollSessionParams(2000);
 
 ''' )
 
@@ -120,14 +149,9 @@ def session_registration_parameters():
 
     the_json = request.json
 
-    # TODO: remove prints
-    print(f"REGISTER before {pybagent.registration_parameters}")
-
     if the_json:
 
         pybagent.registration_parameters = the_json
-
-        print(f"REGISTER after {pybagent.registration_parameters}")
 
         return jsonify({"status": "ok"})
     

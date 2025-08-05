@@ -74,7 +74,7 @@
 </head>
 <body>
     <canvas id="graph" width="600" height="400"></canvas><br>
-    <button id="revokeBtn">Clear agents registry</button>
+    <button id="revokeBtn">Clear session</button>
     <div id="resultat"></div>
 
     <!-- Agents -->
@@ -241,7 +241,7 @@
 
         document.getElementById("revokeBtn").addEventListener("click", async () => {
         try {
-            const response = await fetch("/pybiscus-session/agents", {
+            const response = await fetch("/pybiscus-session/params", {
             method: "DELETE",
             headers: {
                 "Content-Type": "application/json"

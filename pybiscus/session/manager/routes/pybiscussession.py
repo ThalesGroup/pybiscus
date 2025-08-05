@@ -138,11 +138,24 @@ def pybiscus_manager_get_session_params():
     custom_presets["values_set"]["client_run.cid"] = generate_new_cid();
     custom_presets["values_lock"] += [ "client_run.cid" ]    
 
+    first_server_item = next(iter(pybiscus.session.manager.session_manager.registered_servers.items()))
+    _, server_url = first_server_item
+
     return jsonify({
-        "status" : "success",
-        "message": "session is running",
-        "presets": custom_presets,
+        "status"     : "success",
+        "message"    : "session is running",
+        "server_url" : server_url,
+        "presets"    : custom_presets,
     })
+
+# **************************
+
+@pybiscus_manager_app.route("/pybiscus-session/params", methods=["DELETE"])
+def pybiscus_manager_delete_session():
+
+    pybiscus.session.manager.session_manager.clear_session()
+
+    return jsonify({"status": "success"}), 200
 
 # **************************
 
@@ -152,15 +165,6 @@ def pybiscus_manager_list_clients():
         "clients": pybiscus.session.manager.session_manager.registered_clients,
         "servers": pybiscus.session.manager.session_manager.registered_servers,
     })
-
-# **************************
-
-@pybiscus_manager_app.route("/pybiscus-session/agents", methods=["DELETE"])
-def pybiscus_manager_revoke_clients():
-    pybiscus.session.manager.session_manager.registered_servers = {}
-    pybiscus.session.manager.session_manager.registered_clients = {}
-
-    return jsonify({"status": "success"}), 200
 
 # **************************
 

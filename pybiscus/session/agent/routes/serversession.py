@@ -4,6 +4,7 @@ import json
 from flask import Response, jsonify, request
 import urllib
 import os
+import re
 
 from pybiscus.flower_config.config_server import ConfigServer
 from pybiscus.pydantic2xxx.pydantic2html import generate_model_page
@@ -90,21 +91,9 @@ def serverConfigHtmlFromCache():
 def serverConfigDownload():
     """get the server parameters form"""
 
-    #                      -----------------
-
-    cachedConfig = serverConfigHtmlFromCache()
-
-    if cachedConfig is not None:
-        logm.console.log("server: configuration read from cache")
-        return cachedConfig
-    else:
-        logm.console.log("server: configuration generated")
-    
-    #                      -----------------
-
-    param_js = "console.log(\"generate_model_page() called from HTTP GET @ /server/config\" );"
-
     presets_raw = request.args.get("presets")
+
+    from pybiscus.session.agent.pybiscus_agent import PRESETS, PRESETS_BEGIN, PRESETS_END
     
     if presets_raw:
         try:
@@ -114,10 +103,10 @@ def serverConfigDownload():
             # store them into context
             pybagent.session_parameters = json.loads(decoded)
 
-            param_js = generate_param_js(pybagent.session_parameters)
+            presets_js = PRESETS(generate_param_js(pybagent.session_parameters))
 
             logm.console.log("server: received session parameters: ", pybagent.session_parameters)
-            # logm.console.log("generated params :\n", param_js)
+            # logm.console.log("generated params :\n", presets_js)
 
         except Exception as e:
             logm.console.log( f"/server/config with bad param {str(e)}" )
@@ -125,18 +114,41 @@ def serverConfigDownload():
     else:
         logm.console.log("/server/config with no param")
 
-    with importlib.resources.files("pybiscus.session.agent.front_end").joinpath("show_server_items.js").open('r') as file:
-        show_server_items = file.read()
+        presets_js = PRESETS("    console.log(\"generate_model_page() called from HTTP GET @ /server/config\" );\n")
 
-    with importlib.resources.files("pybiscus.session.agent.front_end").joinpath("fold_fieldset.js").open('r') as file:
-        fold_fieldsets = file.read()
+    #                      -----------------
 
-    with importlib.resources.files("pybiscus.session.agent.front_end").joinpath("lists_management.js").open('r') as file:
-        lists_management = file.read()
+    cachedConfig = serverConfigHtmlFromCache()
 
-    js_code = show_server_items + fold_fieldsets + lists_management + param_js
+    if cachedConfig is not None:
 
-    return generate_model_page(ConfigServer,'pybiscus.session.agent.front_end','agent.html','check_exec_buttons', js_code)
+        logm.console.log("server: configuration read from cache")
+
+        pattern = re.compile(
+            re.escape(PRESETS_BEGIN) + r"(.*?)" + re.escape(PRESETS_END),
+            flags=re.DOTALL
+        )
+
+        patchedCachedConfig = pattern.sub( presets_js, cachedConfig )
+
+        return patchedCachedConfig
+    
+    else:
+
+        logm.console.log("server: configuration generated")
+    
+        with importlib.resources.files("pybiscus.session.agent.front_end").joinpath("show_server_items.js").open('r') as file:
+            show_server_items = file.read()
+
+        with importlib.resources.files("pybiscus.session.agent.front_end").joinpath("fold_fieldset.js").open('r') as file:
+            fold_fieldsets = file.read()
+
+        with importlib.resources.files("pybiscus.session.agent.front_end").joinpath("lists_management.js").open('r') as file:
+            lists_management = file.read()
+
+        js_code = show_server_items + fold_fieldsets + lists_management + presets_js
+
+        return generate_model_page(ConfigServer,'pybiscus.session.agent.front_end','agent.html','check_exec_buttons', js_code)
 
 # ..........................................................
 # .... POST /server/config .................................
