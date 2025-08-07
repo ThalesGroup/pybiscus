@@ -51,8 +51,122 @@ def get_evaluate_fn(
     return evaluate
 
 
-def weighted_average_old(metrics: list[tuple[int, Metrics]]) -> Metrics:
+# def weighted_average_old(metrics: list[tuple[int, Metrics]]) -> Metrics:
 
+#     print(f"@@@@ metrics: {metrics}")
+
+#     _set_common_keys = set()
+
+#     for _, metric in metrics:
+#         if not _set_common_keys:
+#             _set_common_keys = set(metric.keys())
+#         else:
+#             _set_common_keys = _set_common_keys.intersection(set(metric.keys()))
+        
+#     print(f"@@@@ keys1: {_set_common_keys}")
+#     # the "cid" metric is a false one, need to pop it out
+#     _set_common_keys.discard("cid")
+#     print(f"@@@@ keys2: {_set_common_keys}")
+
+#     num_examples = sum([num_examples for num_examples, _ in metrics])
+#     print(f"@@@@ num: {num_examples}")
+
+#     if num_examples == 0:
+#         outputs = {}
+#     else:
+#         outputs = {
+#             key: sum(num * metric[key] / num_examples for num, metric in metrics)
+#             for key in _set_common_keys
+#         }
+
+#     logm.console.log(f"Averaged metrics: {outputs}")
+    
+#     return outputs
+
+# def weighted_average(metrics: list[tuple[int, Metrics]]) -> Metrics:
+
+#     print(f"@@@@ metrics: {metrics}")
+
+#     _set_common_keys = set()
+
+#     for _, metric in metrics:
+#         if not _set_common_keys:
+#             _set_common_keys = set(metric.keys())
+#         else:
+#             _set_common_keys = _set_common_keys.intersection(set(metric.keys()))
+        
+#     print(f"@@@@ keys1: {_set_common_keys}")
+    
+#     # Filter to keep only numeric keys
+#     numeric_keys = set()
+    
+#     for key in _set_common_keys:
+#         # Check if the key contains numeric values
+#         sample_values = [metric[key] for _, metric in metrics if key in metric]
+#         if sample_values and isinstance(sample_values[0], (int, float)):
+#             numeric_keys.add(key)
+    
+#     _set_common_keys = numeric_keys
+#     # print(f"@@@@ keys2: {_set_common_keys}")
+
+#     num_examples = sum([num_examples for num_examples, _ in metrics])
+#     # print(f"@@@@ num: {num_examples}")
+
+#     if num_examples == 0:
+#         outputs = {}
+#     else:
+#         outputs = {
+#             key: sum(num * metric[key] / num_examples for num, metric in metrics)
+#             for key in _set_common_keys
+#         }
+
+#     logm.console.log(f"Averaged metrics: {outputs}")
+    
+#     return outputs
+
+# def weighted_average_v2(metrics: list[tuple[int, Metrics]]) -> Metrics:
+#     print(f"@@@@ metrics: {metrics}")
+
+#     _set_common_keys = set()
+
+#     for _, metric in metrics:
+#         if not _set_common_keys:
+#             _set_common_keys = set(metric.keys())
+#         else:
+#             _set_common_keys = _set_common_keys.intersection(set(metric.keys()))
+        
+#     print(f"@@@@ keys1: {_set_common_keys}")
+    
+#     # Keep only numeric values (TensorBoard compatible)
+#     numeric_keys = set()
+    
+#     for key in _set_common_keys:
+#         sample_values = [metric[key] for _, metric in metrics if key in metric]
+#         if sample_values and isinstance(sample_values[0], (int, float, bool)):
+#             numeric_keys.add(key)
+    
+#     _set_common_keys = numeric_keys
+#     # the "cid" metric is a false one, need to pop it out
+#     _set_common_keys.discard("cid")
+#     print(f"@@@@ keys2: {_set_common_keys}")
+
+#     num_examples = sum([num_examples for num_examples, _ in metrics])
+#     print(f"@@@@ num: {num_examples}")
+
+#     if num_examples == 0:
+#         outputs = {}
+#     else:
+#         outputs = {
+#             key: sum(num * metric[key] / num_examples for num, metric in metrics)
+#             for key in _set_common_keys
+#         }
+
+#     logm.console.log(f"Averaged metrics: {outputs}")
+    
+#     return outputs
+
+
+def weighted_average(metrics: list[tuple[int, Metrics]], context="") -> Metrics:
     print(f"@@@@ metrics: {metrics}")
 
     _set_common_keys = set()
@@ -63,120 +177,7 @@ def weighted_average_old(metrics: list[tuple[int, Metrics]]) -> Metrics:
         else:
             _set_common_keys = _set_common_keys.intersection(set(metric.keys()))
         
-    print(f"@@@@ keys1: {_set_common_keys}")
-    # the "cid" metric is a false one, need to pop it out
-    _set_common_keys.discard("cid")
-    print(f"@@@@ keys2: {_set_common_keys}")
-
-    num_examples = sum([num_examples for num_examples, _ in metrics])
-    print(f"@@@@ num: {num_examples}")
-
-    if num_examples == 0:
-        outputs = {}
-    else:
-        outputs = {
-            key: sum(num * metric[key] / num_examples for num, metric in metrics)
-            for key in _set_common_keys
-        }
-
-    logm.console.log(f"Averaged metrics: {outputs}")
-    
-    return outputs
-
-def weighted_average(metrics: list[tuple[int, Metrics]]) -> Metrics:
-
-    print(f"@@@@ metrics: {metrics}")
-
-    _set_common_keys = set()
-
-    for _, metric in metrics:
-        if not _set_common_keys:
-            _set_common_keys = set(metric.keys())
-        else:
-            _set_common_keys = _set_common_keys.intersection(set(metric.keys()))
-        
-    print(f"@@@@ keys1: {_set_common_keys}")
-    
-    # Filter to keep only numeric keys
-    numeric_keys = set()
-    
-    for key in _set_common_keys:
-        # Check if the key contains numeric values
-        sample_values = [metric[key] for _, metric in metrics if key in metric]
-        if sample_values and isinstance(sample_values[0], (int, float)):
-            numeric_keys.add(key)
-    
-    _set_common_keys = numeric_keys
-    print(f"@@@@ keys2: {_set_common_keys}")
-
-    num_examples = sum([num_examples for num_examples, _ in metrics])
-    print(f"@@@@ num: {num_examples}")
-
-    if num_examples == 0:
-        outputs = {}
-    else:
-        outputs = {
-            key: sum(num * metric[key] / num_examples for num, metric in metrics)
-            for key in _set_common_keys
-        }
-
-    logm.console.log(f"Averaged metrics: {outputs}")
-    
-    return outputs
-
-def weighted_average_v2(metrics: list[tuple[int, Metrics]]) -> Metrics:
-    print(f"@@@@ metrics: {metrics}")
-
-    _set_common_keys = set()
-
-    for _, metric in metrics:
-        if not _set_common_keys:
-            _set_common_keys = set(metric.keys())
-        else:
-            _set_common_keys = _set_common_keys.intersection(set(metric.keys()))
-        
-    print(f"@@@@ keys1: {_set_common_keys}")
-    
-    # Keep only numeric values (TensorBoard compatible)
-    numeric_keys = set()
-    
-    for key in _set_common_keys:
-        sample_values = [metric[key] for _, metric in metrics if key in metric]
-        if sample_values and isinstance(sample_values[0], (int, float, bool)):
-            numeric_keys.add(key)
-    
-    _set_common_keys = numeric_keys
-    # the "cid" metric is a false one, need to pop it out
-    _set_common_keys.discard("cid")
-    print(f"@@@@ keys2: {_set_common_keys}")
-
-    num_examples = sum([num_examples for num_examples, _ in metrics])
-    print(f"@@@@ num: {num_examples}")
-
-    if num_examples == 0:
-        outputs = {}
-    else:
-        outputs = {
-            key: sum(num * metric[key] / num_examples for num, metric in metrics)
-            for key in _set_common_keys
-        }
-
-    logm.console.log(f"Averaged metrics: {outputs}")
-    
-    return outputs
-
-def weighted_average(metrics: list[tuple[int, Metrics]]) -> Metrics:
-    print(f"@@@@ metrics: {metrics}")
-
-    _set_common_keys = set()
-
-    for _, metric in metrics:
-        if not _set_common_keys:
-            _set_common_keys = set(metric.keys())
-        else:
-            _set_common_keys = _set_common_keys.intersection(set(metric.keys()))
-        
-    print(f"@@@@ keys1: {_set_common_keys}")
+    # print(f"@@@@ keys1: {_set_common_keys}")
     
     # Filter to keep only numeric keys
     numeric_keys = set()
@@ -186,20 +187,20 @@ def weighted_average(metrics: list[tuple[int, Metrics]]) -> Metrics:
         sample_values = [metric[key] for _, metric in metrics if key in metric]
         if sample_values:
             first_value = sample_values[0]
-            print(f"Key: {key}, Type: {type(first_value)}, Value: {first_value}")
+            # print(f"Key: {key}, Type: {type(first_value)}, Value: {first_value}")
             if isinstance(first_value, (int, float)):
                 numeric_keys.add(key)
-                print(f"  -> KEEPING {key}")
-            else:
-                print(f"  -> FILTERING OUT {key} (type: {type(first_value)})")
+            #     print(f"  -> KEEPING {key}")
+            # else:
+            #     print(f"  -> FILTERING OUT {key} (type: {type(first_value)})")
 
     _set_common_keys = numeric_keys
     # the "cid" metric is a false one, need to pop it out
     _set_common_keys.discard("cid")
-    print(f"@@@@ keys2: {_set_common_keys}")
+    # print(f"@@@@ keys2: {_set_common_keys}")
 
     num_examples = sum([num_examples for num_examples, _ in metrics])
-    print(f"@@@@ num: {num_examples}")
+    # print(f"@@@@ num: {num_examples}")
 
     if num_examples == 0:
         outputs = {}
@@ -209,7 +210,7 @@ def weighted_average(metrics: list[tuple[int, Metrics]]) -> Metrics:
             for key in _set_common_keys
         }
 
-    print(f"Final outputs before logging: {outputs}")
-    logm.console.log(f"Averaged metrics: {outputs}")
+    # print(f"Final outputs before logging: {outputs}")
+    logm.console.log(f"Averaged {context} metrics: {outputs}")
     
     return outputs

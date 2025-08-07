@@ -73,7 +73,7 @@
     </style>
 </head>
 <body>
-    <canvas id="graph" width="600" height="400"></canvas><br>
+    <canvas id="graph" width="600" height="585"></canvas><br>
     <button id="revokeBtn">Clear session</button>
     <div id="resultat"></div>
 
@@ -125,9 +125,33 @@
                 entriesArray.push(div);
 
                 if (entriesArray.length > 100) {
-                const removed = entriesArray.shift();
-                removed.remove();
+                    const removed = entriesArray.shift();
+                    removed.remove();
                 }
+
+                // trigger actions according to log msg
+
+                const match = item.source.match(/.*?:(.*)$/);
+                if (match) {
+                    const agentName = match[1];
+                    // console.log("Agent name:", agentName);
+
+                    if (item.message.endsWith("checking yaml file")) {
+                        agentStates[agentName] = "validating";
+                    } else if (item.message.endsWith("yaml file checked successfully")) {
+                        agentStates[agentName] = "validated";
+                    } else if (item.message.endsWith("launching pybiscus server")) {
+                        agentStates[agentName] = "executing";
+                    } else if (item.message.endsWith("launching pybiscus client")) {
+                        agentStates[agentName] = "executing";
+                    } else if (item.message.endsWith("pybiscus run completed")) {
+                        agentStates[agentName] = "terminated";
+                        rotation_increment = 0;
+                        sessionState = "sessionCompleted";
+                    } else if (item.message.endsWith("Validation error !")) {
+                        agentStates[agentName] = "not validated";
+                    }
+                }                
             });
             container.scrollTop = container.scrollHeight;
         }
@@ -146,28 +170,264 @@
         fetchAgents();
         setInterval(fetchAgents, 5000);
 
+        const sessionStatusColors = {
+            "paramsUndefined": {
+                ringColor: "#FFA500"  // orange
+            },
+            "paramsDefined": {
+                ringColor: "green"
+            },
+            "sessionCompleted": {
+                ringColor: "black"
+            },
+        };
+
+        const agentStatusColors = {
+            "declared": {
+                diskColor: "#D3D3D3", // lightgray
+                ringColor: "#696969"  // dimgray
+            },
+            "validating": {
+                diskColor: "#FFD700", // gold
+                ringColor: "#FFA500"  // orange
+            },
+            "validated": {
+                diskColor: "#90EE90", // lightgreen
+                ringColor: "#006400"  // darkgreen
+            },
+            "not validated" : {
+                diskColor: "#FF6B6B",    // light red
+                ringColor: "#B22222"     // Firebrick
+            },
+            "executing": {
+                diskColor: "#4682B4", // steelblue
+                ringColor: "#00008B"  // darkblue
+            },
+            "terminated": {
+                diskColor: "#FFFFFF", // white
+                ringColor: "#228B22"  // forestgreen (or "#000000" for black)
+            }
+        };
+
+        var sessionState = "paramsUndefined";
+        var agentStates = {}; // dict : agentName -> state
+        var roundNumber = 0;
+
+        function getAgentState(agentName) {
+            if (!(agentName in agentStates)) {
+                agentStates[agentName] = "declared";
+            }
+            return agentStates[agentName];
+        }
+
+        const canvas = document.getElementById('graph');
+        const ctx = canvas.getContext('2d');
+
+        // **************************************
+        // **** metric difference management ****
+        // **************************************
+
+        let metricDiffs = [];
+        const numMectricDiffs = 30;
+
+        function addMetricDiff(newMetricDiff) {
+            metricDiffs.push(newMetricDiff);
+            while (metricDiffs.length > numMectricDiffs) metricDiffs.shift();
+        }
+
+        function drawSparkbar(ctx, values, options = {}) {
+
+            const {
+                originX = 320,
+                originY = 40,
+                elementWidth = 6,
+                gap = 2,
+                maxBarHeight = 32,
+                epsilon = 0.01,
+            } = options;
+
+            ctx.save();
+
+            const maxAbs = Math.max(...values.map(v => Math.abs(v)), epsilon);
+
+            for (let i = 0; i < values.length; i++) {
+                const val = values[i];
+                const x = originX + i * (elementWidth + gap);
+                const height = (Math.abs(val) / maxAbs) * maxBarHeight;
+
+                let color;
+                if (Math.abs(val) < epsilon) {
+                color = '#9E9E9E'; // gris pour proche de 0
+                } else if (val > 0) {
+                color = '#4CAF50'; // vert pour positif
+                } else {
+                color = '#F44336'; // rouge pour négatif
+                }
+
+                ctx.fillStyle = color;
+
+                if (Math.abs(val) < epsilon) {
+                // Barre proche de zéro: une ligne horizontale fine
+                ctx.fillRect(x, originY - 1, elementWidth, 2);
+                } else if (val > 0) {
+                // barre vers le haut
+                ctx.fillRect(x, originY - height, elementWidth, height);
+                } else {
+                // barre vers le bas
+                ctx.fillRect(x, originY, elementWidth, height);
+                }
+            }
+
+            // Dessiner la ligne d'axe horizontal
+            ctx.strokeStyle = '#000000';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(originX - gap, originY);
+            ctx.lineTo(originX + values.length * (elementWidth + gap), originY);
+            ctx.stroke();
+
+            ctx.restore();
+        }
+
+        // ******************************
+        // **** durations management ****
+        // ******************************
+
+        let durations = [];
+        const numBars = 6;
+
+        function addDuration(newDuration) {
+            durations.push(newDuration);
+            while (durations.length > numBars) durations.shift();
+        }
+
+        function drawDurations(ctx) {
+
+            if (durations.length === 0) return;
+
+            ctx.save();
+
+            const originX = 10;           // point de départ horizontal (gauche)
+            const originY = 80;          // baseline des barres (en bas)
+
+            const barWidth = 40;          // largeur d’une case
+            const maxBarHeight = 64;      // hauteur maximale d'une barre
+            const gap = 10;               // espace entre barres
+
+            const max = Math.max(...durations);
+
+            durations.forEach((duration, i) => {
+                const scale = duration / max;
+                const barHeight = scale * maxBarHeight;
+
+                const x = originX + i * (barWidth + gap);
+                const y = originY - barHeight;
+
+                ctx.fillStyle = '#4A90E2';
+                ctx.fillRect(x, y, barWidth, barHeight);
+
+                ctx.fillStyle = '#000';
+                ctx.font = '12px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText(`${duration}s`, x + barWidth / 2, y - 5);
+            });        
+
+            ctx.restore();
+        }
+
+        // ******************************
+        // **** accuracy management *****
+        // ******************************
+
+        const maxAccuracies = 40;
+
+        // let fit_accuracies = [0.0,0.0,0.0,];
+        let fit_accuracies = [];
+
+        function addFitAccuracy(newAccuracy) {
+            fit_accuracies.push(newAccuracy);
+            while (fit_accuracies.length > maxAccuracies) fit_accuracies.shift();
+        }
+
+        let test_accuracies = [];
+
+        function addTestAccuracy(newAccuracy) {
+            test_accuracies.push(newAccuracy);
+            while (test_accuracies.length > maxAccuracies) test_accuracies.shift();
+        }
+
+        // let evaluate_accuracies = [0.0,];
+        let evaluate_accuracies = [];
+
+        function addEvaluateAccuracy(newAccuracy) {
+            evaluate_accuracies.push(newAccuracy);
+            while (evaluate_accuracies.length > maxAccuracies) evaluate_accuracies.shift();
+        }
+
+        function drawAccuracyBars(ctx, values, options = {}) {
+
+            const {
+                originX = 10,
+                originY = 10,
+                elementWidth = 12,
+                gap = 2,
+                maxBarHeight = 50,
+            } = options;
+
+            ctx.save();
+
+            for (let i = 0; i < values.length; i++) {
+                const val = values[i];       // accuracy (entre 0 et 1)
+                const error = 1 - val;
+                const x = originX + i * (elementWidth + gap);
+
+                const correctHeight = val * maxBarHeight;
+                const errorHeight = error * maxBarHeight;
+
+                // Partie verte en bas (réussite)
+                ctx.fillStyle = '#4CAF50'; // vert
+                ctx.fillRect(x, originY - correctHeight, elementWidth, correctHeight);
+
+                // Partie rouge au-dessus (erreur)
+                ctx.fillStyle = '#F44336'; // rouge
+                ctx.fillRect(x, originY - correctHeight - errorHeight, elementWidth, errorHeight);
+            }
+
+            // Ligne d'axe horizontal (base des barres)
+            ctx.strokeStyle = '#000000';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(originX - gap, originY);
+            ctx.lineTo(originX + values.length * (elementWidth + gap), originY);
+            ctx.stroke();
+
+            ctx.restore();
+        }
+
         // ******************************
         // **** graph management ********
         // ******************************
 
-        const canvas = document.getElementById('graph');
-        const ctx = canvas.getContext('2d');
         let server_url = ""
-        let rotation = 0; 
+        let rotation = 0;
+        let rotation_increment = 0.05;
 
-        function drawGraph(servers,clients) {
-            
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            const centerX = canvas.width / 2;
-            const centerY = canvas.height / 2;
+
+        function drawGraph(ctx,servers,clients) {
+
+            ctx.save();
+
+            const centerX = 300;
+            const centerY = 240;
 
             const radius = 120;
             const angleStep = (2 * Math.PI) / clients.length;
+            
+            // --- bouquet circle ---
 
-            // ctx.strokeStyle = "rgba(100, 100, 100, 0.8)";
-            ctx.strokeStyle = "orange";
+            const sessionRingColor = sessionStatusColors[sessionState].ringColor;
 
-            // clients circle
+            ctx.strokeStyle = sessionRingColor;
             ctx.setLineDash([5, 5]); // dashed circle
             ctx.lineWidth = 2.5;
 
@@ -176,14 +436,17 @@
             ctx.stroke();
 
             ctx.setLineDash([]); // reset dash style
-            // ctx.lineWidth = 2.5;
 
             servers.forEach((server, i) => {
 
-                // Draw server
+                // --- Draw server ---
+                const { diskColor, ringColor } = agentStatusColors[getAgentState(server)];
+                ctx.fillStyle   = diskColor;
+                ctx.strokeStyle = ringColor;
+
                 ctx.beginPath();
+                ctx.lineWidth = 5;
                 ctx.arc(centerX, centerY, 30, 0, 2 * Math.PI);
-                ctx.fillStyle = "blue";
                 ctx.fill();
                 ctx.stroke();
                 ctx.fillStyle = "white";
@@ -192,7 +455,33 @@
                 ctx.fillText("Server", centerX, centerY + 4);
 
                 ctx.fillStyle = "black";
-                ctx.fillText(server, centerX, centerY + 48);
+
+                if ([0, 1, 2, 3, 10, 11].includes(roundNumber % 12)) {
+                    ctx.fillText(server, centerX, centerY + 48);
+                } else {
+                    ctx.fillText(server, centerX, centerY - 48);
+                }
+
+                // --- Draw roundNumber ---
+                const roundNumber_radius = 54;
+                const roundNumber_diameter = 14;
+
+                const sector = 2 * Math.PI / 12;
+                const angle = sector * (roundNumber - 3);
+
+                const x = centerX + roundNumber_radius * Math.cos(angle);
+                const y = centerY + roundNumber_radius * Math.sin(angle);
+
+                ctx.beginPath();
+                ctx.lineWidth = 2;
+                ctx.fillStyle   = "red";
+                ctx.strokeStyle = "black";
+                ctx.beginPath();
+                ctx.arc(x, y, roundNumber_diameter, 0, 2 * Math.PI);
+                ctx.fill();
+                ctx.stroke();
+                ctx.fillStyle = "white";
+                ctx.fillText(roundNumber, x, y + 4 );
             });
 
             clients.forEach((client, i) => {
@@ -200,10 +489,14 @@
                 const x = centerX + radius * Math.cos(angle);
                 const y = centerY + radius * Math.sin(angle);
 
-                // Draw client
+                // --- Draw client ---
+                const { diskColor, ringColor } = agentStatusColors[getAgentState(client)];
+                ctx.fillStyle   = diskColor;
+                ctx.strokeStyle = ringColor;
+
                 ctx.beginPath();
+                ctx.lineWidth = 5;
                 ctx.arc(x, y, 20, 0, 2 * Math.PI);
-                ctx.fillStyle = "lightgray";
                 ctx.fill();
                 ctx.stroke();
                 ctx.fillStyle = "black";
@@ -212,7 +505,9 @@
                 ctx.fillText(client, x, y + 32);
             });
 
-            rotation += 0.05;
+            rotation += rotation_increment;
+
+            ctx.restore();
         }
 
         function updateGraph() {
@@ -222,7 +517,17 @@
 
                     const servers_names = Object.keys(data.servers);
                     const clients_names = Object.keys(data.clients);
-                    drawGraph(servers_names,clients_names);
+
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    drawDurations(ctx);                    
+                    drawSparkbar(ctx, metricDiffs);
+                    drawGraph(ctx,servers_names,clients_names);
+                    ctx.beginPath();
+                    ctx.font = '12px sans-serif';
+                    ctx.fillText("Accuracies : fit / test / evaluate", 10, 400 );
+                    drawAccuracyBars(ctx, fit_accuracies,  { originX: 10, originY: 460 } );
+                    drawAccuracyBars(ctx, test_accuracies, { originX: 10, originY: 520 } );
+                    drawAccuracyBars(ctx, evaluate_accuracies,  { originX: 10, originY: 580 } );
 
                     // propagate first server URL definition
                     if( server_url === "" && servers_names.length > 0 ) {
@@ -241,6 +546,11 @@
 
         document.getElementById("revokeBtn").addEventListener("click", async () => {
         try {
+
+            const parentWindow = window.parent;
+            const siblingIframe = parentWindow.document.getElementById('info-frame');
+            siblingIframe.src = "/pybiscus-session/show_blank";
+
             const response = await fetch("/pybiscus-session/params", {
             method: "DELETE",
             headers: {
@@ -249,14 +559,13 @@
             });
 
             if (!response.ok) {
-            throw new Error(`Erreur HTTP : ${response.status}`);
+            throw new Error(`HTTP error: ${response.status}`);
             }
 
             const data = await response.json();
-            // document.getElementById("resultat").textContent = "Clients révoqués : " + JSON.stringify(data);
+
         } catch (error) {
             console.error("Error :", error);
-            // document.getElementById("resultat").textContent = "Échec de la révocation : " + error.message;
         }
         });
 

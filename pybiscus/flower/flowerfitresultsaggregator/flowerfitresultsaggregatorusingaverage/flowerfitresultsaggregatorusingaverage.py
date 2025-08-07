@@ -53,13 +53,13 @@ class FlowerFitResultsAggregatorUsingAverage(FlowerFitResultsAggregator):
             results: list[tuple[ClientProxy, FitRes]], 
             failures: list[Union[tuple[ClientProxy, FitRes], BaseException]],
             ) -> Parameters :
-        """ Aggregate results : weighted average (with examples number as weight)"""
+        """ Aggregate results : simple average"""
         
         ndarrays = [ flw_parameters_to_ndarrays(fit_res.parameters) 
             for _, fit_res in results ]
 
         logm.console.log(
-            f"🔁 Round:{server_round} Average\n" +
+            f"🔁 Round:{server_round} aggregates using Average\n" +
             "\n".join(f"🆔{client.cid} ⚖️1" for client, _ in results)
         )
 

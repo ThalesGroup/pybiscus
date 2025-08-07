@@ -97,6 +97,7 @@
 
         let serverUrl = "";
 
+        const aframe    = document.getElementById('agent-frame');
         const iframe    = document.getElementById('info-frame');
         const serverUrldisplay = document.getElementById("server-url-display");
 
@@ -115,9 +116,11 @@
 
             } else if (event.data?.type === "session_config") {
 
+                const aframeWindow = aframe.contentWindow;
+                aframeWindow.sessionState = "paramsDefined";
                 iframe.src = '/pybiscus-session/show_run';
                 
-                console.log("EVT session_config")
+                // console.log("EVT session_config")
 
                 const presets = encodeURIComponent(JSON.stringify(event.data?.value));
 

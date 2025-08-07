@@ -163,13 +163,86 @@
       container.scrollTop = container.scrollHeight;
     }
 
+    function checkLogs(newItems) {
+      newItems.forEach(item => {
+
+        const matchRound = item.message.match(/Round\s*(\d+).*?accuracy=(\d+(\.\d+)?)/);
+        if (matchRound) {
+          const round = parseInt(matchRound[1], 10);
+          const accuracy = parseFloat(matchRound[2]);
+
+          const parentWindow  = window.parent;
+          const siblingIframe = parentWindow.document.getElementById("agent-frame");
+          const siblingWindow = siblingIframe.contentWindow;
+          siblingWindow.roundNumber = round;
+          siblingWindow.addTestAccuracy(accuracy);
+
+          return;
+        }
+
+        const matchAvgFitMetrics = item.message.match(/Averaged fit metrics:.*?'accuracy': (\d+(\.\d+)?)/);
+        if (matchAvgFitMetrics) {
+          const accuracy = parseFloat(matchAvgFitMetrics[1]);
+
+          const parentWindow  = window.parent;
+          const siblingIframe = parentWindow.document.getElementById("agent-frame");
+          const siblingWindow = siblingIframe.contentWindow;
+          siblingWindow.addFitAccuracy(accuracy);
+
+          return;
+        }
+
+        const matchAvgEvaluateMetrics = item.message.match(/Averaged evaluate metrics:.*?'accuracy': (\d+(\.\d+)?)/);
+        if (matchAvgEvaluateMetrics) {
+          const accuracy = parseFloat(matchAvgEvaluateMetrics[1]);
+
+          const parentWindow  = window.parent;
+          const siblingIframe = parentWindow.document.getElementById("agent-frame");
+          const siblingWindow = siblingIframe.contentWindow;
+          siblingWindow.addEvaluateAccuracy(accuracy);
+
+          return;
+        }
+
+        const timeDiffMatch = item.message.match(/time diff is (\d+(\.\d+)?)s/);
+
+        if (timeDiffMatch) {
+          const duration = parseFloat(timeDiffMatch[1]);
+
+          const parentWindow  = window.parent;
+          const siblingIframe = parentWindow.document.getElementById("agent-frame");
+          const siblingWindow = siblingIframe.contentWindow;
+          siblingWindow.addDuration(duration);
+
+          return;
+        }
+
+        const metricDiffMatch = item.message.match(/metric diff is (\d+(?:\.\d+)?)\s*$/);
+
+        if (metricDiffMatch) {
+          const metricDiff = parseFloat(metricDiffMatch[1]);
+
+          const parentWindow  = window.parent;
+          const siblingIframe = parentWindow.document.getElementById("agent-frame");
+          const siblingWindow = siblingIframe.contentWindow;
+          siblingWindow.addMetricDiff(metricDiff);
+
+          return;
+        }
+
+      })
+    }
+
     function fetchLogs() {
       if (logsPaused) return;
       fetch(LOGS_URL)
         .then(res => res.json())
         .then(data => {
           const newLogs = data;
-          if (newLogs.length) addEntries(logList, displayedLogs, newLogs, 'logs');
+          if (newLogs.length) {
+            addEntries(logList, displayedLogs, newLogs, 'logs');
+            checkLogs(newLogs);
+          }
         })
         .catch(console.error);
     }

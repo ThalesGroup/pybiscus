@@ -12,4 +12,4 @@ geo_location:
   longitude: 2.79522
 
 organisation: "Centre de transfert"
-role: "server"  # "client" or "server"
+role: "client"  # "client" or "server"

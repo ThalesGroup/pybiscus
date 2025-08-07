@@ -46,7 +46,7 @@ class FlowerFitResultsAggregatorUsingWeightedAverage(FlowerFitResultsAggregator)
             for _, fit_res in results ]
 
         logm.console.log(
-            f"🔁 Round:{server_round} WeightedAverage\n" +
+            f"🔁 Round:{server_round} aggregates using WeightedAverage\n" +
             "\n".join(f"🆔{client.cid} ⚖️{fit_res.num_examples}" for client, fit_res in results)
         )
 
