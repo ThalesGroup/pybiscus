@@ -85,6 +85,8 @@
 </head>
 <body>
 
+  <script src="{{ url_for('static', filename='js/session_utils.js') }}"></script>
+
   <div id="dashboard" class="dashboard-container">
 
     <!-- Logs -->
@@ -174,8 +176,8 @@
           const parentWindow  = window.parent;
           const siblingIframe = parentWindow.document.getElementById("agent-frame");
           const siblingWindow = siblingIframe.contentWindow;
-          siblingWindow.roundNumber = round;
-          siblingWindow.addTestAccuracy(accuracy);
+          siblingWindow.session.roundNumber = round;
+          siblingWindow.test_accuracies.add(accuracy);
 
           return;
         }
@@ -187,8 +189,7 @@
           const parentWindow  = window.parent;
           const siblingIframe = parentWindow.document.getElementById("agent-frame");
           const siblingWindow = siblingIframe.contentWindow;
-          siblingWindow.addFitAccuracy(accuracy);
-
+          siblingWindow.fit_accuracies.add(accuracy);
           return;
         }
 
@@ -199,7 +200,7 @@
           const parentWindow  = window.parent;
           const siblingIframe = parentWindow.document.getElementById("agent-frame");
           const siblingWindow = siblingIframe.contentWindow;
-          siblingWindow.addEvaluateAccuracy(accuracy);
+          siblingWindow.evaluate_accuracies.add(accuracy);
 
           return;
         }
@@ -212,7 +213,7 @@
           const parentWindow  = window.parent;
           const siblingIframe = parentWindow.document.getElementById("agent-frame");
           const siblingWindow = siblingIframe.contentWindow;
-          siblingWindow.addDuration(duration);
+          siblingWindow.durations.add(duration);
 
           return;
         }
@@ -225,7 +226,7 @@
           const parentWindow  = window.parent;
           const siblingIframe = parentWindow.document.getElementById("agent-frame");
           const siblingWindow = siblingIframe.contentWindow;
-          siblingWindow.addMetricDiff(metricDiff);
+          siblingWindow.metricDiffs.add(metricDiff);
 
           return;
         }
@@ -258,10 +259,12 @@
         .catch(console.error);
     }
 
-    fetchLogs();
-    fetchMetrics();
-    setInterval(fetchLogs, 5000);
-    setInterval(fetchMetrics, 5000);
-  </script>
+    const parentWindow  = window.parent;
+    const siblingIframe = parentWindow.document.getElementById("agent-frame");
+    const siblingWindow = siblingIframe.contentWindow;
+    siblingWindow.session.startCallback(fetchLogs, 5000);
+    siblingWindow.session.startCallback(fetchMetrics, 5000);
+
+    </script>
 </body>
 </html>

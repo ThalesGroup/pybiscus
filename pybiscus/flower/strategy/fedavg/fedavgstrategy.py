@@ -223,8 +223,8 @@ class FabricFedAvgStrategyFactory(FabricStrategyFactory):
     def get_strategy(self):
 
         return FabricFedAvgStrategy(
-            fit_metrics_aggregation_fn=partial(weighted_average, context="fit"),
-            evaluate_metrics_aggregation_fn=partial(weighted_average, context="evaluate"),
+            fit_metrics_aggregation_fn      = partial(weighted_average, context="fit"),
+            evaluate_metrics_aggregation_fn = partial(weighted_average, context="evaluate"),
             model=self.model,
             fabric=self.fabric,
             evaluate_fn=get_evaluate_fn(testset=self.testset, model=self.model, fabric=self.fabric),

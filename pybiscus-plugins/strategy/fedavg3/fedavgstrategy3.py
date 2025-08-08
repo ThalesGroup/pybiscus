@@ -1,4 +1,5 @@
 from collections import defaultdict
+from functools import partial
 from logging import WARNING
 from typing import Callable, Literal, Optional, Union, ClassVar
 
@@ -283,8 +284,8 @@ class FabricFedAvgStrategyFactory3(FabricStrategyFactory):
     def get_strategy(self):
 
         return FabricFedAvgStrategy3(
-            fit_metrics_aggregation_fn      = pyb_weighted_average,
-            evaluate_metrics_aggregation_fn = pyb_weighted_average,
+            fit_metrics_aggregation_fn      = partial(pyb_weighted_average, context="fit"),
+            evaluate_metrics_aggregation_fn = partial(pyb_weighted_average, context="evaluate"),
             model                           = self.model,
             fabric                          = self.fabric,
             evaluate_fn                     = pyb_get_evaluate_fn(testset=self.testset, model=self.model, fabric=self.fabric),

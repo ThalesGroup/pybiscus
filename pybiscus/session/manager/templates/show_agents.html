@@ -73,8 +73,12 @@
     </style>
 </head>
 <body>
+
+    <script src="{{ url_for('static', filename='js/session_utils.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/session_graphics.js') }}"></script>
+
     <canvas id="graph" width="600" height="585"></canvas><br>
-    <button id="revokeBtn">Clear session</button>
+    <button id="revokeBtn">Drop session</button>
     <div id="resultat"></div>
 
     <!-- Agents -->
@@ -86,6 +90,10 @@
     </div>
 
     <script>
+
+        // **************************************
+
+        var session = new Session();
 
         // ******************************
         // **** agents log **************
@@ -137,19 +145,18 @@
                     // console.log("Agent name:", agentName);
 
                     if (item.message.endsWith("checking yaml file")) {
-                        agentStates[agentName] = "validating";
+                        session.setAgentState(agentName, "validating");
                     } else if (item.message.endsWith("yaml file checked successfully")) {
-                        agentStates[agentName] = "validated";
+                        session.setAgentState(agentName, "validated");
                     } else if (item.message.endsWith("launching pybiscus server")) {
-                        agentStates[agentName] = "executing";
+                        session.setAgentState(agentName, "executing");
                     } else if (item.message.endsWith("launching pybiscus client")) {
-                        agentStates[agentName] = "executing";
+                        session.setAgentState(agentName, "executing");
                     } else if (item.message.endsWith("pybiscus run completed")) {
-                        agentStates[agentName] = "terminated";
-                        rotation_increment = 0;
-                        sessionState = "sessionCompleted";
+                        session.setAgentState(agentName, "terminated");
+                        sessionGraph.rotation_increment = 0;
                     } else if (item.message.endsWith("Validation error !")) {
-                        agentStates[agentName] = "not validated";
+                        session.setAgentState(agentName, "not validated");
                     }
                 }                
             });
@@ -167,58 +174,9 @@
                 .catch(console.error);
         }
 
-        fetchAgents();
-        setInterval(fetchAgents, 5000);
+        session.startCallback(fetchAgents, 5000);
 
-        const sessionStatusColors = {
-            "paramsUndefined": {
-                ringColor: "#FFA500"  // orange
-            },
-            "paramsDefined": {
-                ringColor: "green"
-            },
-            "sessionCompleted": {
-                ringColor: "black"
-            },
-        };
-
-        const agentStatusColors = {
-            "declared": {
-                diskColor: "#D3D3D3", // lightgray
-                ringColor: "#696969"  // dimgray
-            },
-            "validating": {
-                diskColor: "#FFD700", // gold
-                ringColor: "#FFA500"  // orange
-            },
-            "validated": {
-                diskColor: "#90EE90", // lightgreen
-                ringColor: "#006400"  // darkgreen
-            },
-            "not validated" : {
-                diskColor: "#FF6B6B",    // light red
-                ringColor: "#B22222"     // Firebrick
-            },
-            "executing": {
-                diskColor: "#4682B4", // steelblue
-                ringColor: "#00008B"  // darkblue
-            },
-            "terminated": {
-                diskColor: "#FFFFFF", // white
-                ringColor: "#228B22"  // forestgreen (or "#000000" for black)
-            }
-        };
-
-        var sessionState = "paramsUndefined";
-        var agentStates = {}; // dict : agentName -> state
-        var roundNumber = 0;
-
-        function getAgentState(agentName) {
-            if (!(agentName in agentStates)) {
-                agentStates[agentName] = "declared";
-            }
-            return agentStates[agentName];
-        }
+        // **************************************
 
         const canvas = document.getElementById('graph');
         const ctx = canvas.getContext('2d');
@@ -227,113 +185,17 @@
         // **** metric difference management ****
         // **************************************
 
-        let metricDiffs = [];
-        const numMectricDiffs = 30;
+        const maxMectricDiffs = 30;
 
-        function addMetricDiff(newMetricDiff) {
-            metricDiffs.push(newMetricDiff);
-            while (metricDiffs.length > numMectricDiffs) metricDiffs.shift();
-        }
-
-        function drawSparkbar(ctx, values, options = {}) {
-
-            const {
-                originX = 320,
-                originY = 40,
-                elementWidth = 6,
-                gap = 2,
-                maxBarHeight = 32,
-                epsilon = 0.01,
-            } = options;
-
-            ctx.save();
-
-            const maxAbs = Math.max(...values.map(v => Math.abs(v)), epsilon);
-
-            for (let i = 0; i < values.length; i++) {
-                const val = values[i];
-                const x = originX + i * (elementWidth + gap);
-                const height = (Math.abs(val) / maxAbs) * maxBarHeight;
-
-                let color;
-                if (Math.abs(val) < epsilon) {
-                color = '#9E9E9E'; // gris pour proche de 0
-                } else if (val > 0) {
-                color = '#4CAF50'; // vert pour positif
-                } else {
-                color = '#F44336'; // rouge pour négatif
-                }
-
-                ctx.fillStyle = color;
-
-                if (Math.abs(val) < epsilon) {
-                // Barre proche de zéro: une ligne horizontale fine
-                ctx.fillRect(x, originY - 1, elementWidth, 2);
-                } else if (val > 0) {
-                // barre vers le haut
-                ctx.fillRect(x, originY - height, elementWidth, height);
-                } else {
-                // barre vers le bas
-                ctx.fillRect(x, originY, elementWidth, height);
-                }
-            }
-
-            // Dessiner la ligne d'axe horizontal
-            ctx.strokeStyle = '#000000';
-            ctx.lineWidth = 1;
-            ctx.beginPath();
-            ctx.moveTo(originX - gap, originY);
-            ctx.lineTo(originX + values.length * (elementWidth + gap), originY);
-            ctx.stroke();
-
-            ctx.restore();
-        }
+        var metricDiffs = new CircularBuffer( maxMectricDiffs );
 
         // ******************************
         // **** durations management ****
         // ******************************
 
-        let durations = [];
-        const numBars = 6;
+        const maxDurations = 6;
 
-        function addDuration(newDuration) {
-            durations.push(newDuration);
-            while (durations.length > numBars) durations.shift();
-        }
-
-        function drawDurations(ctx) {
-
-            if (durations.length === 0) return;
-
-            ctx.save();
-
-            const originX = 10;           // point de départ horizontal (gauche)
-            const originY = 80;          // baseline des barres (en bas)
-
-            const barWidth = 40;          // largeur d’une case
-            const maxBarHeight = 64;      // hauteur maximale d'une barre
-            const gap = 10;               // espace entre barres
-
-            const max = Math.max(...durations);
-
-            durations.forEach((duration, i) => {
-                const scale = duration / max;
-                const barHeight = scale * maxBarHeight;
-
-                const x = originX + i * (barWidth + gap);
-                const y = originY - barHeight;
-
-                ctx.fillStyle = '#4A90E2';
-                ctx.fillRect(x, y, barWidth, barHeight);
-
-                ctx.fillStyle = '#000';
-                ctx.font = '12px sans-serif';
-                ctx.textAlign = 'center';
-                ctx.fillText(`${duration}s`, x + barWidth / 2, y - 5);
-            });        
-
-            ctx.restore();
-        }
+        var durations = new CircularBuffer( maxDurations );
 
         // ******************************
         // **** accuracy management *****
@@ -341,174 +203,17 @@
 
         const maxAccuracies = 40;
 
-        // let fit_accuracies = [0.0,0.0,0.0,];
-        let fit_accuracies = [];
-
-        function addFitAccuracy(newAccuracy) {
-            fit_accuracies.push(newAccuracy);
-            while (fit_accuracies.length > maxAccuracies) fit_accuracies.shift();
-        }
-
-        let test_accuracies = [];
-
-        function addTestAccuracy(newAccuracy) {
-            test_accuracies.push(newAccuracy);
-            while (test_accuracies.length > maxAccuracies) test_accuracies.shift();
-        }
-
-        // let evaluate_accuracies = [0.0,];
-        let evaluate_accuracies = [];
-
-        function addEvaluateAccuracy(newAccuracy) {
-            evaluate_accuracies.push(newAccuracy);
-            while (evaluate_accuracies.length > maxAccuracies) evaluate_accuracies.shift();
-        }
-
-        function drawAccuracyBars(ctx, values, options = {}) {
-
-            const {
-                originX = 10,
-                originY = 10,
-                elementWidth = 12,
-                gap = 2,
-                maxBarHeight = 50,
-            } = options;
-
-            ctx.save();
-
-            for (let i = 0; i < values.length; i++) {
-                const val = values[i];       // accuracy (entre 0 et 1)
-                const error = 1 - val;
-                const x = originX + i * (elementWidth + gap);
-
-                const correctHeight = val * maxBarHeight;
-                const errorHeight = error * maxBarHeight;
-
-                // Partie verte en bas (réussite)
-                ctx.fillStyle = '#4CAF50'; // vert
-                ctx.fillRect(x, originY - correctHeight, elementWidth, correctHeight);
-
-                // Partie rouge au-dessus (erreur)
-                ctx.fillStyle = '#F44336'; // rouge
-                ctx.fillRect(x, originY - correctHeight - errorHeight, elementWidth, errorHeight);
-            }
-
-            // Ligne d'axe horizontal (base des barres)
-            ctx.strokeStyle = '#000000';
-            ctx.lineWidth = 1;
-            ctx.beginPath();
-            ctx.moveTo(originX - gap, originY);
-            ctx.lineTo(originX + values.length * (elementWidth + gap), originY);
-            ctx.stroke();
-
-            ctx.restore();
-        }
+        var fit_accuracies      = new CircularBuffer( maxAccuracies );
+        var test_accuracies     = new CircularBuffer( maxAccuracies );
+        var evaluate_accuracies = new CircularBuffer( maxAccuracies );
 
         // ******************************
         // **** graph management ********
         // ******************************
 
         let server_url = ""
-        let rotation = 0;
-        let rotation_increment = 0.05;
 
-
-        function drawGraph(ctx,servers,clients) {
-
-            ctx.save();
-
-            const centerX = 300;
-            const centerY = 240;
-
-            const radius = 120;
-            const angleStep = (2 * Math.PI) / clients.length;
-            
-            // --- bouquet circle ---
-
-            const sessionRingColor = sessionStatusColors[sessionState].ringColor;
-
-            ctx.strokeStyle = sessionRingColor;
-            ctx.setLineDash([5, 5]); // dashed circle
-            ctx.lineWidth = 2.5;
-
-            ctx.beginPath();
-            ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
-            ctx.stroke();
-
-            ctx.setLineDash([]); // reset dash style
-
-            servers.forEach((server, i) => {
-
-                // --- Draw server ---
-                const { diskColor, ringColor } = agentStatusColors[getAgentState(server)];
-                ctx.fillStyle   = diskColor;
-                ctx.strokeStyle = ringColor;
-
-                ctx.beginPath();
-                ctx.lineWidth = 5;
-                ctx.arc(centerX, centerY, 30, 0, 2 * Math.PI);
-                ctx.fill();
-                ctx.stroke();
-                ctx.fillStyle = "white";
-                ctx.font = "12px Arial";
-                ctx.textAlign = "center";
-                ctx.fillText("Server", centerX, centerY + 4);
-
-                ctx.fillStyle = "black";
-
-                if ([0, 1, 2, 3, 10, 11].includes(roundNumber % 12)) {
-                    ctx.fillText(server, centerX, centerY + 48);
-                } else {
-                    ctx.fillText(server, centerX, centerY - 48);
-                }
-
-                // --- Draw roundNumber ---
-                const roundNumber_radius = 54;
-                const roundNumber_diameter = 14;
-
-                const sector = 2 * Math.PI / 12;
-                const angle = sector * (roundNumber - 3);
-
-                const x = centerX + roundNumber_radius * Math.cos(angle);
-                const y = centerY + roundNumber_radius * Math.sin(angle);
-
-                ctx.beginPath();
-                ctx.lineWidth = 2;
-                ctx.fillStyle   = "red";
-                ctx.strokeStyle = "black";
-                ctx.beginPath();
-                ctx.arc(x, y, roundNumber_diameter, 0, 2 * Math.PI);
-                ctx.fill();
-                ctx.stroke();
-                ctx.fillStyle = "white";
-                ctx.fillText(roundNumber, x, y + 4 );
-            });
-
-            clients.forEach((client, i) => {
-                const angle = rotation + i * angleStep;
-                const x = centerX + radius * Math.cos(angle);
-                const y = centerY + radius * Math.sin(angle);
-
-                // --- Draw client ---
-                const { diskColor, ringColor } = agentStatusColors[getAgentState(client)];
-                ctx.fillStyle   = diskColor;
-                ctx.strokeStyle = ringColor;
-
-                ctx.beginPath();
-                ctx.lineWidth = 5;
-                ctx.arc(x, y, 20, 0, 2 * Math.PI);
-                ctx.fill();
-                ctx.stroke();
-                ctx.fillStyle = "black";
-                ctx.font = "12px Arial";
-                ctx.textAlign = "center";
-                ctx.fillText(client, x, y + 32);
-            });
-
-            rotation += rotation_increment;
-
-            ctx.restore();
-        }
+        var sessionGraph = new SessionGraph();
 
         function updateGraph() {
             fetch('/pybiscus-session/agents')
@@ -519,15 +224,30 @@
                     const clients_names = Object.keys(data.clients);
 
                     ctx.clearRect(0, 0, canvas.width, canvas.height);
-                    drawDurations(ctx);                    
-                    drawSparkbar(ctx, metricDiffs);
-                    drawGraph(ctx,servers_names,clients_names);
+
+                    drawDurations(ctx, durations.all,
+                        { originX: 10, originY: 80 } );                    
+                    drawSparkbar(ctx, metricDiffs.all, 
+                        { originX: 320, originY: 40 } );
+                    sessionGraph.draw(ctx, session, servers_names, clients_names, 
+                        { centerX: 300, centerY: 240} );
+
+                    ctx.font = '16px sans-serif';
                     ctx.beginPath();
+                    ctx.fillText("Accuracies", 5, 392 );
                     ctx.font = '12px sans-serif';
-                    ctx.fillText("Accuracies : fit / test / evaluate", 10, 400 );
-                    drawAccuracyBars(ctx, fit_accuracies,  { originX: 10, originY: 460 } );
-                    drawAccuracyBars(ctx, test_accuracies, { originX: 10, originY: 520 } );
-                    drawAccuracyBars(ctx, evaluate_accuracies,  { originX: 10, originY: 580 } );
+                    ctx.beginPath();
+                    ctx.fillText("Fit", 5, 444 );
+                    drawAccuracyBars(ctx, fit_accuracies.all,
+                        { originX: 36, originY: 460, maxAccuracies: fit_accuracies.maxSize, alignment: 'right' } );
+                    ctx.beginPath();
+                    ctx.fillText("Test", 5, 504 );
+                    drawAccuracyBars(ctx, test_accuracies.all,
+                        { originX: 36, originY: 520, maxAccuracies: test_accuracies.maxSize, alignment: 'right' } );
+                    ctx.beginPath();
+                    ctx.fillText("Eval", 5, 564 );
+                    drawAccuracyBars(ctx, evaluate_accuracies.all, 
+                        { originX: 36, originY: 580, maxAccuracies: evaluate_accuracies.maxSize, alignment: 'right' } );
 
                     // propagate first server URL definition
                     if( server_url === "" && servers_names.length > 0 ) {
@@ -541,8 +261,7 @@
                 });
         }
 
-        setInterval(updateGraph, 2000);  // Refresh every 2 seconds
-        updateGraph();
+        session.startCallback(updateGraph, 2000);  // Refresh every 2 seconds
 
         document.getElementById("revokeBtn").addEventListener("click", async () => {
         try {
