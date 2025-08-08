@@ -64,17 +64,19 @@ class Session {
         if (!(agentName in this.agentStates)) {
             this.agentStates[agentName] = "declared";
         }
+
         return this.agentStates[agentName];
     }
 
     setAgentState(agentName, state) {
+
         this.agentStates[agentName] = state;
         
         // If state is "terminated", check if all agents are terminated
         if (state === "terminated") {
             const allTerminated = Object.values(this.agentStates).every(agentState => agentState === "terminated");
             if (allTerminated) {
-                this.stopSession();
+                this.stop();
             }
         }
     }
@@ -92,7 +94,7 @@ class Session {
     }
 
     // Stop all intervals and end the session
-    stopSession() {
+    stop() {
         // Clear all stored intervals
         this.intervalIds.forEach(intervalId => {
             clearInterval(intervalId);

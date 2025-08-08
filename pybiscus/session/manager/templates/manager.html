@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <title>FL Manager</title>
     <style>
-        /* Assurer que html et body occupent 100% de la hauteur */
         html, body {
             height: 100%;
             margin: 0;
@@ -27,100 +26,285 @@
             font-size: 1.2rem;
         }
 
-        .split-container {
-            display: flex;
-            flex-grow: 1; /* Assurer que ce conteneur occupe tout l'espace restant */
-            width: 100%;
-            height: 100%;
-            /* height: calc(100vh - 60px); /* Prendre toute la hauteur restante (moins la hauteur de l'en-tête) */
-        }
-
-        .left, .right {
-            flex: 1;
-            box-sizing: border-box;
-            display: flex;
-            flex-direction: column; /* Alignement vertical si nécessaire */
-        }
-
-        .left {
-            flex: 0 0 620px; /* Fixe la largeur à 33% */
-        }
- 
-        iframe {
-            width: 100%;
-            height: 100%;
-            border: 1px solid #ccc;
-            box-sizing: border-box;
-        }
-
         .container-center {
             display: flex;
             justify-content: center;
         }
 
-        .right p {
-            margin: 1rem;
-            font-size: 1rem;
+        .dashboard-container {
+            display: grid;
+            grid-template-columns: repeat(3, 600px); /* 3 colonnes de 600px chacune */
+            grid-template-rows: repeat(2, auto);     /* 2 lignes avec hauteur automatique */
+            gap: 1rem;
+            padding: 1rem;
+            justify-content: center; /* Centrer la grille horizontalement */
+            overflow-x: auto; /* Permettre le scroll horizontal si nécessaire */
         }
 
-        .right div {
-            flex: 1;
-            border-top: 1px solid #ccc;
-            background-color: #f0f0f0;
-            padding: 1rem;
-            box-sizing: border-box;
+        .section-container {
+            width: 600px; /* Largeur fixe de 600px */
+            display: flex;
+            flex-direction: column;
+            border: 1px solid #ccc;
         }
+
+        .list-box {
+            flex: 1;
+            overflow-y: auto;
+            border: 1px solid #ccc;
+            padding: 10px;
+            background: #f0f0f0;
+            border-radius: 5px;
+            min-height: 0;
+            max-height: 500px; /* Remise de la hauteur maximale */
+        }
+
+        .entry {
+            background: #fff;
+            padding: 8px;
+            margin-bottom: 6px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            text-align: left;
+        }
+
+        .entry-source {
+            font-weight: bold;
+            color: #333;
+        }
+
+        .entry-message {
+            margin-top: 4px;
+            color: #555;
+            white-space: pre-line;
+        }
+
+        .btn {
+            margin-top: 10px;
+            margin-right: 10px;
+            padding: 6px 12px;
+            font-size: 14px;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .reset-btn {
+            background-color: #d9534f;
+        }
+
+        .reset-btn:hover {
+            background-color: #c9302c;
+        }
+
+        .pause-btn {
+            background-color: #5bc0de;
+        }
+
+        .pause-btn:hover {
+            background-color: #31b0d5;
+        }
+
+        .url-line {
+            display: flex;
+            align-items: center;
+            margin-bottom: 15px;
+            gap: 10px;
+            border: 1px solid #ccc;
+            padding: 10px 15px;
+            border-radius: 4px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        /* Styles responsifs pour petits écrans */
+        @media (max-width: 1900px) {
+            .dashboard-container {
+                grid-template-columns: repeat(2, 600px); /* 2 colonnes de 600px sur écrans moyens */
+                grid-template-rows: repeat(3, auto);     /* 3 lignes */
+            }
+        }
+
+        @media (max-width: 1300px) {
+            .dashboard-container {
+                grid-template-columns: 600px; /* 1 colonne de 600px sur petits écrans */
+                grid-template-rows: repeat(6, auto); /* 6 lignes */
+            }
+        }
+
     </style>
 </head>
 <body>
+
+    <script src="{{ url_for('static', filename='js/session_utils.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/session_graphics.js') }}"></script>
+
     <header>
         <div class="container-center">
             <h1>🧠 Federated Learning Manager</h1>
         </div>
     </header>
     
-    <div class="split-container">
+    <div id="dashboard" class="dashboard-container">
 
-        <div class="left">
-            <iframe id="agent-frame" src="/pybiscus-session/show_agents"></iframe>
-        </div>
-        <div class="right">
-            <div id="button-container">
-                Pybiscus Server Agent URL : <strong  id="server-url-display"></strong>
+        <div class="section-container" style="grid-area: 1 / 1;">
+
+            <div class="url-line">
+                Pybiscus Server Agent URL : <strong id="server-url-display"></strong>
             </div>
+            <canvas id="graph" width="600" height="585"></canvas><br>
+            <button id="revokeBtn">Drop session</button>
+            <div id="resultat"></div>
+        </div>        
 
-            <iframe id="info-frame" src="/pybiscus-session/show_blank" width="100%" height="400px"></iframe>
+        <!-- Session -->
+        <div id="section-session-params" class="section-container" style="grid-area: 1 / 3;">
+            <h3>Session parameters</h3>
+        </div>
+
+        <!-- Agents -->
+        <div class="section-container" style="grid-area: 2 / 1;">
+            <h3>Agents logs</h3>
+            <button id="reset-agents-btn" class="btn reset-btn">Reset</button>
+            <button id="pause-agents-btn" class="btn pause-btn">Pause</button>
+            <div id="agents-list" class="list-box"></div>
+        </div>
+
+        <!-- Logs -->
+        <div class="section-container" style="grid-area: 2 / 2;">
+            <h3>Logs</h3>
+            <button id="reset-logs-btn" class="btn reset-btn">Reset</button>
+            <button id="pause-logs-btn" class="btn pause-btn">Pause</button>
+            <div id="log-list" class="list-box"></div>
+        </div>
+
+        <!-- Metrics -->
+        <div class="section-container" style="grid-area: 2 / 3;">
+            <h3>Metrics</h3>
+            <button id="reset-metrics-btn" class="btn reset-btn">Reset</button>
+            <button id="pause-metrics-btn" class="btn pause-btn">Pause</button>
+            <div id="metrics-list" class="list-box"></div>
         </div>
     </div>
 
     <script>
 
+        var session = new Session();
+
+        // **************************************
+        // **** metric difference management ****
+        // **************************************
+
+        const maxMectricDiffs = 30;
+
+        var metricDiffs = new CircularBuffer( maxMectricDiffs );
+
+        // ******************************
+        // **** durations management ****
+        // ******************************
+
+        const maxDurations = 6;
+
+        var durations = new CircularBuffer( maxDurations );
+
+        // ******************************
+        // **** accuracy management *****
+        // ******************************
+
+        const maxAccuracies = 40;
+
+        var fit_accuracies      = new CircularBuffer( maxAccuracies );
+        var test_accuracies     = new CircularBuffer( maxAccuracies );
+        var evaluate_accuracies = new CircularBuffer( maxAccuracies );
+
+        // ******************************
+        // **** pybiscus server URL *****
+        // ******************************
+
         let serverUrl = "";
 
-        const aframe    = document.getElementById('agent-frame');
-        const iframe    = document.getElementById('info-frame');
         const serverUrldisplay = document.getElementById("server-url-display");
 
         serverUrldisplay.textContent = serverUrl;
 
+        // ******************************
+        // **** agents log **************
+        // ******************************
+
+        const AGENTS_URL  = 'http://localhost:{{manager_port}}/pybiscus-session/agents_logs';
+        const agentsList = document.getElementById('agents-list');
+        let displayedAgents = [];
+        let agentsPaused = false;
+
+        document.getElementById('reset-agents-btn').onclick = () => {
+        agentsList.innerHTML = '';
+        displayedAgents = [];
+        };
+
+        document.getElementById('pause-agents-btn').onclick = (e) => {
+        agentsPaused = !agentsPaused;
+        e.target.textContent = agentsPaused ? 'Resume' : 'Pause';
+        };
+
+        function checkAgentLogs(newItems) {
+            newItems.forEach(item => {
+                // trigger actions according to log msg
+
+                const match = item.source.match(/.*?:(.*)$/);
+                if (match) {
+                    const agentName = match[1];
+                    // console.log("AG-LOG Agent name:", agentName);
+
+                    if (item.message.endsWith("checking yaml file")) {
+                        session.setAgentState(agentName, "validating");
+                    } else if (item.message.endsWith("yaml file checked successfully")) {
+                        session.setAgentState(agentName, "validated");
+                    } else if (item.message.endsWith("launching pybiscus server")) {
+                        session.setAgentState(agentName, "executing");
+                    } else if (item.message.endsWith("launching pybiscus client")) {
+                        session.setAgentState(agentName, "executing");
+                    } else if (item.message.endsWith("pybiscus run completed")) {
+                        session.setAgentState(agentName, "terminated");
+                        sessionGraph.rotation_increment = 0;
+                        
+                        if (session.sessionState === "sessionCompleted") {
+                            updateGraph();
+                        }
+
+                    } else if (item.message.endsWith("Validation error !")) {
+                        session.setAgentState(agentName, "not validated");
+                    }
+                }                
+            });
+        }
+
+        function fetchAgents() {
+            if (agentsPaused) return;
+            fetch(AGENTS_URL)
+                .then(res => res.json())
+                .then(data => {
+                    const newAgents = data;
+                    if (newAgents.length) {
+                        addEntries(agentsList, displayedAgents, newAgents, 'agents');
+                        checkAgentLogs(newAgents);
+                    }
+                })
+                .catch(console.error);
+        }
+
+        session.startCallback(fetchAgents, 5000);
+
+        // ******************************
+        // **** message from iframe *****
+        // ******************************
+
         window.addEventListener("message", (event) => {
 
-            if (event.data?.type === "server_url") {
+            if (event.data?.type === "session_config") {
 
-                if( serverUrl === "" ) {
-                    serverUrl = event.data.value;
-                    serverUrldisplay.textContent = serverUrl;
-
-                    iframe.src = `${serverUrl}/session/config`;
-                }
-
-            } else if (event.data?.type === "session_config") {
-
-                const aframeWindow = aframe.contentWindow;
-                aframeWindow.session.sessionState = "paramsDefined";
-                iframe.src = '/pybiscus-session/show_run';
+                removeSessionParamsFrame();
                 
-                // console.log("EVT session_config")
+                session.sessionState = "paramsDefined";
 
                 const presets = encodeURIComponent(JSON.stringify(event.data?.value));
 
@@ -132,6 +316,264 @@
             }
         });
 
+        // ******************************
+        // **** Session params **********
+        // ******************************
+
+        function showSessionParamsFrame(url) {
+            const div = document.getElementById('section-session-params');
+            if (!div) return;
+
+            div.innerHTML = '';
+
+            const iframe = document.createElement('iframe');
+            iframe.src = url;
+            iframe.width = '100%';
+            iframe.height = '100%';
+            iframe.style.border = 'none';
+
+            div.appendChild(iframe);
+        }
+
+        function removeSessionParamsFrame() {
+            const div = document.getElementById('section-session-params');
+            if (div) {
+                div.remove();
+            }
+        }
+
+        // ******************************
+        // **** logs and metrics ********
+        // ******************************
+
+        const LOGS_URL    = 'http://localhost:{{manager_port}}/pybiscus-session/logs';
+        const METRICS_URL = 'http://localhost:{{manager_port}}/pybiscus-session/metrics';
+
+        const logList = document.getElementById('log-list');
+        const metricsList = document.getElementById('metrics-list');
+
+        let displayedLogs = [];
+        let displayedMetrics = [];
+
+        let logsPaused = false;
+        let metricsPaused = false;
+
+        document.getElementById('reset-logs-btn').onclick = () => {
+            logList.innerHTML = '';
+            displayedLogs = [];
+        };
+
+        document.getElementById('reset-metrics-btn').onclick = () => {
+            metricsList.innerHTML = '';
+            displayedMetrics = [];
+        };
+
+        document.getElementById('pause-logs-btn').onclick = (e) => {
+            logsPaused = !logsPaused;
+            e.target.textContent = logsPaused ? 'Resume' : 'Pause';
+        };
+
+        document.getElementById('pause-metrics-btn').onclick = (e) => {
+            metricsPaused = !metricsPaused;
+            e.target.textContent = metricsPaused ? 'Resume' : 'Pause';
+        };
+
+        function addEntries(container, entriesArray, newItems, type) {
+            newItems.forEach(item => {
+                const div = document.createElement('div');
+                div.className = 'entry';
+
+                const src = document.createElement('span');
+                src.className = 'entry-source';
+                src.textContent = `[${item.source || type}] `;
+
+                const msg = document.createElement('span');
+                msg.className = 'entry-message';
+                msg.textContent = item.message || JSON.stringify(item);
+
+                div.appendChild(src);
+                div.appendChild(msg);
+                container.appendChild(div);
+                entriesArray.push(div);
+
+                if (entriesArray.length > 100) {
+                const removed = entriesArray.shift();
+                removed.remove();
+                }
+            });
+            container.scrollTop = container.scrollHeight;
+        }
+
+        function checkLogs(newItems) {
+            newItems.forEach(item => {
+
+                const matchRound = item.message.match(/Round\s*(\d+).*?accuracy=(\d+(\.\d+)?)/);
+                if (matchRound) {
+                const round = parseInt(matchRound[1], 10);
+                const accuracy = parseFloat(matchRound[2]);
+
+                session.roundNumber = round;
+                test_accuracies.add(accuracy);
+
+                return;
+                }
+
+                const matchAvgFitMetrics = item.message.match(/Averaged fit metrics:.*?'accuracy': (\d+(\.\d+)?)/);
+                if (matchAvgFitMetrics) {
+                const accuracy = parseFloat(matchAvgFitMetrics[1]);
+
+                fit_accuracies.add(accuracy);
+
+                return;
+                }
+
+                const matchAvgEvaluateMetrics = item.message.match(/Averaged evaluate metrics:.*?'accuracy': (\d+(\.\d+)?)/);
+                if (matchAvgEvaluateMetrics) {
+                const accuracy = parseFloat(matchAvgEvaluateMetrics[1]);
+
+                evaluate_accuracies.add(accuracy);
+
+                return;
+                }
+
+                const timeDiffMatch = item.message.match(/time diff is (\d+(\.\d+)?)s/);
+
+                if (timeDiffMatch) {
+                const duration = parseFloat(timeDiffMatch[1]);
+
+                durations.add(duration);
+
+                return;
+                }
+
+                const metricDiffMatch = item.message.match(/metric diff is (\d+(?:\.\d+)?)\s*$/);
+
+                if (metricDiffMatch) {
+                const metricDiff = parseFloat(metricDiffMatch[1]);
+
+                metricDiffs.add(metricDiff);
+
+                return;
+                }
+
+            })
+        }
+
+        function fetchLogs() {
+            if (logsPaused) return;
+            fetch(LOGS_URL)
+                .then(res => res.json())
+                .then(data => {
+                    const newLogs = data;
+                    if (newLogs.length) {
+                        addEntries(logList, displayedLogs, newLogs, 'logs');
+                        checkLogs(newLogs);
+                    }
+                })
+                .catch(console.error);
+        }
+
+        function fetchMetrics() {
+            if (metricsPaused) return;
+            fetch(METRICS_URL)
+                .then(res => res.json())
+                .then(data => {
+                    const newMetrics = data;
+                    if (newMetrics.length) {
+                        addEntries(metricsList, displayedMetrics, newMetrics, 'metrics');
+                    }
+                })
+                .catch(console.error);
+        }
+
+        session.startCallback(fetchLogs, 5000);
+        session.startCallback(fetchMetrics, 5000);
+
+        // ******************************
+        // **** graph management ********
+        // ******************************
+
+        const canvas = document.getElementById('graph');
+        const ctx = canvas.getContext('2d');
+        var sessionGraph = new SessionGraph();
+
+        function updateGraph() {
+            fetch('/pybiscus-session/agents')
+                .then(res => res.json())
+                .then(data => {
+
+                    const servers_names = Object.keys(data.servers);
+                    const clients_names = Object.keys(data.clients);
+
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+                    drawDurations(ctx, durations.all,
+                        { originX: 10, originY: 80 } );                    
+                    drawSparkbar(ctx, metricDiffs.all, 
+                        { originX: 320, originY: 40 } );
+                    sessionGraph.draw(ctx, session, servers_names, clients_names, 
+                        { centerX: 300, centerY: 240} );
+
+                    ctx.font = '16px sans-serif';
+                    ctx.beginPath();
+                    ctx.fillText("Accuracies", 5, 392 );
+                    ctx.font = '12px sans-serif';
+                    ctx.beginPath();
+                    ctx.fillText("Fit", 5, 444 );
+                    drawAccuracyBars(ctx, fit_accuracies.all,
+                        { originX: 36, originY: 460, maxAccuracies: fit_accuracies.maxSize, alignment: 'right' } );
+                    ctx.beginPath();
+                    ctx.fillText("Test", 5, 504 );
+                    drawAccuracyBars(ctx, test_accuracies.all,
+                        { originX: 36, originY: 520, maxAccuracies: test_accuracies.maxSize, alignment: 'right' } );
+                    ctx.beginPath();
+                    ctx.fillText("Eval", 5, 564 );
+                    drawAccuracyBars(ctx, evaluate_accuracies.all, 
+                        { originX: 36, originY: 580, maxAccuracies: evaluate_accuracies.maxSize, alignment: 'right' } );
+
+                    // propagate first server URL definition
+                    if( serverUrl === "" && servers_names.length > 0 ) {
+
+                        const servers_data = Object.values(data.servers);
+
+                        // info stored : name -> url
+                        serverUrl = servers_data[0];
+                        serverUrldisplay.textContent = serverUrl;
+
+                        // show session parameters frame
+                        showSessionParamsFrame(`${serverUrl}/session/config`);
+                    }
+                });
+        }
+
+        session.startCallback(updateGraph, 2000);  // Refresh every 2 seconds
+
+        document.getElementById("revokeBtn").addEventListener("click", async () => {
+
+            session.stop();
+
+            try {
+
+                const response = await fetch("/pybiscus-session/params", {
+                method: "DELETE",
+                headers: {
+                    "Content-Type": "application/json"
+                }
+                });
+
+                if (!response.ok) {
+                throw new Error(`HTTP error: ${response.status}`);
+                }
+
+                const data = await response.json();
+
+            } catch (error) {
+                console.error("Error :", error);
+            }
+
+            updateGraph();
+        });
+        
     </script>
 </body>
 </html>

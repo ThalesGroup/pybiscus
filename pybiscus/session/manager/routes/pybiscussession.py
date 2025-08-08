@@ -168,35 +168,13 @@ def pybiscus_manager_list_clients():
 
 # **************************
 
-# sub-view URL
-# show session participant agents graph and logs
-@pybiscus_manager_app.route("/pybiscus-session/show_agents")
-def pybiscus_manager_show_agents():
-    return render_template("show_agents.html", manager_port=pybiscus.session.manager.session_manager.manager_port)
-
-# **************************
-
-# sub-view URL
-# show logs and metrics
-@pybiscus_manager_app.route("/pybiscus-session/show_run")
-def pybiscus_manager_show_run():
-    return render_template("show_run.html", manager_port=pybiscus.session.manager.session_manager.manager_port)
-
-# **************************
-
-@pybiscus_manager_app.route("/pybiscus-session/show_blank")
-def pybiscus_manager_show_blank():
-    return render_template("show_blank.html")
-
-# **************************
-
 # manager main URL
 # double view on :
 # - session content ( server + connected clients )
 # - ConfigSession ( cnx to Pybiscus server )
 @pybiscus_manager_app.route("/pybiscus-session/manage")
 def pybiscus_manager_manage():
-    return render_template("manager.html")
+    return render_template("manager.html", manager_port=pybiscus.session.manager.session_manager.manager_port)
 
 # **************************
 
