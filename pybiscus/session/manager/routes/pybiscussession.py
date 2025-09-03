@@ -174,7 +174,7 @@ def pybiscus_manager_list_clients():
 # - ConfigSession ( cnx to Pybiscus server )
 @pybiscus_manager_app.route("/pybiscus-session/manage")
 def pybiscus_manager_manage():
-    return render_template("manager.html", manager_port=pybiscus.session.manager.session_manager.manager_port)
+    return render_template("pybiscus/manager.html", manager_port=pybiscus.session.manager.session_manager.manager_port)
 
 # **************************
 
