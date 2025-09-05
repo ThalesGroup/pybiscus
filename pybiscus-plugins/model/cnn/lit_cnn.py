@@ -128,6 +128,7 @@ class LitCNN(pl.LightningModule):
 
         if self._logging:
             self.log("train_loss", loss, prog_bar=True)
+            self.log("train_acc",  acc,  prog_bar=True)
 
         return {"loss": loss, "accuracy": acc}
 
@@ -146,15 +147,19 @@ class LitCNN(pl.LightningModule):
         return {"loss": loss, "accuracy": acc}
 
     @override
-    def test_step(self, batch: torch.Tensor, batch_idx) -> torch.Tensor:
+    def test_step(self, batch: torch.Tensor, batch_idx) -> CNNSignature:
         signal, labels = batch
 
         outputs = self.forward(signal)
         loss    = self.loss(outputs, labels)
+        acc     = self.accuracy(torch.max(outputs.data, 1)[1], labels)
 
-        return loss
+        if self._logging:
+            self.log("test_loss", loss, prog_bar=True)
+            self.log("test_acc",  acc,  prog_bar=True)
+
+        return {"loss": loss, "accuracy": acc}
 
     @override
     def configure_optimizers(self) -> None:
         return torch.optim.SGD(self.parameters(), lr=self.lr, momentum=0.9)
-

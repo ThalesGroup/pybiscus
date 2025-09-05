@@ -73,12 +73,16 @@ def clientConfigUpload():
 # ..........................................................
 # .... GET /client .........................................
 # ..........................................................
-# called by client front-end to run pybiscus in server mode
+# called by client front-end to run pybiscus in client mode
 # ..........................................................
 
 @rest_server.route("/client", methods=["GET"])
 def client():
     """run in client mode using the uploaded configuration"""
+
+    if pybagent.session_server_url is None:
+        logm.console.log("session is not initialized !!!")        
+        return jsonify({"error": "session is not initialized" }), 500
 
     try:
 

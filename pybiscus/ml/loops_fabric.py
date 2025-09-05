@@ -66,7 +66,19 @@ def test_loop(fabric, net, testloader):
             total=len(testloader),
             description="Validating...",
         ):
-            results = net.validation_step(batch, batch_idx)
+
+            results = net.test_step(batch, batch_idx)
+
+            # ensure that result is a dict, make convertion if required 
+            if isinstance(results, torch.Tensor):
+                # result is just the loss tensor => put it into a dict
+                results = {"loss": results}
+
+            elif not isinstance(results, dict):
+                # other format => convert to tensor and put it into a dict
+                results = {"loss": torch.as_tensor(results)}
+
+
 
             for key in results_epoch.keys():
                 value = results[key]
