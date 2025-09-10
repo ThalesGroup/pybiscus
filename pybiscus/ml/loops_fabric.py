@@ -4,6 +4,19 @@ from rich.progress import track
 torch.backends.cudnn.enabled = True
 
 
+def signature_of_mode(net, mode):
+    """
+    check if a signatures function exist, call it with mode
+    -> enable to have a different signature according to mode
+    otherwise return uniq signature
+    """
+
+    if hasattr(net, "signatures") and callable(getattr(net, "signatures")):
+        return net.signatures(mode)
+    else:
+        return net.signature
+
+
 def train_loop(fabric, net, trainloader, optimizer, epochs: int, verbose=False):
     """Train the network on the training set."""
 
@@ -14,10 +27,10 @@ def train_loop(fabric, net, trainloader, optimizer, epochs: int, verbose=False):
     elif isinstance(optimizer, list) and len(optimizer) == 1:
         optimizer = optimizer[0]
     
-    for epoch in range(epochs):
+    for _ in range(epochs):
         results_epoch = {
             key: torch.tensor(0.0, device=net.device)
-            for key in net.signature.__required_keys__
+            for key in signature_of_mode(net, "train").__required_keys__
         }
         for batch_idx, batch in track(
             enumerate(trainloader),
@@ -59,7 +72,7 @@ def test_loop(fabric, net, testloader):
     with torch.no_grad():
         results_epoch = {
             key: torch.tensor(0.0, device=net.device)
-            for key in net.signature.__required_keys__
+            for key in signature_of_mode(net, "test").__required_keys__
         }
         for batch_idx, batch in track(
             enumerate(testloader),

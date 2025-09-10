@@ -114,6 +114,9 @@ class LitCNN(pl.LightningModule):
     def signature(self):
         return self._signature
 
+    def signatures(self, mode):
+        return self._signature
+
     @override
     def forward(self, images):
         return self.model(images)
