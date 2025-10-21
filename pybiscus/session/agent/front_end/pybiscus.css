@@ -18,8 +18,6 @@
     --color-primary: #1e293b;
     --color-primary-light: #334155;
     --color-accent: #3b82f6;
-    --color-accent-light: #60a5fa;
-    --color-accent-dark: #2563eb;
     
     /* Semantic Colors */
     --color-success: #10b981;
@@ -75,6 +73,408 @@
     --transition-slow: 0.5s ease-in-out;
 }
 
+/* ============================================
+   SEMANTIC VARIABLES SÉMANTIQUES - Light theme
+   ============================================ */
+
+:root,
+[data-theme="light-default"] {
+
+  --color-accent-light: #60a5fa;
+  --color-accent-dark: #2563eb;
+
+  --body-bg: var(--color-gray-50);
+  --body-color: var(--color-gray-800);
+
+  /* Fieldset specific */
+  --fieldset-bg: var(--color-white);
+  --fieldset-text: var(--color-gray-900);
+  --fieldset-border: var(--color-border);
+  --fieldset-legend: var(--color-gray-800);
+
+  /* Theme */
+  --theme-bg: var(--color-gray-200);
+  --theme-color: black;
+
+  /* Inputs */
+  --input-bg: var(--color-white);
+  --input-text: var(--color-gray-900);
+  --input-border: var(--color-gray-300);
+  --input-focus-border: var(--color-blue-500);
+}
+
+/* ============================================ */
+
+[data-theme="light-warm"] {
+  --color-accent-light: #f59e0b;
+  --color-accent-dark: #d97706;
+
+  --body-bg: #faf8f5;
+  --body-color: #3e2723;
+
+  /* Fieldset specific */
+  --fieldset-bg: #fffdf9;
+  --fieldset-text: #3e2723;
+  --fieldset-border: #e0d5c7;
+  --fieldset-legend: #5d4037;
+
+  /* Theme */
+  --theme-bg: #f5f1ea;
+  --theme-color: #3e2723;
+
+  /* Inputs */
+  --input-bg: #fffdf9;
+  --input-text: #3e2723;
+  --input-border: #d7ccc8;
+  --input-focus-border: #f59e0b;
+}
+
+/* ============================================ */
+
+[data-theme="light-cool"] {
+  --color-accent-light: #06b6d4;
+  --color-accent-dark: #0891b2;
+
+  --body-bg: #f0f9ff;
+  --body-color: #0c4a6e;
+
+  /* Fieldset specific */
+  --fieldset-bg: #f8fafc;
+  --fieldset-text: #0c4a6e;
+  --fieldset-border: #cbd5e1;
+  --fieldset-legend: #0369a1;
+
+  /* Theme */
+  --theme-bg: #e0f2fe;
+  --theme-color: #0c4a6e;
+
+  /* Inputs */
+  --input-bg: #f8fafc;
+  --input-text: #0c4a6e;
+  --input-border: #94a3b8;
+  --input-focus-border: #0ea5e9;
+}
+
+/* ============================================ */
+
+[data-theme="light-green"] {
+  --color-accent-light: #10b981;
+  --color-accent-dark: #059669;
+
+  --body-bg: #f0fdf4;
+  --body-color: #064e3b;
+
+  /* Fieldset specific */
+  --fieldset-bg: #f7fee7;
+  --fieldset-text: #14532d;
+  --fieldset-border: #d9f99d;
+  --fieldset-legend: #166534;
+
+  /* Theme */
+  --theme-bg: #dcfce7;
+  --theme-color: #064e3b;
+
+  /* Inputs */
+  --input-bg: #f7fee7;
+  --input-text: #14532d;
+  --input-border: #86efac;
+  --input-focus-border: #10b981;
+}
+
+/* ============================================ */
+
+[data-theme="light-soft"] {
+  --color-accent-light: #ec4899;
+  --color-accent-dark: #db2777;
+
+  --body-bg: #fdf2f8;
+  --body-color: #831843;
+
+  /* Fieldset specific */
+  --fieldset-bg: #fef7ff;
+  --fieldset-text: #831843;
+  --fieldset-border: #fbcfe8;
+  --fieldset-legend: #9f1239;
+
+  /* Theme */
+  --theme-bg: #fce7f3;
+  --theme-color: #831843;
+
+  /* Inputs */
+  --input-bg: #fef7ff;
+  --input-text: #831843;
+  --input-border: #f9a8d4;
+  --input-focus-border: #ec4899;
+}
+
+/* ============================================ */
+
+[data-theme="light-lavender"] {
+  --color-accent-light: #a855f7;
+  --color-accent-dark: #9333ea;
+
+  --body-bg: #faf5ff;
+  --body-color: #581c87;
+
+  /* Fieldset specific */
+  --fieldset-bg: #fdf4ff;
+  --fieldset-text: #581c87;
+  --fieldset-border: #e9d5ff;
+  --fieldset-legend: #6b21a8;
+
+  /* Theme */
+  --theme-bg: #f3e8ff;
+  --theme-color: #581c87;
+
+  /* Inputs */
+  --input-bg: #fdf4ff;
+  --input-text: #581c87;
+  --input-border: #d8b4fe;
+  --input-focus-border: #a855f7;
+}
+
+/* ============================================ */
+
+[data-theme="light-peach"] {
+  --color-accent-light: #fb923c;
+  --color-accent-dark: #f97316;
+
+  --body-bg: #fff7ed;
+  --body-color: #7c2d12;
+
+  /* Fieldset specific */
+  --fieldset-bg: #fffbeb;
+  --fieldset-text: #7c2d12;
+  --fieldset-border: #fed7aa;
+  --fieldset-legend: #9a3412;
+
+  /* Theme */
+  --theme-bg: #ffedd5;
+  --theme-color: #7c2d12;
+
+  /* Inputs */
+  --input-bg: #fffbeb;
+  --input-text: #7c2d12;
+  --input-border: #fdba74;
+  --input-focus-border: #fb923c;
+}
+
+/* ============================================ */
+
+[data-theme="light-mint"] {
+  --color-accent-light: #14b8a6;
+  --color-accent-dark: #0d9488;
+
+  --body-bg: #f0fdfa;
+  --body-color: #134e4a;
+
+  /* Fieldset specific */
+  --fieldset-bg: #f7fffe;
+  --fieldset-text: #134e4a;
+  --fieldset-border: #99f6e4;
+  --fieldset-legend: #115e59;
+
+  /* Theme */
+  --theme-bg: #ccfbf1;
+  --theme-color: #134e4a;
+
+  /* Inputs */
+  --input-bg: #f7fffe;
+  --input-text: #134e4a;
+  --input-border: #5eead4;
+  --input-focus-border: #14b8a6;
+}
+
+/* ============================================ */
+
+[data-theme="dark"] {
+
+  --color-accent-light: #2563eb;
+  --color-accent-dark: #60a5fa;
+
+  --body-bg: var(--color-gray-800);
+  --body-color: var(--color-gray-50);
+
+  /* Fieldset specific */
+  --fieldset-bg: var(--color-gray-800);
+  --fieldset-text: var(--color-gray-50);
+  --fieldset-border: var(--color-border);
+  --fieldset-legend: var(--color-gray-100);
+
+  /* Theme */
+  --theme-bg: var(--color-gray-800);
+  --theme-color: var(--color-gray-50);
+  
+ /* Inputs */
+  --input-bg: var(--color-gray-800);
+  --input-text: var(--color-gray-50);
+  --input-border: var(--color-white);
+  --input-focus-border: var(--color-blue-500);
+}
+
+/* ============================================ */
+
+[data-theme="dark-blue"] {
+  --color-accent-light: #1e40af;
+  --color-accent-dark: #3b82f6;
+
+  --body-bg: #0f172a;
+  --body-color: #f1f5f9;
+
+  --fieldset-bg: #0f172a;
+  --fieldset-text: #f1f5f9;
+  --fieldset-border: #334155;
+  --fieldset-legend: #e2e8f0;
+
+  --theme-bg: #0f172a;
+  --theme-color: #f1f5f9;
+  
+  --input-bg: #1e293b;
+  --input-text: #f1f5f9;
+  --input-border: #475569;
+  --input-focus-border: #3b82f6;
+}
+
+/* ============================================ */
+
+[data-theme="dark-purple"] {
+  --color-accent-light: #7c3aed;
+  --color-accent-dark: #a78bfa;
+
+  --body-bg: #1e1b4b;
+  --body-color: #f5f3ff;
+
+  --fieldset-bg: #1e1b4b;
+  --fieldset-text: #f5f3ff;
+  --fieldset-border: #4c1d95;
+  --fieldset-legend: #ede9fe;
+
+  --theme-bg: #1e1b4b;
+  --theme-color: #f5f3ff;
+  
+  --input-bg: #312e81;
+  --input-text: #f5f3ff;
+  --input-border: #6366f1;
+  --input-focus-border: #a78bfa;
+}
+
+/* ============================================ */
+
+[data-theme="dark-green"] {
+  --color-accent-light: #059669;
+  --color-accent-dark: #34d399;
+
+  --body-bg: #064e3b;
+  --body-color: #ecfdf5;
+
+  --fieldset-bg: #064e3b;
+  --fieldset-text: #ecfdf5;
+  --fieldset-border: #065f46;
+  --fieldset-legend: #d1fae5;
+
+  --theme-bg: #064e3b;
+  --theme-color: #ecfdf5;
+  
+  --input-bg: #047857;
+  --input-text: #ecfdf5;
+  --input-border: #10b981;
+  --input-focus-border: #34d399;
+}
+
+/* ============================================ */
+
+[data-theme="dark-amber"] {
+  --color-accent-light: #d97706;
+  --color-accent-dark: #fbbf24;
+
+  --body-bg: #451a03;
+  --body-color: #fefce8;
+
+  --fieldset-bg: #451a03;
+  --fieldset-text: #fefce8;
+  --fieldset-border: #78350f;
+  --fieldset-legend: #fef3c7;
+
+  --theme-bg: #451a03;
+  --theme-color: #fefce8;
+  
+  --input-bg: #78350f;
+  --input-text: #fefce8;
+  --input-border: #f59e0b;
+  --input-focus-border: #fbbf24;
+}
+
+/* ============================================ */
+
+[data-theme="dark-cyan"] {
+  --color-accent-light: #0891b2;
+  --color-accent-dark: #22d3ee;
+
+  --body-bg: #083344;
+  --body-color: #ecfeff;
+
+  --fieldset-bg: #083344;
+  --fieldset-text: #ecfeff;
+  --fieldset-border: #155e75;
+  --fieldset-legend: #cffafe;
+
+  --theme-bg: #083344;
+  --theme-color: #ecfeff;
+  
+  --input-bg: #164e63;
+  --input-text: #ecfeff;
+  --input-border: #06b6d4;
+  --input-focus-border: #22d3ee;
+}
+
+/* ============================================ */
+
+[data-theme="dark-rose"] {
+  --color-accent-light: #e11d48;
+  --color-accent-dark: #fb7185;
+
+  --body-bg: #4c0519;
+  --body-color: #fff1f2;
+
+  --fieldset-bg: #4c0519;
+  --fieldset-text: #fff1f2;
+  --fieldset-border: #881337;
+  --fieldset-legend: #ffe4e6;
+
+  --theme-bg: #4c0519;
+  --theme-color: #fff1f2;
+  
+  --input-bg: #881337;
+  --input-text: #fff1f2;
+  --input-border: #f43f5e;
+  --input-focus-border: #fb7185;
+}
+
+/* ============================================ */
+
+[data-theme="dark-black"] {
+  --color-accent-light: #3b82f6;
+  --color-accent-dark: #60a5fa;
+
+  --body-bg: #000000;
+  --body-color: #fafafa;
+
+  --fieldset-bg: #000000;
+  --fieldset-text: #fafafa;
+  --fieldset-border: #262626;
+  --fieldset-legend: #e5e5e5;
+
+  --theme-bg: #000000;
+  --theme-color: #fafafa;
+  
+  --input-bg: #171717;
+  --input-text: #fafafa;
+  --input-border: #404040;
+  --input-focus-border: #60a5fa;
+}
+
+/* @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ */
+
 /* Reset and base styles */
 * {
     border-radius: var(--border-radius);
@@ -85,22 +485,19 @@
 body {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
     line-height: 1.6;
-    color: var(--color-gray-800);
-    background-color: var(--color-gray-50);
+
+    background-color: var(--body-bg);
+    color: var(--body-color);
 }
 
 /* Main fieldsets */
 fieldset {
-    border: 1px solid var(--color-border);
-    background-color: var(--color-white);
+    border: 1px solid var(--fieldset-border);
+    background-color: var(--fieldset-bg);
     padding: var(--spacing-lg);
     margin: 0;
     box-shadow: var(--shadow-sm);
     transition: box-shadow var(--transition-standard);
-}
-
-fieldset:hover {
-    box-shadow: var(--shadow-md);
 }
 
 body > div > fieldset > legend {
@@ -108,13 +505,15 @@ body > div > fieldset > legend {
     font-weight: var(--font-weight-bold);
     color: var(--color-primary);
     padding: var(--spacing-md) var(--spacing-lg);
-    background: linear-gradient(135deg, var(--color-white) 0%, var(--color-gray-50) 100%);
     border-radius: var(--border-radius-large);
     border: 1px solid var(--color-border);
     box-shadow: var(--shadow-sm);
     text-align: center;
     margin-bottom: var(--spacing-lg);
     position: relative;
+
+    background-color: var(--theme-bg);
+    color: var(--theme-color);    
 }
 
 body > div > fieldset > legend::before {
@@ -141,10 +540,12 @@ body > div > fieldset > legend::before {
     border-bottom: 1px solid var(--color-border-light);
     display: flex;
     flex-direction: column;
-    background-color: var(--color-white);
     border-radius: var(--border-radius-large);
     overflow: hidden;
     box-shadow: var(--shadow-sm);
+
+
+    background-color: var(--fieldset-bg);
 }
 
 .pybiscus-tab-buttons {
@@ -152,7 +553,6 @@ body > div > fieldset > legend::before {
     border-bottom: 1px solid var(--color-border-light);
     align-items: center;
     flex-wrap: wrap;
-    background-color: var(--color-gray-50);
     padding: var(--spacing-xs);
     gap: var(--spacing-xs);
 }
@@ -162,15 +562,26 @@ body > div > fieldset > legend::before {
     cursor: pointer;
     border: 1px solid transparent;
     border-radius: var(--border-radius);
-    background-color: transparent;
     transition: all var(--transition-fast);
     display: flex;
     align-items: center;
     justify-content: center;
     font-weight: var(--font-weight-medium);
-    color: var(--color-gray-600);
     position: relative;
     overflow: hidden;
+
+}
+
+.pybiscus-tab-button.active {
+    background-color: var(--theme-bg);
+    color: var(--theme-color);
+    border: 3px solid var(--color-accent-light);
+}
+
+.pybiscus-tab-button:not(.active) {
+    background-color: var(--theme-color);
+    color: var(--theme-bg);    
+    border: 3px solid var(--color-accent-dark);
 }
 
 .pybiscus-tab-button::before {
@@ -188,41 +599,16 @@ body > div > fieldset > legend::before {
     left: 100%;
 }
 
-.pybiscus-tab-button:hover {
-    background-color: var(--color-white);
-    color: var(--color-accent);
-    border-color: var(--color-border-light);
-    transform: translateY(-1px);
-    box-shadow: var(--shadow-sm);
-}
-
-.pybiscus-tab-button.active___ {
-    background-color: var(--color-white);
-    color: var(--color-accent);
-    border-color: var(--color-accent-light);
-    box-shadow: var(--shadow-md);
-    z-index: 1;
-    position: relative;
-    font-weight: var(--font-weight-semibold);
-}
-
-.pybiscus-tab-button.active___::after {
-    content: '';
-    position: absolute;
-    bottom: -1px;
-    left: 0;
-    right: 0;
-    height: 2px;
-    background: linear-gradient(90deg, var(--color-accent) 0%, var(--color-accent-light) 100%);
-}
-
 .pybiscus-tab-content {
     padding: var(--spacing-xl);
     border-top: none;
     opacity: 1;
     transition: opacity var(--transition-standard);
     flex: 1;
-    background-color: var(--color-white);
+}
+
+.pybiscus-tab-content.active {
+    background-color: var(--fieldset-bg);
 }
 
 .pybiscus-tab-content:not(.active) {
@@ -506,8 +892,9 @@ fieldset.foldable:not(.collapsed) > div.pybiscus-field:has(> fieldset) {
 }
 
 .pybiscus-config {
-    background: linear-gradient(135deg, var(--color-gray-700) 0%, var(--color-gray-800) 100%);
-    color: var(--color-white);
+    background-color: var(--theme-bg);
+    color: var(--theme-color);    
+
     border: 1px solid var(--color-accent-light);
     padding: var(--spacing-sm) var(--spacing-lg);
     margin: var(--spacing-xs) 0;
@@ -530,11 +917,6 @@ fieldset.foldable:not(.collapsed) > div.pybiscus-field:has(> fieldset) {
     right: 0;
     height: 1px;
     background: linear-gradient(90deg, var(--color-accent) 0%, var(--color-accent-light) 100%);
-}
-
-.pybiscus-config:hover {
-    transform: translateY(-1px);
-    box-shadow: var(--shadow-md);
 }
 
 .pybiscus-config.pybiscus-locked::after {
@@ -598,7 +980,7 @@ fieldset.foldable:not(.collapsed) > div.pybiscus-field:has(> fieldset) {
 }
 
 .pybiscus-box {
-    background: linear-gradient(135deg, var(--color-white) 0%, var(--color-gray-50) 100%);
+    background-color: var(--body-bg);
     padding: var(--spacing-lg);
     border-radius: var(--border-radius-xl);
     box-shadow: var(--shadow-lg);
@@ -664,9 +1046,9 @@ fieldset.foldable:not(.collapsed) > div.pybiscus-field:has(> fieldset) {
 
 .pybiscus-origin {
     cursor: not-allowed;
-    background: var(--color-gray-200);
-    color: var(--color-black);
-    border: 1px solid var(--color-black);
+    background: linear-gradient(135deg, var(--color-gray-300) 0%, var(--color-gray-600) 100%);
+    color: var(--color-white);
+    border: 1px solid var(black);
 }
 
 .pybiscus-button.check {
@@ -759,28 +1141,16 @@ button:disabled {
 /* management of pybiscus action buttons <<< end <<<
 
 
-/* Field states */
-[data-pybiscus-status="ignored"] {
-    background: linear-gradient(135deg, var(--color-gray-50) 0%, var(--color-gray-100) 100%);
-    border-color: var(--color-gray-300);
-    opacity: 0.8;
-}
-
-[data-pybiscus-status="valid"] {
-    background: linear-gradient(135deg, var(--color-success-bg) 0%, rgba(16, 185, 129, 0.1) 100%);
-    border-color: var(--color-success-light);
-    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
-}
-
 /* Input field improvements */
 input, textarea, select {
     padding: var(--spacing-sm) var(--spacing-md);
-    border: 1px solid var(--color-border);
     border-radius: var(--border-radius);
     font-size: var(--font-size-base);
     transition: all var(--transition-fast);
-    background-color: var(--color-white);
-    color: var(--color-gray-800);
+
+    background-color: var(--input-bg);
+    color: var(--input-text);
+    border: 1px solid var(--input-border);    
 }
 
 input:focus, textarea:focus, select:focus {
@@ -791,7 +1161,9 @@ input:focus, textarea:focus, select:focus {
 }
 
 input:hover, textarea:hover, select:hover {
+
     border-color: var(--color-accent-light);
+    border: 6px solid var(--color-border);
 }
 
 /* 2 levels menu management : used to overwrite existing foldable system */
@@ -809,13 +1181,13 @@ input:hover, textarea:hover, select:hover {
 /* Horizontal level 1 menu (composed from fieldset.foldable legend) */
 .level-1-menu {
     display: flex;
-    background: linear-gradient(135deg, var(--color-gray-50) 0%, var(--color-white) 100%);
-    border-bottom: 1px solid var(--color-border-light);
-    padding: var(--spacing-sm);
-    gap: var(--spacing-xs);
-    overflow-x: auto;
-    scrollbar-width: none;
-    -ms-overflow-style: none;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 20px;
+    padding: 10px;
+    border-radius: 8px;
+
+    background-color: var(--fieldset-bg);
 }
 
 .level-1-menu::-webkit-scrollbar {
@@ -828,21 +1200,33 @@ input:hover, textarea:hover, select:hover {
     cursor: pointer;
     border: 1px solid transparent;
     border-radius: var(--border-radius-large);
-    background-color: transparent;
+    /* background-color: transparent; */
     transition: all var(--transition-fast);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: var(--font-weight-medium);
-    color: var(--color-gray-600);
-    position: relative;
-    overflow: hidden;
-    white-space: nowrap;
-    min-width: fit-content;
-    flex-shrink: 0;
+    /* display: flex; */
+    /* align-items: center; */
+    /* justify-content: center; */
+    /* font-weight: var(--font-weight-medium); */
+    /* color: var(--color-gray-600); */
+    /* position: relative; */
+    /* overflow: hidden; */
+    /* white-space: nowrap; */
+    /* min-width: fit-content; */
+    /* flex-shrink: 0; */
 }
 
-.menu-item-level-1::before {
+.menu-item-level-1.active .pybiscus-config {
+    background-color: var(--theme-bg);
+    color: var(--theme-color);
+    border: 3px solid var(--color-accent-light);
+}
+
+.menu-item-level-1:not(.active) .pybiscus-config {
+    background-color: var(--theme-color);
+    color: var(--theme-bg);    
+    border: 3px solid var(--color-accent-dark);
+}
+
+/* .menu-item-level-1::before {
     content: '';
     position: absolute;
     top: 0;
@@ -864,17 +1248,21 @@ input:hover, textarea:hover, select:hover {
     transform: translateY(-1px);
     box-shadow: var(--shadow-sm);
 }
+*/
 
 .menu-item-level-1.active {
-    background-color: var(--color-white);
+    /* background-color: var(--color-white);
     color: var(--color-accent);
     border-color: var(--color-accent-light);
     box-shadow: var(--shadow-md);
     z-index: 1;
     position: relative;
-    font-weight: var(--font-weight-semibold);
+    font-weight: var(--font-weight-semibold); */
+    z-index: 1;
+
 }
 
+/*
 .menu-item-level-1.active::after {
     content: '';
     position: absolute;
@@ -883,10 +1271,10 @@ input:hover, textarea:hover, select:hover {
     right: 0;
     height: 2px;
     background: linear-gradient(90deg, var(--color-accent) 0%, var(--color-accent-light) 100%);
-}
+} */
 
 /* Level 2 area */
-.level-2-content {
+/* .level-2-content {
     min-height: 400px;
     background-color: var(--color-white);
 }
@@ -901,4 +1289,4 @@ input:hover, textarea:hover, select:hover {
 .content-section.active {
     display: block;
     opacity: 1;
-}
+} */

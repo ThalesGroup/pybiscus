@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Disposition redimensionnable (1 gauche, 2 droite)</title>
+  <style>
+    html, body {
+      height: 100%;
+      width: 100%;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      overflow: hidden;
+    }
+
+    /* Partie gauche : frame principale */
+    .left-frame {
+      flex: 1;
+      border: 1px solid #000;
+      box-sizing: border-box;
+    }
+
+    /* Partie droite : colonne contenant 2 frames */
+    .right-column {
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+      height: 100%;
+      box-sizing: border-box;
+    }
+
+    .right-top, .right-bottom {
+      flex: 1;
+      border: 1px solid #000;
+      box-sizing: border-box;
+    }
+
+    /* Séparateurs */
+    .divider {
+      background: #ccc;
+      transition: background 0.2s;
+    }
+    .divider:hover {
+      background: #999;
+    }
+
+    .vertical-divider {
+      width: 5px;
+      cursor: col-resize;
+    }
+
+    .horizontal-divider {
+      height: 5px;
+      cursor: row-resize;
+    }
+  </style>
+</head>
+<body>
+  <!-- Frame gauche -->
+  <iframe class="left-frame" src="http://localhost:5000/session/agent/registration"></iframe>
+
+  <!-- Séparateur vertical -->
+  <div class="divider vertical-divider"></div>
+
+  <!-- Colonne droite avec 2 frames -->
+  <div class="right-column">
+    <iframe class="right-top" src="http://localhost:5001/session/agent/registration"></iframe>
+    <div class="divider horizontal-divider"></div>
+    <iframe class="right-bottom" src="http://localhost:5002/session/agent/registration"></iframe>
+  </div>
+
+  <script>
+    let isResizing = false;
+    let currentDivider;
+    let direction;
+
+    const dividers = document.querySelectorAll('.divider');
+
+    dividers.forEach(divider => {
+      divider.addEventListener('mousedown', e => {
+        isResizing = true;
+        currentDivider = divider;
+        direction = divider.classList.contains('horizontal-divider') ? 'horizontal' : 'vertical';
+        document.body.style.cursor = direction === 'horizontal' ? 'row-resize' : 'col-resize';
+      });
+    });
+
+    document.addEventListener('mousemove', e => {
+      if (!isResizing) return;
+
+      if (direction === 'vertical') {
+        const left = document.querySelector('.left-frame');
+        const right = document.querySelector('.right-column');
+        const totalWidth = document.body.offsetWidth;
+        const newLeftWidth = e.clientX;
+        const newRightWidth = totalWidth - newLeftWidth;
+
+        if (newLeftWidth < 150 || newRightWidth < 150) return;
+
+        left.style.flex = 'none';
+        left.style.width = `${newLeftWidth}px`;
+      }
+
+      if (direction === 'horizontal') {
+        const top = currentDivider.previousElementSibling;
+        const bottom = currentDivider.nextElementSibling;
+        const totalHeight = top.offsetHeight + bottom.offsetHeight;
+        const newTopHeight = e.clientY - top.getBoundingClientRect().top;
+        const newBottomHeight = totalHeight - newTopHeight;
+
+        if (newTopHeight < 100 || newBottomHeight < 100) return;
+
+        top.style.flex = `0 0 ${newTopHeight}px`;
+        bottom.style.flex = `0 0 ${newBottomHeight}px`;
+      }
+    });
+
+    document.addEventListener('mouseup', () => {
+      isResizing = false;
+      document.body.style.cursor = 'default';
+    });
+  </script>
+</body>
+</html>

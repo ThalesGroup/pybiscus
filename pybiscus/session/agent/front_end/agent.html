@@ -654,68 +654,60 @@
         }
     });
 
-    // CSS for the two level menu and fieldsets
-    const menuStyles = `
-        .level-1-menu {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 10px;
-            margin-bottom: 20px;
-            padding: 10px;
-            background-color: #f5f5f5;
-            border-radius: 8px;
-        }
-        
-        .menu-item-level-1 {
-            padding: 10px 15px;
-            background-color: #fff;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            user-select: none;
-        }
-        
-        .menu-item-level-1:hover {
-            background-color: #e9f4ff;
-            border-color: #0066cc;
-        }
-        
-        .menu-item-level-1.active {
-            background-color: #0066cc;
-            color: white;
-            border-color: #0066cc;
-        }
-        
-        .level-1-menu.scrollable {
-            overflow-x: auto;
-            box-shadow: inset -10px 0 10px -10px rgba(0,0,0,0.1);
-        }
-        
-        .level-1-menu.scrollable::after {
-            content: '→';
-            position: absolute;
-            right: 10px;
-            top: 50%;
-            transform: translateY(-50%);
-            color: var(--color-gray-400);
-            pointer-events: none;
-        }
-        
-        fieldset.foldable:not(.collapsed) {
-            animation: fadeIn 0.3s ease-out;
-        }
-        
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-    `;
 
-    // Inject styles
-    const styleSheet = document.createElement('style');
-    styleSheet.textContent = menuStyles;
-    document.head.appendChild(styleSheet);
+    // **************************************
+    // ******* theme management *************
+    // **************************************
+    
+    // current theme
+    let currentTheme = 'light-default';
+
+    // Function to set current thema
+    function setTheme(theme) {
+        currentTheme = theme;
+        document.documentElement.setAttribute('data-theme', theme);
+    }
+
+    // themes names
+    const themes = [
+        'light-default', 'dark', 
+        'light-warm', 
+        'light-cool', 
+        'light-green', 
+        'light-soft', 
+        'light-lavender', 
+        'light-peach', 
+        'light-mint',
+
+        'dark-blue', 
+        'dark-purple', 
+        'dark-green', 
+        'dark-amber',
+        'dark-cyan', 
+        'dark-rose', 
+        'dark-black',
+    ];
+
+    // theme cycle management
+    function themeCycle() {
+        const currentIndex = themes.indexOf(currentTheme);
+        const nextIndex = (currentIndex + 1) % themes.length;
+        const newTheme = themes[nextIndex];
+        setTheme(newTheme);
+    }
+
+    // user system preference management
+
+    // - init
+    window.addEventListener('DOMContentLoaded', () => {
+        const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        setTheme(systemPrefersDark ? 'dark' : 'light-default');
+    });
+
+    // - change
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
+        setTheme(e.matches ? 'dark' : 'light-default');
+    });
 
 </script>
 

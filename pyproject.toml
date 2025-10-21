@@ -26,6 +26,7 @@ dependencies = [
     "pillow>=11.0.0",
     "onnx>=1.18.0",
     "dotenv>=0.9.9",
+    "tensorboard>=2.20.0",
 ]
 
 [project.scripts]
