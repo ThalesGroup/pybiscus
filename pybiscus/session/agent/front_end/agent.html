@@ -661,6 +661,8 @@
     
     // current theme
     let currentTheme = 'light-default';
+    let currentMode = 'light';
+
 
     // Function to set current thema
     function setTheme(theme) {
@@ -668,45 +670,98 @@
         document.documentElement.setAttribute('data-theme', theme);
     }
 
-    // themes names
-    const themes = [
-        'light-default', 'dark', 
-        'light-warm', 
-        'light-cool', 
-        'light-green', 
-        'light-soft', 
-        'light-lavender', 
-        'light-peach', 
-        'light-mint',
+    // themes by mode
+    const themesByMode = {
+        light: [
+            'light-default',
+            'light-warm', 
+            'light-cool', 
+            'light-green', 
+            'light-soft', 
+            'light-lavender', 
+            'light-peach', 
+            'light-mint'
+        ],
+        dark: [
+            'dark',
+            'dark-blue', 
+            'dark-purple', 
+            'dark-green', 
+            'dark-amber',
+            'dark-cyan', 
+            'dark-rose', 
+            'dark-black'
+        ]
+    };
 
-        'dark-blue', 
-        'dark-purple', 
-        'dark-green', 
-        'dark-amber',
-        'dark-cyan', 
-        'dark-rose', 
-        'dark-black',
-    ];
+    // Function to set current theme
+    function setTheme(theme) {
+        currentTheme = theme;
+        document.documentElement.setAttribute('data-theme', theme);
+    }
+
+    // Update active state of mode buttons
+    function updateModeButtons() {
+        const lightBtn = document.getElementById('lightModeButton');
+        const darkBtn = document.getElementById('darkModeButton');
+        
+        if (currentMode === 'light') {
+            lightBtn.classList.add('active');
+            darkBtn.classList.remove('active');
+        } else {
+            darkBtn.classList.add('active');
+            lightBtn.classList.remove('active');
+        }
+    }
+
+    // mode switching
+    function setMode(mode) {
+        currentMode = mode;
+        const themesInMode = themesByMode[mode];
+        
+        if (!themesInMode.includes(currentTheme)) {
+            setTheme(themesInMode[0]);
+        }
+        
+        updateModeButtons();
+    }
 
     // theme cycle management
     function themeCycle() {
-        const currentIndex = themes.indexOf(currentTheme);
-        const nextIndex = (currentIndex + 1) % themes.length;
-        const newTheme = themes[nextIndex];
+        const themesInMode = themesByMode[currentMode];
+        const currentIndex = themesInMode.indexOf(currentTheme);
+        const nextIndex = (currentIndex + 1) % themesInMode.length;
+        const newTheme = themesInMode[nextIndex];
         setTheme(newTheme);
     }
 
     // user system preference management
-
-    // - init
     window.addEventListener('DOMContentLoaded', () => {
         const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-        setTheme(systemPrefersDark ? 'dark' : 'light-default');
+        setMode(systemPrefersDark ? 'dark' : 'light');
     });
 
-    // - change
+    // system preference change detection
     window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
-        setTheme(e.matches ? 'dark' : 'light-default');
+        setMode(e.matches ? 'dark' : 'light');
+    });
+
+    // Manual mode toggle
+    document.getElementById('modeToggle').addEventListener('change', (e) => {
+        setMode(e.target.checked ? 'dark' : 'light');
+    });
+
+
+    
+    // Manual mode buttons
+    document.getElementById('lightModeButton').addEventListener('click', () => {
+        console.log('light');
+        setMode('light');
+    });
+
+    document.getElementById('darkModeButton').addEventListener('click', () => {
+        console.log('dark');
+        setMode('dark');
     });
 
 </script>
