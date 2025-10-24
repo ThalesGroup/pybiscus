@@ -147,8 +147,6 @@ class FabricFedAvgStrategy3(fl.server.strategy.FedAvg):
         self.model = model
         self.fabric = fabric
 
-        from pybiscus.flower.flowerfitresultsaggregator.flowerfitresultsaggregatorusingweightedaverage.flowerfitresultsaggregatorusingweightedaverage import FlowerFitResultsAggregatorUsingWeightedAverage
-
         flowerfitresultsaggregator_class = flowerfitresultsaggregator_registry()[flower_fit_results_aggregator['name']]
         self.flower_fit_results_aggregator = flowerfitresultsaggregator_class(**flower_fit_results_aggregator['config'])
 

@@ -109,7 +109,6 @@ def client_registry():
 def ClientConfig():
     return _ClientConfig
 
-
 if __name__ == "__main__":
     print(f'Logger plugins : {plugins_by_category["logger"]} {_logger_modules}')
     print(f'MetricsLogger plugins : {plugins_by_category["metricslogger"]} {_metricslogger_modules}')
@@ -118,6 +117,8 @@ if __name__ == "__main__":
     print(f'Strategy plugins : {plugins_by_category["strategy"]} {_strategy_modules }')
     print(f'StrategyDecorator plugins : {plugins_by_category["strategydecorator"]} {_strategydecorator_modules }')
     print(f'Client plugins : {plugins_by_category["client"]} {_client_modules }')
+    print(f'ResultModifier plugins : {plugins_by_category["resultmodifier"]} {_resultmodifier_modules }')
 
     from pybiscus.plugin.registries2 import _flowerfitresultsaggregator_modules
     print(f'FlowerFitResultsAggregator plugins : {plugins_by_category["flowerfitresultsaggregator"]} {_flowerfitresultsaggregator_modules }')
+

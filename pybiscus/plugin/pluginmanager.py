@@ -39,6 +39,7 @@ def load_plugins(config, verbose=False):
                         print(f"  ✅ 🧩 Successfully imported plugin '{module_name}'")
                     except ImportError as e:
                         print(f"  ❌ Failed to import plugin 🧩 '{module_name}' from path 📦 '{path}': {e}")
+                        sys.exit(1)
 
     return result
 

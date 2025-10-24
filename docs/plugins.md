@@ -37,6 +37,7 @@ Abbreviated packages representation used in the following array :
 |🌺.🔌.🌼.strategydecorator.StrategyDecorator|🌺.🌼.strategydecorator|strategydecorator|
 |🌺.🔌.🌼.clientfactory.ClientFactory|🌺.flower_fabric.client|client|
 |🌺.🔌.🌼.flowerfitresultsaggregator.FlowerFitResultsAggregator|🌺.🌼.flowerfitresultsaggregator|flowerfitresultsaggregator|
+|🌺.🔌.🌼.resultmodifier.ResultModifier|🌺.🌼.resultModifier|resultmodifier|
 
 # Multi projects mode : developping plugins in separated projects
 
