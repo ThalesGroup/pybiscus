@@ -8,7 +8,9 @@ from pydantic import ValidationError
 
 import pybiscus.core.pybiscus_logger as logm
 from pybiscus.flower_fabric.client.flowerfabricclient.flowerfabricclientfactory import FlowerFabricClientFactory
-from pybiscus.plugin.registries import client_registry, datamodule_registry, model_registry
+from pybiscus.plugin.registries.client_registry import client_registry
+from pybiscus.plugin.registries.data_registry import datamodule_registry
+from pybiscus.plugin.registries.model_registry import model_registry 
 from pybiscus.flower_config.config_client import ConfigClient
 
 from pybiscus.commands.apps_common import load_config

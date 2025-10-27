@@ -469,7 +469,7 @@ class ConfigYourModel(BaseModel):
 
 ### Step 5: Directory Structure and Placement
 
-Your model and configuration files must be placed in the appropriate PyBiscus directory structure. The exact directory locations and naming conventions are defined in the PyBiscus source files `pybiscus/plugin/registries.py` and `registries2.py`, and detailed in the **plugins.md** documentation.
+Your model and configuration files must be placed in the appropriate PyBiscus directory structure. The exact directory locations and naming conventions are defined in the PyBiscus source files `pybiscus/plugin/registries/model_registry.py`, and detailed in the **plugins.md** documentation.
 
 **Option 1: PyBiscus Source Tree (Core Models)**
 ```
@@ -496,8 +496,7 @@ my_pybiscus_plugins/
 
 **Important**: The exact directory structures, naming conventions, and plugin discovery mechanisms are specified in:
 - **plugins.md**: User documentation for plugin development
-- **pybiscus/plugin/registries.py**: Core registry definitions and discovery logic
-- **pybiscus/plugin/registries2.py**: Additional registry configurations
+- **pybiscus/plugin/registries/*_registry.py**: Core registry definitions and discovery logic
 
 Refer to these files for the authoritative directory structure requirements and plugin registration mechanisms.
 
@@ -863,7 +862,7 @@ class YourLightningDataModule(pl.LightningDataModule):
 
 ### Step 4: Directory Structure and Placement
 
-Your data provider files must be placed in the appropriate PyBiscus directory structure. The exact directory locations and naming conventions are defined in the PyBiscus source files `pybiscus/plugin/registries.py` and `registries2.py`, and detailed in the **plugins.md** documentation.
+Your data provider files must be placed in the appropriate PyBiscus directory structure. The exact directory locations and naming conventions are defined in the PyBiscus source files `pybiscus/plugin/registries/data_registry.py`, and detailed in the **plugins.md** documentation.
 
 **Option 1: PyBiscus Source Tree (Core Data Providers)**
 ```
@@ -889,8 +888,7 @@ my_pybiscus_plugins/
 
 **Important**: The exact directory structures, naming conventions, and plugin discovery mechanisms are specified in:
 - **plugins.md**: User documentation for plugin development
-- **pybiscus/plugin/registries.py**: Core registry definitions and discovery logic
-- **pybiscus/plugin/registries2.py**: Additional registry configurations
+- **pybiscus/plugin/registries/*_registry.py**: Core registry definitions and discovery logic
 
 Refer to these files for the authoritative directory structure requirements and plugin registration mechanisms.
 

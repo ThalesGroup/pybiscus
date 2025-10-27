@@ -1,10 +1,5 @@
 
-import os
-from pathlib import Path
-
-
 _plugins_by_category = None
-
 
 def get_plugins_by_category():
 
@@ -26,7 +21,7 @@ def get_plugins_by_category():
             print(f"❌ Can not load pybiscus plugins {e}")
             _plugins_by_category = defaultdict(list)
 
-        return _plugins_by_category
+    return _plugins_by_category
     
     
 

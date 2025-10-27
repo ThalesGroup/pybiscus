@@ -28,7 +28,7 @@ from pybiscus.flower.utils_server import (
     get_evaluate_fn    as pyb_get_evaluate_fn, 
     weighted_average   as pyb_weighted_average,
 )
-from pybiscus.plugin.registries2 import FlowerFitResultsAggregatorConfig, flowerfitresultsaggregator_registry
+from pybiscus.plugin.registries.flowerfitresultagregator_registry import FlowerFitResultsAggregatorConfig, flowerfitresultsaggregator_registry
 
 WARNING_MIN_AVAILABLE_CLIENTS_TOO_LOW = """
 Setting `min_available_clients` lower than `min_fit_clients` or

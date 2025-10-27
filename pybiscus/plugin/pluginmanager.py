@@ -25,8 +25,8 @@ def load_plugins(config, verbose=False):
                 print(f"  ⚠️ No module 🧩 defined in path 📦 {path}")
             else:
                 if not path or not os.path.isdir(path):
-                    print(f"  ⚠️ Invalid or missing path: 📦 {path}")
-                    continue
+                    print(f"  ❌ Invalid or missing path: 📦 {path}")
+                    sys.exit(1)
 
                 if path not in sys.path:
                     sys.path.append(path)

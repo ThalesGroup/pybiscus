@@ -9,7 +9,8 @@ import re
 from pybiscus.flower_config.config_server import ConfigServer
 from pybiscus.pydantic2xxx.pydantic2html import generate_model_page
 from pybiscus.session.agent.pybiscus_agent import checkConfigurationFile, generate_param_js, interpretConfigurationFile, rest_server, saveConfigFromRequest
-from pybiscus.plugin.registries import DataConfig, ModelConfig, datamodule_registry, model_registry
+from pybiscus.plugin.registries.data_registry import DataConfig, datamodule_registry
+from pybiscus.plugin.registries.model_registry import ModelConfig, model_registry
 from pybiscus.session.agent.ConfigSession import make_session_model
 from pybiscus.session.agent.pybiscus_agent import rest_server
 from pathlib import Path

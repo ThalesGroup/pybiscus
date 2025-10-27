@@ -33,13 +33,13 @@ class WebHookAgentLogger():
             print("✅ Agent log Webhook call success")
 
         except Timeout:
-            print("❌ Agent log Webhook Failure on timeout")
+            print("⚠️ Agent log Webhook Failure on timeout")
 
         except requests.HTTPError as http_err:
-            print(f"❌ Agent log Webhook HTTP error : {response.status_code} – {http_err}")
+            print(f"⚠️ Agent log Webhook HTTP error : {response.status_code} – {http_err}")
 
         except RequestException as err:
-            print(f"❌ Agent log Webhook Other error : {err}")
+            print(f"⚠️ Agent log Webhook Other error : {err}")
 
 def initAgentLogger( webhook_url, logger_bouquet, logger_id ):
     global agent_logger

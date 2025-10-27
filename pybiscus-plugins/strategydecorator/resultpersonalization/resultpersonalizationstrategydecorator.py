@@ -17,7 +17,7 @@ from pydantic import BaseModel, ConfigDict
 
 from pybiscus.interfaces.flower.strategydecorator import StrategyDecorator
 import pybiscus.core.pybiscus_logger as logm
-from pybiscus.plugin.registries3 import ResultModifierConfig, resultmodifier_registry
+from pybiscus.plugin.registries.resultmodifier_registry import ResultModifierConfig, resultmodifier_registry
 
 # -------------------------------------------------------------------------
 

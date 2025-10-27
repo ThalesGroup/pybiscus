@@ -691,7 +691,7 @@ def generate_field_html_by_name():
                 # raise ValueError(f"Class '{class_name}' not found in module '{module_name}'") from e
                 return str(div(f"BAD_RESULT for {type_full_typename}"))
     else:
-        from pybiscus.plugin.registries import LoggerConfig
+        from pybiscus.plugin.registries.logger_registry import LoggerConfig
 
         class MyConf(BaseModel):
             

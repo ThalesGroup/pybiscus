@@ -5,7 +5,9 @@ import torch
 from pydantic import BaseModel, ConfigDict
 
 from pybiscus.flower_config.config_computecontext import ConfigClientComputeContext
-from pybiscus.plugin.registries import ClientConfig, ModelConfig, DataConfig
+from pybiscus.plugin.registries.client_registry import ClientConfig
+from pybiscus.plugin.registries.model_registry import ModelConfig
+from pybiscus.plugin.registries.data_registry import DataConfig
 
 torch.backends.cudnn.enabled = True
 
