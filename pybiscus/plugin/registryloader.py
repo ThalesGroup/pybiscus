@@ -152,6 +152,7 @@ class RegistryLoader(Generic[T]):
             except Exception as e:
                 if self.verbose:
                     print(f"❌ Error loading {full_module_name}: {e}")
+                    raise
 
         config_union = (
             Annotated[Union[*config_classes], Field(discriminator="name")]

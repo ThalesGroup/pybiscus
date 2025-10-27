@@ -25,8 +25,8 @@ def load_plugins(config, verbose=False):
                 print(f"  ⚠️ No module 🧩 defined in path 📦 {path}")
             else:
                 if not path or not os.path.isdir(path):
-                    print(f"  ⚠️ Invalid or missing path: 📦 {path}")
-                    continue
+                    print(f"  ❌ Invalid or missing path: 📦 {path}")
+                    sys.exit(1)
 
                 if path not in sys.path:
                     sys.path.append(path)
@@ -39,6 +39,7 @@ def load_plugins(config, verbose=False):
                         print(f"  ✅ 🧩 Successfully imported plugin '{module_name}'")
                     except ImportError as e:
                         print(f"  ❌ Failed to import plugin 🧩 '{module_name}' from path 📦 '{path}': {e}")
+                        sys.exit(1)
 
     return result
 

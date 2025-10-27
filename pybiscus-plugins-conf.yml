@@ -26,7 +26,12 @@ strategydecorator:
     modules:
       - basicstrategydecorator
       - filewritingdecorator
+      - resultpersonalization
 client:
   - path: "./pybiscus-plugins/client"
     modules:
       - relayclient
+resultmodifier:
+  - path: "./pybiscus-plugins/resultmodifier"
+    modules:
+      - resultmultiplier

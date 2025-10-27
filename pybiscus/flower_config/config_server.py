@@ -4,8 +4,11 @@ from typing import List, Optional, ClassVar
 from pydantic import BaseModel, ConfigDict
 
 from pybiscus.flower_config.config_computecontext import ConfigServerComputeContext
-from pybiscus.plugin.registries import LoggerConfig, ModelConfig, DataConfig, StrategyConfig, StrategyDecoratorConfig
-
+from pybiscus.plugin.registries.logger_registry import LoggerConfig
+from pybiscus.plugin.registries.model_registry import ModelConfig
+from pybiscus.plugin.registries.data_registry import DataConfig
+from pybiscus.plugin.registries.strategy_registry import StrategyConfig
+from pybiscus.plugin.registries.strategydecorator_registry import StrategyDecoratorConfig
 
 class ConfigSslServer(BaseModel):
     """A Pydantic Model to validate the ssl configuration given by the user.

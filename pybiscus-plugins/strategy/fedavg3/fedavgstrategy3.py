@@ -28,7 +28,7 @@ from pybiscus.flower.utils_server import (
     get_evaluate_fn    as pyb_get_evaluate_fn, 
     weighted_average   as pyb_weighted_average,
 )
-from pybiscus.plugin.registries2 import FlowerFitResultsAggregatorConfig, flowerfitresultsaggregator_registry
+from pybiscus.plugin.registries.flowerfitresultagregator_registry import FlowerFitResultsAggregatorConfig, flowerfitresultsaggregator_registry
 
 WARNING_MIN_AVAILABLE_CLIENTS_TOO_LOW = """
 Setting `min_available_clients` lower than `min_fit_clients` or
@@ -146,8 +146,6 @@ class FabricFedAvgStrategy3(fl.server.strategy.FedAvg):
 
         self.model = model
         self.fabric = fabric
-
-        from pybiscus.flower.flowerfitresultsaggregator.flowerfitresultsaggregatorusingweightedaverage.flowerfitresultsaggregatorusingweightedaverage import FlowerFitResultsAggregatorUsingWeightedAverage
 
         flowerfitresultsaggregator_class = flowerfitresultsaggregator_registry()[flower_fit_results_aggregator['name']]
         self.flower_fit_results_aggregator = flowerfitresultsaggregator_class(**flower_fit_results_aggregator['config'])

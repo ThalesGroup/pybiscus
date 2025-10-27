@@ -1,7 +1,7 @@
 from typing import ClassVar
 from pydantic import BaseModel, ConfigDict
 
-from pybiscus.plugin.registries import MetricsLoggerConfig
+from pybiscus.plugin.registries.metriclogger_registry import MetricsLoggerConfig
 from pybiscus.flower_config.config_hardware import ConfigHardware
 
 class ConfigServerComputeContext(BaseModel):

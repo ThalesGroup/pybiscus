@@ -14,10 +14,15 @@ from pybiscus.core.metricslogger.file.filemetricslogger import FileMetricsLogger
 import pybiscus.core.pybiscus_logger as logm
 from pybiscus.core.logger.multiplelogger.multipleloggerfactory import MultipleLoggerFactory
 from pybiscus.core.metricslogger.multiplemetricslogger.multiplemetricsloggerfactory import MultipleMetricsLoggerFactory
-from pybiscus.plugin.registries import datamodule_registry, logger_registry, metricslogger_registry, model_registry, strategy_registry, strategydecorator_registry
 from pybiscus.flower_config.config_server import ConfigServer
 from pybiscus.commands.onnx_mngt import to_onnx_with_datamodule
 from pybiscus.commands.apps_common import load_config
+from pybiscus.plugin.registries.data_registry import datamodule_registry
+from pybiscus.plugin.registries.logger_registry import logger_registry
+from pybiscus.plugin.registries.metriclogger_registry import metricslogger_registry
+from pybiscus.plugin.registries.model_registry import model_registry
+from pybiscus.plugin.registries.strategy_registry import strategy_registry
+from pybiscus.plugin.registries.strategydecorator_registry import strategydecorator_registry
 
 #                    ------------------------------------------------
 
