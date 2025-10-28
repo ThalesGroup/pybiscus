@@ -16,6 +16,10 @@ def set_params(model: torch.nn.ModuleList, params: list[np.ndarray]):
     state_dict = OrderedDict({k: torch.from_numpy(np.copy(v)) for k, v in params_dict})
     model.load_state_dict(state_dict, strict=True)
 
+def get_params(model: torch.nn.Module) -> list[np.ndarray]:
+    """Extract Pytorch model weights as NumPy arrays."""
+    return [val.cpu().numpy() for _, val in model.state_dict().items()]
+
 
 def fit_config(server_round: int):
     """Return training configuration dict for each round."""

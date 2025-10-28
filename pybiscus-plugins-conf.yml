@@ -35,3 +35,4 @@ resultmodifier:
   - path: "./pybiscus-plugins/resultmodifier"
     modules:
       - resultmultiplier
+      - clientwatermarking

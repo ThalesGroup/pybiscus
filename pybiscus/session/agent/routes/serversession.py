@@ -6,6 +6,7 @@ import urllib
 import os
 import re
 
+from pybiscus.core.ensure_filesystem import ensure_file_dir_exists
 from pybiscus.flower_config.config_server import ConfigServer
 from pybiscus.pydantic2xxx.pydantic2html import generate_model_page
 from pybiscus.session.agent.pybiscus_agent import checkConfigurationFile, generate_param_js, interpretConfigurationFile, rest_server, saveConfigFromRequest
@@ -14,7 +15,6 @@ from pybiscus.plugin.registries.model_registry import ModelConfig, model_registr
 from pybiscus.session.agent.ConfigSession import make_session_model
 from pybiscus.session.agent.pybiscus_agent import rest_server
 from pathlib import Path
-from pybiscus.commands.app_server import ensure_file_dir_exists
 import pybiscus.core.pybiscus_logger as logm
 import pybiscus.session.agent.pybiscus_agent as pybagent
 

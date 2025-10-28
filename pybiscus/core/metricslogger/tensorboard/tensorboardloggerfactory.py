@@ -41,7 +41,8 @@ class TensorBoardLoggerFactory(MetricsLoggerFactory):
 
     def get_metricslogger(self,reporting_path):
 
-        from pybiscus.commands.app_server import ensure_dir_exists
+        from pybiscus.core.ensure_filesystem import ensure_dir_exists
+
         from pathlib import Path
 
         log_dir = Path(reporting_path) / Path(self.config.subdir)
