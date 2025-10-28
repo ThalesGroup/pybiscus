@@ -8,6 +8,7 @@ from omegaconf import OmegaConf
 from pydantic import ValidationError
 from typing import Annotated
 
+from pybiscus.core.ensure_filesystem import ensure_dir_exists, ensure_file_dir_exists
 from pybiscus.core.logger.filelogger.filelogger import FileLoggerFactory
 from pybiscus.core.logger.richlogger.richloggerfactory import RichLoggerFactory
 from pybiscus.core.metricslogger.file.filemetricslogger import FileMetricsLoggerFactory
@@ -23,15 +24,6 @@ from pybiscus.plugin.registries.metriclogger_registry import metricslogger_regis
 from pybiscus.plugin.registries.model_registry import model_registry
 from pybiscus.plugin.registries.strategy_registry import strategy_registry
 from pybiscus.plugin.registries.strategydecorator_registry import strategydecorator_registry
-
-#                    ------------------------------------------------
-
-def ensure_dir_exists(path):
-    path.mkdir(parents=True, exist_ok=True)
-
-# for a file : create the parent directory
-def ensure_file_dir_exists(file_path):
-    ensure_dir_exists(file_path.parent)
 
 #                    ------------------------------------------------
 
@@ -192,6 +184,7 @@ def launch_config(
     conf = check_and_build_server_config(conf_loaded)
 
     # compute the reporting path
+    
     if conf.server_run.reporting:
 
         reporting_path = Path(conf.server_run.reporting.basedir)
@@ -278,6 +271,12 @@ def launch_config(
 
     logm.console.log(f"setting 🛠️ strategy <{conf.server_strategy.strategy.name}>")
 
+    # expose server context
+    import pybiscus.core.pybiscuscontext as pcpc
+    pcpc.pybiscus_context["reporting_path"] = Path(reporting_path)
+    pcpc.pybiscus_context["model"] = model
+    pcpc.pybiscus_context["fabric"] = fabric
+
     # chaining strategy decorators
     for conf_decorator in conf.server_strategy.decorators:
         logm.console.log(f"setting 🛠️🎀 strategy decorator <{conf_decorator.name}>")
@@ -301,9 +300,11 @@ def launch_config(
 
         # optional checkpoint save
         if conf.server_run.reporting.save_on_train_end:
-            state = {"model": model}
 
             checkpoint_path = reporting_path / conf.server_run.reporting.save_on_train_end.filename
+
+            state = {"model": model}
+
             ensure_file_dir_exists(checkpoint_path)
             fabric.save(checkpoint_path, state)
             logm.console.log(f"[fabric] save checkpoint 💾📍🗄️to : {checkpoint_path}")
