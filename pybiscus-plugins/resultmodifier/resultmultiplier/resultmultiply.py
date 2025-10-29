@@ -29,8 +29,8 @@ class ResultMultiply(ResultModifier):
 
     def modify(
         self,
-        cid: str, 
         round: int,
+        cid: str, 
         weights: List[np.ndarray],
     ) -> List[np.ndarray]:
 
