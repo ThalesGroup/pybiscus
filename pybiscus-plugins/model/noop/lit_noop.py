@@ -41,12 +41,19 @@ class NoopSignature(TypedDict):
     loss: torch.Tensor
     accuracy: torch.Tensor
 
+
+
 class NoopModel(nn.Module):
     def __init__(self):
         super().__init__()
 
+        # dummy parameters
+        self.dummy = nn.Parameter(torch.ones(5))
+
     def forward(self, x):
         return x
+
+
 
 class LitNoop(pl.LightningModule):
     def __init__(self, empty_configuration: bool):
@@ -69,8 +76,7 @@ class LitNoop(pl.LightningModule):
         return { "loss": torch.zeros(1), "accuracy": torch.ones(1) }
 
     def test_step(self, batch: torch.Tensor, batch_idx):
-        loss = torch.zeros(1)        
-        return loss
+        return { "loss": torch.zeros(1), "accuracy": torch.ones(1) }
 
     def configure_optimizers(self):
         return None

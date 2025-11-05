@@ -9,6 +9,7 @@ data:
       - randomvector
       - turbofan
       - mnist
+      - vector
 model:
   - path: "./pybiscus-plugins/model"
     modules:

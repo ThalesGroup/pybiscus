@@ -30,7 +30,8 @@ class ConfigPersonalizationStrategyDecoratorData(BaseModel):
     result_modifier: ResultModifierConfig() # pyright: ignore[reportInvalidTypeForm]
 
     protect_model_weights: bool = True
-    save_as_np: bool = False
+    save_as_np:  bool = True
+    debug: bool = False
 
     model_config = ConfigDict(extra="forbid")
 
@@ -64,8 +65,6 @@ class PersonalizedResultStrategyDecorator(StrategyDecorator):
         self.base_strategy = base_strategy
         self.conf = conf
 
-        self.personalized_models: Dict[str, Parameters] = {}
-
         # allocate a result modifier usign its class name
 
         # step 1 : find class by name in corresponding registry
@@ -76,75 +75,21 @@ class PersonalizedResultStrategyDecorator(StrategyDecorator):
 
     # -------------------------------------------------------------------------
 
-    def aggregate_fit(
-        self,
-        server_round: int,
-        results: List[Tuple[ClientProxy, FitRes]],
-        failures: List[BaseException],
-    ) -> Tuple[Optional[Parameters], Dict[str, Scalar]]:
-        """perform aggregate then compute personalized version on a per client basis
-        
-        class FitRes:
-            status: Status           # training status
-            parameters: Parameters   # updated model parameters
-            num_examples: int        # training samples nb
-            metrics: Dict[str, Scalar]
+    def aggregate_fit(self, server_round, results, failures):
 
-        class Parameters:
-            tensors: List[bytes]    # tensors list byte-serialized
-            tensor_type: str        # ex: "numpy.ndarray"
+        if self.conf.debug:
+            logm.console.log(f"[{server_round}] aggregate_fit start ({len(results)} results)")
 
-        Scalar = Union[bool, bytes, float, int, str]
+        aggregated_parameters, metrics = self.base_strategy.aggregate_fit(server_round, results, failures)
 
-        """
-        
-        # call base strategy aggregation
-        aggregated_params, metrics = self.base_strategy.aggregate_fit(
-            server_round, results, failures
-        )
-        
-        if aggregated_params is None:
-            return None, metrics
+        if aggregated_parameters is None:
+            logm.console.log("⚠️ No aggregated parameters from base strategy")
+        else:
+            nds = fl.common.parameters_to_ndarrays(aggregated_parameters)
+            if self.conf.debug:
+                logm.console.log(f"✅ Aggregated {len(nds)} ndarrays")
 
-        import pybiscus.core.pybiscuscontext as pcpc
-        reporting_path = pcpc.pybiscus_context["reporting_path"]
-        
-        # global_weights is a NDArrays
-        global_weights = flw_parameters_to_ndarrays(aggregated_params)
-
-        # Save aggregated weights as np (optional)
-        if self.conf.save_as_np:      
-            checkpoint_aggregated_path = reporting_path / f"personnalized_checkpoints/round_{server_round}/aggregated.npz"
-            ensure_file_dir_exists(checkpoint_aggregated_path)
-            np.savez(checkpoint_aggregated_path, *global_weights)
-
-        self.personalized_models.clear()
-
-        if self.conf.protect_model_weights:
-            from pybiscus.core.pybiscuscontext import pybiscus_context
-            from pybiscus.flower.utils_server import set_params, get_params
-
-            model = pybiscus_context["model"]
-            saved_weights = get_params(model)
-
-        for client_proxy, _ in results:
-            cid = client_proxy.cid
-            
-            # personalized client weights
-            personalized_weights = self.result_modifier.modify( server_round, cid, global_weights )
-
-            # Save personalized weights as np (optional)
-            if self.conf.save_as_np:      
-                checkpoint_client_path = reporting_path / f"personnalized_checkpoints/round_{server_round}/client_{cid}.npz"
-                ensure_file_dir_exists(checkpoint_aggregated_path)
-                np.savez(checkpoint_client_path, *personalized_weights)
-
-            self.personalized_models[cid] = flw_ndarrays_to_parameters( personalized_weights )
-
-        if self.conf.protect_model_weights:
-            set_params(model, saved_weights)
-
-        return aggregated_params, metrics
+        return aggregated_parameters, metrics or {}
 
     # -------------------------------------------------------------------------
 
@@ -155,29 +100,66 @@ class PersonalizedResultStrategyDecorator(StrategyDecorator):
         client_manager: ClientManager,
     ) -> List[Tuple[ClientProxy, fl.common.FitIns]]:
         """send personalized models to clients"""
-        
+
+        import pybiscus.core.pybiscuscontext as pcpc
+        reporting_path = pcpc.pybiscus_context["reporting_path"]
+
+        if self.conf.debug:
+            logm.console.log(f"PR configure_fit( round={server_round})")
+            logm.console.log(f"[{server_round}] parameters has {len(parameters.tensors)} tensors")
+
         # get base config
-        base_config = self.base_strategy.configure_fit(
-            server_round, parameters, client_manager
-        )
+        base_config = self.base_strategy.configure_fit( server_round, parameters, client_manager )
         
         # replace parameters by a personalized version
         personalized_config = []
 
-        for client_proxy, fit_ins in base_config:
-            cid = client_proxy.cid
-            
-            # used personalized model or global in unavailable
-            #TODO if round > 0 and cid not in self.personalized_models:
-            if cid not in self.personalized_models:
-                logm.console.log(f"❌ No personalized Result for client {cid}")
+        global_weights = fl.common.parameters_to_ndarrays(parameters)
+        # logm.console.log( f"PR::CF global weights=[{" ".join(" ".join(map(str, w)) for w in global_weights)}]" )
 
-            custom_params = self.personalized_models.get(cid, parameters)
-            
-            personalized_fit_ins = fl.common.FitIns(
-                parameters=custom_params,
-                config=fit_ins.config
-            )
+        # Save aggregated weights as np (optional)
+        if self.conf.save_as_np:      
+            checkpoint_aggregated_path = reporting_path / f"personnalized_checkpoints/round_{server_round}/aggregated.npz"
+            ensure_file_dir_exists(checkpoint_aggregated_path)
+            np.savez(checkpoint_aggregated_path, *global_weights)
+
+        if self.conf.protect_model_weights:
+            # save model weights as they are modified into the result modifyer
+            from pybiscus.core.pybiscuscontext import pybiscus_context
+            from pybiscus.flower.utils_server import set_params, get_params
+    
+            model = pybiscus_context["model"]
+            saved_weights = get_params(model)
+
+        for client_proxy, fit_ins in base_config:
+
+            cid = client_proxy.cid
+
+            if self.conf.debug:
+                logm.console.log(f"PR configure_fit( round={server_round}, cid={cid}")
+                # logm.console.log( f"PR::CF global weights={" ".join(" ".join(map(str, w)) for w in global_weights)}" )
+
+            # call the configurated result modifyer
+            personalized_weights = self.result_modifier.modify( server_round, cid, global_weights )
+
+            if self.conf.debug:
+                logm.console.log( f"PR::CF client weights len ={len(personalized_weights)}" )
+                # logm.console.log( f"PR::CF client weights=[{" ".join(" ".join(map(str, w)) for w in personalized_weights)}]" )
+
+            # Save personalized weights as np (optional)
+            if self.conf.save_as_np:      
+                checkpoint_client_path = reporting_path / f"personnalized_checkpoints/round_{server_round}/client_{cid}.npz"
+                ensure_file_dir_exists(checkpoint_aggregated_path)
+                np.savez(checkpoint_client_path, *personalized_weights)
+
+            custom_params = fl.common.ndarrays_to_parameters(personalized_weights)
+
+            personalized_fit_ins = fl.common.FitIns( parameters=custom_params, config=fit_ins.config )
+
             personalized_config.append((client_proxy, personalized_fit_ins))
-        
+
+        if self.conf.protect_model_weights:
+            # restore model weights as they were modified into the result modifyer
+            set_params(model, saved_weights)
+
         return personalized_config
