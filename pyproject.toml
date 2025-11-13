@@ -27,6 +27,9 @@ dependencies = [
     "onnx>=1.18.0",
     "dotenv>=0.9.9",
     "tensorboard>=2.20.0",
+    "matplotlib>=3.10.0",
+    "scikit-learn>=1.7.2",
+    "seaborn>=0.13.2",
 ]
 
 [project.scripts]

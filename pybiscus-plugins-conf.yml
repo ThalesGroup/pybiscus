@@ -27,6 +27,7 @@ strategydecorator:
     modules:
       - basicstrategydecorator
       - filewritingdecorator
+      - modelweighthash
       - resultpersonalization
 client:
   - path: "./pybiscus-plugins/client"
