@@ -1,13 +1,6 @@
-from pathlib import Path
-from typing import ClassVar, List, Literal, Tuple, Optional, Dict
+from typing import ClassVar, List, Literal, Tuple
 import flwr as fl
-from flwr.common import (
-    Parameters, 
-    FitRes, 
-    Scalar,
-    ndarrays_to_parameters as flw_ndarrays_to_parameters,
-    parameters_to_ndarrays as flw_parameters_to_ndarrays,
-)
+from flwr.common import Parameters
 
 from flwr.server.strategy import Strategy
 from flwr.server.client_manager import ClientManager
@@ -158,8 +151,8 @@ class PersonalizedResultStrategyDecorator(StrategyDecorator):
 
             personalized_config.append((client_proxy, personalized_fit_ins))
 
-        if self.conf.protect_model_weights:
-            # restore model weights as they were modified into the result modifyer
-            set_params(model, saved_weights)
+            if self.conf.protect_model_weights:
+                # restore model weights as they were modified into the result modifyer
+                set_params(model, saved_weights)
 
         return personalized_config
