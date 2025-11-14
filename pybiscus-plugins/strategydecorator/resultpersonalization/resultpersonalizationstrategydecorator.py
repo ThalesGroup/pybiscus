@@ -132,8 +132,8 @@ class PersonalizedResultStrategyDecorator(StrategyDecorator):
 
             personalized_config.append((client_proxy, personalized_fit_ins))
 
-        if self.conf.protect_model_weights:
-            # restore model weights as they were modified into the result modifyer
-            set_params(model, saved_weights)
+            if self.conf.protect_model_weights:
+                # restore model weights as they were modified into the result modifyer
+                set_params(model, saved_weights)
 
         return personalized_config
