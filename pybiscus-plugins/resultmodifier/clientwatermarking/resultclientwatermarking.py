@@ -8,19 +8,27 @@ from pybiscus.core.ensure_filesystem import ensure_file_dir_exists
 import pybiscus.core.pybiscus_logger as logm
 
 from pybiscus.interfaces.flower.resultmodifier import ResultModifier
-from pybiscus.flower.utils_server import set_params, get_params
+from pybiscus.flower.utils_server import get_params
+from pybiscus.core.ensure_filesystem import ensure_file_dir_exists, ensure_dir_exists
 
 # --------------------------------------------------------
 
 class ConfigResultClientWatermarkingData(BaseModel):
     PYBISCUS_CONFIG: ClassVar[str] = "config"
+
     save_as_cp: bool = True
+    reporting_sub_dir: str = "rounds"
+    client_watermaked_model_prefix: str = "client_watermarked_model"
+
     model_config = ConfigDict(extra="forbid")
 
 class ConfigResultClientWatermarking(BaseModel):
+
     PYBISCUS_ALIAS: ClassVar[str] = "ClientWatermarking"
     name:   Literal["client watermarking"]
+
     config: ConfigResultClientWatermarkingData
+
     model_config = ConfigDict(extra="forbid")
 
 # --------------------------------------------------------
@@ -71,9 +79,11 @@ def traitor_tracing(nb_clients: int, fingerprints = list[torch.tensor], secret_k
 
 class ResultClientWatermarking(ResultModifier):
 
-    def __init__(self,save_as_cp):
+    def __init__(self, save_as_cp, reporting_sub_dir, client_watermaked_model_prefix):
 
         self.save_as_cp = save_as_cp
+        self.reporting_sub_dir = reporting_sub_dir
+        self.client_watermaked_model_prefix = client_watermaked_model_prefix
 
         self.model = None
         self.fabric = None
@@ -154,13 +164,15 @@ class ResultClientWatermarking(ResultModifier):
 
         if self.save_as_cp:
 
-            checkpoint_client_path = self.reporting_path / f"watermarked_checkpoints/round_{round}/client_{cid}.cp"
-
             state = {"model": self.model}
 
+            round_path = self.reporting_path / self.reporting_sub_dir
+            ensure_dir_exists(round_path)
+            checkpoint_client_path = round_path / f"round_{round}" / f"{self.client_watermaked_model_prefix}_{cid}.cp"
             ensure_file_dir_exists(checkpoint_client_path)
+            
             self.fabric.save(checkpoint_client_path, state)
-            logm.console.log(f"[fabric] save 💧 watermarked client {cid} checkpoint 💾📍🗄️to : {checkpoint_client_path}")
+            logm.console.log(f"[fabric] save 💧 watermarked client {cid} model 💾📍🗄️to : {checkpoint_client_path}")
 
         # get model weights after model transform
         computed_weights = get_params(self.model)

@@ -132,123 +132,64 @@
             }
         }
 
-                                                /* Section contenant la galerie */
-                                                #section-layers0 {
-                                                display: flex;
-                                                justify-content: flex-end; /* galerie collée à droite de la section */
-                                                align-items: flex-start;
-                                                overflow: hidden;
-                                                padding: 10px;
-                                                box-sizing: border-box;
-                                                }
+        /* Section contenant la galerie */
+        #section-layers {
+        position: relative;       /* pour positionner la preview flottante */
+        display: flex;
+        gap: 20px;
+        height: 600px;
+        padding: 10px;
+        box-sizing: border-box;
+        overflow: visible;       /* permet à la preview de dépasser */
+        }
 
-                                                /* Galerie : 2 colonnes distinctes */
-                                                .galerie0 {
-                                                display: grid;
-                                                grid-template-columns: 80px 250px; /* gauche : vignettes | droite : grandes images */
-                                                column-gap: 20px;                 /* espace horizontal entre colonnes */
-                                                justify-items: start;             /* cellules collées à gauche de leur colonne */
-                                                align-items: start;               /* toutes les images alignées en haut */
-                                                position: relative;
-                                                }
+        .vignettes-wrapper {
+        flex: 1;
+        overflow-y: auto;        /* ascenseur vertical commun pour les colonnes */
+        }
 
-                                                /* --- Vignettes (colonne gauche) --- */
-                                                .galerie0 img:not(.preview) {
-                                                grid-column: 1;       /* colonne gauche */
-                                                width: 120px;
-                                                height: auto;
-                                                display: block;
-                                                border-radius: 4px;
-                                                cursor: pointer;
-                                                opacity: 0.9;
-                                                box-shadow: 0 1px 3px rgba(0,0,0,0.2);
-                                                transition: opacity 0.2s ease;
-                                                }
+        .vignettes-columns {
+        display: flex;
+        gap: 10px;
+        }
 
-                                                /* Espacement vertical entre vignettes */
-                                                .galerie0 img:not(.preview):not(:last-child) {
-                                                margin-bottom: 10px;
-                                                }
+        .vignettes-column {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        }
 
-                                                /* --- Images complètes (colonne droite) --- */
-                                                .galerie0 .preview {
-                                                grid-column: 2;       /* colonne droite */
-                                                width: auto;
-                                                height: auto;
-                                                border-radius: 8px;
-                                                opacity: 0;           /* invisibles par défaut */
-                                                transition: opacity 0.3s ease;
-                                                justify-self: start;  /* collées à gauche de leur colonne */
-                                                align-self: start;    /* alignées en haut */
-                                                box-shadow: 0 4px 10px rgba(0,0,0,0.25);
-                                                pointer-events: none;
-                                                position: absolute;   /* empilées les unes sur les autres */
-                                                top: 0;
-                                                left: 100px;          /* ajuster pour que la colonne droite soit séparée */
-                                                }
+        .vignettes-column img {
+        width: 80px;
+        height: auto;
+        cursor: pointer;
+        border-radius: 8px;            /* angles arrondis */
+        border: 2px solid #ccc;        /* bordure grise */
+        background: #f8f8f8;           /* fond clair */
+        padding: 4px;                  /* marge interne de 4px */
+        box-sizing: border-box;        /* pour que la taille totale reste cohérente */
+        transition: border-color 0.2s ease, transform 0.2s ease;
+        }
 
-                                                /* --- Au survol : afficher la preview correspondante --- */
-                                                .galerie0 img:not(.preview):hover + .preview {
-                                                opacity: 1;
-                                                }
+        .vignettes-column img:hover {
+        border-color: #007bff;         /* bleu au survol */
+        transform: scale(1.05);        /* petit effet de zoom */
+        }
 
-#section-layers {
-  position: relative;       /* pour positionner la preview flottante */
-  display: flex;
-  gap: 20px;
-  height: 600px;
-  padding: 10px;
-  box-sizing: border-box;
-  overflow: visible;       /* permet à la preview de dépasser */
-}
-
-.vignettes-wrapper {
-  flex: 1;
-  overflow-y: auto;        /* ascenseur vertical commun pour les colonnes */
-}
-
-.vignettes-columns {
-  display: flex;
-  gap: 10px;
-}
-
-.vignettes-column {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.vignettes-column img {
-  width: 80px;
-  height: auto;
-  cursor: pointer;
-  border-radius: 8px;            /* angles arrondis */
-  border: 2px solid #ccc;        /* bordure grise */
-  background: #f8f8f8;           /* fond clair */
-  padding: 4px;                  /* marge interne de 4px */
-  box-sizing: border-box;        /* pour que la taille totale reste cohérente */
-  transition: border-color 0.2s ease, transform 0.2s ease;
-}
-
-.vignettes-column img:hover {
-  border-color: #007bff;         /* bleu au survol */
-  transform: scale(1.05);        /* petit effet de zoom */
-}
-
-.preview-float {
-  position: absolute;
-  top: 100px;               /* alignée avec le haut des colonnes */
-  right: 100px; /* bord droit des vignettes + marge */
-  width: auto;
-  height: auto;
-  border-radius: 8px;
-  box-shadow: 0 4px 10px rgba(0,0,0,0.25);
-  pointer-events: none;
-  opacity: 1;
-  transition: opacity 0.3s ease;
-  z-index: 100;
-  background: rgba(0, 150, 255, 0.1); /* pour debug */
-}
+        .preview-float {
+        position: absolute;
+        top: 100px;               /* alignée avec le haut des colonnes */
+        right: 100px; /* bord droit des vignettes + marge */
+        width: auto;
+        height: auto;
+        border-radius: 8px;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.25);
+        pointer-events: none;
+        opacity: 1;
+        transition: opacity 0.3s ease;
+        z-index: 100;
+        background: rgba(0, 150, 255, 0.1); /* pour debug */
+        }
 
     </style>
 </head>
@@ -284,7 +225,7 @@
           
                 <!-- Colonne 1 -->
                 <div class="vignettes-column">
-                    <img src="/static/poids/layer_0_heatmap.png">
+                    <!-- <img src="/static/poids/layer_0_heatmap.png">
                     <img src="/static/poids/layer_1_bias.png">
                     <img src="/static/poids/layer_2_heatmap.png">
                     <img src="/static/poids/layer_3_bias.png">
@@ -293,12 +234,12 @@
                     <img src="/static/poids/layer_6_heatmap.png">
                     <img src="/static/poids/layer_7_bias.png">
                     <img src="/static/poids/layer_8_heatmap.png">
-                    <img src="/static/poids/layer_9_bias.png">
+                    <img src="/static/poids/layer_9_bias.png"> -->
                 </div>
           
                 <!-- Colonne 2 -->
                 <div class="vignettes-column">
-                    <img src="/static/poids/layer_2_heatmap.png">
+                    <!-- <img src="/static/poids/layer_2_heatmap.png">
                     <img src="/static/poids/layer_3_bias.png">
                     <img src="/static/poids/layer_4_heatmap.png">
                     <img src="/static/poids/layer_5_bias.png">
@@ -307,7 +248,7 @@
                     <img src="/static/poids/layer_8_heatmap.png">
                     <img src="/static/poids/layer_9_bias.png">
                     <img src="/static/poids/layer_0_heatmap.png">
-                    <img src="/static/poids/layer_1_bias.png">
+                    <img src="/static/poids/layer_1_bias.png"> -->
                 </div>
 
             </div>
@@ -333,7 +274,7 @@
 
         <!-- Logs -->
         <div class="section-container" style="grid-area: 2 / 2;">
-            <h3>Logs</h3>
+            <h3>Server logs</h3>
             <button id="reset-logs-btn" class="btn reset-btn">Reset</button>
             <button id="pause-logs-btn" class="btn pause-btn">Pause</button>
             <div id="log-list" class="list-box"></div>
@@ -341,7 +282,7 @@
 
         <!-- Metrics -->
         <div class="section-container" style="grid-area: 2 / 3;">
-            <h3>Metrics</h3>
+            <h3>Server metrics</h3>
             <button id="reset-metrics-btn" class="btn reset-btn">Reset</button>
             <button id="pause-metrics-btn" class="btn pause-btn">Pause</button>
             <div id="metrics-list" class="list-box"></div>
@@ -735,21 +676,25 @@
             updateGraph();
         });
 
-const preview = document.querySelector('.preview-float');
-const vignetteImgs = document.querySelectorAll('.vignettes-column img');
+        // **********************************
+        // **** vignettes management ********
+        // **********************************
 
-vignetteImgs.forEach(img => {
-  img.addEventListener('mouseenter', () => {
-    if (img.src) {
-      preview.src = img.src;
-      preview.style.opacity = 1;
-    }
-  });
+        const preview = document.querySelector('.preview-float');
+        const vignetteImgs = document.querySelectorAll('.vignettes-column img');
 
-  img.addEventListener('mouseleave', () => {
-    preview.style.opacity = 0;
-  });
-});
+        vignetteImgs.forEach(img => {
+        img.addEventListener('mouseenter', () => {
+            if (img.src) {
+            preview.src = img.src;
+            preview.style.opacity = 1;
+            }
+        });
+
+        img.addEventListener('mouseleave', () => {
+            preview.style.opacity = 0;
+        });
+        });
         
     </script>
 </body>
