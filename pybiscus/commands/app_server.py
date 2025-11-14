@@ -1,5 +1,5 @@
 from pathlib import Path
-
+import os
 import flwr as fl
 import torch
 import typer
@@ -194,10 +194,23 @@ def launch_config(
             timestamp = datetime.now().isoformat()
             reporting_path = reporting_path / timestamp
 
-        ensure_dir_exists(reporting_path)
+            # path symbolic link to "current"
+            current_link = Path(conf.server_run.reporting.basedir) / "current"
+
+            # remove existing one
+            if current_link.is_symlink() or current_link.exists():
+                current_link.unlink()
+
+            # a relative symlink is computed
+            relative_target = os.path.relpath(reporting_path, start=current_link.parent)
+
+            # create the new symbolic link
+            os.symlink(relative_target, current_link)
 
     else:
-        reporting_path = conf.root_dir
+        reporting_path = Path(conf.root_dir)
+
+    ensure_dir_exists(reporting_path)
 
     logm.console.log(f"reporting 💾 path is set to : {reporting_path}")
 

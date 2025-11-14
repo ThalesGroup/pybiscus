@@ -1,22 +1,13 @@
-from pathlib import Path
-from typing import ClassVar, List, Literal, Tuple, Optional, Dict
+from typing import ClassVar, List, Literal, Tuple
 import flwr as fl
-from flwr.common import (
-    Parameters, 
-    FitRes, 
-    Scalar,
-    ndarrays_to_parameters as flw_ndarrays_to_parameters,
-    parameters_to_ndarrays as flw_parameters_to_ndarrays,
-)
+from flwr.common import Parameters
 
 from flwr.server.strategy import Strategy
 from flwr.server.client_manager import ClientManager
 from flwr.server.client_proxy import ClientProxy
 
-import numpy as np
 from pydantic import BaseModel, ConfigDict
 
-from pybiscus.core.ensure_filesystem import ensure_file_dir_exists
 from pybiscus.interfaces.flower.strategydecorator import StrategyDecorator
 from pybiscus.plugin.registries.resultmodifier_registry import ResultModifierConfig, resultmodifier_registry
 import pybiscus.core.pybiscus_logger as logm
@@ -30,7 +21,6 @@ class ConfigPersonalizationStrategyDecoratorData(BaseModel):
     result_modifier: ResultModifierConfig() # pyright: ignore[reportInvalidTypeForm]
 
     protect_model_weights: bool = True
-    save_as_np:  bool = True
     debug: bool = False
 
     model_config = ConfigDict(extra="forbid")
@@ -75,21 +65,21 @@ class PersonalizedResultStrategyDecorator(StrategyDecorator):
 
     # -------------------------------------------------------------------------
 
-    def aggregate_fit(self, server_round, results, failures):
+    # def aggregate_fit(self, server_round, results, failures):
 
-        if self.conf.debug:
-            logm.console.log(f"[{server_round}] aggregate_fit start ({len(results)} results)")
+    #     if self.conf.debug:
+    #         logm.console.log(f"[{server_round}] PRSD aggregate_fit")
 
-        aggregated_parameters, metrics = self.base_strategy.aggregate_fit(server_round, results, failures)
+    #     aggregated_parameters, metrics = self.base_strategy.aggregate_fit(server_round, results, failures)
 
-        if aggregated_parameters is None:
-            logm.console.log("⚠️ No aggregated parameters from base strategy")
-        else:
-            nds = fl.common.parameters_to_ndarrays(aggregated_parameters)
-            if self.conf.debug:
-                logm.console.log(f"✅ Aggregated {len(nds)} ndarrays")
+    #     if aggregated_parameters is None:
+    #         logm.console.log("⚠️ No aggregated parameters from base strategy")
+    #     else:
+    #         nds = fl.common.parameters_to_ndarrays(aggregated_parameters)
+    #         if self.conf.debug:
+    #             logm.console.log(f"✅ Aggregated {len(nds)} ndarrays")
 
-        return aggregated_parameters, metrics or {}
+    #     return aggregated_parameters, metrics or {}
 
     # -------------------------------------------------------------------------
 
@@ -101,12 +91,8 @@ class PersonalizedResultStrategyDecorator(StrategyDecorator):
     ) -> List[Tuple[ClientProxy, fl.common.FitIns]]:
         """send personalized models to clients"""
 
-        import pybiscus.core.pybiscuscontext as pcpc
-        reporting_path = pcpc.pybiscus_context["reporting_path"]
-
         if self.conf.debug:
-            logm.console.log(f"PR configure_fit( round={server_round})")
-            logm.console.log(f"[{server_round}] parameters has {len(parameters.tensors)} tensors")
+            logm.console.log(f"[{server_round}] PRSD configure_fit")
 
         # get base config
         base_config = self.base_strategy.configure_fit( server_round, parameters, client_manager )
@@ -116,12 +102,6 @@ class PersonalizedResultStrategyDecorator(StrategyDecorator):
 
         global_weights = fl.common.parameters_to_ndarrays(parameters)
         # logm.console.log( f"PR::CF global weights=[{" ".join(" ".join(map(str, w)) for w in global_weights)}]" )
-
-        # Save aggregated weights as np (optional)
-        if self.conf.save_as_np:      
-            checkpoint_aggregated_path = reporting_path / f"personnalized_checkpoints/round_{server_round}/aggregated.npz"
-            ensure_file_dir_exists(checkpoint_aggregated_path)
-            np.savez(checkpoint_aggregated_path, *global_weights)
 
         if self.conf.protect_model_weights:
             # save model weights as they are modified into the result modifyer
@@ -145,12 +125,6 @@ class PersonalizedResultStrategyDecorator(StrategyDecorator):
             if self.conf.debug:
                 logm.console.log( f"PR::CF client weights len ={len(personalized_weights)}" )
                 # logm.console.log( f"PR::CF client weights=[{" ".join(" ".join(map(str, w)) for w in personalized_weights)}]" )
-
-            # Save personalized weights as np (optional)
-            if self.conf.save_as_np:      
-                checkpoint_client_path = reporting_path / f"personnalized_checkpoints/round_{server_round}/client_{cid}.npz"
-                ensure_file_dir_exists(checkpoint_aggregated_path)
-                np.savez(checkpoint_client_path, *personalized_weights)
 
             custom_params = fl.common.ndarrays_to_parameters(personalized_weights)
 

@@ -28,6 +28,8 @@ strategydecorator:
       - basicstrategydecorator
       - filewritingdecorator
       - modelweighthash
+      - save_server_aggregated_fit_params
+      - save_all_clients_fit_in_params
       - resultpersonalization
 client:
   - path: "./pybiscus-plugins/client"
