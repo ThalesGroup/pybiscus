@@ -160,6 +160,10 @@ def launch_config(
     model_class = model_registry()[conf.model.name]
     model = model_class(**conf.model.config.model_dump())
 
+    # expose client context
+    import pybiscus.core.pybiscuscontext as pcpc
+    pcpc.pybiscus_context["model"] = model
+
     # load the client
     if conf.flower_client.alternate_client_class is None:
         client_factory = FlowerFabricClientFactory(conf,data,model,num_examples)

@@ -51,14 +51,18 @@ def watermark_detection_rate_fingerprint(
     return res
 
 def watermark_key_generation(nb_clients: int, size_layer: int, size_fingerprint: int):
-    f1 = torch.randint(0,2,(size_fingerprint,), device="cuda") * 2 - 1
+
+    import pybiscus.core.pybiscuscontext as pcpc
+    device = pcpc.pybiscus_context["model"].device
+
+    f1 = torch.randint(0,2,(size_fingerprint,), device=device) * 2 - 1
     f1 = f1.float()
     f2 = -f1.clone()
 
     f1.requires_grad = True
     f2.requires_grad = True
 
-    sk1 = torch.randn((size_layer,size_fingerprint), device="cuda", requires_grad=True)
+    sk1 = torch.randn((size_layer,size_fingerprint), device=device, requires_grad=True)
     sk2 = sk1.clone()
 
     print([f1,f2])

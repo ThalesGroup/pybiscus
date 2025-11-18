@@ -43,7 +43,7 @@ class FlowerFabricClient(fl.client.NumPyClient):
         model: LightningModule,
         data: LightningDataModule,
         num_examples: dict[str, int],
-        conf_fabric: ConfigClientComputeContext,
+        conf_fabric: dict,
         pre_train_val: bool = False,
     ) -> None:
         """Initialize the FlowerClient instance.
