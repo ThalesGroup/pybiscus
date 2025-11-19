@@ -20,15 +20,18 @@ def get_params(model: torch.nn.Module) -> list[np.ndarray]:
     """Extract Pytorch model weights as NumPy arrays."""
     return [val.cpu().numpy() for _, val in model.state_dict().items()]
 
+# -----------------------------------------------
 
-def fit_config(server_round: int):
-    """Return training configuration dict for each round."""
-    config = {
-        "server_round": server_round,  # The current round of federated learning
-        "local_epochs": 1,  # if server_round < 2 else 2,  #
-    }
-    return config
+def make_fit_config(local_epochs: int):
 
+    # local_epochs in captured in the closure
+
+    def fit_config(server_round: int):
+        return {
+            "server_round": server_round,
+            "local_epochs": local_epochs,
+        }
+    return fit_config
 
 def evaluate_config(server_round: int):
     """Return training configuration dict for each round."""
@@ -38,6 +41,7 @@ def evaluate_config(server_round: int):
     }
     return config
 
+# -----------------------------------------------
 
 def get_evaluate_fn(
     testset: torch.utils.data.DataLoader,

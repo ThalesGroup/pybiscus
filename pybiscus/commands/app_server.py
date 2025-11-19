@@ -280,7 +280,7 @@ def launch_config(
         testset=test_set,
         initial_parameters=initial_parameters,
         config=conf.server_strategy.strategy.config,
-    ).get_strategy()
+    ).get_strategy( conf.server_run.clients_fit_local_epochs )
 
     logm.console.log(f"setting 🛠️ strategy <{conf.server_strategy.strategy.name}>")
 

@@ -22,7 +22,7 @@ from pydantic import BaseModel, ConfigDict
 
 import pybiscus.core.pybiscus_logger as logm
 from pybiscus.interfaces.flower.fabricstrategyfactory import FabricStrategyFactory
-from pybiscus.flower.utils_server import evaluate_config, fit_config, get_evaluate_fn, weighted_average
+from pybiscus.flower.utils_server import evaluate_config, get_evaluate_fn, make_fit_config, weighted_average
 
 WARNING_MIN_AVAILABLE_CLIENTS_TOO_LOW = """
 Setting `min_available_clients` lower than `min_fit_clients` or
@@ -220,7 +220,7 @@ class FabricFedAvgStrategyFactory(FabricStrategyFactory):
         self.initial_parameters=initial_parameters
         self.config=config
 
-    def get_strategy(self):
+    def get_strategy(self, clients_fit_local_epochs):
 
         return FabricFedAvgStrategy(
             fit_metrics_aggregation_fn      = partial(weighted_average, context="fit"),
@@ -228,7 +228,7 @@ class FabricFedAvgStrategyFactory(FabricStrategyFactory):
             model=self.model,
             fabric=self.fabric,
             evaluate_fn=get_evaluate_fn(testset=self.testset, model=self.model, fabric=self.fabric),
-            on_fit_config_fn=fit_config,
+            on_fit_config_fn=make_fit_config(clients_fit_local_epochs),
             on_evaluate_config_fn=evaluate_config,
             initial_parameters=self.initial_parameters,
             **self.config.model_dump()

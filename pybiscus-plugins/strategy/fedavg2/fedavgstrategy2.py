@@ -29,7 +29,7 @@ from pybiscus.interfaces.flower.fabricstrategyfactory import FabricStrategyFacto
 import pybiscus.core.pybiscus_logger as logm
 from pybiscus.flower.utils_server import (
     evaluate_config    as pyb_evaluate_config, 
-    fit_config         as pyb_fit_config, 
+    make_fit_config, 
     get_evaluate_fn    as pyb_get_evaluate_fn, 
     weighted_average   as pyb_weighted_average,
 )
@@ -289,7 +289,7 @@ class FabricFedAvgStrategyFactory2(FabricStrategyFactory):
         self.initial_parameters = initial_parameters
         self.config             = config
 
-    def get_strategy(self):
+    def get_strategy(self, clients_fit_local_epochs):
 
         return FabricFedAvgStrategy2(
             fit_metrics_aggregation_fn      = partial(pyb_weighted_average, context="fit"),
@@ -297,7 +297,7 @@ class FabricFedAvgStrategyFactory2(FabricStrategyFactory):
             model                           = self.model,
             fabric                          = self.fabric,
             evaluate_fn                     = pyb_get_evaluate_fn(testset=self.testset, model=self.model, fabric=self.fabric),
-            on_fit_config_fn                = pyb_fit_config,
+            on_fit_config_fn                = make_fit_config(clients_fit_local_epochs),
             on_evaluate_config_fn           = pyb_evaluate_config,
             initial_parameters              = self.initial_parameters,
             **self.config.model_dump()

@@ -78,6 +78,7 @@ class ConfigServerRun(BaseModel):
     Attributes
     ----------
     num_rounds: int    = the number of rounds for the FL session.
+    clients_fit_local_epochs = the number of local epochs performed by clients at each round
     clients_configs    = list of paths to the configuration files used by all clients.
     save_on_train_end  = end of FL session model weights save flag
     """
@@ -85,6 +86,7 @@ class ConfigServerRun(BaseModel):
     PYBISCUS_CONFIG: ClassVar[str] = "server_run"
 
     num_rounds:        int = 10
+    clients_fit_local_epochs: int = 1
     client_configs:    list[str] = []
     loggers:           list[LoggerConfig()] # pyright: ignore[reportInvalidTypeForm]
     reporting:         ConfigServerReporting
