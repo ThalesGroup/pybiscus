@@ -20,6 +20,8 @@ class ConfigResultClientWatermarkingData(BaseModel):
     reporting_sub_dir: str = "rounds"
     client_watermaked_model_prefix: str = "client_watermarked_model"
 
+    client_watermaking_traces_path: str = "client_watermarking_traces.txt"
+
     model_config = ConfigDict(extra="forbid")
 
 class ConfigResultClientWatermarking(BaseModel):
@@ -30,6 +32,30 @@ class ConfigResultClientWatermarking(BaseModel):
     config: ConfigResultClientWatermarkingData
 
     model_config = ConfigDict(extra="forbid")
+
+# --------------------------------------------------------
+class TracerAndLogger:
+    def __init__(self, path: str):
+        self.path = path
+
+    def __enter__(self):
+        self.file = open(self.path, "a", encoding="utf-8")
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.file.close()
+
+    def log(self, msg: str):
+        self.file.write(msg + "\n")
+        self.file.flush()
+        # log using multiple logger (sent to manager according to configuration)
+        logm.console.log(msg)
+
+    def ilog(self, msg: str):
+        self.file.write(msg + "\n")
+        self.file.flush()
+        # log using only interactive logger (not sent to manager)
+        logm.interactiveConsole.log(msg)
 
 # --------------------------------------------------------
 
@@ -83,11 +109,12 @@ def traitor_tracing(nb_clients: int, fingerprints = list[torch.tensor], secret_k
 
 class ResultClientWatermarking(ResultModifier):
 
-    def __init__(self, save_as_cp, reporting_sub_dir, client_watermaked_model_prefix):
+    def __init__(self, save_as_cp, reporting_sub_dir, client_watermaked_model_prefix, client_watermaking_traces_path):
 
         self.save_as_cp = save_as_cp
         self.reporting_sub_dir = reporting_sub_dir
         self.client_watermaked_model_prefix = client_watermaked_model_prefix
+        self.client_watermaking_traces_path = client_watermaking_traces_path
 
         self.model = None
         self.fabric = None
@@ -97,10 +124,10 @@ class ResultClientWatermarking(ResultModifier):
         self.client_hash = {}
 
         #TODO: make it configurable
-        self.fingerprints, self.secret_keys = watermark_key_generation(2,120,16)
+        self.fingerprints, self.secret_keys = watermark_key_generation(2,64,16)
         self.max_epoch = 50
 
-        logm.console.log(f"💧 ResultClientWatermarking allocated !")
+        logm.console.log(f"using module 💧 ResultClientWatermarking")
 
     def import_context(self):
 
@@ -117,68 +144,101 @@ class ResultClientWatermarking(ResultModifier):
         weights: List[np.ndarray],
     ) -> List[np.ndarray]:
 
+        # csv possible presentation
+        """
+round,client,cid,wsr_before,wsr_after
+1,0,5f5f3b3633fd4b6f85c2f49d5bf6586b,"{0: 0.6875, 1: 0.3125}","{0: 1.0, 1: 0.0}"
+1,1,8043ab8c84404be8b8eb89ee9c41d2b8,"{0: 0.6875, 1: 0.3125}","{0: 0.0, 1: 1.0}"
+2,0,5f5f3b3633fd4b6f85c2f49d5bf6586b,"{0: 0.6875, 1: 0.3125}","{0: 1.0, 1: 0.0}"
+2,1,8043ab8c84404be8b8eb89ee9c41d2b8,"{0: 0.6875, 1: 0.3125}","{0: 0.0, 1: 1.0}"
+        """
+
         self.import_context()
 
-        logm.console.log( f"WM modify( round={round} cid={cid}) w_sizes = {[len(w) for w in weights]}" )
+        logm.interactiveConsole.log( f"WM modify( round={round} cid={cid}) w_sizes = {[len(w) for w in weights]}" )
 
         if cid not in self.client_hash:
             self.client_hash[cid] = self.client_index
-            logm.console.log( f"cid={cid} <=> {self.client_hash[cid]}" )
+            logm.interactiveConsole.log( f"cid={cid} <=> {self.client_hash[cid]}" )
             self.client_index += 1
 
-        # compute new models weights:
+        watermarking_traces_path = self.reporting_path / self.client_watermaking_traces_path
 
-        current_client = self.client_hash[cid]
+        with TracerAndLogger(watermarking_traces_path) as logger:
+            current_client = self.client_hash[cid]
+            logger.log( f"\n*** Round {round} Client : {current_client} cid : {cid} ***\n")
 
-        print(f"Client : {current_client}")
-        for i in range(2):
-            wsr = watermark_detection_rate_fingerprint(
-                extract_fingerprint(self.model.model[-3].weight,
-                                    self.secret_keys[i]),
-                self.fingerprints[i]
+            # compute new models weights:
+
+            #       compute a specific value for each client / round
+            # int_value = round * 100 + self.client_hash[cid]
+            # #       fill the model with it
+            # new_weights = [torch.full_like(torch.from_numpy(w), fill_value=int_value) for w in weights]
+            #
+            # # logm.console.log( f"WM new weights={" ".join(" ".join(map(str, w)) for w in new_weights)}" )
+            #
+            # # put them into the model (optional)
+            # set_params(self.model, new_weights)
+
+            logger.log(f"# Before Watermarking")
+            for i in range(2):
+                #wsr = watermark_detection_rate_fingerprint(
+                #    extract_fingerprint(self.model.model[-3].weight,
+                #                        self.secret_keys[i]),
+                #    self.fingerprints[i]
+                #)
+                wsr = watermark_detection_rate_fingerprint(
+                    extract_fingerprint(self.model.model.fc.weight,
+                                        self.secret_keys[i]),
+                    self.fingerprints[i]
+                )
+                logger.log(f"\t WSR Client {i} = {wsr}")
+
+            optimizer = torch.optim.SGD(
+                [self.model.model.fc.weight], lr=1e-1
             )
-            print(f"\t WSR Client {i} = {wsr}")
 
-        optimizer = torch.optim.SGD(
-            [self.model.model[-3].weight], lr=1e-1
-        )
+            for i in range(self.max_epoch):
+                optimizer.zero_grad(set_to_none=True)
 
-        for i in range(self.max_epoch):
-            optimizer.zero_grad(set_to_none=True)
+                loss = loss_watermark(
+                    self.model.model.fc.weight,
+                    self.secret_keys[current_client],
+                    self.fingerprints[current_client])
 
-            loss = loss_watermark(
-                self.model.model[-3].weight,
-                self.secret_keys[current_client],
-                self.fingerprints[current_client])
+                loss.backward()
 
-            loss.backward()
+                optimizer.step()
 
-            optimizer.step()
+                if loss.item() == 0.0:
+                    break
 
-            print(f"Loss : {loss.item()}")
+                #logger.log(f"Loss : {loss.item()}")
 
-        print(f"Client : {current_client}")
-        for i in range(2):
-            wsr = watermark_detection_rate_fingerprint(
-                extract_fingerprint(self.model.model[-3].weight,
-                                    self.secret_keys[i]),
-                self.fingerprints[i]
-            )
-            print(f"\t WSR Client {i} = {wsr}")
+            logger.log(f"# After Watermarking")
+            # logger.log(f"Client : {current_client} cid={cid}")
+            for i in range(2):
+                wsr = watermark_detection_rate_fingerprint(
+                    extract_fingerprint(self.model.model.fc.weight,
+                                        self.secret_keys[i]),
+                    self.fingerprints[i]
+                )
+                logger.log(f"\t WSR Client {i} = {wsr}")
 
         if self.save_as_cp:
 
+            checkpoint_client_path = self.reporting_path / f"watermarked_checkpoints/round_{round}/client_{cid}.cp"
+
             state = {"model": self.model}
 
-            round_path = self.reporting_path / self.reporting_sub_dir
-            ensure_dir_exists(round_path)
-            checkpoint_client_path = round_path / f"round_{round}" / f"{self.client_watermaked_model_prefix}_{cid}.cp"
             ensure_file_dir_exists(checkpoint_client_path)
-            
             self.fabric.save(checkpoint_client_path, state)
-            logm.console.log(f"[fabric] save 💧 watermarked client {cid} model 💾📍🗄️to : {checkpoint_client_path}")
+            logm.console.log(f"[fabric] save 💧 watermarked client {cid} checkpoint 💾📍🗄️to : {checkpoint_client_path}")
 
         # get model weights after model transform
         computed_weights = get_params(self.model)
 
+        # logm.console.log( f"computed weights={" ".join(" ".join(map(str, w)) for w in computed_weights)})" )
+
+        # return a copy of weights
         return computed_weights

@@ -160,13 +160,13 @@
         }
 
         .vignettes-column img {
-        width: 80px;
+        width: 50px;
         height: auto;
         cursor: pointer;
         border-radius: 8px;            /* angles arrondis */
         border: 2px solid #ccc;        /* bordure grise */
         background: #f8f8f8;           /* fond clair */
-        padding: 4px;                  /* marge interne de 4px */
+        padding: 2px;                  /* marge interne de 4px */
         box-sizing: border-box;        /* pour que la taille totale reste cohérente */
         transition: border-color 0.2s ease, transform 0.2s ease;
         }
@@ -218,40 +218,9 @@
 
         <!-- Layers -->
         <div id="section-layers3" class="section-container" style="grid-area: 1 / 2;">
-
             <div class="vignettes-wrapper">
-
-              <div class="vignettes-columns">
-          
-                <!-- Colonne 1 -->
-                <div class="vignettes-column">
-                    <!-- <img src="/static/poids/layer_0_heatmap.png">
-                    <img src="/static/poids/layer_1_bias.png">
-                    <img src="/static/poids/layer_2_heatmap.png">
-                    <img src="/static/poids/layer_3_bias.png">
-                    <img src="/static/poids/layer_4_heatmap.png">
-                    <img src="/static/poids/layer_5_bias.png">
-                    <img src="/static/poids/layer_6_heatmap.png">
-                    <img src="/static/poids/layer_7_bias.png">
-                    <img src="/static/poids/layer_8_heatmap.png">
-                    <img src="/static/poids/layer_9_bias.png"> -->
+                <div class="vignettes-columns">
                 </div>
-          
-                <!-- Colonne 2 -->
-                <div class="vignettes-column">
-                    <!-- <img src="/static/poids/layer_2_heatmap.png">
-                    <img src="/static/poids/layer_3_bias.png">
-                    <img src="/static/poids/layer_4_heatmap.png">
-                    <img src="/static/poids/layer_5_bias.png">
-                    <img src="/static/poids/layer_6_heatmap.png">
-                    <img src="/static/poids/layer_7_bias.png">
-                    <img src="/static/poids/layer_8_heatmap.png">
-                    <img src="/static/poids/layer_9_bias.png">
-                    <img src="/static/poids/layer_0_heatmap.png">
-                    <img src="/static/poids/layer_1_bias.png"> -->
-                </div>
-
-            </div>
             </div>
         </div>
 
@@ -509,53 +478,49 @@
         function checkLogs(newItems) {
             newItems.forEach(item => {
 
+                const matchRoundOnly = item.message.match(/🔁 [rR]ound[:]\s*(\d+)/);
+                if (matchRoundOnly) {
+                    const round = parseInt(matchRoundOnly[1], 10);
+                    session.roundNumber = round;
+                }
+
                 const matchRound = item.message.match(/Round\s*(\d+).*?accuracy=(\d+(\.\d+)?)/);
                 if (matchRound) {
-                const round = parseInt(matchRound[1], 10);
-                const accuracy = parseFloat(matchRound[2]);
-
-                session.roundNumber = round;
-                test_accuracies.add(accuracy);
-
-                return;
+                    // const round = parseInt(matchRound[1], 10);
+                    const accuracy = parseFloat(matchRound[2]);
+                    // session.roundNumber = round;
+                    test_accuracies.add(accuracy);
+                    return;
                 }
 
                 const matchAvgFitMetrics = item.message.match(/Averaged fit metrics:.*?'accuracy': (\d+(\.\d+)?)/);
                 if (matchAvgFitMetrics) {
-                const accuracy = parseFloat(matchAvgFitMetrics[1]);
-
-                fit_accuracies.add(accuracy);
-
-                return;
+                    const accuracy = parseFloat(matchAvgFitMetrics[1]);
+                    fit_accuracies.add(accuracy);
+                    return;
                 }
 
                 const matchAvgEvaluateMetrics = item.message.match(/Averaged evaluate metrics:.*?'accuracy': (\d+(\.\d+)?)/);
                 if (matchAvgEvaluateMetrics) {
-                const accuracy = parseFloat(matchAvgEvaluateMetrics[1]);
-
-                evaluate_accuracies.add(accuracy);
-
-                return;
+                    const accuracy = parseFloat(matchAvgEvaluateMetrics[1]);
+                    evaluate_accuracies.add(accuracy);
+                    return;
                 }
 
                 const timeDiffMatch = item.message.match(/time diff is (\d+(\.\d+)?)s/);
 
                 if (timeDiffMatch) {
-                const duration = parseFloat(timeDiffMatch[1]);
-
-                durations.add(duration);
-
-                return;
+                    const duration = parseFloat(timeDiffMatch[1]);
+                    durations.add(duration);
+                    return;
                 }
 
                 const metricDiffMatch = item.message.match(/metric diff is (\d+(?:\.\d+)?)\s*$/);
 
                 if (metricDiffMatch) {
-                const metricDiff = parseFloat(metricDiffMatch[1]);
-
-                metricDiffs.add(metricDiff);
-
-                return;
+                    const metricDiff = parseFloat(metricDiffMatch[1]);
+                    metricDiffs.add(metricDiff);
+                    return;
                 }
 
             })
@@ -680,22 +645,78 @@
         // **** vignettes management ********
         // **********************************
 
+        function gen_vignettes(col, row) {
+            const container = document.querySelector(".vignettes-columns");
+
+            if (!container) {
+                console.error("no .vignettes-columns container found");
+                return;
+            }
+
+            container.innerHTML = "";
+
+            for (let c = 0; c < col; c++) {
+                const columnDiv = document.createElement("div");
+                columnDiv.className = "vignettes-column";
+
+                for (let r = row - 1; r >= 0; r--) {
+                    const img = document.createElement("img");
+                    img.id = `grid_${c}_${r}`;
+                    img.style.display = "none";
+                    columnDiv.appendChild(img);
+                }
+
+                container.appendChild(columnDiv);
+            }
+        }
+
+        gen_vignettes( 10, 10);
+
         const preview = document.querySelector('.preview-float');
         const vignetteImgs = document.querySelectorAll('.vignettes-column img');
 
         vignetteImgs.forEach(img => {
-        img.addEventListener('mouseenter', () => {
-            if (img.src) {
-            preview.src = img.src;
-            preview.style.opacity = 1;
-            }
+
+            img.addEventListener('mouseenter', () => {
+                if (img.src) {
+                    preview.src = img.src;
+                    preview.style.opacity = 1;
+                }
+            });
+
+            img.addEventListener('mouseleave', () => {
+                preview.style.opacity = 0;
+            });
         });
 
-        img.addEventListener('mouseleave', () => {
-            preview.style.opacity = 0;
-        });
-        });
-        
+        function download_vignette(col_row) {
+            const img = document.getElementById(`grid_${col_row}`);
+
+            if (!img) {
+                console.error(`no Image  with id grid_${col_row}`);
+                return;
+            }
+
+            img.src = `/static/pybiscus/vignettes/grid_${col_row}.png`;
+            img.style.display = "block"; 
+        }
+
+        function updateVignettes() {
+            fetch('/pybiscus-session/vignettes')
+                .then(res => res.json())
+                .then(data => {
+
+                    data.forEach(item => {
+                        console.log(item);
+                        download_vignette(item);
+                    })
+
+                });
+        }
+
+        session.startCallback(updateVignettes, 1000);  // Refresh every 1 seconds
+
+        pybiscus/vignettes/grid_0_1.png
     </script>
 </body>
 </html>

@@ -10,6 +10,7 @@ data:
       - turbofan
       - mnist
       - vector
+      - hdfs
 model:
   - path: "./pybiscus-plugins/model"
     modules:
@@ -17,6 +18,7 @@ model:
       - linearregression
       - lstm
       - noop
+      - deeplog
 strategy:
   - path: "./pybiscus-plugins/strategy"
     modules:
@@ -27,7 +29,7 @@ strategydecorator:
     modules:
       - basicstrategydecorator
       - filewritingdecorator
-      - modelweighthash
+      - modelweightvignette
       - save_server_aggregated_fit_params
       - save_all_clients_fit_in_params
       - resultpersonalization

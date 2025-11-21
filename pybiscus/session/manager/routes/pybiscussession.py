@@ -1,3 +1,4 @@
+import os
 import json
 from flask import render_template, request, jsonify
 import requests
@@ -288,3 +289,60 @@ def pybiscus_manager_get_metrics():
 
     # return json encoded messages
     return jsonify(_metrics_messages)
+
+# *************************************
+# *** Pybiscus vignettes management ***
+# *************************************
+
+new_vignettes = []
+vignettes_lock = Lock()  # lock used to prevent logs concurrent access
+
+@pybiscus_manager_app.route('/webhook/vignettes', methods=['POST'])
+def pybiscus_manager_post_vignette():
+    
+    # check file presence
+    if "file" not in request.files:
+        return jsonify({"error": "No file part in request"}), 400
+
+    file = request.files["file"]
+
+    if file.filename == "":
+        return jsonify({"error": "Empty filename"}), 400
+
+    # get metadata
+    if "metadata" in request.form:
+        metadata = json.loads(request.form["metadata"])
+        col = metadata["col"]
+        row = metadata["row"]
+        col_row = f"{col}_{row}"
+    else:
+        metadata = None
+
+    # save file
+    uploads_dir = "pybiscus/session/manager/static/pybiscus/vignettes"
+    save_path = os.path.join(uploads_dir, f"grid_{col_row}.png")
+    os.makedirs(uploads_dir, exist_ok=True)
+    file.save(save_path)
+
+    # memo file
+    with vignettes_lock:
+        new_vignettes.append( col_row )
+
+    return jsonify({
+        "status": "ok",
+        "filename": file.filename,
+        "metadata": metadata
+    })
+
+# **************************
+
+@pybiscus_manager_app.route('/pybiscus-session/vignettes', methods=['GET'])
+def pybiscus_manager_get_new_vignettes():
+
+    with vignettes_lock:
+        global new_vignettes
+        _new_vignettes = new_vignettes
+        new_vignettes = []
+
+    # return json encoded vignettes
+    return jsonify(_new_vignettes)
