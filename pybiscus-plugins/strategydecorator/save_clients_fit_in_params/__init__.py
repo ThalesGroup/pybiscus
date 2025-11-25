@@ -4,13 +4,14 @@ from pydantic import BaseModel
 
 from pybiscus.interfaces.flower.strategydecorator import StrategyDecorator
 
-from resultpersonalization.resultpersonalizationstrategydecorator import PersonalizedResultStrategyDecorator, ConfigPersonalizationStrategyDecorator
+from save_clients_fit_in_params.saveclientsfitinparams import ConfigSaveClientsFitInParamsDecorator, SaveClientsFitInParamsStrategyDecorator
 
 def get_modules_and_configs() -> Tuple[Dict[str, StrategyDecorator], List[BaseModel]]:
 
     registry = {
-        "resultpersonalization" : PersonalizedResultStrategyDecorator,
+        "saveclientsfitin" : SaveClientsFitInParamsStrategyDecorator,
         }
-    configs  = [ConfigPersonalizationStrategyDecorator, ]
+    configs  = [ConfigSaveClientsFitInParamsDecorator, ]
 
     return registry, configs
+

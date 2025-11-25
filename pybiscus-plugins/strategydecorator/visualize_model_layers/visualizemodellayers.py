@@ -18,9 +18,15 @@ class ConfigModelWeightVignetteDecoratorData(BaseModel):
     
     PYBISCUS_CONFIG: ClassVar[str] = "config"
 
+    reporting_sub_dir: str = "rounds"
+    layers_sub_dir: str = "layers"
+    layer_prefix: str = "layer"
+    
     mode_bias_values: bool = True
     mode_layers_values: bool = True
     max_filters: int = 8
+
+    webhook_url: str = "http://localhost:5555/webhook/vignettes"
 
     debug: bool = False
 
@@ -29,8 +35,8 @@ class ConfigModelWeightVignetteDecoratorData(BaseModel):
 
 class ConfigModelWeightVignetteStrategyDecorator(BaseModel):
     
-    PYBISCUS_ALIAS: ClassVar[str] = "ModelWeightVignette"
-    name: Literal["modelweightvignette"]
+    PYBISCUS_ALIAS: ClassVar[str] = "VisualizeModelLayers"
+    name: Literal["visualizemodellayers"]
 
     config: ConfigModelWeightVignetteDecoratorData
 
@@ -62,12 +68,11 @@ class ModelWeightVignetteStrategyDecorator(StrategyDecorator):
         if self.conf.debug:
             logm.console.log(f"Model weights Round={rnd}")
 
-        # --- Global model = aggreagted weights ---
+        # --- Global model = aggregated weights ---
         server_weights = fl.common.parameters_to_ndarrays(aggregated)
         if self.conf.debug:
             for i, w in enumerate(server_weights):
                 logm.console.log(f"  [Global] Layer {i}: shape={w.shape}, size={w.size}")
-
 
         # --- Clients weights ---
         client_weights_list = [
@@ -84,8 +89,9 @@ class ModelWeightVignetteStrategyDecorator(StrategyDecorator):
                         f"  [Client {client_id}] Layer {layer_id}: shape={w.shape}, size={w.size}"
                     )
 
-        weights_path = self.reporting_path / f"weights/round_{rnd}"
-        ensure_dir_exists(weights_path)
+
+        layers_path = self.reporting_path / self.conf.reporting_sub_dir / f"round_{rnd}" / self.conf.layers_sub_dir 
+        ensure_dir_exists(layers_path)
 
         visualize_federated_layers(
             server_weights,
@@ -93,8 +99,10 @@ class ModelWeightVignetteStrategyDecorator(StrategyDecorator):
             mode_bias = "values" if self.conf.mode_bias_values else "diff",     # "values" or "diff"
             mode_layers = "values" if self.conf.mode_layers_values else "diff",     # "values" or "diff"
             max_filters = self.conf.max_filters,          # max filters nb display for conv
-            save_path = weights_path,
-            col = rnd - 1
+            save_path = layers_path,
+            layer_prefix=self.conf.layer_prefix,
+            col = rnd - 1,
+            url=self.conf.webhook_url
         )
 
         return aggregated, {}
@@ -127,7 +135,7 @@ def weights_to_image(flat_weights, client_id, save_path="./"):
 # ----------------------------------
 # Function handling conv / FC / bias
 # ----------------------------------
-def plot_layer_comparison(server_layer, client_layers, layer_id, save_path):
+def plot_layer_comparison(server_layer, client_layers, layer_id, save_path, file_prefix):
     """
     Display server and clients differences on a single line
     """
@@ -174,17 +182,17 @@ def plot_layer_comparison(server_layer, client_layers, layer_id, save_path):
 
     plt.tight_layout()
     # plt.show()
-    plt.savefig(f"{save_path}/layer_{layer_id}.png", bbox_inches='tight', pad_inches=0)
+    plt.savefig(f"{save_path}/{file_prefix}_{layer_id}.png", bbox_inches='tight', pad_inches=0)
     plt.close()
 
 
 # -------------------------------
 # main function for whole model 
 # -------------------------------
-def visualize_model_and_diffs_compact(server_weights, client_weights_list, save_path):
+def visualize_model_and_diffs_compact(server_weights, client_weights_list, save_path, layer_prefix):
     for layer_id, sw in enumerate(server_weights):
         client_layers = [cw[layer_id] for cw in client_weights_list]
-        plot_layer_comparison(sw, client_layers, layer_id, save_path)
+        plot_layer_comparison(sw, client_layers, layer_id, save_path, layer_prefix)
 
 
 
@@ -245,7 +253,9 @@ def visualize_federated_layers(
     mode_layers: str = "diff",     # "values" or "diff"
     max_filters: int = 8,          # max filters nb for conv
     save_path: str = None,          # optional saved file path
-    col: int = 0
+    layer_prefix: str = "",
+    col: int = 0,
+    url: str = ""
 ):
     """
     Federated learning layers visualization
@@ -333,7 +343,7 @@ def visualize_federated_layers(
         
         if save_path:
 
-            layer_img_path = f"{save_path}/layer_{i}.png"
+            layer_img_path = f"{save_path}/{layer_prefix}_{i}.png"
             plt.savefig(layer_img_path, bbox_inches='tight')
             plt.close()
 
@@ -344,8 +354,6 @@ def visualize_federated_layers(
                 "col": col,
                 "row": i,
             }
-
-            url = "http://localhost:5555/webhook/vignettes"
 
             # logm.console.log(f"**** sending vignette ${payload}")
 

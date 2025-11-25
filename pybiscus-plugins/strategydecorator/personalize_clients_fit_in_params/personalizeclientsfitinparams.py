@@ -14,7 +14,7 @@ import pybiscus.core.pybiscus_logger as logm
 
 # -------------------------------------------------------------------------
 
-class ConfigPersonalizationStrategyDecoratorData(BaseModel):
+class ConfigPersonalizeClientsFitInParamsStrategyDecoratorData(BaseModel):
     
     PYBISCUS_CONFIG: ClassVar[str] = "config"
 
@@ -26,18 +26,18 @@ class ConfigPersonalizationStrategyDecoratorData(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
 
-class ConfigPersonalizationStrategyDecorator(BaseModel):
+class ConfigPersonalizeClientsFitInParamsStrategyDecorator(BaseModel):
     
-    PYBISCUS_ALIAS: ClassVar[str] = "ResultPersonalization"
-    name: Literal["resultpersonalization"]
+    PYBISCUS_ALIAS: ClassVar[str] = "PersonalizeClientsFitInParams"
+    name: Literal["personalizeclientsfitin"]
 
-    config: ConfigPersonalizationStrategyDecoratorData
+    config: ConfigPersonalizeClientsFitInParamsStrategyDecoratorData
 
     model_config = ConfigDict(extra="forbid")
 
 # -------------------------------------------------------------------------
 
-class PersonalizedResultStrategyDecorator(StrategyDecorator):
+class PersonalizeClientsFitInParamsStrategyDecorator(StrategyDecorator):
     """
     Decorator that add result personalization to a Flower strategy.
     """

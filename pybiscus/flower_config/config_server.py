@@ -119,8 +119,8 @@ class ConfigServerStrategy(BaseModel):
 
     PYBISCUS_CONFIG: ClassVar[str] = "server_strategy"
 
-    decorators:    list[StrategyDecoratorConfig()] # pyright: ignore[reportInvalidTypeForm]
-    strategy:      StrategyConfig() # pyright: ignore[reportInvalidTypeForm]
+    pipeline: list[StrategyDecoratorConfig()] # pyright: ignore[reportInvalidTypeForm]
+    strategy: StrategyConfig() # pyright: ignore[reportInvalidTypeForm]
     
     model_config = ConfigDict(extra="forbid")
 

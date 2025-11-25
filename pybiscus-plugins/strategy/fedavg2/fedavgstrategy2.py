@@ -221,11 +221,7 @@ class FabricFedAvgStrategy2(fl.server.strategy.FedAvg):
 
             for _, res in results:
                 for key, value in res.metrics.items():
-
-                    # default if cid is not found
-                    cid = res.metrics.get("cid", f"client🔑_{key}")
-
-                    self.fabric.log(f"fit_{key}_{cid}", value, step=server_round)
+                    self.fabric.log(f"fit_{key}_{res.metrics['cid']}", value, step=server_round)
 
             metrics_aggregated = self.fit_metrics_aggregation_fn(tuples_weight_fitmetrics)
             # TODO: add optional handling of 📤🧮📈 aggregated metrics

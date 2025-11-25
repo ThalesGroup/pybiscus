@@ -290,8 +290,8 @@ def launch_config(
     pcpc.pybiscus_context["model"] = model
     pcpc.pybiscus_context["fabric"] = fabric
 
-    # chaining strategy decorators
-    for conf_decorator in conf.server_strategy.decorators:
+    # chaining strategy decorators 
+    for conf_decorator in conf.server_strategy.pipeline:
         logm.console.log(f"setting 🛠️🎀 strategy decorator <{conf_decorator.name}>")
         decorator_class = strategydecorator_registry()[conf_decorator.name]
         strategy = decorator_class(strategy,conf_decorator.config)

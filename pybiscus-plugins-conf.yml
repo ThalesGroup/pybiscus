@@ -28,11 +28,12 @@ strategydecorator:
   - path: "./pybiscus-plugins/strategydecorator"
     modules:
       - basicstrategydecorator
-      - filewritingdecorator
-      - modelweightvignette
+      # - filewritingdecorator
+      - visualize_model_layers
       - save_server_aggregated_fit_params
-      - save_all_clients_fit_in_params
-      - resultpersonalization
+      - save_clients_fit_in_params
+      - save_clients_fit_res
+      - personalize_clients_fit_in_params
 client:
   - path: "./pybiscus-plugins/client"
     modules:

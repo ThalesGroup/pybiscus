@@ -15,7 +15,7 @@ import pybiscus.core.pybiscus_logger as logm
 
 # -------------------------------------------------------------------------
 
-class ConfigSaveAllClientsFitInParamsDecoratorData(BaseModel):
+class ConfigSaveClientsFitInParamsDecoratorData(BaseModel):
     
     PYBISCUS_CONFIG: ClassVar[str] = "config"
 
@@ -25,12 +25,12 @@ class ConfigSaveAllClientsFitInParamsDecoratorData(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
 
-class ConfigSaveAllClientsFitInParamsDecorator(BaseModel):
+class ConfigSaveClientsFitInParamsDecorator(BaseModel):
     
-    PYBISCUS_ALIAS: ClassVar[str] = "SaveAllClientsFitInParams"
-    name: Literal["saveallclientsfitin"]
+    PYBISCUS_ALIAS: ClassVar[str] = "SaveClientsFitInParams"
+    name: Literal["saveclientsfitin"]
 
-    config: ConfigSaveAllClientsFitInParamsDecoratorData
+    config: ConfigSaveClientsFitInParamsDecoratorData
 
     model_config = ConfigDict(extra="forbid")
 

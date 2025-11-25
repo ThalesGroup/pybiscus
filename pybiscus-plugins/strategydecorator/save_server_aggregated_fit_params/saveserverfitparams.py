@@ -48,7 +48,6 @@ class SaveServerFitParamsStrategyDecorator(StrategyDecorator):
         """
         Args:
             base_strategy: the base strategy to decorate
-            result_modifier: configuration of the result modifier
         """
         self.base_strategy = base_strategy
         self.conf = conf
@@ -61,7 +60,6 @@ class SaveServerFitParamsStrategyDecorator(StrategyDecorator):
         parameters: Parameters,
         client_manager: ClientManager,
     ) -> List[Tuple[ClientProxy, fl.common.FitIns]]:
-        """send personalized models to clients"""
 
         # get base config
         base_config = self.base_strategy.configure_fit( server_round, parameters, client_manager )

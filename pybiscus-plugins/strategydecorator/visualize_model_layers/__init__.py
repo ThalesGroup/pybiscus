@@ -4,12 +4,12 @@ from pydantic import BaseModel
 
 from pybiscus.interfaces.flower.strategydecorator import StrategyDecorator
 
-from modelweightvignette.modelweightvignette import ConfigModelWeightVignetteStrategyDecorator, ModelWeightVignetteStrategyDecorator
+from visualize_model_layers.visualizemodellayers import ConfigModelWeightVignetteStrategyDecorator, ModelWeightVignetteStrategyDecorator
 
 def get_modules_and_configs() -> Tuple[Dict[str, StrategyDecorator], List[BaseModel]]:
 
     registry = {
-        "modelweightvignette" : ModelWeightVignetteStrategyDecorator,
+        "visualizemodellayers" : ModelWeightVignetteStrategyDecorator,
         }
     configs  = [ConfigModelWeightVignetteStrategyDecorator, ]
 
