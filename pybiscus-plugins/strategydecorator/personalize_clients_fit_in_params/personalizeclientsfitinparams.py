@@ -21,6 +21,7 @@ class ConfigPersonalizeClientsFitInParamsStrategyDecoratorData(BaseModel):
     result_modifier: ResultModifierConfig() # pyright: ignore[reportInvalidTypeForm]
 
     protect_model_weights: bool = True
+    memo_clients_fit_res_in_context: bool = True
     debug: bool = False
 
     model_config = ConfigDict(extra="forbid")
@@ -65,21 +66,22 @@ class PersonalizeClientsFitInParamsStrategyDecorator(StrategyDecorator):
 
     # -------------------------------------------------------------------------
 
-    # def aggregate_fit(self, server_round, results, failures):
+    def aggregate_fit(self, server_round, results, failures):
 
-    #     if self.conf.debug:
-    #         logm.console.log(f"[{server_round}] PRSD aggregate_fit")
+        if self.conf.memo_clients_fit_res_in_context:
 
-    #     aggregated_parameters, metrics = self.base_strategy.aggregate_fit(server_round, results, failures)
+            import pybiscus.core.pybiscuscontext as pcpc
 
-    #     if aggregated_parameters is None:
-    #         logm.console.log("⚠️ No aggregated parameters from base strategy")
-    #     else:
-    #         nds = fl.common.parameters_to_ndarrays(aggregated_parameters)
-    #         if self.conf.debug:
-    #             logm.console.log(f"✅ Aggregated {len(nds)} ndarrays")
+            pcpc.pybiscus_context["clients_weights"] = {}
 
-    #     return aggregated_parameters, metrics or {}
+            for client_proxy, fit_res in results:
+
+                client_id = client_proxy.cid
+                weights = fl.common.parameters_to_ndarrays(fit_res.parameters)
+
+                pcpc.pybiscus_context["clients_weights"][client_id] = weights
+
+        return self.base_strategy.aggregate_fit(server_round, results, failures)
 
     # -------------------------------------------------------------------------
 

@@ -131,11 +131,15 @@ class ResultClientWatermarking(ResultModifier):
 
     def import_context(self):
 
+        from pybiscus.core.pybiscuscontext import pybiscus_context
+
         if self.model is None:
-            from pybiscus.core.pybiscuscontext import pybiscus_context
             self.fabric = pybiscus_context["fabric"]
             self.model = pybiscus_context["model"]
             self.reporting_path = pybiscus_context["reporting_path"]
+
+        self.clients_weights = pybiscus_context.get("clients_weights", {} )
+        logm.console.log(f"context has {len(self.clients_weights)} clients_weights")
 
     def modify(
         self,
@@ -154,6 +158,9 @@ round,client,cid,wsr_before,wsr_after
         """
 
         self.import_context()
+
+        for client_id, client_weights in self.clients_weights.items():
+            logm.console.log( f"WM: I can access weights of client {client_id} !!! ")
 
         logm.interactiveConsole.log( f"WM modify( round={round} cid={cid}) w_sizes = {[len(w) for w in weights]}" )
 
