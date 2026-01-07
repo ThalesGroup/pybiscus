@@ -16,6 +16,10 @@ from pybiscus.core.ensure_filesystem import ensure_file_dir_exists, ensure_dir_e
 class ConfigResultClientWatermarkingData(BaseModel):
     PYBISCUS_CONFIG: ClassVar[str] = "config"
 
+    nb_clients: int = 5
+    key_size_layer: int = 2112
+    key_size_fingerprint: int = 256
+
     save_as_cp: bool = True
     reporting_sub_dir: str = "rounds"
     client_watermaked_model_prefix: str = "client_watermarked_model"
@@ -60,13 +64,13 @@ class TracerAndLogger:
 # --------------------------------------------------------
 
 def loss_watermark(weight: torch.tensor, secret_key:torch.tensor, fingerprint: torch.tensor):
-    partially_reconstructed_fingerprint = weight.mean(0) @ secret_key
+    partially_reconstructed_fingerprint = secret_key @ weight.flatten()
     criterion = lambda x, y: torch.sum(torch.relu(1 - (x * y)))
     return criterion(partially_reconstructed_fingerprint, fingerprint)
 
 def extract_fingerprint(weight: torch.nn, secret_key: torch.tensor):
     with torch.no_grad():
-        reconstructed_fingerprint = torch.where((weight.mean(0) @ secret_key) >= 0 , 1, -1 )
+        reconstructed_fingerprint = torch.where((secret_key @ weight.flatten()) >= 0 , 1, -1 )
     return reconstructed_fingerprint
 
 def watermark_detection_rate_fingerprint(
@@ -81,18 +85,17 @@ def watermark_key_generation(nb_clients: int, size_layer: int, size_fingerprint:
     import pybiscus.core.pybiscuscontext as pcpc
     device = pcpc.pybiscus_context["model"].device
 
-    f1 = torch.randint(0,2,(size_fingerprint,), device=device) * 2 - 1
-    f1 = f1.float()
-    f2 = -f1.clone()
+    n = size_fingerprint
+    A = torch.randn(n, n, device=device)
+    Q, R = torch.linalg.qr(A)
+    fingerprints = [torch.where(Q[:, i] >= 0, 1, -1) for i in range(Q.shape[1])]
 
-    f1.requires_grad = True
-    f2.requires_grad = True
+    for fingerprint in fingerprints:
+        fingerprint.require_grad = True
 
-    sk1 = torch.randn((size_layer,size_fingerprint), device=device, requires_grad=True)
-    sk2 = sk1.clone()
+    sk = torch.randn((size_fingerprint,size_layer), device=device, requires_grad=True)
 
-    print([f1,f2])
-    return [f1,f2], [sk1,sk2]
+    return fingerprints, sk
 
 def traitor_tracing(nb_clients: int, fingerprints = list[torch.tensor], secret_keys = list[torch.tensor]):
     max = -1
@@ -109,7 +112,7 @@ def traitor_tracing(nb_clients: int, fingerprints = list[torch.tensor], secret_k
 
 class ResultClientWatermarking(ResultModifier):
 
-    def __init__(self, save_as_cp, reporting_sub_dir, client_watermaked_model_prefix, client_watermaking_traces_path):
+    def __init__(self, save_as_cp, reporting_sub_dir, client_watermaked_model_prefix, client_watermaking_traces_path, nb_clients, key_size_layer, key_size_fingerprint):
 
         self.save_as_cp = save_as_cp
         self.reporting_sub_dir = reporting_sub_dir
@@ -123,11 +126,13 @@ class ResultClientWatermarking(ResultModifier):
         self.client_index = 0
         self.client_hash = {}
 
-        #TODO: make it configurable
-        self.fingerprints, self.secret_keys = watermark_key_generation(2,64,16)
-        self.max_epoch = 50
+        self.total_clients = nb_clients
 
-        logm.console.log(f"using module 💧 ResultClientWatermarking")
+        self.print_before = False
+
+        #TODO: make it configurable
+        self.fingerprints, self.secret_keys = watermark_key_generation(self.total_clients, key_size_layer, key_size_fingerprint)
+        self.max_epoch = 50
 
     def import_context(self):
 
@@ -144,7 +149,7 @@ class ResultClientWatermarking(ResultModifier):
     def modify(
         self,
         round: int,
-        cid: str, 
+        cid: str,
         weights: List[np.ndarray],
     ) -> List[np.ndarray]:
 
@@ -173,33 +178,18 @@ round,client,cid,wsr_before,wsr_after
 
         with TracerAndLogger(watermarking_traces_path) as logger:
             current_client = self.client_hash[cid]
-            logger.log( f"\n*** Round {round} Client : {current_client} cid : {cid} ***\n")
+            #logger.log( f"\n*** Round {round} Client : {current_client} cid : {cid} ***\n")
 
-            # compute new models weights:
+            if self.print_before:
 
-            #       compute a specific value for each client / round
-            # int_value = round * 100 + self.client_hash[cid]
-            # #       fill the model with it
-            # new_weights = [torch.full_like(torch.from_numpy(w), fill_value=int_value) for w in weights]
-            #
-            # # logm.console.log( f"WM new weights={" ".join(" ".join(map(str, w)) for w in new_weights)}" )
-            #
-            # # put them into the model (optional)
-            # set_params(self.model, new_weights)
-
-            logger.log(f"# Before Watermarking")
-            for i in range(2):
-                #wsr = watermark_detection_rate_fingerprint(
-                #    extract_fingerprint(self.model.model[-3].weight,
-                #                        self.secret_keys[i]),
-                #    self.fingerprints[i]
-                #)
-                wsr = watermark_detection_rate_fingerprint(
-                    extract_fingerprint(self.model.model.fc.weight,
-                                        self.secret_keys[i]),
-                    self.fingerprints[i]
-                )
-                logger.log(f"\t WSR Client {i} = {wsr}")
+                logger.log(f"# Before Watermarking")
+                for i in range(self.total_clients):
+                    wsr = watermark_detection_rate_fingerprint(
+                        extract_fingerprint(self.model.model.fc.weight,
+                                            self.secret_keys),
+                        self.fingerprints[i]
+                    )
+                    logger.log(f"\t WSR Client {i} = {wsr}")
 
             optimizer = torch.optim.SGD(
                 [self.model.model.fc.weight], lr=1e-1
@@ -210,27 +200,31 @@ round,client,cid,wsr_before,wsr_after
 
                 loss = loss_watermark(
                     self.model.model.fc.weight,
-                    self.secret_keys[current_client],
+                    self.secret_keys,
                     self.fingerprints[current_client])
 
                 loss.backward()
 
                 optimizer.step()
 
-                if loss.item() == 0.0:
-                    break
+                with torch.no_grad():
+                    wsr = watermark_detection_rate_fingerprint(
+                        extract_fingerprint(self.model.model.fc.weight,
+                                            self.secret_keys),
+                        self.fingerprints[i]
+                    )
 
-                #logger.log(f"Loss : {loss.item()}")
+                    if wsr >= 0.98:
+                        break
 
-            logger.log(f"# After Watermarking")
-            # logger.log(f"Client : {current_client} cid={cid}")
-            for i in range(2):
+            #logger.log(f"# After Watermarking")
+            for i in range(self.total_clients):
                 wsr = watermark_detection_rate_fingerprint(
                     extract_fingerprint(self.model.model.fc.weight,
-                                        self.secret_keys[i]),
+                                        self.secret_keys),
                     self.fingerprints[i]
                 )
-                logger.log(f"\t WSR Client {i} = {wsr}")
+                logger.log(f"{round}\t{current_client}\t{i}\t{wsr}")
 
         if self.save_as_cp:
 
@@ -242,10 +236,27 @@ round,client,cid,wsr_before,wsr_after
             self.fabric.save(checkpoint_client_path, state)
             logm.console.log(f"[fabric] save 💧 watermarked client {cid} checkpoint 💾📍🗄️to : {checkpoint_client_path}")
 
+        if round==1:
+            checkpoint_path = self.reporting_path / "watermarked_checkpoints/secret_key.pth"
+
+            state = {"secret_key": self.secret_keys}
+
+            ensure_file_dir_exists(checkpoint_path)
+            self.fabric.save(checkpoint_path, state)
+            logm.console.log(f"[fabric] save 💧 Secret Key 💾📍🗄️to : {checkpoint_path}")
+
+            checkpoint_client_path = self.reporting_path / f"watermarked_checkpoints/fingerprint_{cid}.pth"
+
+            state = {"fingerprint": self.fingerprints[current_client]}
+
+            ensure_file_dir_exists(checkpoint_client_path)
+            self.fabric.save(checkpoint_client_path, state)
+            logm.console.log(f"[fabric] save 💧 Fingerprint of client {cid} 💾📍🗄️to : {checkpoint_client_path}")
+
+        logm.console.log(f"using module 💧 ResultClientWatermarking")
+
         # get model weights after model transform
         computed_weights = get_params(self.model)
-
-        # logm.console.log( f"computed weights={" ".join(" ".join(map(str, w)) for w in computed_weights)})" )
 
         # return a copy of weights
         return computed_weights

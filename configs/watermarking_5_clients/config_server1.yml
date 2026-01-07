@@ -1,0 +1,91 @@
+root_dir: ${oc.env:PWD}
+flower_server:
+  listen_address: '[::1]:3333'
+server_run:
+  num_rounds: '12'
+  clients_fit_local_epochs: '2'
+  loggers:
+  - name: rich
+    config:
+      empty_configuration: true
+  - name: webhook
+    config:
+      webhook_url: http://localhost:5555/webhook/logs
+      logger_id: 🖧
+  reporting:
+    basedir: ${root_dir}/experiments
+    add_timestamp_in_path: true
+    server_config_filename: config_server.yml
+    save_on_train_end:
+      filename: final_checkpoint.pt
+    onnx_export:
+      filename: model.onnx
+      opset: '13'
+      post_validation: false
+server_compute_context:
+  hardware:
+    accelerator: auto
+    devices: auto
+  metrics_loggers:
+  - name: tensorboard
+    config:
+      subdir: tensorboard
+  - name: webhook
+    config:
+      webhook_url: http://localhost:5555/webhook/metrics
+      logger_id: 🖧
+server_strategy:
+  pipeline:
+  - name: metricdiffcompute
+    config:
+      empty_configuration: true
+  - name: timediffcompute
+    config:
+      empty_configuration: true
+  - name: personalizeclientsfitin
+    config:
+      result_modifier:
+        name: client watermarking
+        config:
+          nb_clients: '5'
+          key_size_layer: '8448'
+          key_size_fingerprint: '256'
+          save_as_cp: true
+          reporting_sub_dir: rounds
+          client_watermaked_model_prefix: client_watermarked_model
+          client_watermaking_traces_path: client_watermarking_traces.txt
+      protect_model_weights: true
+      memo_clients_fit_res_in_context: true
+      debug: false
+  strategy:
+    name: fedavgextended
+    config:
+#      fraction_fit: '5'
+#      fraction_evaluate: '5'
+      min_fit_clients: '5'
+      min_evaluate_clients: '5'
+      min_available_clients: '5'
+      accept_failures: false
+      inplace: true
+data:
+  name: hdfs
+  config:
+    test_file: ./datasets/hdfs_datasets/test.csv
+    batch_size: '64'
+    window_size: '10'
+model:
+  name: deeplog
+  config:
+    input_shape: '1'
+    mid_shape: '256'
+    n_layers: '2'
+    n_classes: '33'
+    lr: '0.01'
+    num_candidates: '9'
+    window_size: '10'
+#client_configs:
+#  - ./configs/deeplog_watermarking/setting_5_clients/cortaix-labs-01.yml
+#  - ./configs/deeplog_watermarking/setting_5_clients/cortaix-labs-02.yml
+#  - ./configs/deeplog_watermarking/setting_5_clients/cortaix-labs-03.yml
+#  - ./configs/deeplog_watermarking/setting_5_clients/cortaix-labs-04.yml
+#  - ./configs/deeplog_watermarking/setting_5_clients/cortaix-labs-05.yml

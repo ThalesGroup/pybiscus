@@ -1,0 +1,28 @@
+root_dir: ${oc.env:PWD}
+flower_client:
+  server_address: localhost:3333
+client_run:
+  cid: '2'
+  pre_train_val: false
+client_compute_context:
+  hardware:
+    accelerator: gpu
+    devices: auto
+model:
+  name: deeplog
+  config:
+    input_shape: 1
+    mid_shape: 256
+    n_classes: 33
+    lr: 0.01
+    n_layers: 2
+    num_candidates: 9
+    window_size: 10
+data:
+  name: hdfs
+  config:
+    train_file: ${root_dir}/datasets/hdfs_datasets/setting_5_clients/train0.csv
+    val_file: ${root_dir}/datasets/hdfs_datasets/setting_5_clients/val0.csv
+    dir_test: None
+    batch_size: 512
+    window_size: 10
