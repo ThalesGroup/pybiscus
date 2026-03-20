@@ -2,7 +2,7 @@ root_dir: ${oc.env:PWD}
 flower_client:
   server_address: localhost:3333
 client_run:
-  cid: '1'
+  cid: '0'
   pre_train_val: false
 client_compute_context:
   hardware:

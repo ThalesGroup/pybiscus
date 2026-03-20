@@ -30,6 +30,8 @@ dependencies = [
     "matplotlib>=3.10.0",
     "scikit-learn>=1.7.2",
     "seaborn>=0.13.2",
+    "setuptools<71",
+    "onnxscript>=0.6.2",
 ]
 
 [project.scripts]
