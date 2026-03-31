@@ -1,0 +1,38 @@
+import matplotlib.pyplot as plt
+
+# Vos données
+x_values = [0,1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+server_dp_False= [2.330482006072998, 0.10408730804920197, 0.049964699894189835, 0.035300180315971375, 0.03868285194039345, 0.03168034926056862, 0.03449978306889534, 0.028717443346977234, 0.035647302865982056, 0.02958914451301098, 0.03082011453807354]
+server_dp_True_1= [2.330482006072998, 1.1716586351394653, 1.6555830240249634, 2.8265559673309326, 3.5895159244537354, 3.7279133796691895, 3.7857890129089355, 4.596310615539551, 4.084129810333252, 4.133638858795166, 3.2577860355377197]
+server_dp_True_2= [2.330482006072998, 8.007365226745605, 13.778298377990723, 24.238018035888672, 13.2890043258667, 6.6058430671691895, 31.082090377807617, 76.54302978515625, 60.04536437988281, 94.1479721069336, 34.557498931884766]
+server_dp_True_3= [2.330482006072998, 0.5426902174949646, 0.47591641545295715, 0.5283647179603577, 0.5957863926887512, 0.6370198726654053, 0.6468493938446045, 0.808937132358551, 0.8932083249092102, 0.9522551894187927, 0.9550553560256958]
+server_dp_True_4= [2.330482006072998, 0.667884886264801, 0.6837196946144104, 0.9088108539581299, 1.1332913637161255, 1.4331721067428589, 1.4602510929107666, 1.728440284729004, 2.2214596271514893, 2.224806547164917, 2.1135284900665283]
+server_dp_True_5= [2.330482006072998, 0.46451663970947266, 0.4034464359283447, 0.36930209398269653, 0.3690298795700073, 0.359816312789917, 0.3507923185825348, 0.3766844570636749, 0.3710450232028961, 0.3698807954788208, 0.3650859296321869]
+
+#PS: server_dp_True_1: delta=1e-5 and noise=1.1  
+   # server_dp_True_2: delta=1e-5 and noise=4;
+   # server_dp_True_3: delta=1e-5 and noise=0.5
+   # server_dp_True_4: delta=1e-5 and noise=0.7
+   # server_dp_True_5: delta=1e-5 and noise=0.3
+
+   
+
+
+# Tracer le graphique
+
+plt.plot(x_values, server_dp_False,color="#d62728", label='No Privacy')
+plt.plot(x_values, server_dp_True_5,linestyle='dashed',color="#1bc45155", label='With DP: noise=0.3, Epsilon=223.16')
+plt.plot(x_values, server_dp_True_3,linestyle='dashed',color="#f07e0c55", label='With DP: noise=0.5, Epsilon=44.45')
+plt.plot(x_values, server_dp_True_4,linestyle='dashed',color="#f0f00c55", label='With DP: noise=0.7, Epsilon=16.75')
+plt.plot(x_values, server_dp_True_1,linestyle='dashed',color="#b327d655", label='With DP: noise=1.1, Epsilon=5.31')
+plt.plot(x_values, server_dp_True_2,linestyle='dashed',color="#2736d655", label='With DP: noise=4, Epsilon=1.05')
+
+plt.xlabel('Rounds')
+plt.ylabel('Loss')
+plt.title("Server test loss with and without DP on Mnist with CNN")
+plt.legend()
+x_ticks = [x for x in x_values if x % 2 == 0] 
+plt.xticks(x_ticks)
+# Enregistrer le graphique
+plt.savefig('Loss_all.png', dpi=300)
+plt.show()
