@@ -494,7 +494,8 @@ body {
 fieldset {
     border: 1px solid var(--fieldset-border);
     background-color: var(--fieldset-bg);
-    padding: var(--spacing-lg);
+    /* padding vertical réduit (début/fin de fieldset), horizontal conservé */
+    padding: var(--spacing-sm) var(--spacing-lg);
     margin: 0;
     box-shadow: var(--shadow-sm);
     transition: box-shadow var(--transition-standard);
@@ -535,6 +536,14 @@ body > div > fieldset > legend::before {
     align-items: stretch;
 }
 
+/* Une union / un optionnel se dimensionne à son contenu plutôt qu'à 100% de la largeur
+   dispo (sinon couplage avec la largeur des champs frères, ex. pipeline). Les sections
+   de premier niveau (foldable) restent en pleine largeur. */
+.pybiscus-fieldset-container:not(.foldable) {
+    width: fit-content;
+    max-width: 100%;
+}
+
 .pybiscus-tab-container {
     width: 100%;
     border-bottom: 1px solid var(--color-border-light);
@@ -546,6 +555,14 @@ body > div > fieldset > legend::before {
 
 
     background-color: var(--fieldset-bg);
+}
+
+/* Unions horizontales : se dimensionnent à leur contenu (plafonné à la largeur dispo)
+   au lieu de réclamer 100%. Sinon un champ frère plus large (liste pipeline qui grandit)
+   entraîne l'élargissement de l'union. Les unions verticales gardent width:100% (grille). */
+.pybiscus-tab-container:not(.pybiscus-tab-vertical) {
+    width: fit-content;
+    max-width: 100%;
 }
 
 .pybiscus-tab-buttons {
@@ -877,6 +894,18 @@ fieldset.foldable:not(.collapsed) > div.pybiscus-field {
 
 fieldset.foldable:not(.collapsed) > div.pybiscus-field:has(> fieldset) {
     flex: 0 1 auto;
+    /* min-width:0 débloque le flex-shrink:1 déjà prévu (les fieldsets ont min-width:auto =
+       min-content par défaut). Sans ça, un champ large (liste pipeline qui grandit) ne peut
+       pas rétrécir, élargit la ligne et impose sa largeur aux champs frères (strategy). */
+    min-width: 0;
+}
+
+/* Les structures internes doivent pouvoir rétrécir/s'enrouler dans leur champ plutôt que
+   d'imposer leur min-content vers le haut (décorrèle la largeur des champs frères). */
+.pybiscus-list-fs,
+.pybiscus-fieldset-container,
+.pybiscus-tab-container {
+    min-width: 0;
 }
 
 /* management of fieldset folding <<< end <<<
@@ -953,10 +982,65 @@ fieldset.foldable:not(.collapsed) > div.pybiscus-field:has(> fieldset) {
 
 /* management of pybiscus configuration items >>> begin >>> */
 .pybiscus-field {
-    margin-bottom: var(--spacing-lg);
+    margin-bottom: var(--spacing-sm);
     display: flex;
     flex-direction: column;
     gap: var(--spacing-sm);
+    /* flex-start (et non stretch par défaut) : un fieldset enfant (union, config, liste)
+       ne doit pas être étiré à 100% de la largeur du champ, il se dimensionne à son contenu */
+    align-items: flex-start;
+}
+
+/* Champs feuilles (label + input) : disposition "colonne noms | colonne valeurs".
+   Largeur de colonne noms fixe et partagée -> les libellés s'alignent d'un champ à l'autre.
+   On exclut :
+   - :has(> fieldset)      -> sous-modèle / union / enum / liste (pleine largeur, empilé) ;
+   - :has(> .pybiscus-field) -> wrapper composite (contenu d'une option d'union enveloppant
+                                 plusieurs champs) : sinon ses sous-champs seraient répartis
+                                 en 2 colonnes (name en col.1, le fieldset config en col.2,
+                                 d'où la fausse "valeur" empty configuration).
+   Si :has()/:not() n'est pas supporté, la règle est ignorée -> retour à l'empilement. */
+.pybiscus-field:not(:has(> fieldset)):not(:has(> .pybiscus-field)) {
+    display: grid;
+    /* colonne valeur en 'auto' (taille du contenu), pas '1fr' : sinon la valeur remplit
+       le champ -> le fieldset -> 100%, et se couple à la largeur des champs frères. */
+    grid-template-columns: 13rem auto;   /* colonne noms ajustable */
+    justify-items: start;                /* les inputs ne s'étirent pas pour remplir */
+    align-items: center;
+    gap: var(--spacing-sm) var(--spacing-md);
+}
+
+/* Cases à cocher décalées un peu à droite : si un nom long déborde de la colonne noms,
+   il ne recouvre pas la case (un input texte, lui, reprend le focus/premier plan au clic). */
+.pybiscus-field > input[type="checkbox"] {
+    margin-left: var(--spacing-xl);
+}
+
+/* valeur "empty configuration" (config sans paramètre) : simple texte en colonne valeur */
+.pybiscus-empty-config {
+    font-style: italic;
+    opacity: 0.75;
+}
+
+/* énumération compacte : boutons radio en ligne dans la colonne valeur (plus de fieldset) */
+.pybiscus-enum {
+    display: inline-flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--spacing-xs) var(--spacing-md);
+}
+
+.pybiscus-enum-option {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+    cursor: pointer;
+}
+
+/* pas de transition sur les radios de l'enum : sinon l'animation au changement de sélection,
+   combinée à la largeur fit-content du champ, provoque des re-peints répétés du cadre. */
+.pybiscus-enum input[type="radio"] {
+    transition: none;
 }
 
 .pybiscus-config {
@@ -964,7 +1048,8 @@ fieldset.foldable:not(.collapsed) > div.pybiscus-field:has(> fieldset) {
     color: var(--theme-color);    
 
     border: 1px solid var(--color-accent-light);
-    padding: var(--spacing-sm) var(--spacing-lg);
+    /* padding horizontal réduit : le badge de nom n'écrase plus la valeur quand le nom est long */
+    padding: var(--spacing-sm);
     margin: var(--spacing-xs) 0;
     display: inline-flex;
     align-items: center;

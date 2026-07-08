@@ -132,28 +132,27 @@ def generate_field_html(field_name: str, field_type, field_default, field_descri
         field_html += f'  <input type="checkbox" {opt_title} {opt_value} {opt_checked} {pybiscus_marker}> \n'
 
     elif is_enum_type(field_type):
-        
-        field_html += '<fieldset class="pybiscus-fieldset-container">\n'
-        field_html += f'  <legend><label class="pybiscus-config">{field_name}</label></legend>\n'
+
+        # rendu compact : label + boutons radio en ligne, sans fieldset, pour tenir sur une
+        # seule ligne dans la disposition 2 colonnes (label | valeur). Chaque radio reste
+        # enveloppé dans un élément (son parentElement porte data-pybiscus-status, posé par
+        # le JS radio) : traverseDOM n'émet donc que l'option sélectionnée.
+        field_html += html_label( field_name, True )
 
         option_name= f"option-{new_index()}"
 
+        field_html += '<span class="pybiscus-enum">'
         for member in field_type:
 
-            if member.value == field_default:
-                opt_checked = "checked" 
-                status = PydanticToHtml.valid_status
-            else:
-                opt_checked = "" 
-                status = PydanticToHtml.ignored_status
+            opt_checked = "checked" if member.value == field_default else ""
 
-            field_html += f'''
-<div>
-    <input type="radio" name="{option_name}" {opt_title} value="{member.value}" {opt_checked} {pybiscus_marker} class="pybiscus_radiobutton"><label>{member.value}</label>
-</div>
-'''
+            field_html += (
+                f'<label class="pybiscus-enum-option">'
+                f'<input type="radio" name="{option_name}" {opt_title} value="{member.value}" {opt_checked} {pybiscus_marker} class="pybiscus_radiobutton">'
+                f'{member.value}</label>'
+            )
 
-        field_html += '</fieldset>\n'
+        field_html += '</span>\n'
 
     elif is_none_type(field_type):
 
@@ -574,26 +573,43 @@ def generate_model_html(model: BaseModel, inFieldSet: bool, prefix: str, model_c
 
     if inFieldSet:
 
-        model_html += f'<fieldset class="__model__">\n'
-
+        # nom d'affichage (légende, ou libellé de champ pour les configs vides)
+        # + extension du prefix : comportement historique préservé
         if model_contextual_name is not None:
-
-            model_html += f'<legend><div class="pybiscus-config">{model_contextual_name}</div></legend>\n'
+            legend_html = f'<legend><div class="pybiscus-config">{model_contextual_name}</div></legend>\n'
+            display_name = model_contextual_name
             prefix += f"{model_contextual_name}."
 
         elif hasattr(model, "PYBISCUS_CONFIG"):
-            
             pybiscus_config = model.PYBISCUS_CONFIG
-            model_html += f'<legend><div class="pybiscus-config">{pybiscus_config}</div></legend>\n'
+            legend_html = f'<legend><div class="pybiscus-config">{pybiscus_config}</div></legend>\n'
+            display_name = pybiscus_config
             prefix += f"{pybiscus_config}."
 
         elif hasattr(model, "PYBISCUS_ALIAS"):
-
             pybiscus_alias = model.PYBISCUS_ALIAS
-            model_html += f'<legend>{pybiscus_alias}</legend>\n'
+            legend_html = f'<legend>{pybiscus_alias}</legend>\n'
+            display_name = pybiscus_alias
 
         else:
-            model_html += f'<legend>{model.__name__}</legend>\n'
+            legend_html = f'<legend>{model.__name__}</legend>\n'
+            display_name = model.__name__
+
+        # Un modèle dont l'unique champ est le placeholder `empty_configuration` ne porte
+        # aucun paramètre réel : on le rend comme une simple ligne "label : empty configuration"
+        # (comme un champ, sans fieldset). La case à cocher cachée reste présente pour que
+        # traverseDOM émette toujours la valeur empty_configuration.
+        if list(model.model_fields.keys()) == ["empty_configuration"]:
+            return (
+                '<div class="pybiscus-field">\n'
+                f'  <label class="pybiscus-config">{display_name}</label>\n'
+                '  <span class="pybiscus-empty-config">⚙️🈳 empty configuration</span>\n'
+                f'  <input type="checkbox" checked hidden data-pybiscus-name="{prefix}empty_configuration">\n'
+                '</div>\n'
+            )
+
+        model_html += '<fieldset class="__model__">\n'
+        model_html += legend_html
 
     type_hints = get_type_hints(model, include_extras=True)
 
