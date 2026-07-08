@@ -8,6 +8,7 @@ import numpy as np
 from pydantic import BaseModel, ConfigDict
 
 from pybiscus.interfaces.flower.strategydecoratorwithhooks import StrategyDecoratorWithHooks
+from pybiscus.interfaces.flower.fabricstrategyfactory import FabricStrategyFactory
 import pybiscus.core.pybiscus_logger as logm
 
 from flwr.common import EvaluateRes, FitRes, Parameters, Scalar
@@ -51,7 +52,7 @@ class FileWritingDecorator(StrategyDecoratorWithHooks):
     └── session_X_round_0001_client_*_results.pkl       # Individual results
     """
 
-    def __init__(self, base_strategy, config: ConfigFileWritingDecoratorData):
+    def __init__(self, base_strategy, pybiscus_strategy: FabricStrategyFactory, config: ConfigFileWritingDecoratorData):
         super().__init__(base_strategy)
 
         # TODO: Get from configuration or context
