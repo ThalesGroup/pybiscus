@@ -923,6 +923,7 @@ fieldset.foldable:not(.collapsed) > div.pybiscus-field:has(> fieldset) {
 }
 
 .pybiscus-list-eraser,
+.pybiscus-list-mover,
 .pybiscus-list-generator {
     display: inline-flex;
     align-items: center;
@@ -935,6 +936,7 @@ fieldset.foldable:not(.collapsed) > div.pybiscus-field:has(> fieldset) {
     min-height: 40px;
     min-width: 40px;
     transition: all var(--transition-fast);
+    cursor: pointer;
     position: relative;
     overflow: hidden;
 }

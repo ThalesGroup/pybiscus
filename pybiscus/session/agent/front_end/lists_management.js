@@ -33,41 +33,59 @@
       });
   }
 
+  function escapeRegExp(s) {
+    return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  }
+
   function renum_list_config(container) {
     const contents = container.querySelector('.pybiscus-list-contents');
     if (!contents) return;
 
-    const listItems = contents.querySelectorAll('.pybiscus-list-content');
+    // Base du chemin de CETTE liste = segment précédant le '#' du template. Permet de
+    // ne ré-indexer que l'indice de cette liste (qu'il soit encore '#' ou déjà un nombre)
+    // sans toucher aux indices des listes imbriquées, qui viennent plus loin dans le chemin.
+    // NB: l'ancienne version faisait replace('#', index), qui ne trouvait plus rien une fois
+    // l'item numéroté -> suppression au milieu / réordonnancement laissaient des indices
+    // périmés (trous dans le YAML).
+    const template = container.querySelector('.pybiscus-list-template');
+    const probe = template && template.querySelector('[data-pybiscus-name*="#"], [data-pybiscus-prefix*="#"]');
+    let re = null;
+    if (probe) {
+        const name = probe.getAttribute('data-pybiscus-name') || '';
+        const path = name.indexOf('#') >= 0 ? name : (probe.getAttribute('data-pybiscus-prefix') || '');
+        const hash = path.indexOf('#');
+        if (hash >= 0) {
+            re = new RegExp('^(' + escapeRegExp(path.slice(0, hash)) + ')(?:#|\\d+)');
+        }
+    }
+
+    // items DIRECTS de cette liste (:scope > pour ignorer d'éventuelles listes imbriquées)
+    const listItems = contents.querySelectorAll(':scope > .pybiscus-list-content');
+    const n = listItems.length;
 
     listItems.forEach((item, index) => {
 
-        console.log(`renum ${index}`)
-
+        // numéro affiché (toujours mis à jour)
         const config = item.querySelector('.pybiscus-config');
         if (config) {
             config.innerHTML = index;
         }
 
-        // update data-pybiscus-prefix attributes
-        const elementsWithPrefix = item.querySelectorAll('[data-pybiscus-prefix]');
-        elementsWithPrefix.forEach(el => {
-            const rawPrefix = el.getAttribute('data-pybiscus-prefix');
-            if (rawPrefix) {
-                const newPrefix = rawPrefix.replace('#', index);
-                el.setAttribute('data-pybiscus-prefix', newPrefix);
-                console.log(`prefix update: ${rawPrefix} -> ${newPrefix}`)
-            }
-        });
+        // flèches masquées aux extrémités : pas de ↑ pour le premier, pas de ↓ pour le dernier
+        if (item._moveUp)   item._moveUp.style.visibility   = (index === 0)     ? 'hidden' : '';
+        if (item._moveDown) item._moveDown.style.visibility = (index === n - 1) ? 'hidden' : '';
 
-        // update data-pybiscus-prefix attributes
-        const elementsWithPrefix2 = item.querySelectorAll('[data-pybiscus-name]');
-        elementsWithPrefix2.forEach(el => {
-            const rawPrefix = el.getAttribute('data-pybiscus-name');
-            if (rawPrefix) {
-                const newPrefix = rawPrefix.replace('#', index);
-                el.setAttribute('data-pybiscus-name', newPrefix);
-                console.log(`name update: ${rawPrefix} -> ${newPrefix}`)
-            }
+        if (!re) return;
+
+        // ré-indexation du segment de liste dans les chemins ; remplacement par fonction
+        // (et non '$1'+index, qui produirait $10, $11... interprétés comme groupes)
+        const reindex = (value) => value.replace(re, (m, g1) => g1 + index);
+
+        item.querySelectorAll('[data-pybiscus-prefix]').forEach(el => {
+            el.setAttribute('data-pybiscus-prefix', reindex(el.getAttribute('data-pybiscus-prefix')));
+        });
+        item.querySelectorAll('[data-pybiscus-name]').forEach(el => {
+            el.setAttribute('data-pybiscus-name', reindex(el.getAttribute('data-pybiscus-name')));
         });
       });
   }
@@ -125,13 +143,42 @@
         const eraser = document.createElement('label');
         eraser.classList.add('pybiscus-list-eraser');
         eraser.textContent = '➖📝';
-    
+
         // 🔁 add suppress callback
         eraser.addEventListener('click', () => {
           newContent.remove();
 
           renum_list_config( container );
         });
+
+        // move up / down buttons (réordonnancement) : déplacent le noeud puis renumérotent,
+        // indispensable car la position dans le YAML vient de l'indice, pas de l'ordre DOM
+        const moveUp = document.createElement('label');
+        moveUp.classList.add('pybiscus-list-mover');
+        moveUp.textContent = '⬆️';
+        moveUp.addEventListener('click', () => {
+          const prev = newContent.previousElementSibling;
+          if (prev) {
+            contents.insertBefore(newContent, prev);
+            renum_list_config( container );
+          }
+        });
+
+        const moveDown = document.createElement('label');
+        moveDown.classList.add('pybiscus-list-mover');
+        moveDown.textContent = '⬇️';
+        moveDown.addEventListener('click', () => {
+          const next = newContent.nextElementSibling;
+          if (next) {
+            contents.insertBefore(next, newContent);
+            renum_list_config( container );
+          }
+        });
+
+        // références sur l'item : renum_list_config masque ↑ au premier / ↓ au dernier
+        // (sans confondre avec les flèches d'éventuelles listes imbriquées)
+        newContent._moveUp = moveUp;
+        newContent._moveDown = moveDown;
     
         // clone .pybiscus-list-template children
         // console.log(`list mngt ${template.classList}`)
@@ -147,11 +194,16 @@
         const configField = firstChild?.querySelector('.pybiscus-config');
 
         if (configField && configField.parentNode) {
-          // insert eraser after .pybiscus-config
-          configField.parentNode.insertBefore(eraser, configField.nextSibling);
+          // insert move/erase controls after .pybiscus-config (ordre : ⬆️ ⬇️ ➖)
+          const ref = configField.nextSibling;
+          configField.parentNode.insertBefore(moveUp, ref);
+          configField.parentNode.insertBefore(moveDown, ref);
+          configField.parentNode.insertBefore(eraser, ref);
         } else {
-          // Fallback : if not found, prepend it
+          // Fallback : if not found, prepend them
           newContent.prepend(eraser);
+          newContent.prepend(moveDown);
+          newContent.prepend(moveUp);
         }
           
         // renum tab and tab contents
