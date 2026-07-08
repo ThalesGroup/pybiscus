@@ -3,8 +3,13 @@
       const tabContainers = item.querySelectorAll('.pybiscus-tab-container');
 
       tabContainers.forEach((container, containerIndex) => {
-          const buttonGroups = container.querySelectorAll('.pybiscus-tab-buttons');
-          const contentGroups = container.querySelectorAll('.pybiscus-tab-content');
+          // :scope > is mandatory here: a tab-content may itself hold a nested
+          // tab-container (an included-model field, e.g. personalize's result_modifier).
+          // A non-scoped query would flatten those nested buttons/contents into this
+          // container's list, breaking the button[i] <-> content[i] pairing and leaving
+          // the tabs placed after the nested one unreachable.
+          const buttonGroups = container.querySelectorAll(':scope > .pybiscus-tab-buttons');
+          const contentGroups = container.querySelectorAll(':scope > .pybiscus-tab-content');
 
           // generate an uniq base id for this container
           const baseId = `tab-${Date.now()}-${Math.floor(Math.random() * 10000)}-${containerIndex}`;
@@ -18,7 +23,7 @@
 
               // find the associated button (same rank in ).pybiscus-tab-buttons)
               buttonGroups.forEach(buttonGroup => {
-                  const buttons = buttonGroup.querySelectorAll('.pybiscus-tab-button');
+                  const buttons = buttonGroup.querySelectorAll(':scope > .pybiscus-tab-button');
                   if (buttons[i]) {
                       console.log(`button tab-id: ${buttons[i].dataset.tab} -> ${newId}`);
                       buttons[i].setAttribute('data-tab', newId);

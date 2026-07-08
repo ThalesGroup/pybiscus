@@ -129,7 +129,7 @@ def generate_field_html(field_name: str, field_type, field_default, field_descri
         opt_checked = "checked" if True == field_default else ""
         
         field_html += html_label( field_name, True )
-        field_html += f'  <input type="checkbox" id="{field_name}" name="{field_name}" {opt_title} {opt_value} {opt_checked} {pybiscus_marker}> \n'
+        field_html += f'  <input type="checkbox" {opt_title} {opt_value} {opt_checked} {pybiscus_marker}> \n'
 
     elif is_enum_type(field_type):
         
