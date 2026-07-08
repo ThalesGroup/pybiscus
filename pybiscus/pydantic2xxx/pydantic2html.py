@@ -426,7 +426,19 @@ def generate_field_html(field_name: str, field_type, field_default, field_descri
 
             tab_nb = new_index()
 
-            field_html += '''   <div class="pybiscus-tab-container">
+            # Disposition "onglets verticaux" (2 colonnes : options à gauche, contenu à
+            # droite) au-delà de ce nombre d'options : la rangée horizontale de boutons
+            # devient illisible / déborde sur plusieurs lignes. Les Optional (Some/None)
+            # gardent leur rendu inline. Seuil ajustable.
+            vertical_tabs_min_options = 3
+            vertical_cls = (
+                " pybiscus-tab-vertical"
+                if is_an_union and not is_an_option
+                and len(field_type.__args__) >= vertical_tabs_min_options
+                else ""
+            )
+
+            field_html += f'''   <div class="pybiscus-tab-container{vertical_cls}">
 <div class="pybiscus-tab-buttons">
 '''
 
@@ -502,9 +514,9 @@ def generate_field_html(field_name: str, field_type, field_default, field_descri
 
                     if hasattr(sub_type, 'PYBISCUS_MODULE_ORIGIN'):
                         if sub_type.PYBISCUS_MODULE_ORIGIN == 'core':
-                            field_html += """<span style="background-color: black; border: 2px solid orange; margin-left : 20rem">📦📚</span>"""
+                            field_html += '<span class="pybiscus-origin-marker" title="core">📦📚</span>'
                         elif sub_type.PYBISCUS_MODULE_ORIGIN == 'plugin':
-                            field_html += """<span style="background-color: black; border: 2px solid orange; margin-left : 20rem">📦🧩</span>"""
+                            field_html += '<span class="pybiscus-origin-marker" title="plugin">📦🧩</span>'
                             
                     if propagate_default and index == active_index:
                         sub_field_default = field_default 

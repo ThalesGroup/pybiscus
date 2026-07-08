@@ -619,6 +619,72 @@ body > div > fieldset > legend::before {
     opacity: 0;
 }
 
+/* Onglets verticaux (2 colonnes) pour les unions à nombreuses options.
+   La classe pybiscus-tab-vertical est posée à la génération (pydantic2html).
+   Contrat DOM inchangé : mêmes boutons et mêmes .pybiscus-tab-content pilotés
+   par data-pybiscus-status ; seule la mise en page change. */
+.pybiscus-tab-container.pybiscus-tab-vertical {
+    display: grid;
+    grid-template-columns: minmax(9rem, 13rem) 1fr;
+    align-items: stretch;
+}
+
+.pybiscus-tab-vertical > .pybiscus-tab-buttons {
+    grid-column: 1;
+    grid-row: 1;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    align-items: stretch;
+    border-bottom: none;
+    border-right: 1px solid var(--color-border-light);
+    max-height: 22rem;
+    overflow-y: auto;
+    /* bande haute vide de même hauteur que le contenu : premier bouton et premier
+       champ restent alignés, le marqueur d'origine occupe cette bande côté contenu */
+    padding: var(--spacing-xl) var(--spacing-xs) var(--spacing-xs);
+}
+
+/* tous les contenus occupent la même cellule (col 2) ; seul .active est affiché */
+.pybiscus-tab-vertical > .pybiscus-tab-content {
+    grid-column: 2;
+    grid-row: 1;
+    position: relative;                       /* ancre le marqueur en position absolue */
+    /* padding-haut = bande réservée au marqueur (hors flux), champs alignés avec les boutons */
+    padding: var(--spacing-xl) var(--spacing-lg) var(--spacing-md);
+}
+
+.pybiscus-tab-vertical > .pybiscus-tab-buttons > .pybiscus-tab-button {
+    justify-content: flex-start;
+    text-align: left;
+    width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Marqueur d'origine (core/plugin) en tête de chaque contenu d'option.
+   Mode horizontal : sur sa propre ligne, poussé à droite (remplace l'ancien
+   margin-left:20rem inline). */
+.pybiscus-origin-marker {
+    display: block;
+    width: fit-content;
+    margin-left: auto;
+    background-color: black;
+    border: 2px solid orange;
+    border-radius: var(--border-radius);
+    padding: 0 var(--spacing-xs);
+}
+
+/* Mode vertical : hors flux, dans la bande vide en haut de la colonne de contenu,
+   centré horizontalement — ne décale plus les champs. */
+.pybiscus-tab-vertical > .pybiscus-tab-content > .pybiscus-origin-marker {
+    position: absolute;
+    top: var(--spacing-xs);
+    left: 0;
+    right: 0;
+    margin: 0 auto;
+    width: fit-content;
+}
+
 /* management of union fields <<< end <<<
 
 
@@ -820,7 +886,9 @@ fieldset.foldable:not(.collapsed) > div.pybiscus-field:has(> fieldset) {
 .pybiscus-list-contents {
     display: flex;
     gap: var(--spacing-sm);
-    align-items: center;
+    /* flex-start (et non center) : sinon un nouvel item plus haut recentre ses voisins
+       de la même ligne et les fait descendre à l'écran */
+    align-items: flex-start;
     flex-wrap: wrap;
     justify-content: flex-start;
 }
