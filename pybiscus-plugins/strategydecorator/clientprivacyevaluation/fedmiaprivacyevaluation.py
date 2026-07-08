@@ -18,6 +18,8 @@ from flwr.common import Parameters, parameters_to_ndarrays, ndarrays_to_paramete
 from pybiscus.interfaces.flower.strategydecorator import StrategyDecorator
 from pybiscus.interfaces.flower.fabricstrategyfactory import FabricStrategyFactory
 from pybiscus.core.ensure_filesystem import ensure_file_dir_exists, ensure_dir_exists
+import pybiscus.core.pybiscus_logger as logm
+
 
 from tqdm import tqdm
 from torch.utils.data import DataLoader
@@ -35,11 +37,12 @@ class ConfigFedMIAPrivacyEvaluationStrategyDecoratorData(BaseModel):
     reporting_sub_dir: str = "rounds"
     cosine_matrix_path: str = "cosine_matrix.csv"
     losses_path: str = "loss_per_instances.csv"
-    model_ids_path : str = "models_ids_list.txt"
-    data_ids_path : str = "data_ids_list.txt"
+    # model_ids_path : str = "models_ids_list.txt"
+    # data_ids_path : str = "data_ids_list.txt"
     criterion: str = "CrossEntropyLoss"
     server_aggregated_fit_parameters_file_name: str = "server_aggregated_fit_parameters.npz"
     client_fitin_parameters_file_prefix: str = "client_fitin_parameters"
+    client_fitres_parameters_file_prefix: str = "client_fitres_parameters"
     # parameters_iterator : Iterator[Parameter] = None
     # Todo fournir plutot un fichier avec la liste
     device: str="cuda"
@@ -76,7 +79,6 @@ class FedMIAPrivacyEvaluationStrategyDecorator(StrategyDecorator):
             base_strategy: the base strategy to decorate
             result_modifier: configuration of the result modifier
         """
-        print("Tadaaa")
         self.base_strategy = base_strategy
         self.model = pybiscus_strategy.model
         self.state_dict = self.model.state_dict()
@@ -92,13 +94,6 @@ class FedMIAPrivacyEvaluationStrategyDecorator(StrategyDecorator):
 
     # -------------------------------------------------------------------------
 
-    # def load_config(self, conf):
-    #     fabric = Fabric(accelerator=conf.accelerator, devices=conf.devices)
-    #     fabric.launch()
-    #     data_class = datamodule_registry()[conf.data.name]
-    #     data = data_class(**conf.data.config.model_dump())
-    #     data.setup(stage="test")
-    #     self.mia_data_loader = fabric._setup_dataloader(data.test_dataloader())
 
     def _make_loss(self, name, **kwargs):
         if not hasattr(torch.nn, name):
@@ -115,7 +110,7 @@ class FedMIAPrivacyEvaluationStrategyDecorator(StrategyDecorator):
         """send personalized models to clients"""
 
         import pybiscus.core.pybiscuscontext as pcpc
-        reporting_path = pcpc.pybiscus_context["reporting_path"]
+        self.reporting_path = pcpc.pybiscus_context["reporting_path"]
 
         if self.model is None:
             self.fabric = pcpc.pybiscus_context["fabric"]
@@ -129,23 +124,44 @@ class FedMIAPrivacyEvaluationStrategyDecorator(StrategyDecorator):
         
         global_weights = fl.common.parameters_to_ndarrays(parameters)
 
-        round_path = reporting_path / self.conf.reporting_sub_dir
+        round_path = self.reporting_path / self.conf.reporting_sub_dir
         ensure_dir_exists(round_path)
         params_path = round_path / f"round_{server_round}" / self.conf.server_aggregated_fit_parameters_file_name
         ensure_file_dir_exists(params_path)
         np.savez(params_path, *global_weights)
-        cid_list = []
+        
         for client_proxy, fit_ins in base_config:
 
             client_weights = parameters_to_ndarrays(fit_ins.parameters)
 
             cid = client_proxy.cid
-            cid_list.append(cid)
             params_path = round_path / f"round_{server_round}" / f"{self.conf.client_fitin_parameters_file_prefix}_{cid}.npz"
             ensure_file_dir_exists(params_path)
             np.savez(params_path, *client_weights)
 
-        if server_round>=2:
+
+        return base_config
+    
+    def aggregate_fit(self, server_round, results, failures):
+
+        aggregated, _ = super().aggregate_fit(server_round, results, failures)
+        round_path = self.reporting_path / self.conf.reporting_sub_dir
+        ensure_dir_exists(round_path)
+        cid_list = []
+        for client_proxy, fit_res in results:
+
+            cid = client_proxy.cid
+            cid_list.append(cid)
+            logm.console.log(f"Source is flower => client_id = {cid}")
+            logm.console.log(f"Source is metrics => cid = {fit_res.metrics['cid']}")
+
+            result_path = round_path / f"round_{server_round}" / f"{self.conf.client_fitres_parameters_file_prefix}_{cid}.npz"
+
+            result = fl.common.parameters_to_ndarrays(fit_res.parameters)
+
+            np.savez(result_path, *result)
+        
+        if server_round>=1:
             self._process_client_round(
                 round_num= server_round,
                 cid_list= cid_list,
@@ -153,7 +169,7 @@ class FedMIAPrivacyEvaluationStrategyDecorator(StrategyDecorator):
                 criterion = self.criterion,
                 device= self.conf.device)
 
-        return base_config
+        return aggregated, {}
 
     def _compute_per_instance_losses(self, state_dict, dataloader, criterion, device="cuda"):
         """
@@ -166,7 +182,7 @@ class FedMIAPrivacyEvaluationStrategyDecorator(StrategyDecorator):
         Returns:
             loss_per_instance: List of length N, the number of instances in dataloader.
         """
-        print("self.model", self.model)
+        logm.console.log("self.model", self.model)
         self.model.load_state_dict(state_dict)
         self.model.to(device)
         self.model.eval()
@@ -282,30 +298,37 @@ class FedMIAPrivacyEvaluationStrategyDecorator(StrategyDecorator):
         batch_size = MIADataloader.batch_size
 
         MIADataloader = self.fabric._setup_dataloader(
-            DataLoader( MIADataset,  batch_size=batch_size, num_workers=batch_size, drop_last=False, shuffle=False))
+            DataLoader( MIADataset,  batch_size=batch_size, num_workers=8, drop_last=False, shuffle=False))
 
-        import pybiscus.core.pybiscuscontext as pcpc
-        reporting_path = pcpc.pybiscus_context["reporting_path"]
-        round_path = reporting_path / self.conf.reporting_sub_dir
+        round_path = self.reporting_path / self.conf.reporting_sub_dir
         ensure_dir_exists(round_path)
 
-        server_params_path = round_path / f"round_{round_num-1}" / self.conf.server_aggregated_fit_parameters_file_name
+        server_params_path = round_path / f"round_{round_num}" / self.conf.server_aggregated_fit_parameters_file_name
         ensure_file_dir_exists(server_params_path)
-        # server_parameters_ndarrays = ndarrays_to_parameters(np.load(server_params_path))
-        # data_server_params = [ndarray for ndarray in np.load(server_params_path)]
         server_state_dict = self._from_npz_to_state_dict(server_params_path)
 
         clients_updates = []
-        clients_losses = []
+        clients_res_losses = []
+        clients_in_losses = []
         for cid in cid_list: # alternative, take into account all files found
-            client_params_path = round_path / f"round_{round_num}" / f"{self.conf.client_fitin_parameters_file_prefix}_{cid}.npz"
-            ensure_file_dir_exists(client_params_path)
-            # client_parameters_ndarrays = ndarrays_to_parameters(np.load(client_params_path))
-            # data_clients_params = [ndarray for ndarray in np.load(client_params_path)]
-            client_state_dict = self._from_npz_to_state_dict(client_params_path)
-            clients_losses.append(
+            client_in_params_path = round_path / f"round_{round_num}" / f"{self.conf.client_fitin_parameters_file_prefix}_{cid}.npz"
+            ensure_file_dir_exists(client_in_params_path)
+            client_in_state_dict = self._from_npz_to_state_dict(client_in_params_path)
+            client_res_params_path = round_path / f"round_{round_num}" / f"{self.conf.client_fitres_parameters_file_prefix}_{cid}.npz"
+            ensure_file_dir_exists(client_res_params_path)
+            client_res_state_dict = self._from_npz_to_state_dict(client_res_params_path)
+
+            clients_res_losses.append(
                 self._compute_per_instance_losses(
-                    state_dict=client_state_dict,
+                    state_dict=client_res_state_dict,
+                    dataloader=MIADataloader,
+                    criterion=criterion,
+                    device=device
+                ))
+            
+            clients_in_losses.append(
+                self._compute_per_instance_losses(
+                    state_dict=client_in_state_dict,
                     dataloader=MIADataloader,
                     criterion=criterion,
                     device=device
@@ -313,14 +336,14 @@ class FedMIAPrivacyEvaluationStrategyDecorator(StrategyDecorator):
             # Δw par clé de paramètre
             client_update = [
                 torch.tensor(
-                    np.asarray(server_state_dict[k], dtype=np.float32) - np.asarray(client_state_dict[k], dtype=np.float32)
+                    np.asarray(client_res_state_dict[k], dtype=np.float32) - np.asarray(client_in_state_dict[k], dtype=np.float32)
                     ).flatten()
                 for k in self.state_dict.keys()
             ]
             clients_updates.append(torch.cat(client_update).flatten().unsqueeze(0))
-        print(cid_list, len(clients_updates))
+        logm.console.log(cid_list, len(clients_updates))
         clients_updates_tensor = torch.cat(clients_updates) # Shape : (nb_clients, nb_parameters)
-        print(clients_updates_tensor.shape)
+        logm.console.log(clients_updates_tensor.shape)
 
         cosine_matrix, server_losses= self._compute_cosine_similarity_matrix(
             server_state_dict=server_state_dict,
@@ -330,16 +353,20 @@ class FedMIAPrivacyEvaluationStrategyDecorator(StrategyDecorator):
             device=device
         )
         # Cosine_matrix (nb_data,nb_clients), server_losses is of length nb_data
-        print("done", cosine_matrix.shape, len(server_losses))
-        for client_losses in clients_losses:
-            print(len(client_losses))
-        # TODO save cosine_matrix, server_losses and clients_losses, plus cid_list and instances_order
+        logm.console.log("done", cosine_matrix.shape, len(server_losses))
         data_matrix = {cid_client : cosine_matrix[:,i].tolist() for i, cid_client in enumerate(cid_list)}
         df_matrix = pd.DataFrame(data=data_matrix, index=MIAindices)
         df_matrix.to_csv(f"{round_path}/round_{round_num}/{self.conf.cosine_matrix_path}")
 
-        data_losses = {cid_client : clients_losses[i] for i, cid_client in enumerate(cid_list)}
-        data_losses["server"] = server_losses
+        data_losses = {f"{cid_client}_in" : clients_in_losses[i] for i, cid_client in enumerate(cid_list)}
+        for i, cid_client in enumerate(cid_list):
+            data_losses[f"{cid_client}_res"] = clients_res_losses[i]
+        data_losses["server_in"] = server_losses
         df_losses = pd.DataFrame(data=data_losses, index=MIAindices)
         df_losses.to_csv(f"{round_path}/round_{round_num}/{self.conf.losses_path}")
         return None
+
+
+
+# Todo provide attack code over the iteration => call it at each iteration (taking into account the previous ones and this iteration alone) (0.5j)
+# Todo adapt UNet / FasterRCNN with ISAID dataset on multi class dataset but with only one class per image (1.5j)
