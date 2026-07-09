@@ -302,7 +302,7 @@
         // **** agents log **************
         // ******************************
 
-        const AGENTS_URL  = 'http://localhost:{{manager_port}}/pybiscus-session/agents_logs';
+        const AGENTS_URL  = '/pybiscus-session/agents_logs';
         const agentsList = document.getElementById('agents-list');
         let displayedAgents = [];
         let agentsPaused = false;
@@ -417,8 +417,8 @@
         // **** logs and metrics ********
         // ******************************
 
-        const LOGS_URL    = 'http://localhost:{{manager_port}}/pybiscus-session/logs';
-        const METRICS_URL = 'http://localhost:{{manager_port}}/pybiscus-session/metrics';
+        const LOGS_URL    = '/pybiscus-session/logs';
+        const METRICS_URL = '/pybiscus-session/metrics';
 
         const logList = document.getElementById('log-list');
         const metricsList = document.getElementById('metrics-list');
@@ -715,8 +715,6 @@
         }
 
         session.startCallback(updateVignettes, 1000);  // Refresh every 1 seconds
-
-        pybiscus/vignettes/grid_0_1.png
     </script>
 </body>
 </html>

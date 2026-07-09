@@ -41,7 +41,7 @@ class ConfigWandbLoggerFactoryParams(BaseModel):
         partition_id: Optional client partition ID (required if is_client=True)
     """
 
-    PYBISCUS_CONFIG: ClassVar[str] = "config"
+    PYBISCUS_CONFIG: ClassVar[str] = "params"
 
     project_name: str = "DefaultProjectName"
     entity_name:  str = "DefaultEntityName"
@@ -66,6 +66,9 @@ class ConfigWandbLoggerFactoryParams(BaseModel):
 
 class ConfigWandbLoggerFactoryData(BaseModel):
 
+    # PYBISCUS_CONFIG ajoute le segment "config" au chemin (sinon api_key_definition et
+    # params remontent d'un niveau -> YAML invalide). PYBISCUS_ALIAS conservé.
+    PYBISCUS_CONFIG: ClassVar[str] = "config"
     PYBISCUS_ALIAS: ClassVar[str] = """🚨 <span style="color: white; background-color: red;">Untested Wandb configuration</span> 🚨"""
 
 

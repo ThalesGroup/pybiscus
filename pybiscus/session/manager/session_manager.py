@@ -22,8 +22,9 @@ def clear_session():
     registered_clients = {}
     global registered_servers
     registered_servers = {}
-    global manager_port
-    manager_port = None
+    # NB: manager_port n'est PAS réinitialisé ici : c'est un paramètre de lancement
+    # (fixé dans main()), pas un état de session. Le remettre à None cassait les URLs
+    # du template manager (http://localhost:None/...).
     global session_is_running
     session_is_running = False
     global agent_gui_json_presets

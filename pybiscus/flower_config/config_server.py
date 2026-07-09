@@ -52,7 +52,9 @@ class ConfigServerOnnxExport(BaseModel):
 
     filename: str = "model.onnx"
     axes: List[OnnxAxe] = []
-    opset: int = 13
+    # >= 18 requis avec l'exporteur torch dynamo (produit de l'opset 18 ; la reconversion
+    # vers un opset inférieur, ex. 13, échoue)
+    opset: int = 18
     post_validation: bool = False
 
     model_config = ConfigDict(extra="forbid")
