@@ -346,6 +346,29 @@
                 grid-template-columns: 1fr;
             }
         }
+        /* ===== override thème sombre (comme le manager) ===== */
+        body{
+            background:radial-gradient(1000px 600px at 80% -10%, #16202b 0%, transparent 60%), #0e1116 !important;
+            color:#e6edf3;
+        }
+        .particle{ background:rgba(255,93,115,.22) !important; box-shadow:0 0 10px rgba(255,93,115,.18) !important; }
+        .particle:nth-child(odd){ background:rgba(139,124,246,.22) !important; }
+        .container{
+            background:#151a21 !important; border:1px solid #232c37 !important;
+            box-shadow:0 24px 60px rgba(0,0,0,.55) !important; backdrop-filter:none !important;
+        }
+        .subtitle{ color:#b7c2ce !important; }
+        label{ color:#cdd6e0 !important; }
+        input, select, textarea, .input-with-prefix{
+            background:#0e1116 !important; color:#e6edf3 !important; border-color:#232c37 !important;
+        }
+        input::placeholder, textarea::placeholder{ color:#4b545f !important; }
+        .input-prefix{ color:#7d8794 !important; background:#1b222b !important; border-color:#232c37 !important; }
+        .toggle-btn{ background:#1b222b !important; color:#b7c2ce !important; border-color:#232c37 !important; }
+        .toggle-btn.active{ color:#fff !important; }
+        .result{ color:#e6edf3 !important; }
+        .result.success, .success{ color:#4ecdc4 !important; }
+        .result.error, .error{ color:#ff8a86 !important; }
     </style>
 </head>
 <body>

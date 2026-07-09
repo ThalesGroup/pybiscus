@@ -12,6 +12,7 @@ CORS(pybiscus_manager_app, origins="*")
 # global variable that contains the application context
 registered_clients = {}
 registered_servers = {}
+registered_agents_meta = {}   # name -> {geo_location, bouquet, location, organisation, role, agent_url}
 manager_port = None
 session_is_running = False
 agent_gui_json_presets = None
@@ -22,6 +23,8 @@ def clear_session():
     registered_clients = {}
     global registered_servers
     registered_servers = {}
+    global registered_agents_meta
+    registered_agents_meta = {}
     # NB: manager_port n'est PAS réinitialisé ici : c'est un paramètre de lancement
     # (fixé dans main()), pas un état de session. Le remettre à None cassait les URLs
     # du template manager (http://localhost:None/...).

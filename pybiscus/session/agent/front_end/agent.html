@@ -735,15 +735,11 @@
         setTheme(newTheme);
     }
 
-    // user system preference management
+    // mode dark par défaut (server & client). currentTheme initial = 'light-default'
+    // (une catégorie 'light'), donc setMode('dark') déclenche bien setTheme -> data-theme.
+    // La préférence système n'est plus imposée ; le toggle light/dark reste manuel.
     window.addEventListener('DOMContentLoaded', () => {
-        const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-        setMode(systemPrefersDark ? 'dark' : 'light');
-    });
-
-    // system preference change detection
-    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
-        setMode(e.matches ? 'dark' : 'light');
+        setMode('dark');
     });
 
     // Manual mode toggle

@@ -10,6 +10,11 @@ const blank_Button   = document.getElementById('blank-config-button');
 check_button.disabled   = false;
 execute_button.disabled = true;
 
+// Blank et Pin partagent le même emplacement (col 5) : un seul s'affiche selon l'origine
+// de la config (updateOrigin). Masqués au départ tant que l'origine n'est pas connue.
+blank_Button.style.display = 'none';
+pin_Button.style.display   = 'none';
+
 // ***********************************************************************************************
 // ********** Origin config button ***************************************************************
 // ***********************************************************************************************
@@ -19,13 +24,17 @@ function updateOrigin() {
     .then(res => {
       if (res.ok) {
 
+        // config lue depuis le cache -> proposer de la vider (Blank)
         origin_button.innerHTML = '<span class="emoji">🗂️</span> Config is read from cache';
-        blank_Button.disabled = false;
+        blank_Button.style.display = '';
+        pin_Button.style.display   = 'none';
 
       } else if (res.status === 404) {
 
+        // config générée dynamiquement -> proposer de l'épingler en cache (Pin)
         origin_button.innerHTML = '<span class="emoji">⚙️</span> Config is dynamically generated';
-        blank_Button.disabled = true;
+        blank_Button.style.display = 'none';
+        pin_Button.style.display   = '';
 
       } else {
         origin_button.innerHTML = '<span class="emoji">❓</span> Config has unknown origin';

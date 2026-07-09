@@ -1,720 +1,565 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>FL Manager</title>
-    <style>
-        html, body {
-            height: 100%;
-            margin: 0;
-            padding: 0;
-        }
+<meta charset="UTF-8">
+<title>Pybiscus — Session Monitor</title>
+<style>
+  :root{
+    --bg:#0e1116; --panel:#151a21; --panel-2:#1b222b; --border:#232c37;
+    --text:#e6edf3; --muted:#7d8794; --dim:#4b545f;
+    --accent:#ff5d73; --fit:#ff5d73; --test:#4ecdc4; --eval:#ffb454; --loss:#8b7cf6;
+    --ok:#4ecdc4; --warn:#ffb454; --down:#5a6470;
+    --mono:ui-monospace,"JetBrains Mono","SF Mono",Menlo,Consolas,monospace; --r:10px;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%}
+  body{background:radial-gradient(1200px 700px at 82% -12%, #16202b 0%, transparent 60%), var(--bg);
+    color:var(--text); font-family:var(--mono); font-size:13px; line-height:1.5; letter-spacing:.2px}
+  .eyebrow{font-size:10.5px; letter-spacing:.22em; text-transform:uppercase; color:#b7c2ce; font-weight:600}
+  .panel>header .eyebrow{color:#cdd6e0}   /* en-têtes de panneaux : plus lisibles */
+  .num{font-variant-numeric:tabular-nums}
 
-        body {
-            display: flex;
-            flex-direction: column;
-        }
+  .app{height:100vh; display:grid; grid-template-rows:auto 1fr; gap:12px; padding:12px}
 
-        header {
-            width: 100%;
-            height: 60px;
-            background-color: #4a90e2;
-            color: white;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.2rem;
-        }
+  /* top bar */
+  .topbar{display:flex; align-items:center; gap:16px; padding:10px 14px; border:1px solid var(--border);
+    border-radius:var(--r); background:linear-gradient(180deg,var(--panel-2),var(--panel))}
+  .brand{display:flex; align-items:center; gap:9px; font-weight:600; letter-spacing:.18em; text-transform:uppercase; font-size:12px}
+  .brand .mark{color:var(--accent); font-size:15px}
+  .live{display:flex; align-items:center; gap:7px; color:var(--test); font-size:11px; letter-spacing:.16em; text-transform:uppercase}
+  .live .dot{width:8px;height:8px;border-radius:50%;background:var(--test);animation:pulse 1.8s ease-out infinite}
+  @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(78,205,196,.55)}70%{box-shadow:0 0 0 7px rgba(78,205,196,0)}100%{box-shadow:0 0 0 0 rgba(78,205,196,0)}}
+  .server-url{color:var(--muted); letter-spacing:.14em; text-transform:uppercase; font-size:10.5px}
+  .server-url b{color:var(--text)}
+  .sep{width:1px; height:22px; background:var(--border)}
+  .kv{display:flex; align-items:center; gap:9px} .kv .num{font-size:15px} .kv b{color:var(--accent)}
+  .right{margin-left:auto; display:flex; align-items:center; gap:10px}
+  .btn{cursor:pointer; color:var(--text); border:1px solid var(--border); border-radius:8px; padding:6px 12px;
+    font-family:var(--mono); font-size:11px; letter-spacing:.12em; text-transform:uppercase; background:var(--panel-2)}
+  .btn:hover{border-color:var(--accent); color:var(--accent)}
+  .btn.danger:hover{border-color:#d9534f; color:#ff6b66}
 
-        .container-center {
-            display: flex;
-            justify-content: center;
-        }
+  /* grid : ligne haute (1fr), splitter (8px), feeds (hauteur ajustable) */
+  /* colonnes : c1 | vsplit | c2(accuracy) | vsplit | c3(vignettes). c2 et c3 = 1fr par défaut (égaux) */
+  .grid{display:grid; column-gap:0; row-gap:12px; min-height:0;
+    grid-template-columns:var(--cw1,280px) 10px var(--cw2,1fr) 10px 1fr; grid-template-rows:1fr 8px var(--feeds-h,230px)}
+  .col-left{grid-column:1; grid-row:1; display:grid; grid-template-rows:auto 1fr; gap:12px; min-height:0}
+  .col-mid{grid-column:3; grid-row:1; display:grid; grid-template-rows:1.4fr 1fr; gap:12px; min-height:0}
+  .col-right{grid-column:5; grid-row:1; min-height:0}
+  .vsplit{grid-row:1; cursor:col-resize; background:var(--border); border-radius:6px; display:flex; align-items:center; justify-content:center}
+  .vsplit::before{content:''; height:48px; width:3px; border-radius:3px; background:var(--dim)}
+  .vsplit:hover{background:#2a3644} .vsplit:hover::before{background:var(--accent)}
+  .vsplit-1{grid-column:2} .vsplit-2{grid-column:4}
+  .splitter{grid-column:1 / -1; grid-row:2; cursor:row-resize; border-radius:6px; background:var(--border);
+    display:flex; align-items:center; justify-content:center}
+  .splitter::before{content:''; width:48px; height:3px; border-radius:3px; background:var(--dim)}
+  .splitter:hover{background:#2a3644} .splitter:hover::before{background:var(--accent)}
+  .feeds{grid-column:1 / -1; grid-row:3; display:grid; grid-template-columns:repeat(3,1fr); gap:12px; min-height:0}
 
-        .dashboard-container {
-            display: grid;
-            grid-template-columns: repeat(3, 600px); /* 3 colonnes de 600px chacune */
-            grid-template-rows: repeat(2, auto);     /* 2 lignes avec hauteur automatique */
-            gap: 1rem;
-            padding: 1rem;
-            justify-content: center; /* Centrer la grille horizontalement */
-            overflow-x: auto; /* Permettre le scroll horizontal si nécessaire */
-        }
+  .panel{border:1px solid var(--border); border-radius:var(--r); background:var(--panel);
+    display:flex; flex-direction:column; min-height:0; overflow:hidden}
+  .panel>header{display:flex; align-items:center; gap:10px; padding:9px 13px; border-bottom:1px solid var(--border); background:var(--panel-2)}
+  .panel>header .eyebrow{flex:1}
+  .panel .body{padding:12px; flex:1; min-height:0; display:flex; flex-direction:column}
+  .chip{font-size:10px; padding:1px 7px; border-radius:999px; border:1px solid var(--border); color:var(--muted)}
+  .tool{cursor:pointer; color:var(--muted); border:1px solid var(--border); border-radius:6px; padding:2px 8px; font-size:10.5px; background:transparent; font-family:var(--mono)}
+  .tool:hover{color:var(--text)}
 
-        .section-container {
-            width: 600px; /* Largeur fixe de 600px */
-            display: flex;
-            flex-direction: column;
-            border: 1px solid #ccc;
-        }
+  /* topology + geo */
+  .nodes{display:flex; flex-direction:column; gap:8px}
+  .node{display:flex; align-items:center; gap:9px; padding:7px 9px; border:1px solid var(--border); border-radius:8px; background:var(--panel-2)}
+  .node .st{width:9px;height:9px;border-radius:50%;flex:0 0 auto;background:var(--down)}
+  .node.up .st{background:var(--ok); box-shadow:0 0 8px rgba(78,205,196,.5)}
+  .node.wait .st{background:var(--warn)} .node.down .st{background:var(--down)}
+  .node .ico{font-size:15px; line-height:1; flex:0 0 auto} .node .name{flex:1}
+  .node .kpi{font-size:15px; line-height:1} .node[title]{cursor:default}
+  .empty{color:var(--dim); font-size:12px; padding:6px}
+  .geo{flex:1; min-height:0; display:flex}
+  .geomap{position:relative; flex:1; min-height:120px; border:1px solid var(--border); border-radius:8px;
+    background:radial-gradient(700px 400px at 50% 40%, #12202a, #0c1116); overflow:hidden}
+  #geo{position:absolute; inset:0; width:100%; height:100%} #geo g{cursor:default}
+  .geolabels{position:absolute; inset:0; pointer-events:none}
+  .geolabels .lbl{position:absolute; transform:translate(7px,-50%); font-size:10px; color:var(--text);
+    white-space:nowrap; text-shadow:0 1px 3px #000,0 0 2px #000; pointer-events:auto; cursor:default}
+  .cluster-tag{position:absolute; top:7px; left:8px; font-size:10px; color:#cdd6e0; letter-spacing:.04em;
+    background:rgba(10,14,20,.55); border:1px solid var(--border); border-radius:999px; padding:2px 9px}
 
-        .list-box {
-            flex: 1;
-            overflow-y: auto;
-            border: 1px solid #ccc;
-            padding: 10px;
-            background: #f0f0f0;
-            border-radius: 5px;
-            min-height: 0;
-            max-height: 500px; /* Remise de la hauteur maximale */
-        }
+  /* charts */
+  .acc-legend{display:flex; gap:14px; margin-left:auto}
+  .acc-legend .it{display:flex; align-items:center; gap:6px; font-size:11.5px}
+  .acc-legend .sw{width:9px;height:9px;border-radius:2px} .acc-legend .v{color:var(--text); font-weight:600}
+  .chart{width:100%; flex:1; min-height:0; display:block}
+  .chart .grid-l{stroke:var(--border); stroke-width:1}
+  .chart .round-l{stroke:#2a3644; stroke-width:1; stroke-dasharray:2 4}   /* marque verticale par round */
+  .chart text.axis{fill:var(--muted); font-size:9px; letter-spacing:.1em}
 
-        .entry {
-            background: #fff;
-            padding: 8px;
-            margin-bottom: 6px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            text-align: left;
-        }
+  /* vignettes : matrice layers (lignes) × rounds (colonnes), min-size + scroll */
+  .vignettes-wrapper{flex:1; min-height:0; overflow:auto}
+  .vmatrix{display:grid; gap:4px; align-content:start; width:max-content; grid-auto-rows:auto}
+  .vm-corner{font-size:9px; color:var(--muted); align-self:end; padding:2px 4px; white-space:nowrap}
+  .vm-col{font-size:10px; color:#cdd6e0; text-align:center; align-self:end; font-variant-numeric:tabular-nums}
+  .vm-row{font-size:10px; color:#cdd6e0; align-self:center; padding-right:6px; white-space:nowrap}
+  .vm-cell{width:100%; min-width:46px; aspect-ratio:1; object-fit:cover; border-radius:5px; border:1px solid var(--border); background:var(--panel-2)}
+  img.vm-cell{cursor:pointer; transition:border-color .15s, transform .15s}
+  img.vm-cell:hover{border-color:var(--accent); transform:scale(1.08)}
+  .empty-cell{opacity:.25}
+  .preview-float{position:fixed; top:56px; right:24px; max-width:min(64vw,820px); max-height:min(74vh,660px);
+    width:auto; height:auto; border-radius:10px; box-shadow:0 14px 50px #000d; pointer-events:none; opacity:0;
+    transition:opacity .2s; z-index:50; border:1px solid var(--border); background:#0e1116}
 
-        .entry-source {
-            font-weight: bold;
-            color: #333;
-        }
+  /* feeds */
+  .list{flex:1; min-height:0; overflow:auto; display:flex; flex-direction:column; gap:2px; padding-right:4px}
+  .row{display:flex; gap:9px; padding:3px 6px; border-radius:6px; font-size:12px}
+  .row:hover{background:var(--panel-2)}
+  .row .src{color:var(--accent); flex:0 0 auto}
+  .row .msg{color:var(--text); white-space:pre-line}
+  .metric-row{display:flex; align-items:center; gap:10px; padding:6px 6px}
+  ::-webkit-scrollbar{width:8px;height:8px} ::-webkit-scrollbar-thumb{background:var(--border); border-radius:8px}
 
-        .entry-message {
-            margin-top: 4px;
-            color: #555;
-            white-space: pre-line;
-        }
-
-        .btn {
-            margin-top: 10px;
-            margin-right: 10px;
-            padding: 6px 12px;
-            font-size: 14px;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-        }
-
-        .reset-btn {
-            background-color: #d9534f;
-        }
-
-        .reset-btn:hover {
-            background-color: #c9302c;
-        }
-
-        .pause-btn {
-            background-color: #5bc0de;
-        }
-
-        .pause-btn:hover {
-            background-color: #31b0d5;
-        }
-
-        .url-line {
-            display: flex;
-            align-items: center;
-            margin-bottom: 15px;
-            gap: 10px;
-            border: 1px solid #ccc;
-            padding: 10px 15px;
-            border-radius: 4px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-        }
-
-        /* Styles responsifs pour petits écrans */
-        @media (max-width: 1900px) {
-            .dashboard-container {
-                grid-template-columns: repeat(2, 600px); /* 2 colonnes de 600px sur écrans moyens */
-                grid-template-rows: repeat(3, auto);     /* 3 lignes */
-            }
-        }
-
-        @media (max-width: 1300px) {
-            .dashboard-container {
-                grid-template-columns: 600px; /* 1 colonne de 600px sur petits écrans */
-                grid-template-rows: repeat(6, auto); /* 6 lignes */
-            }
-        }
-
-        /* Section contenant la galerie */
-        #section-layers {
-        position: relative;       /* pour positionner la preview flottante */
-        display: flex;
-        gap: 20px;
-        height: 600px;
-        padding: 10px;
-        box-sizing: border-box;
-        overflow: visible;       /* permet à la preview de dépasser */
-        }
-
-        .vignettes-wrapper {
-        flex: 1;
-        overflow-y: auto;        /* ascenseur vertical commun pour les colonnes */
-        }
-
-        .vignettes-columns {
-        display: flex;
-        gap: 10px;
-        }
-
-        .vignettes-column {
-        display: flex;
-        flex-direction: column;
-        gap: 10px;
-        }
-
-        .vignettes-column img {
-        width: 50px;
-        height: auto;
-        cursor: pointer;
-        border-radius: 8px;            /* angles arrondis */
-        border: 2px solid #ccc;        /* bordure grise */
-        background: #f8f8f8;           /* fond clair */
-        padding: 2px;                  /* marge interne de 4px */
-        box-sizing: border-box;        /* pour que la taille totale reste cohérente */
-        transition: border-color 0.2s ease, transform 0.2s ease;
-        }
-
-        .vignettes-column img:hover {
-        border-color: #007bff;         /* bleu au survol */
-        transform: scale(1.05);        /* petit effet de zoom */
-        }
-
-        .preview-float {
-        position: absolute;
-        top: 100px;               /* alignée avec le haut des colonnes */
-        right: 100px; /* bord droit des vignettes + marge */
-        width: auto;
-        height: auto;
-        border-radius: 8px;
-        box-shadow: 0 4px 10px rgba(0,0,0,0.25);
-        pointer-events: none;
-        opacity: 1;
-        transition: opacity 0.3s ease;
-        z-index: 100;
-        background: rgba(0, 150, 255, 0.1); /* pour debug */
-        }
-
-    </style>
+  /* session config modal */
+  .overlay{position:fixed; inset:0; background:rgba(6,9,13,.72); backdrop-filter:blur(3px); display:none; align-items:center; justify-content:center; z-index:60}
+  .overlay.open{display:flex}
+  .modal{width:min(900px,94vw); max-height:88vh; overflow:hidden; border:1px solid var(--border); border-radius:12px;
+    background:var(--panel); box-shadow:0 20px 60px #000a; display:flex; flex-direction:column}
+  .modal header{display:flex; align-items:center; padding:12px 15px; border-bottom:1px solid var(--border); background:var(--panel-2)}
+  .modal header .eyebrow{flex:1}
+  .modal .x{cursor:pointer; color:var(--muted); border:1px solid var(--border); border-radius:6px; padding:3px 10px; background:transparent; font-family:var(--mono)}
+  .modal .mbody{padding:0; min-height:0; overflow:auto}
+</style>
 </head>
 <body>
 
-    <script src="{{ url_for('static', filename='pybiscus/js/session_utils.js') }}"></script>
-    <script src="{{ url_for('static', filename='pybiscus/js/session_graphics.js') }}"></script>
+<script src="{{ url_for('static', filename='pybiscus/js/session_utils.js') }}"></script>
+<script src="{{ url_for('static', filename='pybiscus/js/session_graphics.js') }}"></script>
 
-    <header>
-        <div class="container-center">
-            <h1>🧠 Federated Learning Manager</h1>
-        </div>
-    </header>
-    
-    <div id="dashboard" class="dashboard-container">
+<div class="app">
 
-        <div class="section-container" style="grid-area: 1 / 1;">
+  <!-- top bar -->
+  <div class="topbar">
+    <div class="brand"><span class="mark">✳</span> Pybiscus · Session</div>
+    <div class="live"><span class="dot"></span> live</div>
+    <div class="sep"></div>
+    <div class="server-url">server <b id="server-url-display">—</b></div>
+    <div class="sep"></div>
+    <div class="kv"><span class="eyebrow">round</span><span class="num"><b id="round-num">0</b></span></div>
+    <div class="right">
+      <span class="eyebrow">Δ round</span><span class="num" id="dround-val">—</span>
+      <svg id="droundSpark" width="76" height="22"></svg>
+      <button class="btn" id="cfg-btn">⚙ config</button>
+      <button class="btn danger" id="revokeBtn">Drop session</button>
+    </div>
+  </div>
 
-            <div class="url-line">
-                Pybiscus Server Agent URL : <strong id="server-url-display"></strong>
-            </div>
-            <canvas id="graph" width="600" height="585"></canvas><br>
-            <button id="revokeBtn">Drop session</button>
-            <div id="resultat"></div>
-        </div>        
+  <div class="grid">
 
-        <!-- Layers -->
-        <div id="section-layers3" class="section-container" style="grid-area: 1 / 2;">
-            <div class="vignettes-wrapper">
-                <div class="vignettes-columns">
-                </div>
-            </div>
-        </div>
-
-        <img src="" class="preview-float">
-
-
-        <!-- Session -->
-        <div id="section-session-params" class="section-container" style="grid-area: 1 / 3;">
-            <h3>Session parameters</h3>
-
-        </div>
-
-        <!-- Agents -->
-        <div class="section-container" style="grid-area: 2 / 1;">
-            <h3>Agents logs</h3>
-            <button id="reset-agents-btn" class="btn reset-btn">Reset</button>
-            <button id="pause-agents-btn" class="btn pause-btn">Pause</button>
-            <div id="agents-list" class="list-box"></div>
-        </div>
-
-        <!-- Logs -->
-        <div class="section-container" style="grid-area: 2 / 2;">
-            <h3>Server logs</h3>
-            <button id="reset-logs-btn" class="btn reset-btn">Reset</button>
-            <button id="pause-logs-btn" class="btn pause-btn">Pause</button>
-            <div id="log-list" class="list-box"></div>
-        </div>
-
-        <!-- Metrics -->
-        <div class="section-container" style="grid-area: 2 / 3;">
-            <h3>Server metrics</h3>
-            <button id="reset-metrics-btn" class="btn reset-btn">Reset</button>
-            <button id="pause-metrics-btn" class="btn pause-btn">Pause</button>
-            <div id="metrics-list" class="list-box"></div>
-        </div>
+    <!-- LEFT : topology + geo -->
+    <div class="col-left">
+      <section class="panel">
+        <header><span class="eyebrow">Topology</span><span class="chip" id="agents-count">0 agents</span></header>
+        <div class="body"><div class="nodes" id="nodes"><div class="empty">no agents yet</div></div></div>
+      </section>
+      <section class="panel">
+        <header><span class="eyebrow">Registration · geo</span></header>
+        <div class="body"><div class="geo">
+          <div class="geomap">
+            <svg id="geo" viewBox="0 0 100 62" preserveAspectRatio="none"></svg>
+            <div class="geolabels" id="geolabels"></div>
+            <span class="cluster-tag" id="cluster-tag">💐 cluster</span>
+          </div>
+        </div></div>
+      </section>
     </div>
 
-    <script>
-
-        var session = new Session();
-
-        // **************************************
-        // **** metric difference management ****
-        // **************************************
-
-        const maxMectricDiffs = 30;
-
-        var metricDiffs = new CircularBuffer( maxMectricDiffs );
-
-        // ******************************
-        // **** durations management ****
-        // ******************************
-
-        const maxDurations = 6;
-
-        var durations = new CircularBuffer( maxDurations );
-
-        // ******************************
-        // **** accuracy management *****
-        // ******************************
-
-        const maxAccuracies = 40;
-
-        var fit_accuracies      = new CircularBuffer( maxAccuracies );
-        var test_accuracies     = new CircularBuffer( maxAccuracies );
-        var evaluate_accuracies = new CircularBuffer( maxAccuracies );
-
-        // ******************************
-        // **** pybiscus server URL *****
-        // ******************************
-
-        let serverUrl = "";
-
-        const serverUrldisplay = document.getElementById("server-url-display");
-
-        serverUrldisplay.textContent = serverUrl;
-
-        // ******************************
-        // **** agents log **************
-        // ******************************
-
-        const AGENTS_URL  = '/pybiscus-session/agents_logs';
-        const agentsList = document.getElementById('agents-list');
-        let displayedAgents = [];
-        let agentsPaused = false;
-
-        document.getElementById('reset-agents-btn').onclick = () => {
-        agentsList.innerHTML = '';
-        displayedAgents = [];
-        };
-
-        document.getElementById('pause-agents-btn').onclick = (e) => {
-        agentsPaused = !agentsPaused;
-        e.target.textContent = agentsPaused ? 'Resume' : 'Pause';
-        };
-
-        function checkAgentLogs(newItems) {
-            newItems.forEach(item => {
-                // trigger actions according to log msg
-
-                const match = item.source.match(/.*?:(.*)$/);
-                if (match) {
-                    const agentName = match[1];
-                    // console.log("AG-LOG Agent name:", agentName);
-
-                    if (item.message.endsWith("checking yaml file")) {
-                        session.setAgentState(agentName, "validating");
-                    } else if (item.message.endsWith("yaml file checked successfully")) {
-                        session.setAgentState(agentName, "validated");
-                    } else if (item.message.endsWith("launching pybiscus server")) {
-                        session.setAgentState(agentName, "executing");
-                    } else if (item.message.endsWith("launching pybiscus client")) {
-                        session.setAgentState(agentName, "executing");
-                    } else if (item.message.endsWith("pybiscus run completed")) {
-                        session.setAgentState(agentName, "terminated");
-                        sessionGraph.rotation_increment = 0;
-                        
-                        if (session.sessionState === "sessionCompleted") {
-                            updateGraph();
-                        }
-
-                    } else if (item.message.endsWith("Validation error !")) {
-                        session.setAgentState(agentName, "not validated");
-                    }
-                }                
-            });
-        }
-
-        function fetchAgents() {
-            if (agentsPaused) return;
-            fetch(AGENTS_URL)
-                .then(res => res.json())
-                .then(data => {
-                    const newAgents = data;
-                    if (newAgents.length) {
-                        addEntries(agentsList, displayedAgents, newAgents, 'agents');
-                        checkAgentLogs(newAgents);
-                    }
-                })
-                .catch(console.error);
-        }
-
-        session.startCallback(fetchAgents, 5000);
-
-        // ******************************
-        // **** message from iframe *****
-        // ******************************
-
-        window.addEventListener("message", (event) => {
-
-            if (event.data?.type === "session_config") {
-
-                removeSessionParamsFrame();
-                
-                session.sessionState = "paramsDefined";
-
-                const presets = encodeURIComponent(JSON.stringify(event.data?.value));
-
-                // say to back-end that session is running
-                fetch(`/pybiscus-session/run?presets=${presets}`)
-                .catch(error => {
-                    console.error('Error running pybiscus session:', error);
-                });
-            }
-        });
-
-        // ******************************
-        // **** Session params **********
-        // ******************************
-
-        function showSessionParamsFrame(url) {
-            const div = document.getElementById('section-session-params');
-            if (!div) return;
-
-            div.innerHTML = '';
-
-            const iframe = document.createElement('iframe');
-            iframe.src = url;
-            iframe.width = '100%';
-            iframe.height = '100%';
-            iframe.style.border = 'none';
-
-            div.appendChild(iframe);
-        }
-
-        function removeSessionParamsFrame() {
-            const div = document.getElementById('section-session-params');
-            if (div) {
-                div.remove();
-            }
-        }
-
-        // ******************************
-        // **** logs and metrics ********
-        // ******************************
-
-        const LOGS_URL    = '/pybiscus-session/logs';
-        const METRICS_URL = '/pybiscus-session/metrics';
-
-        const logList = document.getElementById('log-list');
-        const metricsList = document.getElementById('metrics-list');
-
-        let displayedLogs = [];
-        let displayedMetrics = [];
-
-        let logsPaused = false;
-        let metricsPaused = false;
-
-        document.getElementById('reset-logs-btn').onclick = () => {
-            logList.innerHTML = '';
-            displayedLogs = [];
-        };
-
-        document.getElementById('reset-metrics-btn').onclick = () => {
-            metricsList.innerHTML = '';
-            displayedMetrics = [];
-        };
-
-        document.getElementById('pause-logs-btn').onclick = (e) => {
-            logsPaused = !logsPaused;
-            e.target.textContent = logsPaused ? 'Resume' : 'Pause';
-        };
-
-        document.getElementById('pause-metrics-btn').onclick = (e) => {
-            metricsPaused = !metricsPaused;
-            e.target.textContent = metricsPaused ? 'Resume' : 'Pause';
-        };
-
-        function addEntries(container, entriesArray, newItems, type) {
-            newItems.forEach(item => {
-                const div = document.createElement('div');
-                div.className = 'entry';
-
-                const src = document.createElement('span');
-                src.className = 'entry-source';
-                src.textContent = `[${item.source || type}] `;
-
-                const msg = document.createElement('span');
-                msg.className = 'entry-message';
-                msg.textContent = item.message || JSON.stringify(item);
-
-                div.appendChild(src);
-                div.appendChild(msg);
-                container.appendChild(div);
-                entriesArray.push(div);
-
-                if (entriesArray.length > 100) {
-                const removed = entriesArray.shift();
-                removed.remove();
-                }
-            });
-            container.scrollTop = container.scrollHeight;
-        }
-
-        function checkLogs(newItems) {
-            newItems.forEach(item => {
-
-                const matchRoundOnly = item.message.match(/🔁 [rR]ound[:]\s*(\d+)/);
-                if (matchRoundOnly) {
-                    const round = parseInt(matchRoundOnly[1], 10);
-                    session.roundNumber = round;
-                }
-
-                const matchRound = item.message.match(/Round\s*(\d+).*?accuracy=(\d+(\.\d+)?)/);
-                if (matchRound) {
-                    // const round = parseInt(matchRound[1], 10);
-                    const accuracy = parseFloat(matchRound[2]);
-                    // session.roundNumber = round;
-                    test_accuracies.add(accuracy);
-                    return;
-                }
-
-                const matchAvgFitMetrics = item.message.match(/Averaged fit metrics:.*?'accuracy': (\d+(\.\d+)?)/);
-                if (matchAvgFitMetrics) {
-                    const accuracy = parseFloat(matchAvgFitMetrics[1]);
-                    fit_accuracies.add(accuracy);
-                    return;
-                }
-
-                const matchAvgEvaluateMetrics = item.message.match(/Averaged evaluate metrics:.*?'accuracy': (\d+(\.\d+)?)/);
-                if (matchAvgEvaluateMetrics) {
-                    const accuracy = parseFloat(matchAvgEvaluateMetrics[1]);
-                    evaluate_accuracies.add(accuracy);
-                    return;
-                }
-
-                const timeDiffMatch = item.message.match(/time diff is (\d+(\.\d+)?)s/);
-
-                if (timeDiffMatch) {
-                    const duration = parseFloat(timeDiffMatch[1]);
-                    durations.add(duration);
-                    return;
-                }
-
-                const metricDiffMatch = item.message.match(/metric diff is (\d+(?:\.\d+)?)\s*$/);
-
-                if (metricDiffMatch) {
-                    const metricDiff = parseFloat(metricDiffMatch[1]);
-                    metricDiffs.add(metricDiff);
-                    return;
-                }
-
-            })
-        }
-
-        function fetchLogs() {
-            if (logsPaused) return;
-            fetch(LOGS_URL)
-                .then(res => res.json())
-                .then(data => {
-                    const newLogs = data;
-                    if (newLogs.length) {
-                        addEntries(logList, displayedLogs, newLogs, 'logs');
-                        checkLogs(newLogs);
-                    }
-                })
-                .catch(console.error);
-        }
-
-        function fetchMetrics() {
-            if (metricsPaused) return;
-            fetch(METRICS_URL)
-                .then(res => res.json())
-                .then(data => {
-                    const newMetrics = data;
-                    if (newMetrics.length) {
-                        addEntries(metricsList, displayedMetrics, newMetrics, 'metrics');
-                    }
-                })
-                .catch(console.error);
-        }
-
-        session.startCallback(fetchLogs, 5000);
-        session.startCallback(fetchMetrics, 5000);
-
-        // ******************************
-        // **** graph management ********
-        // ******************************
-
-        const canvas = document.getElementById('graph');
-        const ctx = canvas.getContext('2d');
-        var sessionGraph = new SessionGraph();
-
-        function updateGraph() {
-            fetch('/pybiscus-session/agents')
-                .then(res => res.json())
-                .then(data => {
-
-                    const servers_names = Object.keys(data.servers);
-                    const clients_names = Object.keys(data.clients);
-
-                    ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-                    drawDurations(ctx, durations.all,
-                        { originX: 10, originY: 80 } );                    
-                    drawSparkbar(ctx, metricDiffs.all, 
-                        { originX: 320, originY: 40 } );
-                    sessionGraph.draw(ctx, session, servers_names, clients_names, 
-                        { centerX: 300, centerY: 240} );
-
-                    ctx.font = '16px sans-serif';
-                    ctx.beginPath();
-                    ctx.fillText("Accuracies", 5, 392 );
-                    ctx.font = '12px sans-serif';
-                    ctx.beginPath();
-                    ctx.fillText("Fit", 5, 444 );
-                    drawAccuracyBars(ctx, fit_accuracies.all,
-                        { originX: 36, originY: 460, maxAccuracies: fit_accuracies.maxSize, alignment: 'right' } );
-                    ctx.beginPath();
-                    ctx.fillText("Test", 5, 504 );
-                    drawAccuracyBars(ctx, test_accuracies.all,
-                        { originX: 36, originY: 520, maxAccuracies: test_accuracies.maxSize, alignment: 'right' } );
-                    ctx.beginPath();
-                    ctx.fillText("Eval", 5, 564 );
-                    drawAccuracyBars(ctx, evaluate_accuracies.all, 
-                        { originX: 36, originY: 580, maxAccuracies: evaluate_accuracies.maxSize, alignment: 'right' } );
-
-                    // propagate first server URL definition
-                    if( serverUrl === "" && servers_names.length > 0 ) {
-
-                        const servers_data = Object.values(data.servers);
-
-                        // info stored : name -> url
-                        serverUrl = servers_data[0];
-                        serverUrldisplay.textContent = serverUrl;
-
-                        // show session parameters frame
-                        showSessionParamsFrame(`${serverUrl}/session/config`);
-                    }
-                });
-        }
-
-        session.startCallback(updateGraph, 2000);  // Refresh every 2 seconds
-
-        document.getElementById("revokeBtn").addEventListener("click", async () => {
-
-            session.stop();
-
-            try {
-
-                const response = await fetch("/pybiscus-session/params", {
-                method: "DELETE",
-                headers: {
-                    "Content-Type": "application/json"
-                }
-                });
-
-                if (!response.ok) {
-                throw new Error(`HTTP error: ${response.status}`);
-                }
-
-                const data = await response.json();
-
-            } catch (error) {
-                console.error("Error :", error);
-            }
-
-            updateGraph();
-        });
-
-        // **********************************
-        // **** vignettes management ********
-        // **********************************
-
-        function gen_vignettes(col, row) {
-            const container = document.querySelector(".vignettes-columns");
-
-            if (!container) {
-                console.error("no .vignettes-columns container found");
-                return;
-            }
-
-            container.innerHTML = "";
-
-            for (let c = 0; c < col; c++) {
-                const columnDiv = document.createElement("div");
-                columnDiv.className = "vignettes-column";
-
-                for (let r = row - 1; r >= 0; r--) {
-                    const img = document.createElement("img");
-                    img.id = `grid_${c}_${r}`;
-                    img.style.display = "none";
-                    columnDiv.appendChild(img);
-                }
-
-                container.appendChild(columnDiv);
-            }
-        }
-
-        gen_vignettes( 10, 10);
-
-        const preview = document.querySelector('.preview-float');
-        const vignetteImgs = document.querySelectorAll('.vignettes-column img');
-
-        vignetteImgs.forEach(img => {
-
-            img.addEventListener('mouseenter', () => {
-                if (img.src) {
-                    preview.src = img.src;
-                    preview.style.opacity = 1;
-                }
-            });
-
-            img.addEventListener('mouseleave', () => {
-                preview.style.opacity = 0;
-            });
-        });
-
-        function download_vignette(col_row) {
-            const img = document.getElementById(`grid_${col_row}`);
-
-            if (!img) {
-                console.error(`no Image  with id grid_${col_row}`);
-                return;
-            }
-
-            img.src = `/static/pybiscus/vignettes/grid_${col_row}.png`;
-            img.style.display = "block"; 
-        }
-
-        function updateVignettes() {
-            fetch('/pybiscus-session/vignettes')
-                .then(res => res.json())
-                .then(data => {
-
-                    data.forEach(item => {
-                        console.log(item);
-                        download_vignette(item);
-                    })
-
-                });
-        }
-
-        session.startCallback(updateVignettes, 1000);  // Refresh every 1 seconds
-    </script>
+    <div class="vsplit vsplit-1" id="vsplit1" title="glisser pour redimensionner"></div>
+
+    <!-- MID : accuracy (hero) + loss -->
+    <div class="col-mid">
+      <section class="panel">
+        <header><span class="eyebrow">Accuracy</span>
+          <div class="acc-legend">
+            <span class="it"><span class="sw" style="background:var(--fit)"></span>Fit <span class="v num" id="acc-fit">—</span></span>
+            <span class="it"><span class="sw" style="background:var(--test)"></span>Test <span class="v num" id="acc-test">—</span></span>
+            <span class="it"><span class="sw" style="background:var(--eval)"></span>Eval <span class="v num" id="acc-eval">—</span></span>
+          </div>
+        </header>
+        <div class="body"><svg class="chart" id="accChart" viewBox="0 0 600 200" preserveAspectRatio="none"></svg></div>
+      </section>
+      <section class="panel">
+        <header><span class="eyebrow">Loss · metric diff</span>
+          <span class="acc-legend"><span class="it"><span class="sw" style="background:var(--loss)"></span><span class="v num" id="loss-val">—</span></span></span>
+        </header>
+        <div class="body"><svg class="chart" id="lossChart" viewBox="0 0 600 140" preserveAspectRatio="none"></svg></div>
+      </section>
+    </div>
+
+    <div class="vsplit vsplit-2" id="vsplit2" title="glisser pour redimensionner"></div>
+
+    <!-- RIGHT : vignettes -->
+    <div class="col-right">
+      <section class="panel" style="height:100%">
+        <header><span class="eyebrow">Model vignettes</span><span class="chip">layers</span></header>
+        <div class="body"><div class="vignettes-wrapper"><div class="vmatrix" id="vmatrix"></div></div></div>
+      </section>
+    </div>
+
+    <!-- draggable splitter : ajuste la hauteur des feeds -->
+    <div class="splitter" id="splitter" title="glisser pour redimensionner"></div>
+
+    <!-- FEEDS -->
+    <div class="feeds">
+      <section class="panel"><header><span class="eyebrow">Agents log</span>
+        <button class="tool" id="pause-agents-btn">pause</button><button class="tool" id="reset-agents-btn">clear</button></header>
+        <div class="body"><div class="list" id="agents-list"></div></div></section>
+      <section class="panel"><header><span class="eyebrow">Server log</span>
+        <button class="tool" id="pause-logs-btn">pause</button><button class="tool" id="reset-logs-btn">clear</button></header>
+        <div class="body"><div class="list" id="log-list"></div></div></section>
+      <section class="panel"><header><span class="eyebrow">Metrics</span>
+        <button class="tool" id="pause-metrics-btn">pause</button><button class="tool" id="reset-metrics-btn">clear</button></header>
+        <div class="body"><div class="list" id="metrics-list"></div></div></section>
+    </div>
+
+  </div>
+</div>
+
+<img src="" class="preview-float">
+
+<!-- session config modal -->
+<div class="overlay" id="cfg-modal">
+  <div class="modal">
+    <header><span class="eyebrow">Session configuration</span><button class="x" id="cfg-close">esc ✕</button></header>
+    <div class="mbody" id="cfg-body"></div>
+  </div>
+</div>
+
+<script>
+  // ============ data model (préservé) ============
+  var session = new Session();
+
+  const metricDiffs = new CircularBuffer(30);
+  const durations   = new CircularBuffer(6);
+  const fit_accuracies      = new CircularBuffer(40);
+  const test_accuracies     = new CircularBuffer(40);
+  const evaluate_accuracies = new CircularBuffer(40);
+
+  let serverUrl = "";
+  const setTxt = (id,v)=>{const e=document.getElementById(id); if(e) e.textContent=v;};
+  const fmt = v => (v==null||isNaN(v)) ? '—' : Number(v).toFixed(2);
+
+  // ============ endpoints (relatifs) ============
+  const AGENTS_URL='/pybiscus-session/agents_logs', LOGS_URL='/pybiscus-session/logs', METRICS_URL='/pybiscus-session/metrics';
+
+  // ============ feeds ============
+  const agentsList=document.getElementById('agents-list'), logList=document.getElementById('log-list'), metricsList=document.getElementById('metrics-list');
+  let displayedAgents=[], displayedLogs=[], displayedMetrics=[];
+  let agentsPaused=false, logsPaused=false, metricsPaused=false;
+
+  function bindFeed(resetId, pauseId, list, arrRef, setPaused){
+    document.getElementById(resetId).onclick = ()=>{ list.innerHTML=''; arrRef.length=0; };
+    document.getElementById(pauseId).onclick = (e)=>{ const p=setPaused(); e.target.textContent = p ? 'resume' : 'pause'; };
+  }
+  bindFeed('reset-agents-btn','pause-agents-btn', agentsList, displayedAgents, ()=> (agentsPaused=!agentsPaused));
+  bindFeed('reset-logs-btn','pause-logs-btn', logList, displayedLogs, ()=> (logsPaused=!logsPaused));
+  bindFeed('reset-metrics-btn','pause-metrics-btn', metricsList, displayedMetrics, ()=> (metricsPaused=!metricsPaused));
+
+  function addEntries(container, arr, items){
+    items.forEach(item=>{
+      const div=document.createElement('div'); div.className='row';
+      const src=document.createElement('span'); src.className='src'; src.textContent = item.source ? `[${item.source}]` : '';
+      const msg=document.createElement('span'); msg.className='msg'; msg.textContent = item.message || JSON.stringify(item);
+      div.appendChild(src); div.appendChild(msg); container.appendChild(div); arr.push(div);
+      if(arr.length>200){ arr.shift().remove(); }
+    });
+    container.scrollTop = container.scrollHeight;
+  }
+
+  // ============ log parsing (préservé) ============
+  function checkAgentLogs(newItems){
+    newItems.forEach(item=>{
+      const match = item.source && item.source.match(/.*?:(.*)$/);
+      if(match){
+        const agentName = match[1];
+        if(item.message.endsWith("checking yaml file")) session.setAgentState(agentName,"validating");
+        else if(item.message.endsWith("yaml file checked successfully")) session.setAgentState(agentName,"validated");
+        else if(item.message.endsWith("launching pybiscus server")) session.setAgentState(agentName,"executing");
+        else if(item.message.endsWith("launching pybiscus client")) session.setAgentState(agentName,"executing");
+        else if(item.message.endsWith("pybiscus run completed")){ session.setAgentState(agentName,"terminated"); if(session.sessionState==="sessionCompleted") updateGraph(); }
+        else if(item.message.endsWith("Validation error !")) session.setAgentState(agentName,"not validated");
+      }
+    });
+  }
+
+  function checkLogs(newItems){
+    newItems.forEach(item=>{
+      const mRound = item.message.match(/🔁 [rR]ound[:]\s*(\d+)/);
+      if(mRound) session.roundNumber = parseInt(mRound[1],10);
+      const mTest = item.message.match(/Round\s*(\d+).*?accuracy=(\d+(\.\d+)?)/);
+      if(mTest){ test_accuracies.add(parseFloat(mTest[2])); return; }
+      const mFit = item.message.match(/Averaged fit metrics:.*?'accuracy': (\d+(\.\d+)?)/);
+      if(mFit){ fit_accuracies.add(parseFloat(mFit[1])); return; }
+      const mEval = item.message.match(/Averaged evaluate metrics:.*?'accuracy': (\d+(\.\d+)?)/);
+      if(mEval){ evaluate_accuracies.add(parseFloat(mEval[1])); return; }
+      const mDur = item.message.match(/time diff is (\d+(\.\d+)?)s/);
+      if(mDur){ durations.add(parseFloat(mDur[1])); return; }
+      const mMd = item.message.match(/metric diff is (\d+(?:\.\d+)?)\s*$/);
+      if(mMd){ metricDiffs.add(parseFloat(mMd[1])); return; }
+    });
+  }
+
+  // ============ fetch loops (préservés) ============
+  function fetchAgents(){ if(agentsPaused) return;
+    fetch(AGENTS_URL).then(r=>r.json()).then(data=>{ if(data.length){ addEntries(agentsList, displayedAgents, data); checkAgentLogs(data); } }).catch(console.error); }
+  function fetchLogs(){ if(logsPaused) return;
+    fetch(LOGS_URL).then(r=>r.json()).then(data=>{ if(data.length){ addEntries(logList, displayedLogs, data); checkLogs(data); renderCharts(); } }).catch(console.error); }
+  function fetchMetrics(){ if(metricsPaused) return;
+    fetch(METRICS_URL).then(r=>r.json()).then(data=>{ if(data.length){ addEntries(metricsList, displayedMetrics, data); } }).catch(console.error); }
+
+  // ============ charts (nouveau rendu SVG à partir des buffers) ============
+  function renderAccuracy(){
+    const W=600,H=200,padL=30,padR=8,padT=10,padB=16, lo=0,hi=1;                 // range fixe 0 -> 1
+    const arrs={fit:fit_accuracies.all,test:test_accuracies.all,eval:evaluate_accuracies.all}, colors={fit:'#ff5d73',test:'#4ecdc4',eval:'#ffb454'};
+    const off={fit:1, test:0, eval:1};   // fit/eval décalés d'un round (le serveur calcule fit/test avant le round 1)
+    const nRef=Math.max(arrs.test.length, arrs.fit.length+1, arrs.eval.length+1);
+    const x=i=>padL+(W-padL-padR)*(nRef>1? i/(nRef-1):0), y=v=>padT+(H-padT-padB)*(1-(v-lo)/(hi-lo));
+    let s='';
+    for(let g=0;g<=5;g++){const v=lo+(hi-lo)*g/5; s+=`<line class="grid-l" x1="${padL}" y1="${y(v)}" x2="${W-padR}" y2="${y(v)}"/><text class="axis" x="3" y="${y(v)+3}">${v.toFixed(1)}</text>`;}
+    for(let i=0;i<nRef;i++) s+=`<line class="round-l" x1="${x(i)}" y1="${padT}" x2="${x(i)}" y2="${H-padB}"/>`;   // marques de round
+    ['eval','test','fit'].forEach(k=>{const arr=arrs[k]; if(arr.length<1)return; const o=off[k]; const pts=arr.map((v,i)=>`${x(i+o)},${y(v)}`).join(' ');
+      s+=`<polyline points="${pts}" fill="none" stroke="${colors[k]}" stroke-width="1.5" stroke-linejoin="round"/>`;
+      const i=arr.length-1; s+=`<circle cx="${x(i+o)}" cy="${y(arr[i])}" r="3" fill="${colors[k]}" stroke="#0e1116" stroke-width="1.4"/>`;});
+    s+=`<text class="axis" x="${padL}" y="${H-3}">round →</text>`;
+    document.getElementById('accChart').innerHTML=s;
+    setTxt('acc-fit',fmt(fit_accuracies.latest)); setTxt('acc-test',fmt(test_accuracies.latest)); setTxt('acc-eval',fmt(evaluate_accuracies.latest));
+  }
+  function renderLoss(){
+    const arr=metricDiffs.all, svg=document.getElementById('lossChart');
+    setTxt('loss-val', arr.length ? Number(arr[arr.length-1]).toFixed(3) : '—');
+    if(arr.length<1){ svg.innerHTML=''; return; }
+    const W=600,H=140,padL=30,padR=8,padT=10,padB=16;
+    const mn=Math.min(...arr), mx=Math.max(...arr), span=(mx-mn)||1, lo=Math.max(0, mn-span*0.1), hi=mx+span*0.1;   // borne basse >= 0
+    const n=arr.length, x=i=>padL+(W-padL-padR)*(n>1?i/(n-1):0), y=v=>padT+(H-padT-padB)*(1-(v-lo)/(hi-lo));
+    let s='';
+    for(let g=0;g<3;g++){const v=lo+(hi-lo)*g/2; s+=`<line class="grid-l" x1="${padL}" y1="${y(v)}" x2="${W-padR}" y2="${y(v)}"/><text class="axis" x="3" y="${y(v)+3}">${v.toFixed(2)}</text>`;}
+    for(let i=0;i<n;i++) s+=`<line class="round-l" x1="${x(i)}" y1="${padT}" x2="${x(i)}" y2="${H-padB}"/>`;   // marques de round
+    const pts=arr.map((v,i)=>`${x(i)},${y(v)}`).join(' ');
+    s+=`<polyline points="${pts}" fill="none" stroke="#8b7cf6" stroke-width="1.5" stroke-linejoin="round"/>`;
+    s+=`<circle cx="${x(n-1)}" cy="${y(arr[n-1])}" r="3" fill="#8b7cf6" stroke="#0e1116" stroke-width="1.4"/>`;
+    svg.innerHTML=s;
+  }
+  function renderDround(){
+    const arr=durations.all; setTxt('dround-val', arr.length ? arr[arr.length-1].toFixed(1)+'s' : '—');
+    const el=document.getElementById('droundSpark'); if(!arr.length){ el.innerHTML=''; return; }
+    const w=76,h=22,mx=Math.max(...arr)||1,bw=w/Math.max(arr.length,1);
+    el.innerHTML=arr.map((v,i)=>{const bh=(h-2)*v/mx; return `<rect x="${i*bw+0.5}" y="${h-bh}" width="${Math.max(1,bw-1.5)}" height="${bh}" fill="${i===arr.length-1?'#ff5d73':'#39424e'}"/>`;}).join('');
+  }
+  function renderCharts(){ renderAccuracy(); renderLoss(); renderDround(); setTxt('round-num', session.roundNumber); }
+
+  // ============ topology + geo ============
+  function stateClass(st){ return (st==='terminated'||st==='not validated'||st==='down') ? 'down' : (st==='executing'||st==='validated') ? 'up' : 'wait'; }
+  const ROLE_ICON  = { server:'🧠', client:'💻' };
+  const STATE_ICON = { declared:'⚪', validating:'🔍', validated:'☑️', executing:'▶️', terminated:'🏁', 'not validated':'❌' };
+  const esc = s => String(s).replace(/[<>&"]/g, c=>({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c]));
+  function renderTopology(servers, clients, meta){
+    meta = meta || {};
+    const nodes=[];
+    Object.keys(servers).forEach(n=>nodes.push({name:n, role:'server', state:session.getAgentState(n)}));
+    Object.keys(clients).forEach(n=>nodes.push({name:n, role:'client', state:session.getAgentState(n)}));
+    nodes.forEach(nd=>{ const m=meta[nd.name]||{}; nd.geo=m.geo_location; nd.bouquet=m.bouquet; nd.loc=m.location; nd.org=m.organisation; });
+    setTxt('agents-count', nodes.length+' agents');
+    const tip = nd => [nd.name, nd.role, nd.state, nd.bouquet&&('💐 '+nd.bouquet), nd.org, nd.loc,
+      (typeof nd.geo==='string')?nd.geo:null,
+      (nd.geo&&typeof nd.geo.latitude==='number')?`${nd.geo.latitude.toFixed(3)}, ${nd.geo.longitude.toFixed(3)}`:null].filter(Boolean).join(' · ');
+    document.getElementById('nodes').innerHTML = nodes.length ? nodes.map(nd=>
+      `<div class="node ${stateClass(nd.state)}" title="${esc(tip(nd))}">`+
+        `<span class="st"></span><span class="ico">${ROLE_ICON[nd.role]||'❔'}</span>`+
+        `<span class="name">${esc(nd.name)}</span><span class="kpi">${STATE_ICON[nd.state]||'⚪'}</span></div>`).join('')
+      : '<div class="empty">no agents yet</div>';
+    // positions : par lat/lon si dispo (ajustées à la bbox des agents + décalage anti-superposition),
+    // sinon disposition schématique (serveur au centre, clients en cercle)
+    const geo=document.getElementById('geo');
+    const W=100,H=62, cx=50, cy=31;
+    const server = nodes.find(n=>n.role==='server');
+    const clientNodes = nodes.filter(n=>n.role==='client');
+    const hasGeo = nd => nd.geo && typeof nd.geo.latitude==='number' && typeof nd.geo.longitude==='number';
+    const geoNodes = nodes.filter(hasGeo);
+    const pos={};
+    if(geoNodes.length){
+      const lats=geoNodes.map(n=>n.geo.latitude), lons=geoNodes.map(n=>n.geo.longitude);
+      const minLa=Math.min(...lats),maxLa=Math.max(...lats),minLo=Math.min(...lons),maxLo=Math.max(...lons);
+      const spanLa=(maxLa-minLa)||1, spanLo=(maxLo-minLo)||1, padX=10, padY=9;
+      const project=(la,lo)=>({ x:padX+(W-2*padX)*((lo-minLo)/spanLo), y:padY+(H-2*padY)*(1-(la-minLa)/spanLa) });
+      // regroupe les nœuds partageant la même position projetée
+      const groups={};
+      nodes.forEach(nd=>{ const b = hasGeo(nd) ? project(nd.geo.latitude, nd.geo.longitude) : {x:cx,y:cy};
+        const key=`${b.x.toFixed(1)},${b.y.toFixed(1)}`;
+        (groups[key]=groups[key]||{b, m:[]}).m.push(nd); });
+      // répartition régulière sur un cercle centré sur la position commune (rayon croissant avec le nb de nœuds)
+      Object.values(groups).forEach(gr=>{
+        if(gr.m.length===1){ pos[gr.m[0].name]=gr.b; return; }
+        const R=Math.min(4 + gr.m.length*0.9, 14);
+        gr.m.forEach((nd,j)=>{ const a=-Math.PI/2 + j*2*Math.PI/gr.m.length;
+          pos[nd.name]={x:gr.b.x+R*Math.cos(a), y:gr.b.y+R*Math.sin(a)}; });
+      });
+    } else {
+      const R=26, Ry=20; if(server) pos[server.name]={x:cx,y:cy};
+      clientNodes.forEach((c,i)=>{ const a=-Math.PI/2 + i*2*Math.PI/Math.max(clientNodes.length,1); pos[c.name]={x:cx+R*Math.cos(a), y:cy+Ry*Math.sin(a)}; });
+    }
+    let g='';
+    for(let i=1;i<10;i++) g+=`<line x1="${i*10}" y1="0" x2="${i*10}" y2="62" stroke="#18222c" stroke-width=".3"/>`;
+    for(let i=1;i<6;i++)  g+=`<line x1="0" y1="${i*10}" x2="100" y2="${i*10}" stroke="#18222c" stroke-width=".3"/>`;
+    // losange de pixels : centre + 4 pointes (N/S/E/O) + 4 milieux d'arêtes
+    const diamond=[[0,0],[0,-1.3],[0,1.3],[-1.3,0],[1.3,0],[-0.65,-0.65],[0.65,-0.65],[-0.65,0.65],[0.65,0.65]];
+    if(server) clientNodes.forEach((c,i)=>{ const s=pos[server.name], p=pos[c.name];
+      g+=`<line x1="${s.x}" y1="${s.y}" x2="${p.x}" y2="${p.y}" stroke="#2b3947" stroke-width=".5"/>`;
+      if(c.state==='terminated') return;   // client terminé (🏁) : on garde le lien mais plus d'étincelles
+      const cloud=diamond.map((d,k)=>`<rect x="${(d[0]-0.3).toFixed(2)}" y="${(d[1]-0.3).toFixed(2)}" width="0.6" height="0.6" fill="#ff5d73"><animate attributeName="opacity" values="0.12;1;0.12" dur="${(0.45+0.11*k).toFixed(2)}s" repeatCount="indefinite"/></rect>`).join('');
+      g+=`<g><animateMotion dur="${(2.8+0.35*i).toFixed(2)}s" repeatCount="indefinite" keyPoints="0;1;0" keyTimes="0;0.5;1" calcMode="linear" path="M ${s.x} ${s.y} L ${p.x} ${p.y}"/>${cloud}</g>`;});
+    nodes.forEach(nd=>{ const p=pos[nd.name]||{x:cx,y:cy}; const c=nd.role==='server'?'#ff5d73':(stateClass(nd.state)==='up'?'#4ecdc4':'#ffb454');
+      g+=`<g><title>${esc(tip(nd))}</title>`+
+         `<circle cx="${p.x}" cy="${p.y}" r="3.2" fill="${c}" opacity=".16"/><circle cx="${p.x}" cy="${p.y}" r="1.5" fill="${c}"/></g>`;});
+    geo.innerHTML=g;
+    // libellés en overlay HTML (nets) + tooltip (autres infos de registration à brancher côté back)
+    document.getElementById('geolabels').innerHTML = nodes.map(nd=>{ const p=pos[nd.name]||{x:cx,y:cy};
+      return `<span class="lbl" style="left:${p.x}%; top:${(p.y/62*100).toFixed(1)}%" title="${esc(tip(nd))}">${ROLE_ICON[nd.role]||''} ${esc(nd.name)}</span>`;}).join('');
+    // tag cluster : vrai(s) bouquet(s) remontés par la registration
+    const bouquets=[...new Set(nodes.map(n=>n.bouquet).filter(Boolean))];
+    setTxt('cluster-tag', '💐 '+(bouquets.length? bouquets.join(' · ') : 'cluster')+(nodes.length? ` · ${nodes.length} nodes`:''));
+  }
+
+  // ============ session update loop (préservé + rendu) ============
+  function updateGraph(){
+    fetch('/pybiscus-session/agents').then(r=>r.json()).then(data=>{
+      const servers = data.servers || {};
+      // le rendu (topology/geo/charts) ne doit jamais bloquer la logique de popup ci-dessous
+      try { renderTopology(servers, data.clients || {}, data.meta || {}); renderCharts(); }
+      catch(e){ console.error('[manager] render error:', e); }
+      if(serverUrl==="" && Object.keys(servers).length>0){
+        serverUrl = Object.values(servers)[0];
+        setTxt('server-url-display', serverUrl);
+        openSessionConfig(`${serverUrl}/session/config`);   // ouvre la modale de config
+      }
+    }).catch(console.error);
+  }
+
+  // ============ session config modal ============
+  function openSessionConfig(url){
+    const body=document.getElementById('cfg-body');
+    if(url && !body.querySelector('iframe')){
+      const f=document.createElement('iframe'); f.src=url;
+      f.style.cssText='width:min(900px,94vw);height:78vh;border:none;background:#0e1116;display:block';
+      body.appendChild(f);
+    }
+    document.getElementById('cfg-modal').classList.add('open');
+  }
+  function closeSessionConfig(){ document.getElementById('cfg-modal').classList.remove('open'); }
+  document.getElementById('cfg-close').onclick = closeSessionConfig;
+  document.getElementById('cfg-btn').onclick = ()=>{ if(serverUrl) openSessionConfig(`${serverUrl}/session/config`); else openSessionConfig(null); };
+  addEventListener('keydown', e=>{ if(e.key==='Escape') closeSessionConfig(); });
+
+  // config iframe → run session
+  window.addEventListener("message", (event)=>{
+    if(event.data?.type === "session_config"){
+      closeSessionConfig();
+      session.sessionState = "paramsDefined";
+      const presets = encodeURIComponent(JSON.stringify(event.data?.value));
+      fetch(`/pybiscus-session/run?presets=${presets}`).catch(err=>console.error('Error running pybiscus session:', err));
+    }
+  });
+
+  // drop session
+  document.getElementById("revokeBtn").addEventListener("click", async ()=>{
+    session.stop();
+    try{
+      const response = await fetch("/pybiscus-session/params", {method:"DELETE", headers:{"Content-Type":"application/json"}});
+      if(!response.ok) throw new Error(`HTTP error: ${response.status}`);
+      await response.json();
+    }catch(error){ console.error("Error :", error); }
+    updateGraph();
+  });
+
+  // ============ vignettes : matrice layers × rounds ============
+  // id reçu = "col_row" avec col = round (rnd-1), row = layer (cf. plugin visualize_model_layers)
+  const vign = { seen:new Set(), maxCol:-1, maxRow:-1 };
+  const vmatrix = document.getElementById('vmatrix');
+
+  function renderVignetteMatrix(){
+    const cols=vign.maxCol+1, rows=vign.maxRow+1;
+    if(cols<1 || rows<1){ vmatrix.innerHTML='<div class="empty">no vignettes yet</div>'; vmatrix.style.gridTemplateColumns=''; return; }
+    vmatrix.style.gridTemplateColumns=`auto repeat(${cols}, minmax(46px,56px))`;
+    let h='<div class="vm-corner">layer \\ round</div>';
+    for(let c=0;c<cols;c++) h+=`<div class="vm-col">${c+1}</div>`;      // en-tête colonnes = rounds
+    for(let r=0;r<rows;r++){                                            // une ligne par layer
+      h+=`<div class="vm-row">L${r}</div>`;
+      for(let c=0;c<cols;c++){
+        const id=`${c}_${r}`;
+        h+= vign.seen.has(id)
+          ? `<img class="vm-cell" src="/static/pybiscus/vignettes/grid_${id}.png" data-id="${id}" title="round ${c+1} · layer ${r}">`
+          : `<div class="vm-cell empty-cell"></div>`;
+      }
+    }
+    vmatrix.innerHTML=h;
+  }
+
+  function updateVignettes(){
+    fetch('/pybiscus-session/vignettes').then(r=>r.json()).then(data=>{
+      let changed=false;
+      data.forEach(id=>{
+        if(vign.seen.has(id)) return;
+        const p=String(id).split('_'); const c=parseInt(p[0],10), r=parseInt(p[1],10);
+        if(isNaN(c)||isNaN(r)) return;
+        vign.seen.add(id); vign.maxCol=Math.max(vign.maxCol,c); vign.maxRow=Math.max(vign.maxRow,r); changed=true;
+      });
+      if(changed) renderVignetteMatrix();
+    }).catch(console.error);
+  }
+
+  // aperçu flottant au survol (délégation)
+  const preview=document.querySelector('.preview-float');
+  vmatrix.addEventListener('mouseover', e=>{ if(e.target.tagName==='IMG' && e.target.src){ preview.src=e.target.src; preview.style.opacity=1; } });
+  vmatrix.addEventListener('mouseout',  e=>{ if(e.target.tagName==='IMG') preview.style.opacity=0; });
+
+  // ============ splitter dragable (hauteur des feeds) ============
+  (function(){
+    const splitter=document.getElementById('splitter'), grid=document.querySelector('.grid');
+    let dragging=false;
+    splitter.addEventListener('mousedown', e=>{ dragging=true; document.body.style.userSelect='none'; e.preventDefault(); });
+    addEventListener('mousemove', e=>{ if(!dragging) return;
+      const rect=grid.getBoundingClientRect();
+      let h=rect.bottom - e.clientY;                       // hauteur feeds = distance au bas de la grille
+      h=Math.max(120, Math.min(rect.height-220, h));       // bornes : feeds >=120, haut >=220
+      grid.style.setProperty('--feeds-h', h+'px');
+    });
+    addEventListener('mouseup', ()=>{ if(dragging){ dragging=false; document.body.style.userSelect=''; } });
+  })();
+
+  // ============ splitters verticaux (largeurs des colonnes) ============
+  (function(){
+    const grid=document.querySelector('.grid');
+    function vdrag(el, apply){
+      let d=false;
+      el.addEventListener('mousedown', e=>{ d=true; document.body.style.userSelect='none'; e.preventDefault(); });
+      addEventListener('mousemove', e=>{ if(d) apply(e.clientX); });
+      addEventListener('mouseup', ()=>{ if(d){ d=false; document.body.style.userSelect=''; } });
+    }
+    // vsplit1 : largeur de la colonne gauche (topology/registration)
+    vdrag(document.getElementById('vsplit1'), x=>{
+      let w = x - grid.getBoundingClientRect().left;
+      w = Math.max(180, Math.min(grid.clientWidth-520, w));
+      grid.style.setProperty('--cw1', w+'px');
+    });
+    // vsplit2 : largeur de la colonne du milieu (accuracy/loss) ; vignettes (1fr) absorbe le reste
+    vdrag(document.getElementById('vsplit2'), x=>{
+      let w = x - document.querySelector('.col-mid').getBoundingClientRect().left;
+      w = Math.max(220, Math.min(grid.clientWidth-260, w));
+      grid.style.setProperty('--cw2', w+'px');
+    });
+  })();
+
+  // ============ start loops ============
+  session.startCallback(fetchAgents, 5000);
+  session.startCallback(fetchLogs, 5000);
+  session.startCallback(fetchMetrics, 5000);
+  session.startCallback(updateGraph, 2000);
+  session.startCallback(updateVignettes, 1000);
+</script>
 </body>
 </html>

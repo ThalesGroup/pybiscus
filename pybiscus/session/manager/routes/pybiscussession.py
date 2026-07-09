@@ -77,6 +77,16 @@ def pybiscus_manager_register_agent():
     if role is None:
         return jsonify({"status": "error", "message": "Missing 'role'"}), 400
 
+    # métadonnées transmises par le formulaire de registration (déjà envoyées, jusqu'ici ignorées)
+    pybiscus.session.manager.session_manager.registered_agents_meta[name] = {
+        "role": role,
+        "agent_url": agent_url,
+        "geo_location": data.get("geo_location"),
+        "bouquet": data.get("bouquet"),
+        "location": data.get("location"),
+        "organisation": data.get("organisation"),
+    }
+
     if role == "server":
 
         if name in pybiscus.session.manager.session_manager.registered_servers:
@@ -165,6 +175,7 @@ def pybiscus_manager_list_clients():
     return jsonify({
         "clients": pybiscus.session.manager.session_manager.registered_clients,
         "servers": pybiscus.session.manager.session_manager.registered_servers,
+        "meta":    pybiscus.session.manager.session_manager.registered_agents_meta,
     })
 
 # **************************
