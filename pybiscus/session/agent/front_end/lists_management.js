@@ -221,4 +221,48 @@
         renum_list_config( container );
       });
     });
+
+  // =========================================================================
+  // Pré-allocation d'éléments par défaut dans certaines listes.
+  // clé = data-pybiscus-prefix de la liste (sans le .#) ; valeur = noms d'onglets
+  // (options) à pré-créer. Robuste aux plugins : liste absente -> ignorée ;
+  // option indisponible (plugin non chargé) -> ignorée (aucun item bancal ajouté).
+  // Ne pré-alloue que si la liste est vide (évite les doublons quand la config
+  // vient du cache ou après un rechargement).
+  // =========================================================================
+  const PYBISCUS_LIST_DEFAULTS = {
+    'server_run.loggers': ['WebHook'],
+    'server_compute_context.metrics_loggers': ['WebHook'],
+    'server_strategy.pipeline': ['MetricDiffCompute', 'TimeDiffCompute', 'VisualizeModelLayers'],
+  };
+
+  function listOptionAvailable(container, name){
+    // le template contient l'union avec tous les onglets d'options disponibles
+    return Array.from(container.querySelectorAll('.pybiscus-list-template .pybiscus-tab-button'))
+      .some(b => b.textContent.trim() === name);
+  }
+
+  function preallocateListDefaults(){
+    Object.entries(PYBISCUS_LIST_DEFAULTS).forEach(([prefix, options]) => {
+      const probe = document.querySelector(
+        `.pybiscus-list-template [data-pybiscus-prefix^="${prefix}.#"], .pybiscus-list-template [data-pybiscus-name^="${prefix}.#"]`);
+      const container = probe && probe.closest('.pybiscus-list-fs');
+      if (!container) return;                                        // liste absente (config/plugins)
+      const contents   = container.querySelector('.pybiscus-list-contents');
+      const generator  = container.querySelector('.pybiscus-list-generator');
+      if (!contents || !generator || contents.children.length) return;   // absente ou déjà peuplée
+
+      options.forEach(name => {
+        if (!listOptionAvailable(container, name)) {
+          console.warn(`[list-defaults] option '${name}' indisponible pour '${prefix}' (plugin absent ?) — ignorée`);
+          return;                                                   // option absente -> rien ajouté
+        }
+        generator.click();                                          // ajoute via le mécanisme existant
+        const idx = contents.children.length - 1;
+        if (typeof set_option === 'function') set_option(`${prefix}.${idx}`, name);
+      });
+    });
+  }
+
+  preallocateListDefaults();
   
