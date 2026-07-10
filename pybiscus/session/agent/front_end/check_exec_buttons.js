@@ -147,7 +147,7 @@ execute_button.addEventListener('click', function() {
       method: "GET",
     };
 
-    // post the configuration in json format
+    // ask the backend to start the run, then leave the configuration page
     fetch(url_conf, options)
       .then(response => {
         if (!response.ok) {
@@ -161,13 +161,17 @@ execute_button.addEventListener('click', function() {
         indicatorDiv.style.display     = 'none';
         successResultDiv.style.display = 'block';
         failureResultDiv.style.display = 'none';
+
+        window.location.href = data.monitor || "/run";
       })
       .catch(error => {
         console.error("Error:", error);
-        
+
         indicatorDiv.style.display = 'none';
         successResultDiv.style.display = 'none';
         failureResultDiv.style.display = 'block';
+
+        check_button.disabled = false;
       });
 });
 

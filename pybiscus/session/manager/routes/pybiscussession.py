@@ -1,4 +1,5 @@
 import os
+import glob
 import json
 from flask import render_template, request, jsonify
 import requests
@@ -7,6 +8,7 @@ from threading import Lock
 import urllib
 import pybiscus.session.manager.session_manager
 from pybiscus.session.manager.session_manager import generate_new_cid, pybiscus_manager_app
+import pybiscus.core.pybiscus_logger as logm
 
 # **************************
 
@@ -166,6 +168,11 @@ def pybiscus_manager_delete_session():
 
     pybiscus.session.manager.session_manager.clear_session()
 
+    # les buffers sont drainés par leurs GET respectifs, mais un drop pendant un run laisse
+    # des messages non consommés : rechargée, la page les rejouerait et ressusciterait des
+    # agents d'une session morte
+    clear_message_buffers()
+
     return jsonify({"status": "success"}), 200
 
 # **************************
@@ -213,9 +220,13 @@ def pybiscus_manager_receive_agents():
     message = data.get('content', '')
     source = data.get('source', 'unknown')
 
+    # état déclaré explicitement par l'agent (protocole AgentState) ; absent des logs
+    # purement informatifs, auquel cas le front retombe sur l'analyse du texte
+    state = data.get('state')
+
     # private section
     with agent_lock:
-        agent_messages.append({'source': source, 'message': message})
+        agent_messages.append({'source': source, 'message': message, 'state': state})
 
     return jsonify({"status": "success"}), 200
 
@@ -308,6 +319,9 @@ def pybiscus_manager_get_metrics():
 new_vignettes = []
 vignettes_lock = Lock()  # lock used to prevent logs concurrent access
 
+# cache d'affichage du manager ; les vignettes de référence sont dans experiments/<session>
+VIGNETTES_DIR = "pybiscus/session/manager/static/pybiscus/vignettes"
+
 @pybiscus_manager_app.route('/webhook/vignettes', methods=['POST'])
 def pybiscus_manager_post_vignette():
     
@@ -330,9 +344,8 @@ def pybiscus_manager_post_vignette():
         metadata = None
 
     # save file
-    uploads_dir = "pybiscus/session/manager/static/pybiscus/vignettes"
-    save_path = os.path.join(uploads_dir, f"grid_{col_row}.png")
-    os.makedirs(uploads_dir, exist_ok=True)
+    save_path = os.path.join(VIGNETTES_DIR, f"grid_{col_row}.png")
+    os.makedirs(VIGNETTES_DIR, exist_ok=True)
     file.save(save_path)
 
     # memo file
@@ -357,3 +370,33 @@ def pybiscus_manager_get_new_vignettes():
 
     # return json encoded vignettes
     return jsonify(_new_vignettes)
+
+# *****************************
+# *** Session reset support ***
+# *****************************
+
+def clear_message_buffers():
+    """Vide tout ce qu'un agent ou un run a pu déposer, pour repartir d'une page vierge."""
+
+    global agent_messages, log_messages, metrics_messages, new_vignettes
+
+    with agent_lock:
+        agent_messages = []
+
+    with log_lock:
+        log_messages = []
+
+    with metrics_lock:
+        metrics_messages = []
+
+    with vignettes_lock:
+        new_vignettes = []
+
+        # les png du run précédent sont un cache d'affichage : l'original est archivé
+        # dans experiments/<session>. Sans ce ménage ils survivent jusqu'à être écrasés,
+        # et une session plus courte laisserait voir les vignettes de la précédente.
+        for vignette in glob.glob(os.path.join(VIGNETTES_DIR, "grid_*.png")):
+            try:
+                os.remove(vignette)
+            except OSError as e:
+                logm.console.log(f"vignette removal failed: {vignette} ({e})")

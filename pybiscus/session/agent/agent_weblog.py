@@ -3,10 +3,30 @@ from requests.exceptions import RequestException, Timeout
 
 # ------------------------
 
+class AgentState:
+    """Protocole agent -> session manager.
+
+    Ces valeurs voyagent dans le champ `state` du webhook et pilotent la machine à états
+    du manager : ce sont un contrat, pas du texte d'affichage. Le manager les compare
+    telles quelles (cf. checkAgentLogs dans manager/templates/pybiscus/manager.html).
+    """
+
+    VALIDATING    = "validating"
+    VALIDATED     = "validated"
+    NOT_VALIDATED = "not validated"
+    EXECUTING     = "executing"
+    TERMINATED    = "terminated"
+    FAILED        = "failed"
+
+# ------------------------
+
 class PrintAgentLogger():
 
-    def log_agent(self, msg):
-        print(msg)
+    def log(self, msg, state: str = None):
+        if state is None:
+            print(msg)
+        else:
+            print(f"[{state}] {msg}")
 
 agent_logger = PrintAgentLogger()
 
@@ -22,10 +42,13 @@ class WebHookAgentLogger():
         else:
             self.logger_id = f"{logger_bouquet}:{logger_id}"
 
-    def log(self, msg):
-        
+    def log(self, msg, state: str = None):
+
         try:
             msg = { 'source' : self.logger_id, 'content' : msg }
+
+            if state is not None:
+                msg['state'] = state
 
             response = requests.post(self.webhook_url, json=msg, timeout=5)
             response.raise_for_status()  # raise an exception upon codes 4xx/5xx

@@ -52,7 +52,18 @@ class CircularBuffer {
     }
 }
 
+// états au-delà desquels un agent ne bougera plus : la session peut s'arrêter de poller.
+// Miroir de AgentState dans pybiscus/session/agent/agent_weblog.py
+// "not validated" en est volontairement exclu : la validation est un état local à l'agent,
+// qui peut corriger sa config et la resoumettre.
+const AGENT_FINAL_STATES = ["terminated", "failed"];
+
 class Session {
+
+    static isFinalAgentState(state) {
+        return AGENT_FINAL_STATES.includes(state);
+    }
+
     constructor() {
         this.sessionState = "paramsUndefined";
         this.agentStates = {}; // dict : agentName -> state
@@ -71,11 +82,11 @@ class Session {
     setAgentState(agentName, state) {
 
         this.agentStates[agentName] = state;
-        
-        // If state is "terminated", check if all agents are terminated
-        if (state === "terminated") {
-            const allTerminated = Object.values(this.agentStates).every(agentState => agentState === "terminated");
-            if (allTerminated) {
+
+        if (AGENT_FINAL_STATES.includes(state)) {
+            const allFinal = Object.values(this.agentStates)
+                .every(agentState => AGENT_FINAL_STATES.includes(agentState));
+            if (allFinal) {
                 this.stop();
             }
         }

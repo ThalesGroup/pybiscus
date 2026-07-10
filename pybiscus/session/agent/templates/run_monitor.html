@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pybiscus - Run</title>
+    <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}" type="image/x-icon">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: radial-gradient(1000px 600px at 80% -10%, #16202b 0%, transparent 60%), #0e1116;
+            color: #e6edf3;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            padding: 2rem 1rem;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 1100px;
+            display: flex;
+            flex-direction: column;
+            gap: 1.25rem;
+        }
+
+        header {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+
+        h1 {
+            font-size: 1.75rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #ff5d73, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .mode-badge {
+            padding: .25rem .75rem;
+            border-radius: 999px;
+            border: 1px solid #232c37;
+            background: #151a21;
+            color: #b7c2ce;
+            font-size: .8rem;
+            text-transform: uppercase;
+            letter-spacing: .06em;
+        }
+
+        .status-pill {
+            margin-left: auto;
+            display: flex;
+            align-items: center;
+            gap: .5rem;
+            padding: .4rem .9rem;
+            border-radius: 999px;
+            border: 1px solid #232c37;
+            background: #151a21;
+            font-weight: 600;
+            font-size: .9rem;
+        }
+
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #b7c2ce;
+        }
+
+        .status-running .status-dot { background: #ff5d73; animation: blink 1.4s ease-in-out infinite; }
+        .status-running { color: #ff5d73; }
+        .status-success .status-dot { background: #3fb950; }
+        .status-success { color: #3fb950; }
+        .status-failure .status-dot { background: #f85149; }
+        .status-failure { color: #f85149; }
+
+        @keyframes blink { 0%, 80%, 100% { opacity: .3; } 40% { opacity: 1; } }
+
+        .toolbar {
+            display: flex;
+            align-items: center;
+            gap: .75rem;
+            flex-wrap: wrap;
+        }
+
+        button, .toggle {
+            font: inherit;
+            font-size: .875rem;
+            padding: .5rem .9rem;
+            border-radius: 10px;
+            border: 1px solid #232c37;
+            background: #151a21;
+            color: #e6edf3;
+            cursor: pointer;
+            transition: border-color .2s, color .2s;
+        }
+
+        button:hover:not(:disabled) { border-color: #ff5d73; color: #ff5d73; }
+        button:disabled { opacity: .4; cursor: not-allowed; }
+
+        .toggle { display: flex; align-items: center; gap: .5rem; cursor: pointer; }
+
+        .console {
+            background: #0b0f14;
+            border: 1px solid #232c37;
+            border-radius: 14px;
+            box-shadow: 0 24px 60px rgba(0, 0, 0, .55);
+            height: 65vh;
+            overflow-y: auto;
+            padding: 1rem 1.25rem;
+        }
+
+        pre {
+            font-family: 'JetBrains Mono', 'SF Mono', Menlo, Consolas, monospace;
+            font-size: .82rem;
+            line-height: 1.55;
+            white-space: pre-wrap;
+            word-break: break-word;
+            color: #c9d1d9;
+        }
+
+        .detail {
+            font-size: .875rem;
+            color: #b7c2ce;
+            padding: .75rem 1rem;
+            background: rgba(255, 93, 115, .06);
+            border-left: 4px solid #ff5d73;
+            border-radius: 10px;
+        }
+
+        .detail:empty { display: none; }
+    </style>
+</head>
+<body>
+    <div class="container">
+
+        <header>
+            <h1>Pybiscus Run</h1>
+            <span class="mode-badge" id="mode">{{ mode }}</span>
+
+            <div class="status-pill" id="status-pill">
+                <span class="status-dot"></span>
+                <span id="status-label">connecting</span>
+            </div>
+        </header>
+
+        <div class="toolbar">
+            <button id="registration-button" style="display:none">← Back to registration</button>
+            <button id="stop-button">■ Stop run</button>
+            <button id="copy-button">⧉ Copy logs</button>
+            <label class="toggle">
+                <input type="checkbox" id="autoscroll" checked> Auto-scroll
+            </label>
+        </div>
+
+        <div class="detail" id="detail"></div>
+
+        <div class="console" id="console"><pre id="log"></pre></div>
+    </div>
+
+    <script>
+        const consoleDiv  = document.getElementById('console');
+        const logPre      = document.getElementById('log');
+        const statusPill  = document.getElementById('status-pill');
+        const statusLabel = document.getElementById('status-label');
+        const detailDiv   = document.getElementById('detail');
+        const modeBadge   = document.getElementById('mode');
+        const autoscroll  = document.getElementById('autoscroll');
+        const stopButton  = document.getElementById('stop-button');
+        const copyButton  = document.getElementById('copy-button');
+        const regButton   = document.getElementById('registration-button');
+
+        function appendLines(lines) {
+            logPre.textContent += lines.join('\n') + '\n';
+            if (autoscroll.checked) {
+                consoleDiv.scrollTop = consoleDiv.scrollHeight;
+            }
+        }
+
+        function setStatus(status, detail) {
+            statusPill.className = 'status-pill status-' + status;
+            statusLabel.textContent = status;
+            detailDiv.textContent = detail || '';
+            const finished = (status === 'success' || status === 'failure');
+
+            stopButton.style.display = finished ? 'none' : '';
+            stopButton.disabled = status !== 'running';
+
+            // seul chemin de sortie, et seulement une fois le run fini : quitter la page en
+            // cours de run couperait l'agent de la session (le retour à /{mode}/config
+            // perdrait de toute façon les presets — cid, modèle, dataset — posés par le manager)
+            regButton.style.display = finished ? '' : 'none';
+        }
+
+        function setMode(newMode) {
+            if (!newMode) return;
+            modeBadge.textContent = newMode;
+        }
+
+        const events = new EventSource('/run/events');
+
+        events.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+
+            if (data.type === 'snapshot') {
+                setMode(data.mode);
+                logPre.textContent = '';
+                appendLines(data.lines);
+                setStatus(data.status, data.detail);
+
+            } else if (data.type === 'reset') {
+                setMode(data.mode);
+                logPre.textContent = '';
+                setStatus('running', '');
+
+            } else if (data.type === 'log') {
+                appendLines([data.line]);
+
+            } else if (data.type === 'status') {
+                setStatus(data.status, data.detail);
+            }
+        };
+
+        events.onerror = () => {
+            statusLabel.textContent = 'disconnected';
+            statusPill.className = 'status-pill';
+        };
+
+        stopButton.addEventListener('click', () => {
+            stopButton.disabled = true;
+            fetch('/run/stop', { method: 'POST' });
+        });
+
+        // /session/agent/registration remet à zéro le contexte de l'agent
+        // (reset_session + reset_registration) avant de réafficher le formulaire
+        regButton.addEventListener('click', () => {
+            window.location.href = '/session/agent/registration';
+        });
+
+        copyButton.addEventListener('click', () => {
+            navigator.clipboard.writeText(logPre.textContent);
+        });
+    </script>
+</body>
+</html>

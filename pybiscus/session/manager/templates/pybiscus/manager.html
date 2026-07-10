@@ -40,9 +40,10 @@
   .btn.danger:hover{border-color:#d9534f; color:#ff6b66}
 
   /* grid : ligne haute (1fr), splitter (8px), feeds (hauteur ajustable) */
-  /* colonnes : c1 | vsplit | c2(accuracy) | vsplit | c3(vignettes). c2 et c3 = 1fr par défaut (égaux) */
+  /* colonnes : c1 | vsplit | c2(accuracy) | vsplit | c3(vignettes). 1fr chacune = tiers égaux
+     par défaut ; les vsplit écrasent --cw1/--cw2 en px dès le premier drag */
   .grid{display:grid; column-gap:0; row-gap:12px; min-height:0;
-    grid-template-columns:var(--cw1,280px) 10px var(--cw2,1fr) 10px 1fr; grid-template-rows:1fr 8px var(--feeds-h,230px)}
+    grid-template-columns:var(--cw1,1fr) 10px var(--cw2,1fr) 10px 1fr; grid-template-rows:1fr 8px var(--feeds-h,230px)}
   .col-left{grid-column:1; grid-row:1; display:grid; grid-template-rows:auto 1fr; gap:12px; min-height:0}
   .col-mid{grid-column:3; grid-row:1; display:grid; grid-template-rows:1.4fr 1fr; gap:12px; min-height:0}
   .col-right{grid-column:5; grid-row:1; min-height:0}
@@ -278,11 +279,21 @@
       const match = item.source && item.source.match(/.*?:(.*)$/);
       if(match){
         const agentName = match[1];
+
+        // état déclaré par l'agent : c'est le protocole (cf. AgentState, agent_weblog.py).
+        // L'analyse du texte ci-dessous n'est qu'un repli pour les agents plus anciens.
+        if(item.state){
+          session.setAgentState(agentName, item.state);
+          if(session.sessionState==="sessionCompleted" && Session.isFinalAgentState(item.state)) updateGraph();
+          return;
+        }
+
         if(item.message.endsWith("checking yaml file")) session.setAgentState(agentName,"validating");
         else if(item.message.endsWith("yaml file checked successfully")) session.setAgentState(agentName,"validated");
         else if(item.message.endsWith("launching pybiscus server")) session.setAgentState(agentName,"executing");
         else if(item.message.endsWith("launching pybiscus client")) session.setAgentState(agentName,"executing");
         else if(item.message.endsWith("pybiscus run completed")){ session.setAgentState(agentName,"terminated"); if(session.sessionState==="sessionCompleted") updateGraph(); }
+        else if(item.message.endsWith("pybiscus run failed")){ session.setAgentState(agentName,"failed"); if(session.sessionState==="sessionCompleted") updateGraph(); }
         else if(item.message.endsWith("Validation error !")) session.setAgentState(agentName,"not validated");
       }
     });
@@ -354,9 +365,9 @@
   function renderCharts(){ renderAccuracy(); renderLoss(); renderDround(); setTxt('round-num', session.roundNumber); }
 
   // ============ topology + geo ============
-  function stateClass(st){ return (st==='terminated'||st==='not validated'||st==='down') ? 'down' : (st==='executing'||st==='validated') ? 'up' : 'wait'; }
+  function stateClass(st){ return (st==='terminated'||st==='failed'||st==='not validated'||st==='down') ? 'down' : (st==='executing'||st==='validated') ? 'up' : 'wait'; }
   const ROLE_ICON  = { server:'🧠', client:'💻' };
-  const STATE_ICON = { declared:'⚪', validating:'🔍', validated:'☑️', executing:'▶️', terminated:'🏁', 'not validated':'❌' };
+  const STATE_ICON = { declared:'⚪', validating:'🔍', validated:'☑️', executing:'▶️', terminated:'🏁', failed:'💥', 'not validated':'❌' };
   const esc = s => String(s).replace(/[<>&"]/g, c=>({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c]));
   function renderTopology(servers, clients, meta){
     meta = meta || {};
@@ -472,6 +483,11 @@
       const response = await fetch("/pybiscus-session/params", {method:"DELETE", headers:{"Content-Type":"application/json"}});
       if(!response.ok) throw new Error(`HTTP error: ${response.status}`);
       await response.json();
+
+      // l'état de session vit dans une foule de variables de module (courbes, vignettes,
+      // états d'agents) : le rechargement est le seul reset exhaustif
+      window.location.reload();
+      return;
     }catch(error){ console.error("Error :", error); }
     updateGraph();
   });
