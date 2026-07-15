@@ -2,7 +2,7 @@ root_dir: ${oc.env:PWD}
 flower_server:
   listen_address: 'localhost:3333'
 server_run:
-  num_rounds: '10'
+  num_rounds: '100'
   clients_fit_local_epochs: '1'
   loggers: []
   reporting:

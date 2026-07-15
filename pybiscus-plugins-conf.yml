@@ -11,6 +11,7 @@ data:
       - mnist
       - vector
       - hdfs
+      - iSAID
 model:
   - path: "./pybiscus-plugins/model"
     modules:
@@ -19,6 +20,8 @@ model:
       - lstm
       - noop
       - deeplog
+      - fasterrcnn
+      - unet
 strategy:
   - path: "./pybiscus-plugins/strategy"
     modules:

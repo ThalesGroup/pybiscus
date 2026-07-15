@@ -3,7 +3,6 @@ from typing import ClassVar, List, Literal, Tuple, Any
 import numpy as np
 from pydantic import BaseModel, ConfigDict
 import torch
-
 from collections import OrderedDict
 
 import flwr as fl
@@ -13,7 +12,7 @@ from flwr.server.strategy import Strategy
 from flwr.server.client_manager import ClientManager
 from flwr.server.client_proxy import ClientProxy
 import flwr as fl
-from flwr.common import Parameters, parameters_to_ndarrays, ndarrays_to_parameters, ndarray_to_bytes
+from flwr.common import Parameters, parameters_to_ndarrays
 
 from pybiscus.interfaces.flower.strategydecorator import StrategyDecorator
 from pybiscus.interfaces.flower.fabricstrategyfactory import FabricStrategyFactory
@@ -24,7 +23,6 @@ import pybiscus.core.pybiscus_logger as logm
 from tqdm import tqdm
 from torch.utils.data import DataLoader
 import pandas as pd
-
 
 
 # --------------------------------------------------------
@@ -96,7 +94,9 @@ class FedMIAPrivacyEvaluationStrategyDecorator(StrategyDecorator):
 
 
     def _make_loss(self, name, **kwargs):
-        if not hasattr(torch.nn, name):
+        if name=="model_val":
+            cls=lambda x,target: self.model(x,target)
+        elif not hasattr(torch.nn, name):
             raise ValueError(f'No torch.nn loss named: {name}')
         cls = getattr(torch.nn, name)
         return cls(**kwargs)
@@ -192,11 +192,18 @@ class FedMIAPrivacyEvaluationStrategyDecorator(StrategyDecorator):
             x, y = x.to(device), y.to(device)
             # Compute per-instance loss for the batch
             B = x.shape[0]
-            output = self.model(x) 
+
+            if self.config.criterion!="model_val":
+                output = self.model(x) 
+            
             for i in range(B):
                 # Compute loss for the i-th sample
-                loss_i = criterion(output[i:i+1], y[i:i+1])
+                if self.config.criterion=="model_val":
+                    loss_i = criterion(x[i:i+1], y[i:i+1])
+                else:
+                    loss_i = criterion(output[i:i+1], y[i:i+1])
                 loss_per_instance.append(loss_i.item())
+
             self.model.zero_grad()
         return loss_per_instance  # Len nb_data
 
@@ -216,8 +223,9 @@ class FedMIAPrivacyEvaluationStrategyDecorator(StrategyDecorator):
         self.model.eval()
         self.model.zero_grad()
 
-        # Forward pass
-        output = self.model(x)  # Shape: (B, num_classes)
+        if self.config.criterion!="model_val":
+            # Forward pass
+            output = self.model(x)  # Shape: (B, num_classes)
 
         # Compute gradients for each sample in the batch
         grads_per_instance = []
@@ -225,8 +233,12 @@ class FedMIAPrivacyEvaluationStrategyDecorator(StrategyDecorator):
         for i in range(B):
             # Zero gradients for this iteration
             self.model.zero_grad()
-            # Compute loss for the i-th sample
-            loss_i = criterion(output[i:i+1], y[i:i+1])
+            if self.config.criterion=="model_val":
+                # Compute loss for the i-th sample
+                loss_i = criterion(x[i:i+1], y[i:i+1])
+            else:
+                # Compute loss for the i-th sample
+                loss_i = criterion(output[i:i+1], y[i:i+1])
             # Backward pass for the i-th sample
             loss_i.backward(retain_graph=True if i < B-1 else False)
             loss_per_instance.append(loss_i.item())
@@ -356,17 +368,15 @@ class FedMIAPrivacyEvaluationStrategyDecorator(StrategyDecorator):
         logm.console.log("done", cosine_matrix.shape, len(server_losses))
         data_matrix = {cid_client : cosine_matrix[:,i].tolist() for i, cid_client in enumerate(cid_list)}
         df_matrix = pd.DataFrame(data=data_matrix, index=MIAindices)
-        df_matrix.to_csv(f"{round_path}/round_{round_num}/{self.conf.cosine_matrix_path}")
+        df_matrix.to_csv(f"{round_path}/round_{round_num}/{self.conf.cosine_matrix_path}", index_label='Image_idx')
 
         data_losses = {f"{cid_client}_in" : clients_in_losses[i] for i, cid_client in enumerate(cid_list)}
         for i, cid_client in enumerate(cid_list):
             data_losses[f"{cid_client}_res"] = clients_res_losses[i]
         data_losses["server_in"] = server_losses
         df_losses = pd.DataFrame(data=data_losses, index=MIAindices)
-        df_losses.to_csv(f"{round_path}/round_{round_num}/{self.conf.losses_path}")
+        df_losses.to_csv(f"{round_path}/round_{round_num}/{self.conf.losses_path}", index_label='Image_idx')
         return None
 
 
 
-# Todo provide attack code over the iteration => call it at each iteration (taking into account the previous ones and this iteration alone) (0.5j)
-# Todo adapt UNet / FasterRCNN with ISAID dataset on multi class dataset but with only one class per image (1.5j)
