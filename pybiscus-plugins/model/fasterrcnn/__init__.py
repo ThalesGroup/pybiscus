@@ -7,7 +7,7 @@ from fasterrcnn.lit_fasterrcnn import ( LitFasterRCNN, ConfigModel_FasterRCNN, )
 
 def get_modules_and_configs() -> Tuple[Dict[str, pl.LightningModule], List[BaseModel]]:
 
-    registry = { "deeplog": LitFasterRCNN, }
+    registry = { "fasterrcnn": LitFasterRCNN, }
     configs  = [ConfigModel_FasterRCNN]
 
     return registry, configs

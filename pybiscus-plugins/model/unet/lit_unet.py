@@ -54,7 +54,7 @@ class ConfigModel_Unet(BaseModel):
     PYBISCUS_ALIAS: ClassVar[str] = "Unet"
 
     name: Literal["unet"]
-    config: Unet
+    config: ConfigUnet
 
     model_config = ConfigDict(extra="forbid")
 
@@ -124,8 +124,7 @@ class LitUnet(pl.LightningModule):
         self.model       = Unet(
             num_classes=self.num_classes, 
             variant=self.variant, 
-            pretrained=self.pretrained, 
-            num_classes=self.num_classes)
+            pretrained=self.pretrained)
         self._signature  = UnetSignature
 
 

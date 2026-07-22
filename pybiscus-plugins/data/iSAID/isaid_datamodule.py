@@ -1,4 +1,4 @@
-from typing import override, Optional
+from typing import override, Optional, Tuple
 
 import numpy as np
 import lightning.pytorch as pl
@@ -16,8 +16,14 @@ import os
 from torch.utils.data import Dataset
 import torch
 import torchvision.transforms as transforms
+from torchvision.tv_tensors import BoundingBoxes
+
 from PIL import Image
 import random
+from pathlib import Path
+
+import pandas as pd
+
 
 IMG_SIZE = (300, 350)  # The image size
 DISPLAY_PERIOD = 100  # The number iterations to go to display the results
@@ -199,6 +205,7 @@ class iSAIDLightningDataModule(pl.LightningDataModule):
         data_val_indices_path,
         dir_test,
         batch_size,
+        mode : str = "Detection",
         img_size: Tuple[int] = (300, 350),
         num_workers: int = 0,
     ):
@@ -214,6 +221,7 @@ class iSAIDLightningDataModule(pl.LightningDataModule):
         self.data_dir_test = dir_test
         self.num_workers = num_workers
         self.batch_size = batch_size
+        self.mode = mode
 
 
         # DataLoaders for train, val and test phasis
@@ -237,38 +245,49 @@ class iSAIDLightningDataModule(pl.LightningDataModule):
         """
 
         if stage == "fit" or stage is None:
-            isaid_trainval = iSAIDImageDataset(
-                path=self.data_dir_train,
-                img_size = self.img_size, 
-                mask_threshold = 0.1,
-                augmentation=True
-            )
+            if self.mode == "Detection":
+                isaid_trainval = iSAIDDetectionDataset(
+                    data_path=self.data_dir_train
+                )
+            else:
+                isaid_trainval = iSAIDImageDataset(
+                    path=self.data_dir_train,
+                    img_size = self.img_size, 
+                    mask_threshold = 0.1,
+                    augmentation=True
+                )
             if self.data_train_indices_path is None:
                 self.data_train = isaid_trainval
-                logm.console.log("x_train shape: ", self.data_train.data.shape)
+                logm.console.log("data train size: ", len(self.data_train.indices))
 
             else:
                 data_train_indices = self._read_file_indices(
                     self.data_train_indices_path
                 )
                 self.data_train = Subset(isaid_trainval, data_train_indices)
+                logm.console.log("data train size: ", len(self.data_train.indices))
 
             if self.data_val_indices_path is None:
                 self.data_val = isaid_trainval
-                logm.console.log("y_train shape: ", self.data_val.data.shape)
+                logm.console.log("data val size: ", len(self.data_val.indices))
             else:
                 data_val_indices = self._read_file_indices(self.data_val_indices_path)
                 self.data_val = Subset(isaid_trainval, data_val_indices)
-                logm.console.log("x_train shape: ", len(self.data_val.indices))
+                logm.console.log("data val size: ", len(self.data_val.indices))
 
         if stage == "test" or stage is None:
-            self.data_test = iSAIDImageDataset(
-                path=self.data_dir_test,
-                img_size = self.img_size, 
-                mask_threshold = 0.1,
-                augmentation=False,
-            )
-            logm.console.log("x_test shape", self.data_test.data.shape)
+            if self.mode == "Detection":
+                self.data_test = iSAIDDetectionDataset(
+                    data_path=self.data_dir_test
+                )
+            else:
+                self.data_test = iSAIDImageDataset(
+                    path=self.data_dir_test,
+                    img_size = self.img_size, 
+                    mask_threshold = 0.1,
+                    augmentation=False,
+                )
+            logm.console.log("data test shape", len(self.data_test.indices))
 
     def _read_file_indices(self, filepath):
         """
@@ -331,6 +350,108 @@ def write_list_to_file(list_indices, output_path):
         fp.writelines(L)
 
 
+class iSAIDDetectionDataset(Dataset):
+    """
+    TODO
+    """
+
+    def __init__(
+        self, data_path , label_dict=None
+    ) -> None:
+        super().__init__()
+        self.data_path = data_path
+        self.list_images = [str(p) for p in Path(f"{data_path}/images/").rglob("*.png")]
+        self.indices = [i for i in range(len(self.list_images))]
+        all_classes = list(set([int(img.split("/")[-2][-5:-2]) for img in self.list_images]))
+        all_classes.sort()
+        if label_dict is None:
+            self.label_dict = {
+                idx: class_name for idx, class_name in enumerate(all_classes)
+            }
+            self.label_dict_rev = {
+                class_name: idx for idx, class_name in enumerate(all_classes)
+            }
+        else:
+            self.label_dict = label_dict
+            self.label_dict_rev = {v: k for k, v in label_dict.items()}
+        self.transforms = transforms.Compose(
+        [
+            transforms.ToTensor(),
+            transforms.Normalize(
+                mean=[0.485, 0.456, 0.406],
+                std=[0.229, 0.224, 0.225],
+            ),
+        ]
+    )
+
+    def __len__(self):
+        return len(self.list_images)
+
+    def get_label_dics(self):
+        return self.label_dict, self.label_dict_rev
+
+    def get_boxes_from_png(self, png_path, nb_lines, nb_columns):
+        csv_path = png_path.replace("/images/", "/BB/")[:-3] + "csv"
+        image_id = png_path.split("/")[-1].split(".")[0]
+        target = {}
+        boxes = []
+        labels = []
+        try:
+            df = pd.read_csv(csv_path)
+            for _, row in df.iterrows():
+                if row["X1"]<=row["X0"]:
+                    continue
+                if row["Y1"]<=row["Y0"]:
+                    continue
+                boxes.append(
+                    [
+                        
+                        int(row["X0"]),
+                        int(row["Y0"]),
+                        int(row["X1"]),
+                        int(row["Y1"]),
+                        
+                    ]
+                )
+                labels.append(int(self.label_dict_rev[row["class"]]))
+        except pd.errors.EmptyDataError as err:
+            print(f"EmptyDataError {err}")
+        if len(boxes) == 0:
+            boxes.append([0, 0, nb_columns, nb_lines])
+            labels.append(0)
+        target["boxes"] = BoundingBoxes(
+            boxes, format="XYXY", canvas_size=(nb_columns, nb_lines)
+        )
+        target["labels"] = torch.tensor(labels, dtype=torch.int64)
+        target["image_id"] = image_id
+
+        if len(boxes) > 0:
+            target["area"] = torch.Tensor(
+                [(box[3] - box[1]) * (box[2] - box[0]) for box in target["boxes"]]
+            )
+        else:
+            target["area"] = torch.Tensor([0])
+        target["iscrowd"] = torch.zeros((len(boxes),), dtype=torch.int64)
+        return target
+
+    def __getitem__(self, index) -> Tuple:
+        png_path = self.list_images[index]
+        img = Image.open(png_path).convert("RGB") # 
+        width, height = img.size
+        target = self.get_boxes_from_png(png_path, nb_lines=height, nb_columns=width)
+        if self.transforms:
+            img = self.transforms(img)
+        _, height, width = img.shape
+        mask = torch.zeros((height, width), dtype=torch.long)
+        for box, label in zip(target["boxes"], target["labels"]):
+            x1, y1, x2, y2 = box.int()
+            mask[y1:y2, x1:x2] = label.long()
+        target["mask"] = mask
+        return img, target
+
+
+
+
 class iSAIDImageDataset(Dataset):
     def __init__(self, path, augmentation, img_size=(300, 350), mask_threshold=0.1):
 
@@ -360,7 +481,7 @@ class iSAIDImageDataset(Dataset):
                     self.image_list.append(img_filename)
             except:
                 print(f"Warning: File {filepath} is corrupt and could not be opened !")
-
+        self.indices = [i for i in range(len(self.image_list))]
         print(f"The total number of found files in {path} is: {len(all_paths)}")
         print(
             f"The number of validated images/labels from {path} is {len(self.image_list)}"
@@ -453,7 +574,7 @@ if __name__ == "__main__":
 
     isaid_trainval = iSAIDImageDataset(
                 path=args.data_path,
-                img_size = (300, 350) 
+                img_size = (300, 350), 
                 mask_threshold = 0.1,
                 augmentation=True
             )

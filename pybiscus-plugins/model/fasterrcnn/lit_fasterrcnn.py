@@ -14,7 +14,13 @@ from torchmetrics.classification.confusion_matrix import (
     MulticlassConfusionMatrix,
     BinaryConfusionMatrix,
 )
-from fasterrcnn.fasterrcnn import FasterRCNN, DectionProbability, FalseAlarmProbability
+# from fasterrcnn.fasterrcnn import FasterRCNN, DectionProbability, FalseAlarmProbability
+from torchvision.models.detection.faster_rcnn import FastRCNNPredictor
+from torchvision.models.detection import (
+    fasterrcnn_resnet50_fpn,
+    FasterRCNN_ResNet50_FPN_Weights,
+    fasterrcnn_resnet50_fpn_v2,
+    FasterRCNN_ResNet50_FPN_V2_Weights)
 import numpy as np
 import pandas as pd
 
@@ -43,7 +49,8 @@ class ConfigFasterRCNN(BaseModel):
     pretrained:   bool   = Field( default=True,     description="True to use pretrained weights on COCO" )
     variant:   str   = Field( default="v2",    description="V1 or V2" )
     num_classes:   int   = Field( default=10,    description="number of classes" )
-
+    label_binary_dict: dict = Field( default=None, description="dictionnary for a binary classification" )
+    box_score_thresh: float = Field(default=0.6, description="Threshold for a box detection to be considered valid")
 
     model_config = ConfigDict(extra="forbid")
 
@@ -54,7 +61,7 @@ class ConfigModel_FasterRCNN(BaseModel):
     PYBISCUS_ALIAS: ClassVar[str] = "FasterRCNN"
 
     name: Literal["fasterrcnn"]
-    config: FasterRCNN
+    config: ConfigFasterRCNN
 
     model_config = ConfigDict(extra="forbid")
 
@@ -110,7 +117,7 @@ class LitFasterRCNN(pl.LightningModule):
     """
 
     @override
-    def __init__( self, trainable_backbone_layers: int, pretrained: bool, variant: str, num_classes: int, label_binary_dict):
+    def __init__( self, trainable_backbone_layers: int, pretrained: bool, variant: str, num_classes: int, box_score_thresh: float, label_binary_dict:dict):
         super().__init__()
         
         self.save_hyperparameters()
@@ -120,16 +127,46 @@ class LitFasterRCNN(pl.LightningModule):
         self.trainable_backbone_layers =  trainable_backbone_layers
         self.pretrained = pretrained
         self.variant =  variant
-        self.num_classes = self.num_classes
-        self.model       = FasterRCNN(
-            num_classes=self.num_classes, 
-            variant=self.variant, 
-            pretrained=self.pretrained, 
-            num_classes=self.num_classes)
+        self.num_classes = num_classes
+        self.box_score_thresh = box_score_thresh
+        # self.model       = FasterRCNN(
+        #     num_classes=self.num_classes, 
+        #     variant=self.variant, 
+        #     pretrained=self.pretrained, 
+        #     box_score_thresh=self.box_score_thresh,
+        #     trainable_backbone_layers=self.trainable_backbone_layers)
+        if variant == "v2":
+            weights = FasterRCNN_ResNet50_FPN_V2_Weights.DEFAULT if pretrained else None
+            self.model = fasterrcnn_resnet50_fpn_v2(
+                weights=weights,
+                box_score_thresh=self.box_score_thresh,
+                trainable_backbone_layers=self.trainable_backbone_layers,
+            )
+            
+        else:
+            weights = FasterRCNN_ResNet50_FPN_Weights.DEFAULT if pretrained else None
+            self.model = fasterrcnn_resnet50_fpn(
+                weights=weights,
+                box_score_thresh=self.box_score_thresh,
+                trainable_backbone_layers=self.trainable_backbone_layers,
+            )
+
+        # Remplacer le predictor par défaut par un predictor adapté à num_classes
+        in_features = self.model.roi_heads.box_predictor.cls_score.in_features
+        self.model.roi_heads.box_predictor = FastRCNNPredictor(in_features, num_classes)
+        self.model.eval()
+        # print(summary(self.model.to("cuda"), (3, 512, 512)))
+        print(self.model)
+        print("v2")
+        for idx, param in enumerate(self.parameters()):
+            print('lit', idx, param.detach().cpu().numpy().shape )
         self._signature  = FasterRCNNSignature
 
 
         self.label_binary_dict = label_binary_dict
+        if self.label_binary_dict is None:
+            self.label_binary_dict = {i:1 for i in range(1,self.num_classes)}
+            self.label_binary_dict[0] = 0
         if len(set(self.label_binary_dict.values())) != 2:
             raise ValueError(
                 f"Label Binary dict should map to only 2 values {self.label_binary_dict.values()}"
@@ -138,26 +175,13 @@ class LitFasterRCNN(pl.LightningModule):
             raise ValueError(
                 f"Label Binary dict should map should contains 1 as value for threats {self.label_binary_dict.values()}"
             )
+        
 
         
         self.detection_metrics = MeanAveragePrecision(
             box_format="xyxy", iou_type="bbox"
         )
-        self.confusion_matrices = {
-            "CM": MulticlassConfusionMatrix(num_classes=num_classes),
-            "CM_bin": BinaryConfusionMatrix(),
-        }
-        self.classification_metrics = {
-            "MacroAcc": MulticlassAccuracy(num_classes=num_classes, average="macro"),
-            "FalseAlarmProba": FalseAlarmProbability(label_binary_dict),
-            "DetectionProba": DectionProbability(label_binary_dict),
-        }
-        self.test_ok_score = []
-        self.test_nok_score = []
-        self.label0_pred1 = []
-        self.label0_pred0 = []
-        self.label1_pred1 = []
-        self.label1_pred0 = []
+
 
     @property
     def signature(self):
@@ -169,14 +193,13 @@ class LitFasterRCNN(pl.LightningModule):
 
     @override
     def training_step(self, batch: torch.Tensor, batch_idx) -> FasterRCNNSignature:
-        log, labels = batch
-
         self.model.train()
         images, targets = batch
         loss_dict = self.model(images, targets)
-        self.model.eval()
-        output = self.model(images)
-        self._update_metrics(output, targets, mode="train")
+        with torch.no_grad():
+            self.model.eval()
+            output = self.model(images)
+            self._update_metrics(output, targets, mode="train")
         self.model.train()
         sum_losses = self._log_losses(loss_dict, "train_loss", batch_size=len(images))
 
@@ -218,57 +241,6 @@ class LitFasterRCNN(pl.LightningModule):
     def on_test_end(self):
         self._log_metrics("test", verbose=True)
         print(map, self.detection_metrics.compute())
-        for name, metric in self.classification_metrics.items():
-            print(name, metric.compute())
-        for name, metric in self.confusion_matrices.items():
-            print(name, metric.compute())
-        print(self.label0_pred0)
-        print(self.label0_pred1)
-        print(self.label1_pred0)
-        print(self.label1_pred1)
-        self.label0_pred0 = np.array(self.label0_pred0)
-        self.label0_pred1 = np.array(self.label0_pred1)
-        self.label1_pred0 = np.array(self.label1_pred0)
-        self.label1_pred1 = np.array(self.label1_pred1)
-        df_data = []
-        for th in range(100):
-            th/=100
-            Nb_Flase_alarm = sum(np.where(self.label0_pred1>=th, 1,0))
-            Nb_truth_0 = (len(self.label0_pred0) + len((self.label0_pred1)))
-            False_alarm_Proba = Nb_Flase_alarm / Nb_truth_0
-            Nb_Detection = sum(np.where(self.label1_pred1>=th, 1,0))
-            Nb_truth_0 = (len(self.label1_pred0) + len((self.label1_pred1)))
-            Detection_Proba = Nb_Detection / Nb_truth_0
-            df_data.append({
-                "th": th,
-                "Nb_Flase_alarm" : Nb_Flase_alarm,
-                "Nb_truth_0" : Nb_truth_0,
-                "False_alarm_Proba" : False_alarm_Proba,
-                "Nb_Detection" : Nb_Detection,
-                "Nb_truth_0" : Nb_truth_0,
-                "Detection_Proba" : Detection_Proba,
-            })
-        df = pd.DataFrame.from_records(df_data)
-        print(df)
-        # df.to_csv(f"{self.output_img_folder}/seuils.csv", index=False)
-        # fig = px.scatter(df, x="False_alarm_Proba", y="Detection_Proba", hover_data="th", title="Probabilité de détections et de fausses alarmes sur l'ensemble de validation en fonction du seuil sur le score")
-        # fig.add_hline(y=0.9,line_dash="dash")
-        # fig.add_vline(x=0.01,line_dash="dash")
-        # fig.write_image(f"{self.output_img_folder}/seuils.png")
-
-        print("test_ok_score", self.test_ok_score)
-        print("************")
-        print("test_nok_score", self.test_nok_score)
-        ok_score = np.array(self.test_ok_score)
-        nok_score = np.array(self.test_nok_score)
-        print("test_ok_score", len(ok_score), np.max(ok_score), np.min(ok_score), np.mean(ok_score), np.median(ok_score))
-        no_preds = np.sum(np.where(nok_score==-1))
-        print("number_no_preds", no_preds, len(nok_score))
-        no_preds = nok_score[np.where(nok_score==-1)]
-        print("number_no_preds", -np.sum(no_preds))
-        nok_score = nok_score[np.where(nok_score!=-1)]
-        print("test_nok_score", len(nok_score), np.max(nok_score), np.min(nok_score), np.mean(nok_score), np.median(nok_score))
-
         return super().on_test_end()
         
     def _update_metrics(self, output, targets, mode="val", verbose=False):
@@ -289,44 +261,8 @@ class LitFasterRCNN(pl.LightningModule):
             self.detection_metrics.update(output, targets)
         if verbose:
             print("targets and pred", labels_target, labels_pred)
-        for metric in self.classification_metrics.values():
-            metric.update(labels_pred, labels_target)
-            if verbose:
-                print(metric.compute())
-        for name, metric in self.confusion_matrices.items():
-            if name[-3:] == "bin":
-                metric.update(
-                    torch.Tensor(
-                        [self.label_binary_dict[p] for p in labels_pred.tolist()]
-                    ),
-                    torch.Tensor(
-                        [self.label_binary_dict[p] for p in labels_target.tolist()]
-                    ),
-                )
-            else:
-                metric.update(labels_pred, labels_target)
-            if verbose:
-                print(name, metric.compute())
 
     def _log_metrics(self, prefix, mode="val", verbose=False):
-        for name in self.confusion_matrices.keys():
-            conf_mat = self.confusion_matrices[name].compute()
-            if verbose:
-                print(name, conf_mat)
-            self.logger.experiment.add_figure(
-                f"{prefix}/{name}",
-                self._plot_CM(conf_mat),
-                global_step=self.current_epoch,
-            )
-            self.confusion_matrices[name].reset()
-        for name in self.classification_metrics.keys():
-            acc = self.classification_metrics[name].compute()
-            if verbose:
-                print(name, acc)
-            self.logger.experiment.add_scalar(
-                f"{prefix}/{name}", acc, global_step=self.current_epoch
-            )
-            self.classification_metrics[name].reset()
         if mode == "val":
             map = self.detection_metrics.compute()
             for k, v in map.items():
@@ -356,6 +292,6 @@ class LitFasterRCNN(pl.LightningModule):
             milestones=[8, 11],  # Adjust based on your total epochs
             gamma=0.1,
         )
-        return [optimizer], [scheduler]
+        return optimizer #[optimizer], [scheduler]
 
 

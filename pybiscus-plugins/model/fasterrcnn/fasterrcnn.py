@@ -13,11 +13,12 @@ from torchmetrics import Metric
 
 class FasterRCNN(nn.Module):
     def __init__(self,     
-                 num_classes: int,
+                 num_classes,
                  *,
-                 variant: str = "v1",
-                 pretrained: bool = True,
-                 trainable_backbone_layers: int = 5) -> nn.Module:
+                 variant="v1",
+                 pretrained=True,
+                 box_score_thresh=.6,
+                 trainable_backbone_layers=5):
         """
         Instancie un Faster R-CNN ResNet50-FPN avec un predictor adapté.
 
@@ -29,6 +30,8 @@ class FasterRCNN(nn.Module):
             "v1" (FasterRCNN_ResNet50_FPN) ou "v2" (FasterRCNN_ResNet50_FPN_V2).
         pretrained : bool
             Charger les poids COCO pré-entraînés.
+        box_score_thresh : float
+            Threshold to consider a detection box valid
         trainable_backbone_layers : int
             Nombre de couches backbone à dégeler (0 à 5).
 
@@ -39,22 +42,23 @@ class FasterRCNN(nn.Module):
         """
         if variant == "v2":
             weights = FasterRCNN_ResNet50_FPN_V2_Weights.DEFAULT if pretrained else None
-            model = fasterrcnn_resnet50_fpn_v2(
+            self = fasterrcnn_resnet50_fpn_v2(
                 weights=weights,
+                box_score_thresh=box_score_thresh,
                 trainable_backbone_layers=trainable_backbone_layers,
             )
         else:
             weights = FasterRCNN_ResNet50_FPN_Weights.DEFAULT if pretrained else None
-            model = fasterrcnn_resnet50_fpn(
+            self = fasterrcnn_resnet50_fpn(
                 weights=weights,
+                box_score_thresh=box_score_thresh,
                 trainable_backbone_layers=trainable_backbone_layers,
             )
 
         # Remplacer le predictor par défaut par un predictor adapté à num_classes
-        in_features = model.roi_heads.box_predictor.cls_score.in_features
-        model.roi_heads.box_predictor = FastRCNNPredictor(in_features, num_classes)
+        in_features = self.roi_heads.box_predictor.cls_score.in_features
+        self.roi_heads.box_predictor = FastRCNNPredictor(in_features, num_classes)
 
-        return model
     
 
 class DectionProbability(Metric):
