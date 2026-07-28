@@ -1,5 +1,9 @@
 import torch
 from rich.progress import track
+from collections import defaultdict
+import copy
+
+
 
 torch.backends.cudnn.enabled = True
 
@@ -81,17 +85,29 @@ def test_loop(fabric, net, testloader):
         ):
 
             results = net.test_step(batch, batch_idx)
-
             # ensure that result is a dict, make convertion if required 
-            if isinstance(results, torch.Tensor):
+            if isinstance(results, list):
+                one_res = results[0]
+                if isinstance(one_res, dict):
+                    # results is a list of dictionnary (of length batch_size)
+                    # transform it into a dictionnary of lists
+                    new_res_dict = defaultdict(list)
+                    for res in results:
+                        for k,v in res.items():
+                            new_res_dict[k].append(v)
+                    results = copy.deepcopy(new_res_dict)
+                    for k in results.keys():
+                        results[k]=torch.cat(results[k])
+                else:
+                    results = {"loss": torch.as_tensor(results)}
+            elif isinstance(results, torch.Tensor):
                 # result is just the loss tensor => put it into a dict
                 results = {"loss": results}
 
             elif not isinstance(results, dict):
+
                 # other format => convert to tensor and put it into a dict
                 results = {"loss": torch.as_tensor(results)}
-
-
 
             for key in results_epoch.keys():
                 value = results[key]

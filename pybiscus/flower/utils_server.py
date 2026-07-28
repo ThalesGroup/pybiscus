@@ -13,11 +13,6 @@ from pybiscus.ml.loops_fabric import test_loop
 
 def set_params(model: torch.nn.ModuleList, params: list[np.ndarray]):
 
-    for idx, param in enumerate(params):
-        print('set params', idx, param.shape )
-    for idx, param in enumerate(model.parameters()):
-        print('set model', idx, param.detach().cpu().numpy().shape )
-
     print(len(model.state_dict().keys()), len(params))
     # params_dict = zip(model.state_dict().keys(), params)
     # state_dict = OrderedDict({k: torch.from_numpy(np.copy(v)) for k, v in params_dict})

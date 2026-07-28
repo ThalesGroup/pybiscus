@@ -266,7 +266,7 @@ def launch_config(
         initial_parameters_log_message = f"Loaded weights from {weights_path}"
 
     params = torch.nn.ParameterList(
-        [param.detach().cpu().numpy() for param in model.parameters()]
+        [param.detach().cpu().numpy() for _, param in model.state_dict().items()]
     )
     initial_parameters = fl.common.ndarrays_to_parameters(params)
     logm.console.log(initial_parameters_log_message)

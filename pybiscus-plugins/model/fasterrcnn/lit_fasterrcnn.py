@@ -156,10 +156,6 @@ class LitFasterRCNN(pl.LightningModule):
         self.model.roi_heads.box_predictor = FastRCNNPredictor(in_features, num_classes)
         self.model.eval()
         # print(summary(self.model.to("cuda"), (3, 512, 512)))
-        print(self.model)
-        print("v2")
-        for idx, param in enumerate(self.parameters()):
-            print('lit', idx, param.detach().cpu().numpy().shape )
         self._signature  = FasterRCNNSignature
 
 
@@ -221,14 +217,17 @@ class LitFasterRCNN(pl.LightningModule):
 
          
     #@override
-    def test_step(self, batch: torch.Tensor, batch_idx) -> torch.Tensor:
+    def test_step(self, batch: torch.Tensor, batch_idx) -> FasterRCNNSignature:
 
         images, targets = batch
+        with torch.no_grad():
+            self.model.train()
+            loss_dict = self.model(images, targets)
+            sum_losses = self._log_losses(loss_dict, "test_loss", batch_size=len(images))
         self.model.eval()
         output = self.model(images, targets)
-
         self._update_metrics(output, targets,  mode="val")
-        return output
+        return {"loss": sum_losses}
     
     def on_validation_epoch_end(self):
         self._log_metrics("val", "val")

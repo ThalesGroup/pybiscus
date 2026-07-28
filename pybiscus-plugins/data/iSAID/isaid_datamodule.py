@@ -222,7 +222,10 @@ class iSAIDLightningDataModule(pl.LightningDataModule):
         self.num_workers = num_workers
         self.batch_size = batch_size
         self.mode = mode
-
+        self.collate_fn=None
+        if self.mode == "Detection":
+            self.collate_fn=collate_detection()
+        
 
         # DataLoaders for train, val and test phasis
         self.data_train = None
@@ -313,6 +316,7 @@ class iSAIDLightningDataModule(pl.LightningDataModule):
             num_workers=self.num_workers,
             drop_last=True,
             shuffle=True,
+            collate_fn=self.collate_fn
         )
 
     @override
@@ -327,6 +331,7 @@ class iSAIDLightningDataModule(pl.LightningDataModule):
             num_workers=self.num_workers,
             drop_last=True,
             shuffle=False,
+            collate_fn=self.collate_fn
         )
 
     @override
@@ -341,6 +346,7 @@ class iSAIDLightningDataModule(pl.LightningDataModule):
             num_workers=self.num_workers,
             drop_last=True,
             shuffle=False,
+            collate_fn=self.collate_fn
         )
 
 
@@ -362,7 +368,7 @@ class iSAIDDetectionDataset(Dataset):
         self.data_path = data_path
         self.list_images = [str(p) for p in Path(f"{data_path}/images/").rglob("*.png")]
         self.indices = [i for i in range(len(self.list_images))]
-        all_classes = list(set([int(img.split("/")[-2][-5:-2]) for img in self.list_images]))
+        all_classes = list(set([0]+[int(img.split("/")[-2][-5:-2]) for img in self.list_images]))
         all_classes.sort()
         if label_dict is None:
             self.label_dict = {
@@ -449,6 +455,14 @@ class iSAIDDetectionDataset(Dataset):
         target["mask"] = mask
         return img, target
 
+class collate_detection:
+    def __call__(self, batch):
+        data = [item[0] for item in batch]
+        targets = [item[1] for item in batch]
+        if len(data) > 1:
+            data = torch.stack(data)
+        else : data = data[0].unsqueeze(0)
+        return data, targets
 
 
 

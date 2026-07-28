@@ -95,10 +95,17 @@ class FedMIAPrivacyEvaluationStrategyDecorator(StrategyDecorator):
 
     def _make_loss(self, name, **kwargs):
         if name=="model_val":
-            cls=lambda x,target: self.model(x,target)
+            def compute(x, target):
+                self.model.train()
+                res = self.model(x, target)
+                return res
+            #TODO check that the model is not freeze in the init state
+            cls=lambda x,target: compute(x, target)
+            return cls
         elif not hasattr(torch.nn, name):
             raise ValueError(f'No torch.nn loss named: {name}')
-        cls = getattr(torch.nn, name)
+        else:
+            cls = getattr(torch.nn, name)
         return cls(**kwargs)
 
     def configure_fit(
@@ -184,25 +191,35 @@ class FedMIAPrivacyEvaluationStrategyDecorator(StrategyDecorator):
         """
         logm.console.log("self.model", self.model)
         self.model.load_state_dict(state_dict)
-        self.model.to(device)
+        # self.model.to(device)
         self.model.eval()
         self.model.zero_grad()
         loss_per_instance =[]
         for x, y in tqdm(dataloader):
-            x, y = x.to(device), y.to(device)
+            # x, y = x.to(device), y.to(device)
             # Compute per-instance loss for the batch
             B = x.shape[0]
-
-            if self.config.criterion!="model_val":
-                output = self.model(x) 
+            # if self.conf.criterion=="model_val":
+            #     self.model.train()
+                # output = self.model(x) 
             
             for i in range(B):
                 # Compute loss for the i-th sample
-                if self.config.criterion=="model_val":
-                    loss_i = criterion(x[i:i+1], y[i:i+1])
+                if isinstance(y, dict):
+                    y_i={}
+                    for k,v in y.items():
+                        if isinstance(v, torch.Tensor):
+                            y_i[k]=v[i]
+                        else:
+                            y_i[k]=[v[i]]
+                    loss_i = criterion(x[i:i+1], [y_i])
                 else:
-                    loss_i = criterion(output[i:i+1], y[i:i+1])
-                loss_per_instance.append(loss_i.item())
+                    loss_i = criterion(x[i:i+1], y[i:i+1])
+                if isinstance(loss_i, dict):
+                    loss_i = sum(loss for loss in loss_i.values())
+                    loss_per_instance.append(loss_i)
+                else:
+                    loss_per_instance.append(loss_i.item())
 
             self.model.zero_grad()
         return loss_per_instance  # Len nb_data
@@ -223,25 +240,33 @@ class FedMIAPrivacyEvaluationStrategyDecorator(StrategyDecorator):
         self.model.eval()
         self.model.zero_grad()
 
-        if self.config.criterion!="model_val":
-            # Forward pass
-            output = self.model(x)  # Shape: (B, num_classes)
+        # if self.conf.criterion=="model_val":
+        #    self.model.train() # train model to compute losses as output of the forward 
+            
 
         # Compute gradients for each sample in the batch
         grads_per_instance = []
         loss_per_instance =[]
         for i in range(B):
+            if isinstance(y, dict):
+                y_i={}
+                for k,v in y.items():
+                    if isinstance(v, torch.Tensor):
+                        y_i[k]=v[i]
+                    else:
+                        y_i[k]=[v[i]]
+                loss_i = criterion(x[i:i+1], [y_i])
+            else:
+                loss_i = criterion(x[i:i+1], y[i:i+1])
             # Zero gradients for this iteration
             self.model.zero_grad()
-            if self.config.criterion=="model_val":
-                # Compute loss for the i-th sample
-                loss_i = criterion(x[i:i+1], y[i:i+1])
+            if isinstance(loss_i, dict):
+                loss_i = sum(loss for loss in loss_i.values())
+                loss_per_instance.append(loss_i)
             else:
-                # Compute loss for the i-th sample
-                loss_i = criterion(output[i:i+1], y[i:i+1])
+                loss_per_instance.append(loss_i.item())
             # Backward pass for the i-th sample
             loss_i.backward(retain_graph=True if i < B-1 else False)
-            loss_per_instance.append(loss_i.item())
             # Flatten and save gradients
             grad_flat = torch.cat([p.grad.flatten() for p in self.model.parameters() if p.grad is not None])
             grads_per_instance.append(grad_flat)
@@ -270,7 +295,7 @@ class FedMIAPrivacyEvaluationStrategyDecorator(StrategyDecorator):
         clients_updates_norm = clients_updates / (clients_updates.norm(dim=1, keepdim=True) + 1e-8)
         total_loss_per_instance = []
         for x, y in tqdm(dataloader):
-            x, y = x.to(device), y.to(device)
+            # x, y = x.to(device), y.to(device)
             # Compute per-instance gradients for the batch
             grads_per_instance, loss_per_instance = self._compute_per_instance_gradients(x, y, criterion)
             # Normalize per-instance gradients
