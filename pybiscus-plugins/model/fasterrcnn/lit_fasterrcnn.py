@@ -239,7 +239,6 @@ class LitFasterRCNN(pl.LightningModule):
 
     def on_test_end(self):
         self._log_metrics("test", verbose=True)
-        print(map, self.detection_metrics.compute())
         return super().on_test_end()
         
     def _update_metrics(self, output, targets, mode="val", verbose=False):

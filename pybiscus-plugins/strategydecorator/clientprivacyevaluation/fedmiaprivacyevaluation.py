@@ -100,8 +100,7 @@ class FedMIAPrivacyEvaluationStrategyDecorator(StrategyDecorator):
     def forward_train(self, x, target):
         # Some model compute losses only in train mode
         self.model.train()
-        with torch.no_grad():
-            res = self.model(x, target)
+        res = self.model(x, target)
         return res
 
     def _make_loss(self, name, **kwargs):
@@ -194,39 +193,40 @@ class FedMIAPrivacyEvaluationStrategyDecorator(StrategyDecorator):
         Returns:
             loss_per_instance: List of length N, the number of instances in dataloader.
         """
-        logm.console.log("self.model", self.model)
         self.model.load_state_dict(state_dict)
         # self.model.to(device)
         self.model.eval()
         self.model.zero_grad()
         loss_per_instance =[]
-        print_GPU_usage("start of losses computation")
         for x, y in tqdm(dataloader):
             # x, y = x.to(device), y.to(device)
             # Compute per-instance loss for the batch
             B = x.shape[0]
-            print_GPU_usage("start of Batch")
+
+            if self.conf.criterion!="model_val":
+                output = self.model(x)
             for i in range(B):
                 # Compute loss for the i-th sample
-                if isinstance(y, dict):
+                if self.conf.criterion!="model_val":
+                    loss_i = criterion(output[i:i+1], y[i:i+1])
+                elif isinstance(y, dict):
                     y_i={}
                     for k,v in y.items():
                         if isinstance(v, torch.Tensor):
                             y_i[k]=v[i]
                         else:
                             y_i[k]=[v[i]]
-                    # loss_i = {"loss1": 0, "loss2":0} # 
                     loss_i = criterion(x[i:i+1], [y_i])
                 else:
                     loss_i = criterion(x[i:i+1], y[i:i+1])
+
+                self.model.zero_grad(set_to_none=True)
                 if isinstance(loss_i, dict):
                     loss_i = sum(loss.detach().cpu().item() for loss in loss_i.values())
                     loss_per_instance.append(loss_i)
                 else:
                     loss_per_instance.append(loss_i.detach().cpu().item())
 
-                self.model.zero_grad()
-            print_GPU_usage("end of Batch")
         return loss_per_instance  # Len nb_data
 
 
@@ -244,16 +244,17 @@ class FedMIAPrivacyEvaluationStrategyDecorator(StrategyDecorator):
         B = x.shape[0]
         self.model.eval()
         self.model.zero_grad()
-
-        # if self.conf.criterion=="model_val":
-        #    self.model.train() # train model to compute losses as output of the forward 
-            
-
+           
+        if self.conf.criterion!="model_val":
+            output = self.model(x)
         # Compute gradients for each sample in the batch
         grads_per_instance = []
         loss_per_instance =[]
         for i in range(B):
-            if isinstance(y, dict):
+            # Compute loss for the i-th sample
+            if self.conf.criterion!="model_val":
+                loss_i = criterion(output[i:i+1], y[i:i+1])
+            elif isinstance(y, dict):
                 y_i={}
                 for k,v in y.items():
                     if isinstance(v, torch.Tensor):
@@ -264,16 +265,18 @@ class FedMIAPrivacyEvaluationStrategyDecorator(StrategyDecorator):
             else:
                 loss_i = criterion(x[i:i+1], y[i:i+1])
             # Zero gradients for this iteration
-            self.model.zero_grad()
+            self.model.zero_grad(set_to_none=True)
             if isinstance(loss_i, dict):
-                loss_i = sum(loss.item() for loss in loss_i.values())
-                loss_per_instance.append(loss_i)
-            else:
-                loss_per_instance.append(loss_i.item())
+                loss_i = sum(loss for loss in loss_i.values())
+            loss_per_instance.append(loss_i.item())
             # Backward pass for the i-th sample
             loss_i.backward(retain_graph=True if i < B-1 else False)
             # Flatten and save gradients
-            grad_flat = torch.cat([p.grad.flatten() for _, p in self.model.state_dict() if p.grad is not None])
+            grad_flat = torch.cat([
+                p.grad.flatten() if (p.grad is not None) 
+                else torch.zeros(p.shape, device=p.device).flatten() 
+                for _, p in self.model.named_parameters() 
+            ])
             grads_per_instance.append(grad_flat)
 
         return torch.stack(grads_per_instance), loss_per_instance  # Shape: (B, P), len B
@@ -293,7 +296,7 @@ class FedMIAPrivacyEvaluationStrategyDecorator(StrategyDecorator):
         """
         self.model.load_state_dict(server_state_dict)
         # self.model.to(device)
-        # clients_updates = clients_updates.to(device)
+        clients_updates = clients_updates.to(device)
         cosine_sim_matrix = []
 
         # Normalize clients_updates once
@@ -302,15 +305,16 @@ class FedMIAPrivacyEvaluationStrategyDecorator(StrategyDecorator):
         for x, y in tqdm(dataloader):
             # x, y = x.to(device), y.to(device)
             # Compute per-instance gradients for the batch
-            print_GPU_usage("start batch")
             grads_per_instance, loss_per_instance = self._compute_per_instance_gradients(x, y, criterion)
             # Normalize per-instance gradients
             grads_per_instance_norm = grads_per_instance / (grads_per_instance.norm(dim=1, keepdim=True) + 1e-8)
+            grads_per_instance_norm = grads_per_instance_norm.to(device)
             # Compute cosine similarity: (B, P) @ (P, L).T = (B, L)
+            print("grads_per_instance_norm", grads_per_instance_norm.shape, grads_per_instance_norm.device)
+            print("clients_updates_norm.T", clients_updates_norm.T.shape, clients_updates_norm.T.device)
             cosine_sim = torch.mm(grads_per_instance_norm, clients_updates_norm.T)
             cosine_sim_matrix.append(cosine_sim)
             total_loss_per_instance.extend(loss_per_instance)
-            print_GPU_usage("end batch")
         return torch.cat(cosine_sim_matrix, dim=0), total_loss_per_instance
 
     def _from_npz_to_state_dict(self, npz_path):
@@ -362,7 +366,6 @@ class FedMIAPrivacyEvaluationStrategyDecorator(StrategyDecorator):
             ensure_file_dir_exists(client_res_params_path)
             client_res_state_dict = self._from_npz_to_state_dict(client_res_params_path)
 
-            print_GPU_usage(f"start of losses res computation {cid}")
             clients_res_losses.append(
                 self._compute_per_instance_losses(
                     state_dict=client_res_state_dict,
@@ -370,7 +373,6 @@ class FedMIAPrivacyEvaluationStrategyDecorator(StrategyDecorator):
                     criterion=criterion,
                     device=device
                 ))
-            print_GPU_usage(f"start of losses in computation {cid}")
             clients_in_losses.append(
                 self._compute_per_instance_losses(
                     state_dict=client_in_state_dict,
@@ -378,19 +380,19 @@ class FedMIAPrivacyEvaluationStrategyDecorator(StrategyDecorator):
                     criterion=criterion,
                     device=device
                 ))
-            print_GPU_usage(f"end of losses for {cid}")
             # Δw par clé de paramètre
-            client_update = [
-                torch.tensor(
-                    np.asarray(client_res_state_dict[k], dtype=np.float32) - np.asarray(client_in_state_dict[k], dtype=np.float32)
-                    ).flatten()
-                for k in self.state_dict.keys()
-            ]
+            client_update = []
+            for k, _ in self.model.named_parameters():
+                key = f"model.{k.partition('model.')[2]}"
+                client_update.append(
+                    torch.tensor(np.asarray(client_res_state_dict[key], dtype=np.float32) 
+                                 - np.asarray(client_in_state_dict[key], dtype=np.float32))
+                                 .flatten()
+                )
             clients_updates.append(torch.cat(client_update).flatten().unsqueeze(0))
         logm.console.log(cid_list, len(clients_updates))
         clients_updates_tensor = torch.cat(clients_updates) # Shape : (nb_clients, nb_parameters)
         logm.console.log(clients_updates_tensor.shape)
-        print_GPU_usage("start cosine_sim_matrix")
         cosine_matrix, server_losses= self._compute_cosine_similarity_matrix(
             server_state_dict=server_state_dict,
             dataloader=MIADataloader,

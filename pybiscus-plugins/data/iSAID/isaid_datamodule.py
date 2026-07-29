@@ -21,6 +21,7 @@ from torchvision.tv_tensors import BoundingBoxes
 from PIL import Image
 import random
 from pathlib import Path
+from collections import defaultdict
 
 import pandas as pd
 
@@ -344,7 +345,7 @@ class iSAIDLightningDataModule(pl.LightningDataModule):
             self.data_test,
             batch_size=self.batch_size,
             num_workers=self.num_workers,
-            drop_last=True,
+            drop_last=False,
             shuffle=False,
             collate_fn=self.collate_fn
         )
@@ -572,6 +573,9 @@ if __name__ == "__main__":
         "--nb_clients", type=int, required=True, help="Nombre de clients"
     )
     parser.add_argument(
+        "--approach", type=str, required=True, help="Approach to divide by client. RANDOM or BYNAME"
+    )
+    parser.add_argument(
         "--data_path",
         type=str,
         required=True,
@@ -586,26 +590,45 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    isaid_trainval = iSAIDImageDataset(
-                path=args.data_path,
-                img_size = (300, 350), 
-                mask_threshold = 0.1,
-                augmentation=True
+    isaid_trainval = iSAIDDetectionDataset(
+                data_path=args.data_path
             )
-    shuffled_indices = [i for i in range(len(isaid_trainval))]
-    random.shuffle(shuffled_indices)
 
-    nb_indices_client = int(len(shuffled_indices) / args.nb_clients)
+    if args.approach=="RANDOM":
+        shuffled_indices = [i for i in range(len(isaid_trainval))]
+        random.shuffle(shuffled_indices)
 
-    for client in range(args.nb_clients):
-        client_indices = shuffled_indices[
-            client * nb_indices_client : (client + 1) * nb_indices_client
-        ]
-        write_list_to_file(
-            client_indices[: int(len(client_indices) * 0.8)],
-            f"{args.output_folder}/client_{client}_train.txt",
-        )
-        write_list_to_file(
-            client_indices[int(len(client_indices) * 0.8) :],
-            f"{args.output_folder}/client_{client}_val.txt",
-        )
+        nb_indices_client = int(len(shuffled_indices) / args.nb_clients)
+
+        for client in range(args.nb_clients):
+            client_indices = shuffled_indices[
+                client * nb_indices_client : (client + 1) * nb_indices_client
+            ]
+            write_list_to_file(
+                client_indices[: int(len(client_indices) * 0.8)],
+                f"{args.output_folder}/client_{client}_train.txt",
+            )
+            write_list_to_file(
+                client_indices[int(len(client_indices) * 0.8) :],
+                f"{args.output_folder}/client_{client}_val.txt",
+            )
+    else:
+        list_images = isaid_trainval.list_images
+        clients_dic = defaultdict(list)
+        for idx, img_path in enumerate(list_images):
+            subfolder_name = img_path.split('/')[-2]
+            client_name = subfolder_name.split('_')[-1]
+            clients_dic[client_name].append(idx)
+
+        print(f"We found {len(clients_dic.keys())} different client names")
+
+        for client_name, client_indices in clients_dic.items():
+            
+            write_list_to_file(
+                client_indices[: int(len(client_indices) * 0.8)],
+                f"{args.output_folder}/client_{client_name}_train.txt",
+            )
+            write_list_to_file(
+                client_indices[int(len(client_indices) * 0.8) :],
+                f"{args.output_folder}/client_{client_name}_val.txt",
+            )
