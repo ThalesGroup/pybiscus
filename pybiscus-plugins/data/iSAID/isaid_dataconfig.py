@@ -17,6 +17,7 @@ class ConfigiSAIDData(BaseModel):
 
     dir_train:   Optional[str] = "${root_dir}/datasets/train/"
     data_train_indices_path:   Optional[str] =None
+    dir_val:   Optional[str] = "${root_dir}/datasets/val/"
     data_val_indices_path:   Optional[str] =None
     # dir_val:     Optional[str] = "${root_dir}/datasets/val/" # val can be suppressed, as there are only trainval and test for CIFAR10
     dir_test:    Optional[str] = "${root_dir}/datasets/test/"

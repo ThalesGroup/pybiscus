@@ -203,6 +203,7 @@ class iSAIDLightningDataModule(pl.LightningDataModule):
         self,
         dir_train,
         data_train_indices_path,
+        dir_val,
         data_val_indices_path,
         dir_test,
         batch_size,
@@ -216,6 +217,7 @@ class iSAIDLightningDataModule(pl.LightningDataModule):
         # init parameters memo
         self.data_dir_train = dir_train
         self.data_train_indices_path = data_train_indices_path
+        self.data_dir_val = dir_val
         self.data_val_indices_path = data_val_indices_path
         self.img_size = img_size
         # self.data_dir_val   = dir_val
@@ -250,33 +252,42 @@ class iSAIDLightningDataModule(pl.LightningDataModule):
 
         if stage == "fit" or stage is None:
             if self.mode == "Detection":
-                isaid_trainval = iSAIDDetectionDataset(
+                isaid_train = iSAIDDetectionDataset(
                     data_path=self.data_dir_train
                 )
+                isaid_val = iSAIDDetectionDataset(
+                    data_path=self.data_dir_val
+                )
             else:
-                isaid_trainval = iSAIDImageDataset(
+                isaid_train = iSAIDImageDataset(
                     path=self.data_dir_train,
                     img_size = self.img_size, 
                     mask_threshold = 0.1,
                     augmentation=True
                 )
+                isaid_val = iSAIDImageDataset(
+                    path=self.data_dir_val,
+                    img_size = self.img_size, 
+                    mask_threshold = 0.1,
+                    augmentation=True
+                )
             if self.data_train_indices_path is None:
-                self.data_train = isaid_trainval
+                self.data_train = isaid_train
                 logm.console.log("data train size: ", len(self.data_train.indices))
 
             else:
                 data_train_indices = self._read_file_indices(
                     self.data_train_indices_path
                 )
-                self.data_train = Subset(isaid_trainval, data_train_indices)
+                self.data_train = Subset(isaid_train, data_train_indices)
                 logm.console.log("data train size: ", len(self.data_train.indices))
 
             if self.data_val_indices_path is None:
-                self.data_val = isaid_trainval
+                self.data_val = isaid_val
                 logm.console.log("data val size: ", len(self.data_val.indices))
             else:
                 data_val_indices = self._read_file_indices(self.data_val_indices_path)
-                self.data_val = Subset(isaid_trainval, data_val_indices)
+                self.data_val = Subset(isaid_val, data_val_indices)
                 logm.console.log("data val size: ", len(self.data_val.indices))
 
         if stage == "test" or stage is None:
@@ -590,12 +601,11 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    isaid_trainval = iSAIDDetectionDataset(
-                data_path=args.data_path
+    isaid_dataset = iSAIDDetectionDataset(
+                data_path=f"{args.data_path}"
             )
-
     if args.approach=="RANDOM":
-        shuffled_indices = [i for i in range(len(isaid_trainval))]
+        shuffled_indices = [i for i in range(len(isaid_dataset))]
         random.shuffle(shuffled_indices)
 
         nb_indices_client = int(len(shuffled_indices) / args.nb_clients)
@@ -605,30 +615,30 @@ if __name__ == "__main__":
                 client * nb_indices_client : (client + 1) * nb_indices_client
             ]
             write_list_to_file(
-                client_indices[: int(len(client_indices) * 0.8)],
-                f"{args.output_folder}/client_{client}_train.txt",
+                client_indices[:int(len(client_indices)*0.8)], 
+                f"{args.output_folder}/client_{client}_train.txt"
             )
             write_list_to_file(
-                client_indices[int(len(client_indices) * 0.8) :],
-                f"{args.output_folder}/client_{client}_val.txt",
+                client_indices[int(len(client_indices)*0.8):], 
+                f"{args.output_folder}/client_{client}_val.txt"
             )
     else:
-        list_images = isaid_trainval.list_images
-        clients_dic = defaultdict(list)
+        list_images = isaid_dataset.list_images
+        clients_dic = defaultdict(lambda: defaultdict(list))
+        print(list_images[:10])
+        print(list_images[-10:])
+        print(len(list_images))
         for idx, img_path in enumerate(list_images):
             subfolder_name = img_path.split('/')[-2]
             client_name = subfolder_name.split('_')[-1]
-            clients_dic[client_name].append(idx)
+            split = subfolder_name.split('_')[0]
+            clients_dic[client_name][split].append(idx)
 
         print(f"We found {len(clients_dic.keys())} different client names")
 
-        for client_name, client_indices in clients_dic.items():
-            
-            write_list_to_file(
-                client_indices[: int(len(client_indices) * 0.8)],
-                f"{args.output_folder}/client_{client_name}_train.txt",
-            )
-            write_list_to_file(
-                client_indices[int(len(client_indices) * 0.8) :],
-                f"{args.output_folder}/client_{client_name}_val.txt",
-            )
+        for client_name, split_indices in clients_dic.items():
+            for split_name, image_indices in split_indices.items():
+                write_list_to_file(
+                    image_indices,
+                    f"{args.output_folder}/client_{client_name}_{split_name}.txt",
+                )

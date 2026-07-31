@@ -310,9 +310,7 @@ class FedMIAPrivacyEvaluationStrategyDecorator(StrategyDecorator):
             grads_per_instance_norm = grads_per_instance / (grads_per_instance.norm(dim=1, keepdim=True) + 1e-8)
             grads_per_instance_norm = grads_per_instance_norm.to(device)
             # Compute cosine similarity: (B, P) @ (P, L).T = (B, L)
-            print("grads_per_instance_norm", grads_per_instance_norm.shape, grads_per_instance_norm.device)
-            print("clients_updates_norm.T", clients_updates_norm.T.shape, clients_updates_norm.T.device)
-            cosine_sim = torch.mm(grads_per_instance_norm, clients_updates_norm.T)
+            cosine_sim = torch.mm(-grads_per_instance_norm, clients_updates_norm.T)
             cosine_sim_matrix.append(cosine_sim)
             total_loss_per_instance.extend(loss_per_instance)
         return torch.cat(cosine_sim_matrix, dim=0), total_loss_per_instance
