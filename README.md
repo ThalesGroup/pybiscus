@@ -66,6 +66,7 @@ pybiscus client launch configs/cifar10_cnn/distributed/without_ssl/with_privacy_
 ```
 
 Then when the training is going well, on a fourth terminal you can run a privacy analysis
+Please read the main method, especially at line 370 to set the cid_list correctly (it has to be done manually for now)
 ```bash
 cd pybiscus-plugins/strategydecorator/clientprivacyevaluation/
 uv run fedmiaprivacy_analyser.py 
