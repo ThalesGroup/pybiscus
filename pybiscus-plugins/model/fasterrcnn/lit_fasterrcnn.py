@@ -9,12 +9,7 @@ from tqdm import tqdm
 from torch.optim.lr_scheduler import MultiStepLR
 
 from torchmetrics.detection.mean_ap import MeanAveragePrecision
-from torchmetrics.classification.accuracy import Accuracy, MulticlassAccuracy
-from torchmetrics.classification.confusion_matrix import (
-    MulticlassConfusionMatrix,
-    BinaryConfusionMatrix,
-)
-# from fasterrcnn.fasterrcnn import FasterRCNN, DectionProbability, FalseAlarmProbability
+
 from torchvision.models.detection.faster_rcnn import FastRCNNPredictor
 from torchvision.models.detection import (
     fasterrcnn_resnet50_fpn,
@@ -129,12 +124,6 @@ class LitFasterRCNN(pl.LightningModule):
         self.variant =  variant
         self.num_classes = num_classes
         self.box_score_thresh = box_score_thresh
-        # self.model       = FasterRCNN(
-        #     num_classes=self.num_classes, 
-        #     variant=self.variant, 
-        #     pretrained=self.pretrained, 
-        #     box_score_thresh=self.box_score_thresh,
-        #     trainable_backbone_layers=self.trainable_backbone_layers)
         if variant == "v2":
             weights = FasterRCNN_ResNet50_FPN_V2_Weights.DEFAULT if pretrained else None
             self.model = fasterrcnn_resnet50_fpn_v2(
