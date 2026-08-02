@@ -23,6 +23,7 @@ class ConfigiSAIDData(BaseModel):
     dir_test:    Optional[str] = "${root_dir}/datasets/test/"
     batch_size:  int = 32
     num_workers: int = 0
+    label_dict: Optional[dict] = None # label dictionnary in case labels are note increasing integer from 0 to n_classes -1. {0: label0, 1: label1 etc.}
 
     model_config = ConfigDict(extra="forbid")
 

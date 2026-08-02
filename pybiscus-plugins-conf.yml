@@ -21,7 +21,7 @@ model:
       - noop
       - deeplog
       - fasterrcnn
-      - unet
+      # - unet
 strategy:
   - path: "./pybiscus-plugins/strategy"
     modules:

@@ -12,18 +12,6 @@ from sklearn.metrics import roc_curve, auc
 import matplotlib.pyplot as plt
 
 
-def analyse_mia_infos(round_path):
-    client_split_path: str = (None,)  # path to the folder containing the ground truth
-    round_path: str = (
-        None,
-    )  # path to the folder containing the info saved at each round;
-    fpr_threshold: float = (0.01,)
-    log_scale_roc: bool = (True,)
-    client_label_mapping: Optional[dict[str, str]] = (None,)
-    filter_class_000_in_roc: bool = (False,)
-    show_boxplot_outliers: bool = (False,)
-    scatter_class_filter: Optional[list[str]] = (None,)
-
 
 def process_cosine_df(df_cosine):
     cid_cols = [col for col in df_cosine.columns if col not in ["Image_idx", "round"]]
@@ -283,69 +271,6 @@ def get_groundtruth_dataframes(
     return df_gt.reset_index()
 
 
-def plot_binary_ROCs(df_attack, df_gt, cid_list, plot_title, plot_path, round_num=-1):
-    """
-        We use as prediction value for each client, each data, each round : 
-        1 if the client as the max value of the cosine, 0 otherwise
-        Pro : exactly one client is predicted to own each data
-        Con : ROC curve have very few points
-        """
-    print(round_num, type(round_num))
-    for client_num, client in enumerate(cid_list):
-        df_gt.sort_values("Image_idx", inplace=True)
-        if round_num >= 0:
-            df_attack = df_attack[df_attack["round"] == round_num]
-        print(df_gt)
-        print(client_num)
-        print(df_gt[(df_gt["client_num"] == client_num) & (df_gt["split"] == "train")])
-        train_truth = df_gt[
-            (df_gt["client_num"] == client_num) & (df_gt["split"] == "train")
-        ]["Image_idx"].tolist()
-        y_true = df_gt["Image_idx"].apply(lambda x: 1 if x in train_truth else 0).values
-        df_attack[f"{client}_pred"] = df_attack["cid_max"].apply(
-            lambda x: 1 if x == client else 0
-        )
-        y_pred = (
-            df_attack[["Image_idx", f"{client}_pred"]]
-            .groupby("Image_idx")
-            .mean()
-            .reset_index()[f"{client}_pred"]
-            .values
-        )
-        y_pred_bin = np.array([1 if p > 0.5 else 0 for p in y_pred])
-        print(len(train_truth), len(y_true), len(y_pred))
-        print(
-            client_num,
-            client,
-            (y_pred_bin == y_true).sum(),
-            y_pred_bin.sum(),
-            y_true.sum(),
-        )
-        good_pred = 0
-        for p, gt in zip(y_pred_bin, y_true):
-            if (gt == 1) and (p == 1):
-                good_pred += 1
-        print(good_pred)
-        # Compute ROC curve
-        fpr, tpr, thresholds = roc_curve(y_true, y_pred)
-        roc_auc = auc(fpr, tpr)
-        print(len(y_true),len(y_pred))
-        print(plot_title, client,"fpr",fpr)
-        print(plot_title, client,"tpr",tpr)
-        print(plot_title, client,"thresholds", thresholds)
-        # Plot
-        plt.figure()
-        plt.plot(
-            fpr, tpr, color="darkorange", lw=2, label=f"ROC curve (AUC = {roc_auc:.2f})"
-        )
-        plt.plot([0, 1], [0, 1], "k--")
-        plt.xlabel("False Positive Rate")
-        plt.ylabel("True Positive Rate")
-        plt.title(f"Client {client_num} {client} {plot_title}")
-        plt.legend(loc="lower right")
-        plt.savefig(f"{plot_path}_{client}.png")
-        plt.close()
-
 def get_tpr_at_frp(tpr_list, fpr_list, fpr_aim):
     for th_idx, fpr_value in enumerate(fpr_list):
         if fpr_value < fpr_aim:
@@ -354,7 +279,30 @@ def get_tpr_at_frp(tpr_list, fpr_list, fpr_aim):
             return tpr_list[th_idx].item(), fpr_list[th_idx].item(), (tpr_list[th_idx]/fpr_list[th_idx]).item()
     return 1, 1
 
-def plot_ROCs(df_attack, df_gt, cid_list, plot_title, plot_path, round_num=-1):
+
+def get_y_pred(df_attack, client, approach):
+    if approach == "median":
+        df_attack[f"{client}_pred"] = df_attack[[client, "median"]].apply(
+                    lambda x: x[client]-x["median"], axis=1
+                )
+    elif approach =="higher_whisker":
+        df_attack[f"{client}_pred"] = df_attack[[client, "higher_whisker"]].apply(
+                            lambda x: x[client]-x["higher_whisker"], axis=1
+                        )
+    else:# approach=="none":
+        df_attack[f"{client}_pred"] = df_attack[client]
+    y_pred = (
+        df_attack[["Image_idx", f"{client}_pred"]]
+        .groupby("Image_idx")
+        .mean()
+        .reset_index()[f"{client}_pred"]
+        .values
+    )
+    y_pred_bin = np.array([1 if p > 0 else 0 for p in y_pred])
+    return y_pred, y_pred_bin
+
+
+def plot_ROCs(df_attack, df_gt, cid_list, plot_title, plot_path, round_num=-1, approach="higher_whisker"):
     """
     We use as prediction value for each client, each data, each round : 
     the cosine of the client minus the median cosine of the all the clients
@@ -367,17 +315,7 @@ def plot_ROCs(df_attack, df_gt, cid_list, plot_title, plot_path, round_num=-1):
             (df_gt["client_num"] == client_num) & (df_gt["split"] == "train")
         ]["Image_idx"].tolist()
         y_true = df_gt["Image_idx"].apply(lambda x: 1 if x in train_truth else 0).values
-        df_attack[f"{client}_pred"] = df_attack[[client, "median"]].apply(
-            lambda x: x[client]-x["median"], axis=1
-        )
-        y_pred = (
-            df_attack[["Image_idx", f"{client}_pred"]]
-            .groupby("Image_idx")
-            .mean()
-            .reset_index()[f"{client}_pred"]
-            .values
-        )
-        y_pred_bin = np.array([1 if p > 0 else 0 for p in y_pred])
+        y_pred, y_pred_bin = get_y_pred(df_attack, client, approach)
         print(
             client_num,
             client,
@@ -413,20 +351,23 @@ def plot_ROCs(df_attack, df_gt, cid_list, plot_title, plot_path, round_num=-1):
 
 if __name__ == "__main__":
 
+    approach="none"  # median or higher_whisker or none
+    save_folder = f"plots_{approach}"
+    os.makedirs(save_folder, exist_ok=True)
     round_path = "../../../experiments/current/rounds"
-    round_path = "../../../experiments/2026-07-31T15:33:34.975139/rounds"
+
     df_cosine, df_loss, cid_list, img_cos_selected, img_loss_selected = get_dataframes(
         round_path=round_path,
         cosine_file_name="cosine_matrix.csv",
         loss_file_name="loss_per_instances.csv",
-        plot_folder="plots/",
+        plot_folder=f"{save_folder}/",
     )
-    ground_truth_folder = "../../../datasets/cifar10/2clients_splits/"
-    ground_truth_folder = "../../../datasets/iSAID/1category_per_image/spectro_like_50/2clients_trainval_splits"
+
+    ground_truth_folder = "../../../datasets/cifar10/2clients_splits"
     df_gt = get_groundtruth_dataframes(
         data_split_path=ground_truth_folder,
-        save_folder="plots/",
-        dic_client_name={"A": 0,"B": 1},
+        save_folder=f"{save_folder}/",
+        dic_client_name={"0": 0,"1": 1},
     )
 
     plot_ROCs(
@@ -434,7 +375,8 @@ if __name__ == "__main__":
         df_gt=df_gt,
         cid_list=cid_list,
         plot_title="ROC Curve cosine",
-        plot_path="plots/ROC_cosine_all",
+        plot_path=f"{save_folder}/ROC_cosine_all",
+        approach=approach,
     )
 
     plot_ROCs(
@@ -442,7 +384,8 @@ if __name__ == "__main__":
         df_gt=df_gt,
         cid_list=cid_list,
         plot_title="ROC Curve loss",
-        plot_path="plots/ROC_loss_all",
+        plot_path=f"{save_folder}/ROC_loss_all",
+        approach=approach,
     )
     for round_num in df_cosine["round"].unique():
         plot_ROCs(
@@ -450,8 +393,9 @@ if __name__ == "__main__":
             df_gt=df_gt,
             cid_list=cid_list,
             plot_title="ROC Curve cosine",
-            plot_path=f"plots/ROC_cosine_round_{round_num}",
+            plot_path=f"{save_folder}/ROC_cosine_round_{round_num}",
             round_num=round_num,
+            approach=approach,
         )
 
         plot_ROCs(
@@ -459,6 +403,7 @@ if __name__ == "__main__":
             df_gt=df_gt,
             cid_list=cid_list,
             plot_title="ROC Curve loss",
-            plot_path=f"plots/ROC_loss_round_{round_num}",
+            plot_path=f"{save_folder}/ROC_loss_round_{round_num}",
             round_num=round_num,
+            approach=approach,
         )

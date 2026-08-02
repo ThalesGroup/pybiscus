@@ -210,6 +210,7 @@ class iSAIDLightningDataModule(pl.LightningDataModule):
         mode : str = "Detection",
         img_size: Tuple[int] = (300, 350),
         num_workers: int = 0,
+        label_dict: dict = None
     ):
 
         super().__init__()
@@ -225,6 +226,7 @@ class iSAIDLightningDataModule(pl.LightningDataModule):
         self.num_workers = num_workers
         self.batch_size = batch_size
         self.mode = mode
+        self.label_dict = label_dict
         self.collate_fn=None
         if self.mode == "Detection":
             self.collate_fn=collate_detection()
@@ -253,10 +255,12 @@ class iSAIDLightningDataModule(pl.LightningDataModule):
         if stage == "fit" or stage is None:
             if self.mode == "Detection":
                 isaid_train = iSAIDDetectionDataset(
-                    data_path=self.data_dir_train
+                    data_path=self.data_dir_train,
+                    label_dict=self.label_dict
                 )
                 isaid_val = iSAIDDetectionDataset(
-                    data_path=self.data_dir_val
+                    data_path=self.data_dir_val,
+                    label_dict=self.label_dict
                 )
             else:
                 isaid_train = iSAIDImageDataset(
@@ -293,7 +297,8 @@ class iSAIDLightningDataModule(pl.LightningDataModule):
         if stage == "test" or stage is None:
             if self.mode == "Detection":
                 self.data_test = iSAIDDetectionDataset(
-                    data_path=self.data_dir_test
+                    data_path=self.data_dir_test,
+                    label_dict=self.label_dict
                 )
             else:
                 self.data_test = iSAIDImageDataset(
@@ -376,6 +381,19 @@ class iSAIDDetectionDataset(Dataset):
     def __init__(
         self, data_path , label_dict=None
     ) -> None:
+        """
+        Supposes that the data is organised in subfolder, one subfolder per class.
+        class_name are all three digit integer, example:
+        train/
+        -----images/
+        -----------/000_A/ then plenty of .png files
+        -----------/234_B/ then plenty of .png files
+        -----------/236_A/ then plenty of .png files
+        -----BB/
+        -----------/000_A/ then plenty of .csv files
+        -----------/234_B/ then plenty of .csv files
+        -----------/236_A/ then plenty of .csv files
+        """
         super().__init__()
         self.data_path = data_path
         self.list_images = [str(p) for p in Path(f"{data_path}/images/").rglob("*.png")]
@@ -431,7 +449,7 @@ class iSAIDDetectionDataset(Dataset):
                         
                     ]
                 )
-                labels.append(int(self.label_dict_rev[row["class"]]))
+                labels.append(int(self.label_dict_rev[int(row["class"])]))
         except pd.errors.EmptyDataError as err:
             print(f"EmptyDataError {err}")
         if len(boxes) == 0:
