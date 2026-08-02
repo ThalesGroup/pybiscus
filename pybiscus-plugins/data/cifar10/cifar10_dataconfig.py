@@ -20,6 +20,7 @@ class ConfigCifar10Data(BaseModel):
     data_val_indices_path:   Optional[str] =None
     # dir_val:     Optional[str] = "${root_dir}/datasets/val/" # val can be suppressed, as there are only trainval and test for CIFAR10
     dir_test:    Optional[str] = "${root_dir}/datasets/test/"
+    dir_privacy: Optional[str] = None
     batch_size:  int = 32
     num_workers: int = 0
 

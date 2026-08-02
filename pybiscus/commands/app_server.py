@@ -256,6 +256,12 @@ def launch_config(
     
     data.setup(stage="test")
     test_set = fabric._setup_dataloader(data.test_dataloader())
+    if hasattr(data, 'privacy_set_dataloader'):
+        privacy_set = fabric._setup_dataloader(data.privacy_set_dataloader)
+        logm.console.log("privacy_set defined in data module")
+    else:
+        privacy_set = None
+    logm.console.log(f"privacy_set {privacy_set}")
 
     initial_parameters = None
     initial_parameters_log_message = "No weights provided, random server-side initialization instead."
@@ -279,6 +285,7 @@ def launch_config(
         model=model,
         fabric=fabric,
         testset=test_set,
+        privacyset=privacy_set,
         initial_parameters=initial_parameters,
         config=conf.server_strategy.strategy.config,
     )

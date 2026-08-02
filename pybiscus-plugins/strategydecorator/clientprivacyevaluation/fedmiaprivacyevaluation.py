@@ -88,7 +88,12 @@ class FedMIAPrivacyEvaluationStrategyDecorator(StrategyDecorator):
         self.state_dict = self.model.state_dict()
         # Todo permettre de lister les parametres
         self.parameters_iterator = self.model.parameters()
-        self.testset = pybiscus_strategy.testset
+        if hasattr(pybiscus_strategy, 'privacyset'):
+            self.privacyset = pybiscus_strategy.privacyset
+        else:
+            self.privacyset = None
+        if self.privacyset is None:
+            logm.console.log("No privacyset defined in the strategy, cannot perform the Privacy Evaluation")
         self.fabric = pybiscus_strategy.fabric
         self.criterion = self._make_loss(config.criterion)
         self.conf = config
@@ -172,13 +177,16 @@ class FedMIAPrivacyEvaluationStrategyDecorator(StrategyDecorator):
 
             np.savez(result_path, *result)
         
-        if server_round>=1:
-            self._process_client_round(
-                round_num= server_round,
-                cid_list= cid_list,
-                MIADataloader = self.testset,
-                criterion = self.criterion,
-                device= self.conf.device)
+        if server_round>=1 :
+            if self.privacyset is not None:
+                self._process_client_round(
+                    round_num= server_round,
+                    cid_list= cid_list,
+                    MIADataloader = self.privacyset,
+                    criterion = self.criterion,
+                    device= self.conf.device)
+            else:
+                logm.console.log("No privacyset defined in the strategy, cannot perform the Privacy Evaluation")
 
         return aggregated, {}
 

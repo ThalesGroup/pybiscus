@@ -173,7 +173,7 @@ class CifarLightningDataModule(pl.LightningDataModule):
     """
 
     @override
-    def __init__( self, dir_train, data_train_indices_path, data_val_indices_path, dir_test, batch_size, num_workers: int = 0,):
+    def __init__( self, dir_train, data_train_indices_path, data_val_indices_path, dir_test, dir_privacy, batch_size, num_workers: int = 0,):
 
         super().__init__()
 
@@ -181,8 +181,8 @@ class CifarLightningDataModule(pl.LightningDataModule):
         self.data_dir_train = dir_train
         self.data_train_indices_path = data_train_indices_path
         self.data_val_indices_path = data_val_indices_path
-        # self.data_dir_val   = dir_val
         self.data_dir_test  = dir_test
+        self.data_dir_privacy = dir_privacy
         self.num_workers    = num_workers
         self.batch_size     = batch_size
 
@@ -197,6 +197,10 @@ class CifarLightningDataModule(pl.LightningDataModule):
         self.data_train     = None
         self.data_val       = None
         self.data_test      = None
+
+        # DataLoader specific for the privacy evaluation (must contains data from the
+        # targeted participant training sets, and other data like validation and test)
+        self.privacy_set_dataloader = None
 
     @override
     def setup(self, stage: Optional[str] = None):
@@ -239,7 +243,11 @@ class CifarLightningDataModule(pl.LightningDataModule):
         if stage == "test" or stage is None:
             self.data_test  = CIFAR10( root=self.data_dir_test,  train=True, download=True, transform=self.transform,)
             logm.console.log("x_test shape", self.data_test.data.shape)
-    
+            if self.data_dir_privacy is not None:
+                self.privacy_set  = CIFAR10( root=self.data_dir_privacy,  train=True, download=True, transform=self.transform,)
+                self.privacy_set_dataloader = DataLoader( self.data_test,  batch_size=self.batch_size, num_workers=self.num_workers, drop_last=True, shuffle=False,)
+                logm.console.log("x_privacy shape", self.privacy_set.data.shape)
+
     def _read_file_indices(self,filepath):
         """
             Return a list containing all integers seperated with whitespaces present in the file

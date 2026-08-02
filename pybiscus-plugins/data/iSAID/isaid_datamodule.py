@@ -206,6 +206,7 @@ class iSAIDLightningDataModule(pl.LightningDataModule):
         dir_val,
         data_val_indices_path,
         dir_test,
+        dir_privacy,
         batch_size,
         mode : str = "Detection",
         img_size: Tuple[int] = (300, 350),
@@ -221,8 +222,8 @@ class iSAIDLightningDataModule(pl.LightningDataModule):
         self.data_dir_val = dir_val
         self.data_val_indices_path = data_val_indices_path
         self.img_size = img_size
-        # self.data_dir_val   = dir_val
         self.data_dir_test = dir_test
+        self.data_dir_privacy = dir_privacy
         self.num_workers = num_workers
         self.batch_size = batch_size
         self.mode = mode
@@ -230,12 +231,16 @@ class iSAIDLightningDataModule(pl.LightningDataModule):
         self.collate_fn=None
         if self.mode == "Detection":
             self.collate_fn=collate_detection()
-        
+        # For now only the Detection mode is tested (compatible with FasterRCNN), TODO the Segmentation mode with Unet
 
         # DataLoaders for train, val and test phasis
         self.data_train = None
         self.data_val = None
         self.data_test = None
+
+        # DataLoader specific for the privacy evaluation (must contains data from the
+        # targeted participant training sets, and other data like validation and test)
+        self.privacy_set_dataloader = None
 
     @override
     def setup(self, stage: Optional[str] = None):
@@ -300,6 +305,11 @@ class iSAIDLightningDataModule(pl.LightningDataModule):
                     data_path=self.data_dir_test,
                     label_dict=self.label_dict
                 )
+                if self.data_dir_privacy is not None:
+                    self.privacy_set = iSAIDDetectionDataset(
+                                        data_path=self.data_dir_privacy,
+                                        label_dict=self.label_dict
+                                    )
             else:
                 self.data_test = iSAIDImageDataset(
                     path=self.data_dir_test,
@@ -307,7 +317,26 @@ class iSAIDLightningDataModule(pl.LightningDataModule):
                     mask_threshold = 0.1,
                     augmentation=False,
                 )
+                if self.data_dir_privacy is not None:
+                    self.privacy_set = iSAIDImageDataset(
+                        path=self.data_dir_privacy,
+                        img_size = self.img_size, 
+                        mask_threshold = 0.1,
+                        augmentation=False,
+                    )
             logm.console.log("data test shape", len(self.data_test.indices))
+            if self.data_dir_privacy is not None:
+                self.privacy_set_dataloader = DataLoader(
+                    self.privacy_set,
+                    batch_size=self.batch_size,
+                    num_workers=self.num_workers,
+                    drop_last=False,
+                    shuffle=False,
+                    collate_fn=self.collate_fn
+                )
+                logm.console.log("data privacy shape", len(self.privacy_set.indices))
+            
+            
 
     def _read_file_indices(self, filepath):
         """

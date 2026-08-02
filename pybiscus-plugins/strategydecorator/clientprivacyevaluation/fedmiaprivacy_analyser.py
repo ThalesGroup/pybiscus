@@ -169,7 +169,6 @@ def get_dataframes(
                         )
                         df_loss["round"] = round_num
                         df_loss_list.append(df_loss)
-                print(round_num, df_loss.shape, df_cosine.shape)
     df_loss = pd.concat(df_loss_list)
     df_cosine = pd.concat(df_cosine_list)
 
@@ -351,7 +350,7 @@ def plot_ROCs(df_attack, df_gt, cid_list, plot_title, plot_path, round_num=-1, a
 
 if __name__ == "__main__":
 
-    approach="none"  # median or higher_whisker or none
+    approach="higher_whisker"  # median or higher_whisker or none
     save_folder = f"plots_{approach}"
     os.makedirs(save_folder, exist_ok=True)
     round_path = "../../../experiments/current/rounds"
@@ -370,6 +369,18 @@ if __name__ == "__main__":
         dic_client_name={"0": 0,"1": 1},
     )
 
+    # from the privacy analyser we cannot deduce wich client is which.
+    # however in the server logs the information is here
+    # TODO provide a code to parse the server logs and retrieve the truth
+    # from now it has to be done manually
+    # Example : 
+    # Source is flower => client_id = 91a83a4f620c45fa8c4f57732325a3d7
+    # Source is metrics => cid = 1
+    # Source is flower => client_id = 61565d1d253c4585807d5655afb4104b
+    # Source is metrics => cid = 0
+    # Means cid_list[0] should be equal to "61565d1d253c4585807d5655afb4104b"
+    # Means cid_list[1] should be equal to "91a83a4f620c45fa8c4f57732325a3d7"
+    # cid_list = ['61565d1d253c4585807d5655afb4104b', '91a83a4f620c45fa8c4f57732325a3d7']
     plot_ROCs(
         df_attack=df_cosine,
         df_gt=df_gt,
