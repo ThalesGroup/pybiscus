@@ -689,3 +689,13 @@ if __name__ == "__main__":
                     image_indices,
                     f"{args.output_folder}/client_{client_name}_{split_name}.txt",
                 )
+
+    idx=0
+    csv_lines=["Image_idx,label\n"]
+    for x,y in iter(isaid_dataset):
+        csv_lines.append(f"{idx},{y['labels'][0]}\n")
+        idx+=1
+    target = open(f"{args.output_folder}/index_to_label.csv", 'w')
+    target.writelines(csv_lines)
+    target.close()
+

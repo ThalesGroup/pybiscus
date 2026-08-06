@@ -160,7 +160,8 @@ class FedMIAPrivacyEvaluationStrategyDecorator(StrategyDecorator):
     
     def aggregate_fit(self, server_round, results, failures):
 
-        aggregated, _ = super().aggregate_fit(server_round, results, failures)
+        # aggregated, _ = super().aggregate_fit(server_round, results, failures)
+        current_model_state_dict = self.model.state_dict()
         round_path = self.reporting_path / self.conf.reporting_sub_dir
         ensure_dir_exists(round_path)
         cid_list = []
@@ -188,7 +189,8 @@ class FedMIAPrivacyEvaluationStrategyDecorator(StrategyDecorator):
             else:
                 logm.console.log("No privacyset defined in the strategy, cannot perform the Privacy Evaluation")
 
-        return aggregated, {}
+        self.model.load_state_dict(current_model_state_dict)
+        return super().aggregate_fit(server_round, results, failures)
 
     def _compute_per_instance_losses(self, state_dict, dataloader, criterion, device="cuda"):
         """
