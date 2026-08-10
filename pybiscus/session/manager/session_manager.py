@@ -48,7 +48,7 @@ def main():
     manager_port=args.port
 
     print(f"🚀 Manager starting on port {manager_port}")
-    pybiscus_manager_app.run(port=manager_port)
+    pybiscus_manager_app.run(host= '0.0.0.0', port=manager_port)
 
 # **************************
 

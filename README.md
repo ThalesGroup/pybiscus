@@ -43,6 +43,36 @@ You can find example launch scripts in ./launch/uv subdirectories
 
 Documentation is available at [docs](docs/index.md).
 
+## Example for a running example
+
+Open 3 terminal:
+
+terminal 1 : the server
+```bash
+source ./extend_path.sh
+pybiscus server launch configs/cifar10_cnn/distributed/without_ssl/with_privacy_eval_cpu/ConfigServer.yml > server.out
+```
+
+terminal 2 : Client 1
+```bash
+source ./extend_path.sh
+pybiscus client launch configs/cifar10_cnn/distributed/without_ssl/with_privacy_eval_cpu/ConfigClient1.yml > client1.out
+```
+
+terminal 3 : Client 2
+```bash
+source ./extend_path.sh
+pybiscus client launch configs/cifar10_cnn/distributed/without_ssl/with_privacy_eval_cpu/ConfigClient2.yml > client2.out
+```
+
+Then when the training is going well, on a fourth terminal you can run a privacy analysis
+Please read the main method, especially at line 370 to set the cid_list correctly (it has to be done manually for now)
+```bash
+cd pybiscus-plugins/strategydecorator/clientprivacyevaluation/
+uv run fedmiaprivacy_analyser.py 
+```
+
+
 ## Contributing
 
 If you are interested in contributing to the Pybiscus project, start by reading the [Contributing guide](/CONTRIBUTING.md).

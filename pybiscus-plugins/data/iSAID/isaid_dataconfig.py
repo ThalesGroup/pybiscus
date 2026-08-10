@@ -1,7 +1,7 @@
 from typing import Literal, ClassVar, Optional
 from pydantic import BaseModel, ConfigDict, Field
 
-class ConfigCifar10Data(BaseModel):
+class ConfigiSAIDData(BaseModel):
     """Pydantic Model used to validate the LightningDataModule config
 
     Attributes
@@ -17,23 +17,24 @@ class ConfigCifar10Data(BaseModel):
 
     dir_train:   Optional[str] = "${root_dir}/datasets/train/"
     data_train_indices_path:   Optional[str] =None
+    dir_val:   Optional[str] = "${root_dir}/datasets/val/"
     data_val_indices_path:   Optional[str] =None
-    # dir_val:     Optional[str] = "${root_dir}/datasets/val/" # val can be suppressed, as there are only trainval and test for CIFAR10
     dir_test:    Optional[str] = "${root_dir}/datasets/test/"
     dir_privacy: Optional[str] = None
     batch_size:  int = 32
     num_workers: int = 0
+    label_dict: Optional[dict] = None # label dictionnary in case labels are note increasing integer from 0 to n_classes -1. {0: label0, 1: label1 etc.}
 
     model_config = ConfigDict(extra="forbid")
 
-# --- Pybiscus Cifar10 configuration definition 
+# --- Pybiscus iSAID configuration definition 
 
-class ConfigData_Cifar10(BaseModel):
+class ConfigData_iSAID(BaseModel):
 
-    PYBISCUS_ALIAS: ClassVar[str] = "Cifar 10"
+    PYBISCUS_ALIAS: ClassVar[str] = "iSAID"
 
-    name:   Literal["cifar"]
-    config: ConfigCifar10Data
+    name:   Literal["isaid"]
+    config: ConfigiSAIDData
 
     model_config = ConfigDict(extra="forbid")
 

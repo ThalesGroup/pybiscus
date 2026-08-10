@@ -9,6 +9,7 @@ from flwr.server.client_proxy import ClientProxy
 from pydantic import BaseModel, ConfigDict
 
 from pybiscus.interfaces.flower.strategydecorator import StrategyDecorator
+from pybiscus.interfaces.flower.fabricstrategyfactory import FabricStrategyFactory
 from pybiscus.plugin.registries.resultmodifier_registry import ResultModifierConfig, resultmodifier_registry
 import pybiscus.core.pybiscus_logger as logm
 
@@ -45,8 +46,9 @@ class PersonalizeClientsFitInParamsStrategyDecorator(StrategyDecorator):
     
     def __init__(
         self,
-        base_strategy: Strategy,
-        conf,
+        base_strategy: Strategy, 
+        pybiscus_strategy: FabricStrategyFactory,
+        config,
     ):
         """
         Args:
@@ -54,15 +56,15 @@ class PersonalizeClientsFitInParamsStrategyDecorator(StrategyDecorator):
             result_modifier: configuration of the result modifier
         """
         self.base_strategy = base_strategy
-        self.conf = conf
+        self.conf = config
 
         # allocate a result modifier usign its class name
 
         # step 1 : find class by name in corresponding registry
-        resultmodifier_class = resultmodifier_registry()[conf.result_modifier.name]
+        resultmodifier_class = resultmodifier_registry()[config.result_modifier.name]
 
         # step 2 : invoke ctor with configuration
-        self.result_modifier = resultmodifier_class(**conf.result_modifier.config.model_dump())
+        self.result_modifier = resultmodifier_class(**config.result_modifier.config.model_dump())
 
     # -------------------------------------------------------------------------
 
