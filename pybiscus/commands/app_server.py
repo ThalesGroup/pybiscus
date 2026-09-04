@@ -25,6 +25,7 @@ from pybiscus.plugin.registries.model_registry import model_registry
 from pybiscus.plugin.registries.strategy_registry import strategy_registry
 from pybiscus.plugin.registries.strategydecorator_registry import strategydecorator_registry
 
+
 #                    ------------------------------------------------
 
 def check_and_build_server_config(conf_loaded: dict) -> ConfigServer :
@@ -255,6 +256,12 @@ def launch_config(
     
     data.setup(stage="test")
     test_set = fabric._setup_dataloader(data.test_dataloader())
+    if hasattr(data, 'privacy_set_dataloader'):
+        privacy_set = fabric._setup_dataloader(data.privacy_set_dataloader)
+        logm.console.log("privacy_set defined in data module")
+    else:
+        privacy_set = None
+    logm.console.log(f"privacy_set {privacy_set}")
 
     initial_parameters = None
     initial_parameters_log_message = "No weights provided, random server-side initialization instead."
@@ -265,7 +272,7 @@ def launch_config(
         initial_parameters_log_message = f"Loaded weights from {weights_path}"
 
     params = torch.nn.ParameterList(
-        [param.detach().cpu().numpy() for param in model.parameters()]
+        [param.detach().cpu().numpy() for _, param in model.state_dict().items()]
     )
     initial_parameters = fl.common.ndarrays_to_parameters(params)
     logm.console.log(initial_parameters_log_message)
@@ -274,13 +281,15 @@ def launch_config(
     # the behaviour would have been : Requesting initial parameters from one random client
     # Question: add this as a configuration option ?
 
-    strategy = strategy_registry()[conf.server_strategy.strategy.name]( 
+    pybiscus_strategy = strategy_registry()[conf.server_strategy.strategy.name]( 
         model=model,
         fabric=fabric,
         testset=test_set,
+        privacyset=privacy_set,
         initial_parameters=initial_parameters,
         config=conf.server_strategy.strategy.config,
-    ).get_strategy( conf.server_run.clients_fit_local_epochs )
+    )
+    strategy = pybiscus_strategy.get_strategy( conf.server_run.clients_fit_local_epochs )
 
     logm.console.log(f"setting 🛠️ strategy <{conf.server_strategy.strategy.name}>")
 
@@ -294,7 +303,7 @@ def launch_config(
     for conf_decorator in conf.server_strategy.pipeline:
         logm.console.log(f"setting 🛠️🎀 strategy decorator <{conf_decorator.name}>")
         decorator_class = strategydecorator_registry()[conf_decorator.name]
-        strategy = decorator_class(strategy,conf_decorator.config)
+        strategy = decorator_class(strategy,pybiscus_strategy,conf_decorator.config )
     
     logm.console.log("start of 🌺🖥️ flower server")
 

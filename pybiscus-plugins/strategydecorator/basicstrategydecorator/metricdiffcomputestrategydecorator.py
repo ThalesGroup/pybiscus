@@ -5,6 +5,8 @@ from flwr.server.client_proxy import ClientProxy
 from pydantic import BaseModel, ConfigDict
 
 from pybiscus.interfaces.flower.strategydecorator import StrategyDecorator
+from pybiscus.interfaces.flower.fabricstrategyfactory import FabricStrategyFactory
+
 import pybiscus.core.pybiscus_logger as logm
 
 # -----------------------------------------------
@@ -30,7 +32,7 @@ class ConfigMetricDiffComputeStrategyDecorator(BaseModel):
 
 class MetricDiffComputeStrategyDecorator(StrategyDecorator):
 
-    def __init__(self, base_strategy, config: ConfigMetricDiffComputeStrategyDecorator):
+    def __init__(self, base_strategy, pybiscus_strategy: FabricStrategyFactory, config: ConfigMetricDiffComputeStrategyDecorator):
         super().__init__(base_strategy)
 
         self.previous_metric: Optional[float] = None

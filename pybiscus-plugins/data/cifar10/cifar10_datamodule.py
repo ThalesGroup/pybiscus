@@ -4,10 +4,13 @@ import numpy as np
 import lightning.pytorch as pl
 import torchvision.transforms as transforms
 
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, Subset
 from torchvision.datasets import CIFAR10
 
 import pybiscus.core.pybiscus_logger as logm
+import argparse
+import random
+
 
 class CifarLightningDataModule(pl.LightningDataModule):
     """
@@ -170,14 +173,16 @@ class CifarLightningDataModule(pl.LightningDataModule):
     """
 
     @override
-    def __init__( self, dir_train, dir_val, dir_test, batch_size, num_workers: int = 0,):
+    def __init__( self, dir_train, data_train_indices_path, data_val_indices_path, dir_test, dir_privacy, batch_size, num_workers: int = 0,):
 
         super().__init__()
 
         # init parameters memo
         self.data_dir_train = dir_train
-        self.data_dir_val   = dir_val
+        self.data_train_indices_path = data_train_indices_path
+        self.data_val_indices_path = data_val_indices_path
         self.data_dir_test  = dir_test
+        self.data_dir_privacy = dir_privacy
         self.num_workers    = num_workers
         self.batch_size     = batch_size
 
@@ -192,6 +197,10 @@ class CifarLightningDataModule(pl.LightningDataModule):
         self.data_train     = None
         self.data_val       = None
         self.data_test      = None
+
+        # DataLoader specific for the privacy evaluation (must contains data from the
+        # targeted participant training sets, and other data like validation and test)
+        self.privacy_set_dataloader = None
 
     @override
     def setup(self, stage: Optional[str] = None):
@@ -209,18 +218,47 @@ class CifarLightningDataModule(pl.LightningDataModule):
         """
 
         if stage == "fit" or stage is None:
-            self.data_train = CIFAR10( root=self.data_dir_train, train=True,  download=True, transform=self.transform,)
-            logm.console.log("x_train shape: ", self.data_train.data.shape)
-            self.data_val   = CIFAR10( root=self.data_dir_val,   train=False, download=True, transform=self.transform,)
-            logm.console.log("y_train shape: ", self.data_val.data.shape)
+            cifar10_trainval = CIFAR10( root=self.data_dir_train, train=True,  download=True, transform=self.transform,)
+            if self.data_train_indices_path is None:
+                self.data_train = cifar10_trainval
+                logm.console.log("x_train shape: ", self.data_train.data.shape)
+
+            else:
+                data_train_indices = self._read_file_indices(self.data_train_indices_path)
+                self.data_train = Subset(cifar10_trainval, data_train_indices)
+                
+            if self.data_val_indices_path is None:
+                self.data_val   = cifar10_trainval
+                logm.console.log("y_train shape: ", self.data_val.data.shape)
+            else:
+                data_val_indices = self._read_file_indices(self.data_val_indices_path)
+                self.data_val = Subset(cifar10_trainval, data_val_indices)
+                logm.console.log("x_train shape: ", len(self.data_val.indices))
+            
 
             # print number of targets and  values targets
-            logm.console.log("Number of Targets :", len(np.unique(self.data_train.targets)))
-            logm.console.log("Targets Values    :",     np.unique(self.data_train.targets))
+            # logm.console.log("Number of Targets :", len(np.unique(self.data_train.targets)))
+            # logm.console.log("Targets Values    :",     np.unique(self.data_train.targets))
 
         if stage == "test" or stage is None:
-            self.data_test  = CIFAR10( root=self.data_dir_test,  train=False, download=True, transform=self.transform,)
+            self.data_test  = CIFAR10( root=self.data_dir_test,  train=True, download=True, transform=self.transform,)
             logm.console.log("x_test shape", self.data_test.data.shape)
+            if self.data_dir_privacy is not None:
+                self.privacy_set  = CIFAR10( root=self.data_dir_privacy,  train=True, download=True, transform=self.transform,)
+                self.privacy_set_dataloader = DataLoader( self.data_test,  batch_size=self.batch_size, num_workers=self.num_workers, drop_last=True, shuffle=False,)
+                logm.console.log("x_privacy shape", self.privacy_set.data.shape)
+
+    def _read_file_indices(self,filepath):
+        """
+            Return a list containing all integers seperated with whitespaces present in the file
+        """
+        list_indices = []
+        with open(filepath, 'r') as file:
+            for line in file:
+                for d in line.strip().split():
+                    if d.isdigit():
+                        list_indices.append(int(d))
+        return list_indices
 
     @override
     def train_dataloader(self) -> DataLoader:
@@ -246,3 +284,34 @@ class CifarLightningDataModule(pl.LightningDataModule):
         
         return DataLoader( self.data_test,  batch_size=self.batch_size, num_workers=self.num_workers, drop_last=True, shuffle=False,)
 
+
+def write_list_to_file(list_indices, output_path):
+    L = [f"{d}\n" for d in list_indices]
+    with open(output_path, "w") as fp:
+        fp.writelines(L)
+
+if __name__ == "__main__":
+
+    parser = argparse.ArgumentParser(description="Create Non overlapping datasets for Federated Learning")
+    parser.add_argument("--nb_clients", type=int, required=True, help="Nombre de clients")
+    parser.add_argument("--data_path", type=str, required=True, help="Path to the root dataset that is splitted")
+    parser.add_argument("--output_folder", type=str, required=True, help="Path to where the indices list will be stored")
+    
+    args = parser.parse_args()
+    
+    cifar10_trainval = CIFAR10( root=args.data_path, train=True,  download=True)
+    shuffled_indices = [i for i in range(len(cifar10_trainval))]
+    random.shuffle(shuffled_indices)
+
+    nb_indices_client = int(len(shuffled_indices)/args.nb_clients)
+
+    for client in range(args.nb_clients):
+        client_indices = shuffled_indices[client*nb_indices_client: (client+1)*nb_indices_client]
+        write_list_to_file(
+            client_indices[:int(len(client_indices)*0.8)], 
+            f"{args.output_folder}/client_{client}_train.txt"
+            )
+        write_list_to_file(
+            client_indices[int(len(client_indices)*0.8):], 
+            f"{args.output_folder}/client_{client}_val.txt"
+            )

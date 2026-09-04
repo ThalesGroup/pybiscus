@@ -8,6 +8,7 @@ from pydantic import BaseModel, ConfigDict
 
 from pybiscus.core.ensure_filesystem import ensure_dir_exists
 from pybiscus.interfaces.flower.strategydecorator import StrategyDecorator
+from pybiscus.interfaces.flower.fabricstrategyfactory import FabricStrategyFactory
 import pybiscus.core.pybiscus_logger as logm
 
 # -------------------------------------------------------------------------
@@ -41,10 +42,11 @@ class SaveClientsFitResStrategyDecorator(StrategyDecorator):
     def __init__(
         self,
         base_strategy: Strategy,
-        conf,
+        pybiscus_strategy: FabricStrategyFactory,
+        config,
     ):
         self.base_strategy = base_strategy
-        self.conf = conf
+        self.conf = config
 
         import pybiscus.core.pybiscuscontext as pcpc
         self.reporting_path = pcpc.pybiscus_context["reporting_path"]

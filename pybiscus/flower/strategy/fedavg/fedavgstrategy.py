@@ -213,10 +213,11 @@ class FabricFedAvgStrategy(fl.server.strategy.FedAvg):
 
 class FabricFedAvgStrategyFactory(FabricStrategyFactory):
 
-    def __init__(self,model,fabric,testset,initial_parameters,config,):
+    def __init__(self,model,fabric,testset,privacyset,initial_parameters,config,):
         self.model=model
         self.fabric=fabric
         self.testset=testset
+        self.privacyset=privacyset
         self.initial_parameters=initial_parameters
         self.config=config
 

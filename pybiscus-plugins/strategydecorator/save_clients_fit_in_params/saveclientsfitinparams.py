@@ -11,6 +11,7 @@ from pydantic import BaseModel, ConfigDict
 
 from pybiscus.core.ensure_filesystem import ensure_file_dir_exists, ensure_dir_exists
 from pybiscus.interfaces.flower.strategydecorator import StrategyDecorator
+from pybiscus.interfaces.flower.fabricstrategyfactory import FabricStrategyFactory
 import pybiscus.core.pybiscus_logger as logm
 
 # -------------------------------------------------------------------------
@@ -46,7 +47,8 @@ class SaveClientsFitInParamsStrategyDecorator(StrategyDecorator):
     def __init__(
         self,
         base_strategy: Strategy,
-        conf,
+        pybiscus_strategy: FabricStrategyFactory,
+        config,
     ):
         """
         Args:
@@ -54,7 +56,7 @@ class SaveClientsFitInParamsStrategyDecorator(StrategyDecorator):
             result_modifier: configuration of the result modifier
         """
         self.base_strategy = base_strategy
-        self.conf = conf
+        self.conf = config
 
     # -------------------------------------------------------------------------
 
