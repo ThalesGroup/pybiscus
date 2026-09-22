@@ -425,7 +425,8 @@ class iSAIDDetectionDataset(Dataset):
         """
         super().__init__()
         self.data_path = data_path
-        self.list_images = [str(p) for p in Path(f"{data_path}/images/").rglob("*.png")]
+        # rglob order depends on the filesystem; split files and privacy ground truth are index-based and must match across machines
+        self.list_images = sorted(str(p) for p in Path(f"{data_path}/images/").rglob("*.png"))
         self.indices = [i for i in range(len(self.list_images))]
         all_classes = list(set([0]+[int(img.split("/")[-2][-5:-2]) for img in self.list_images]))
         all_classes.sort()
