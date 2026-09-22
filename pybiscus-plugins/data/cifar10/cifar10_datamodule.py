@@ -245,7 +245,7 @@ class CifarLightningDataModule(pl.LightningDataModule):
             logm.console.log("x_test shape", self.data_test.data.shape)
             if self.data_dir_privacy is not None:
                 self.privacy_set  = CIFAR10( root=self.data_dir_privacy,  train=True, download=True, transform=self.transform,)
-                self.privacy_set_dataloader = DataLoader( self.data_test,  batch_size=self.batch_size, num_workers=self.num_workers, drop_last=True, shuffle=False,)
+                self.privacy_set_dataloader = DataLoader( self.privacy_set,  batch_size=self.batch_size, num_workers=self.num_workers, drop_last=True, shuffle=False,)
                 logm.console.log("x_privacy shape", self.privacy_set.data.shape)
 
     def _read_file_indices(self,filepath):
