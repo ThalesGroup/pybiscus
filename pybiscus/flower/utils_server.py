@@ -12,20 +12,12 @@ import pybiscus.core.pybiscus_logger as logm
 from pybiscus.ml.loops_fabric import test_loop
 
 def set_params(model: torch.nn.ModuleList, params: list[np.ndarray]):
-
-    print(len(model.state_dict().keys()), len(params))
-    # params_dict = zip(model.state_dict().keys(), params)
-    # state_dict = OrderedDict({k: torch.from_numpy(np.copy(v)) for k, v in params_dict})
-
-    state_dict = model.state_dict()
-    idx=0
-    for k,v in state_dict.items():
-        new_v = torch.from_numpy(np.copy(params[idx]))
-        if v.shape==new_v.shape:
-            state_dict[k]=new_v
-            idx+=1 
-    print(len(model.state_dict().keys()), len(state_dict.keys()), idx, len(params))
-    
+    keys = model.state_dict().keys()
+    # zip() would silently truncate, assigning weights to the wrong layers
+    if len(keys) != len(params):
+        raise ValueError(f"set_params: model has {len(keys)} state_dict entries but {len(params)} arrays were received")
+    params_dict = zip(keys, params)
+    state_dict = OrderedDict({k: torch.from_numpy(np.copy(v)) for k, v in params_dict})
     model.load_state_dict(state_dict, strict=True)
 
 def get_params(model: torch.nn.Module) -> list[np.ndarray]:
