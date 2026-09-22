@@ -241,7 +241,7 @@ class CifarLightningDataModule(pl.LightningDataModule):
             # logm.console.log("Targets Values    :",     np.unique(self.data_train.targets))
 
         if stage == "test" or stage is None:
-            self.data_test  = CIFAR10( root=self.data_dir_test,  train=True, download=True, transform=self.transform,)
+            self.data_test  = CIFAR10( root=self.data_dir_test,  train=False, download=True, transform=self.transform,)
             logm.console.log("x_test shape", self.data_test.data.shape)
             if self.data_dir_privacy is not None:
                 self.privacy_set  = CIFAR10( root=self.data_dir_privacy,  train=True, download=True, transform=self.transform,)
