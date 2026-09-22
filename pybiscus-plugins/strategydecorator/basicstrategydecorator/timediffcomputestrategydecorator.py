@@ -5,6 +5,7 @@ from flwr.server.client_proxy import ClientProxy
 from pydantic import BaseModel, ConfigDict
 
 from pybiscus.interfaces.flower.strategydecorator import StrategyDecorator
+from pybiscus.interfaces.flower.fabricstrategyfactory import FabricStrategyFactory
 import pybiscus.core.pybiscus_logger as logm
 import time
 
@@ -31,7 +32,7 @@ class ConfigTimeDiffComputeStrategyDecorator(BaseModel):
 
 class TimeDiffComputeStrategyDecorator(StrategyDecorator):
 
-    def __init__(self, base_strategy, config: ConfigTimeDiffComputeStrategyDecorator):
+    def __init__(self, base_strategy, pybiscus_strategy: FabricStrategyFactory, config: ConfigTimeDiffComputeStrategyDecorator):
         super().__init__(base_strategy)
 
         self.previous_time: Optional[float] = None

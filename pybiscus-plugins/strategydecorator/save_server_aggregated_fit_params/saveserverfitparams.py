@@ -11,6 +11,8 @@ from pydantic import BaseModel, ConfigDict
 
 from pybiscus.core.ensure_filesystem import ensure_file_dir_exists, ensure_dir_exists
 from pybiscus.interfaces.flower.strategydecorator import StrategyDecorator
+from pybiscus.interfaces.flower.fabricstrategyfactory import FabricStrategyFactory
+
 
 # -------------------------------------------------------------------------
 
@@ -43,14 +45,15 @@ class SaveServerFitParamsStrategyDecorator(StrategyDecorator):
     def __init__(
         self,
         base_strategy: Strategy,
-        conf,
+        pybiscus_strategy: FabricStrategyFactory,
+        config,
     ):
         """
         Args:
             base_strategy: the base strategy to decorate
         """
         self.base_strategy = base_strategy
-        self.conf = conf
+        self.conf = config
 
     # -------------------------------------------------------------------------
 
