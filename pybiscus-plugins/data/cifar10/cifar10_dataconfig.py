@@ -7,7 +7,7 @@ class ConfigCifar10Data(BaseModel):
     Attributes
     ----------
     dir_train:   str, optional = the training data directory path (required for clients)
-    # dir_val:     str, optional = the validating data directory path (required for clients)
+    dir_val:     str, optional = the validating data directory path, used when data_val_indices_path is not set
     dir_test:    str, optional = the testing data directory path (required for server)
     batch_size:  int, optional = the batch size (default to 32)
     num_workers: int, optional = the number of workers for the DataLoaders (default to 0)
@@ -18,7 +18,7 @@ class ConfigCifar10Data(BaseModel):
     dir_train:   Optional[str] = "${root_dir}/datasets/train/"
     data_train_indices_path:   Optional[str] =None
     data_val_indices_path:   Optional[str] =None
-    # dir_val:     Optional[str] = "${root_dir}/datasets/val/" # val can be suppressed, as there are only trainval and test for CIFAR10
+    dir_val:     Optional[str] = "${root_dir}/datasets/val/"
     dir_test:    Optional[str] = "${root_dir}/datasets/test/"
     dir_privacy: Optional[str] = None
     batch_size:  int = 32

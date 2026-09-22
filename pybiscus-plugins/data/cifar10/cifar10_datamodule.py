@@ -173,13 +173,14 @@ class CifarLightningDataModule(pl.LightningDataModule):
     """
 
     @override
-    def __init__( self, dir_train, data_train_indices_path, data_val_indices_path, dir_test, dir_privacy, batch_size, num_workers: int = 0,):
+    def __init__( self, dir_train, data_train_indices_path, dir_val, data_val_indices_path, dir_test, dir_privacy, batch_size, num_workers: int = 0,):
 
         super().__init__()
 
         # init parameters memo
         self.data_dir_train = dir_train
         self.data_train_indices_path = data_train_indices_path
+        self.data_dir_val   = dir_val
         self.data_val_indices_path = data_val_indices_path
         self.data_dir_test  = dir_test
         self.data_dir_privacy = dir_privacy
@@ -228,12 +229,13 @@ class CifarLightningDataModule(pl.LightningDataModule):
                 self.data_train = Subset(cifar10_trainval, data_train_indices)
                 
             if self.data_val_indices_path is None:
-                self.data_val   = cifar10_trainval
-                logm.console.log("y_train shape: ", self.data_val.data.shape)
+                # without a split file, validating on cifar10_trainval would validate on the training data
+                self.data_val   = CIFAR10( root=self.data_dir_val,   train=False, download=True, transform=self.transform,)
+                logm.console.log("x_val shape: ", self.data_val.data.shape)
             else:
                 data_val_indices = self._read_file_indices(self.data_val_indices_path)
                 self.data_val = Subset(cifar10_trainval, data_val_indices)
-                logm.console.log("x_train shape: ", len(self.data_val.indices))
+                logm.console.log("x_val size: ", len(self.data_val.indices))
             
 
             # print number of targets and  values targets
