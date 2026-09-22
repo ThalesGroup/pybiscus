@@ -241,7 +241,8 @@ class LitFasterRCNN(pl.LightningModule):
                 labels_pred.append(int(o["labels"][0]))
             else:
                 labels_pred.append(0)
-            labels_target.append(int(t["labels"]))
+            # an image holds several boxes; its first label is its reference label, as in index_to_label.csv
+            labels_target.append(int(t["labels"][0]))
         labels_pred = torch.Tensor(labels_pred).to(int)
         labels_target = torch.Tensor(labels_target).to(int)
         if mode == "val":
