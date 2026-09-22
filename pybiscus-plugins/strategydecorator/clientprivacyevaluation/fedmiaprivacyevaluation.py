@@ -356,7 +356,7 @@ class FedMIAPrivacyEvaluationStrategyDecorator(StrategyDecorator):
         batch_size = MIADataloader.batch_size
 
         MIADataloader = self.fabric._setup_dataloader(
-            DataLoader( MIADataset,  batch_size=batch_size, num_workers=8, drop_last=False, shuffle=False))
+            DataLoader( MIADataset,  batch_size=batch_size, num_workers=8, drop_last=False, shuffle=False, collate_fn=MIADataloader.collate_fn))
 
         round_path = self.reporting_path / self.conf.reporting_sub_dir
         ensure_dir_exists(round_path)
