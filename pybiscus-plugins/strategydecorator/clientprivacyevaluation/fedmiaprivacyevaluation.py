@@ -4,6 +4,7 @@ import numpy as np
 from pydantic import BaseModel, ConfigDict
 import torch
 from collections import OrderedDict
+import copy
 
 import flwr as fl
 from flwr.common import Parameters
@@ -161,7 +162,8 @@ class FedMIAPrivacyEvaluationStrategyDecorator(StrategyDecorator):
     def aggregate_fit(self, server_round, results, failures):
 
         # aggregated, _ = super().aggregate_fit(server_round, results, failures)
-        current_model_state_dict = self.model.state_dict()
+        # state_dict() returns references that the per-client load_state_dict calls overwrite in place
+        current_model_state_dict = copy.deepcopy(self.model.state_dict())
         round_path = self.reporting_path / self.conf.reporting_sub_dir
         ensure_dir_exists(round_path)
         cid_list = []
@@ -354,7 +356,7 @@ class FedMIAPrivacyEvaluationStrategyDecorator(StrategyDecorator):
         batch_size = MIADataloader.batch_size
 
         MIADataloader = self.fabric._setup_dataloader(
-            DataLoader( MIADataset,  batch_size=batch_size, num_workers=8, drop_last=False, shuffle=False))
+            DataLoader( MIADataset,  batch_size=batch_size, num_workers=8, drop_last=False, shuffle=False, collate_fn=MIADataloader.collate_fn))
 
         round_path = self.reporting_path / self.conf.reporting_sub_dir
         ensure_dir_exists(round_path)

@@ -173,13 +173,14 @@ class CifarLightningDataModule(pl.LightningDataModule):
     """
 
     @override
-    def __init__( self, dir_train, data_train_indices_path, data_val_indices_path, dir_test, dir_privacy, batch_size, num_workers: int = 0,):
+    def __init__( self, dir_train, data_train_indices_path, dir_val, data_val_indices_path, dir_test, dir_privacy, batch_size, num_workers: int = 0,):
 
         super().__init__()
 
         # init parameters memo
         self.data_dir_train = dir_train
         self.data_train_indices_path = data_train_indices_path
+        self.data_dir_val   = dir_val
         self.data_val_indices_path = data_val_indices_path
         self.data_dir_test  = dir_test
         self.data_dir_privacy = dir_privacy
@@ -228,12 +229,13 @@ class CifarLightningDataModule(pl.LightningDataModule):
                 self.data_train = Subset(cifar10_trainval, data_train_indices)
                 
             if self.data_val_indices_path is None:
-                self.data_val   = cifar10_trainval
-                logm.console.log("y_train shape: ", self.data_val.data.shape)
+                # without a split file, validating on cifar10_trainval would validate on the training data
+                self.data_val   = CIFAR10( root=self.data_dir_val,   train=False, download=True, transform=self.transform,)
+                logm.console.log("x_val shape: ", self.data_val.data.shape)
             else:
                 data_val_indices = self._read_file_indices(self.data_val_indices_path)
                 self.data_val = Subset(cifar10_trainval, data_val_indices)
-                logm.console.log("x_train shape: ", len(self.data_val.indices))
+                logm.console.log("x_val size: ", len(self.data_val.indices))
             
 
             # print number of targets and  values targets
@@ -241,11 +243,11 @@ class CifarLightningDataModule(pl.LightningDataModule):
             # logm.console.log("Targets Values    :",     np.unique(self.data_train.targets))
 
         if stage == "test" or stage is None:
-            self.data_test  = CIFAR10( root=self.data_dir_test,  train=True, download=True, transform=self.transform,)
+            self.data_test  = CIFAR10( root=self.data_dir_test,  train=False, download=True, transform=self.transform,)
             logm.console.log("x_test shape", self.data_test.data.shape)
             if self.data_dir_privacy is not None:
                 self.privacy_set  = CIFAR10( root=self.data_dir_privacy,  train=True, download=True, transform=self.transform,)
-                self.privacy_set_dataloader = DataLoader( self.data_test,  batch_size=self.batch_size, num_workers=self.num_workers, drop_last=True, shuffle=False,)
+                self.privacy_set_dataloader = DataLoader( self.privacy_set,  batch_size=self.batch_size, num_workers=self.num_workers, drop_last=True, shuffle=False,)
                 logm.console.log("x_privacy shape", self.privacy_set.data.shape)
 
     def _read_file_indices(self,filepath):
