@@ -256,7 +256,8 @@ def launch_config(
     
     data.setup(stage="test")
     test_set = fabric._setup_dataloader(data.test_dataloader())
-    if hasattr(data, 'privacy_set_dataloader'):
+    # datamodules declare privacy_set_dataloader = None when no dir_privacy is configured
+    if getattr(data, 'privacy_set_dataloader', None) is not None:
         privacy_set = fabric._setup_dataloader(data.privacy_set_dataloader)
         logm.console.log("privacy_set defined in data module")
     else:
