@@ -29,6 +29,10 @@ from pybiscus.flower.utils_server import (
     weighted_average   as pyb_weighted_average,
 )
 from pybiscus.plugin.registries.flowerfitresultagregator_registry import FlowerFitResultsAggregatorConfig, flowerfitresultsaggregator_registry
+from pybiscus.flower.flowerfitresultsaggregator.flowerfitresultsaggregatorusingweightedaverage.flowerfitresultsaggregatorusingweightedaverage import (
+    ConfigFlowerFitResultsAggregatorUsingWeightedAverage,
+    ConfigFlowerFitResultsAggregatorUsingWeightedAverageData,
+)
 
 WARNING_MIN_AVAILABLE_CLIENTS_TOO_LOW = """
 Setting `min_available_clients` lower than `min_fit_clients` or
@@ -64,6 +68,8 @@ class ConfigFabricFedAvgStrategyData3(BaseModel):
         Whether or not accept rounds containing failures. Defaults to True.
     inplace : bool (default: True)
         Enable (True) or disable (False) in-place aggregation of model updates.
+    flower_fit_results_aggregator : optional
+        How the clients' fit results are aggregated. Defaults to weightedaverage (FedAvg).
     """
 
     PYBISCUS_CONFIG: ClassVar[str] = "config"
@@ -75,7 +81,12 @@ class ConfigFabricFedAvgStrategyData3(BaseModel):
     min_available_clients: int   = 2
     accept_failures:       bool  = True
     inplace:               bool  = True
-    flower_fit_results_aggregator: FlowerFitResultsAggregatorConfig() # pyright: ignore[reportInvalidTypeForm]
+    # FedAvg proper; the agent form opens the union on the first member (average) otherwise.
+    # A plain instance, not a default_factory: the form only reads field.default
+    flower_fit_results_aggregator: FlowerFitResultsAggregatorConfig() = ConfigFlowerFitResultsAggregatorUsingWeightedAverage( # pyright: ignore[reportInvalidTypeForm]
+        name="weightedaverage",
+        config=ConfigFlowerFitResultsAggregatorUsingWeightedAverageData(),
+    )
 
     model_config = ConfigDict(extra="forbid")
 
