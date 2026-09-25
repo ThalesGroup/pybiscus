@@ -4,29 +4,57 @@ import flwr as fl
 from lightning import Fabric, LightningDataModule, LightningModule
 import torch
 
+from pybiscus.core.pybiscusexception import PybiscusValueException
 from pybiscus.flower_config.config_computecontext import ConfigClientComputeContext
-from pybiscus.ml.loops_fabric import test_loop, train_loop
+from pybiscus.ml.loops_fabric import SchedulerConfig, check_schedulers_monitor, test_loop, train_loop
 import pybiscus.core.pybiscus_logger as logm
 
+
+def _scheduler_config(entry, monitor=None) -> SchedulerConfig:
+    if not isinstance(entry, Mapping):
+        return SchedulerConfig(entry, monitor=monitor)
+    interval = entry.get("interval", "epoch")
+    if interval not in ("epoch", "step"):
+        raise PybiscusValueException(f"lr_scheduler interval must be 'epoch' or 'step', got '{interval}'")
+    return SchedulerConfig(
+        entry["scheduler"],
+        interval=interval,
+        frequency=entry.get("frequency", 1),
+        monitor=entry.get("monitor", monitor),
+    )
+
+
+def _parse_optimizer_dict(conf: Mapping):
+    scheduler = conf.get("lr_scheduler")
+    schedulers = [] if scheduler is None else [_scheduler_config(scheduler, conf.get("monitor"))]
+    return [conf["optimizer"]], schedulers
+
+
+# every return form of configure_optimizers documented by Lightning must be accepted, plugins are
+# written as plain Lightning modules:
+# https://lightning.ai/docs/pytorch/stable/api/lightning.pytorch.core.LightningModule.html#lightning.pytorch.core.LightningModule.configure_optimizers
 def parse_optimizers(lightning_optimizers):
-    """
-    Parse the output of lightning configure_optimizers
-    https://lightning.ai/docs/pytorch/stable/api/lightning.pytorch.core.LightningModule.html#lightning.pytorch.core.LightningModule.configure_optimizers
-    To extract only the optimizers (and not the lr_schedulers)
-    """
-    optimizers = []
-    if lightning_optimizers:
-        if isinstance(lightning_optimizers, Mapping):
-            optimizers.append(lightning_optimizers['optimizer']) 
-        elif isinstance(lightning_optimizers, torch.optim.Optimizer):
-            optimizers.append(lightning_optimizers)
-        else:
-            for optmizers_conf in lightning_optimizers:
-                if isinstance(optmizers_conf, dict):
-                    optimizers.append(lightning_optimizers)
-                else:
-                    optimizers.append(optmizers_conf)
-    return optimizers
+    conf = lightning_optimizers
+    if conf is None:
+        return [], []
+    if isinstance(conf, torch.optim.Optimizer):
+        return [conf], []
+    if isinstance(conf, Mapping):
+        return _parse_optimizer_dict(conf)
+    if isinstance(conf, (list, tuple)):
+        if len(conf) == 2 and all(isinstance(part, (list, tuple)) for part in conf):
+            optimizers, schedulers = conf
+            return list(optimizers), [_scheduler_config(s) for s in schedulers]
+        if all(isinstance(part, Mapping) for part in conf):
+            optimizers, schedulers = [], []
+            for part in conf:
+                part_optimizers, part_schedulers = _parse_optimizer_dict(part)
+                optimizers += part_optimizers
+                schedulers += part_schedulers
+            return optimizers, schedulers
+        if all(isinstance(part, torch.optim.Optimizer) for part in conf):
+            return list(conf), []
+    raise PybiscusValueException(f"unsupported configure_optimizers() return value: {conf!r}")
 
 class FlowerFabricClient(fl.client.NumPyClient):
     """A Fabric-based, modular Flower Client.
@@ -72,7 +100,13 @@ class FlowerFabricClient(fl.client.NumPyClient):
         self.num_examples = num_examples
         self.pre_train_val = pre_train_val
 
-        self.optimizers = parse_optimizers(self.model.configure_optimizers())
+        self.optimizers, self.schedulers = parse_optimizers(self.model.configure_optimizers())
+        # train_loop drives a single optimizer: fail here rather than in the first fit
+        if len(self.optimizers) > 1:
+            raise PybiscusValueException(
+                f"{type(model).__name__}: multiple optimizers are not supported by the Fabric training loop"
+            )
+        check_schedulers_monitor(self.schedulers, model)
 
         self.fabric = Fabric(**self.conf_fabric)
 
@@ -122,8 +156,9 @@ class FlowerFabricClient(fl.client.NumPyClient):
             self.fabric,
             self.model,
             self._train_dataloader,
-            self.optimizers, # Alice TODO extend this to multiple optimizers ??
+            self.optimizers,
             epochs=config["local_epochs"],
+            schedulers=self.schedulers,
         )
             
         logm.console.log(f"Training Finished! Loss is {results_train['loss']}")

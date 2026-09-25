@@ -1,7 +1,51 @@
+from dataclasses import dataclass
+from typing import Optional
+
 import torch
 from rich.progress import track
+from torch.optim.lr_scheduler import ReduceLROnPlateau
+
+from pybiscus.core.pybiscusexception import PybiscusValueException
 
 torch.backends.cudnn.enabled = True
+
+
+@dataclass
+class SchedulerConfig:
+    scheduler: object
+    interval: str = "epoch"          # "epoch" | "step", as in Lightning's lr_scheduler dict
+    frequency: int = 1
+    monitor: Optional[str] = None
+    # counts intervals over the whole session: the scheduler outlives a single fit (round)
+    elapsed: int = 0
+
+    def tick(self, metrics) -> None:
+        self.elapsed += 1
+        if self.elapsed % self.frequency:
+            return
+        if isinstance(self.scheduler, ReduceLROnPlateau):
+            self.scheduler.step(float(metrics[self.monitor]))
+        else:
+            self.scheduler.step()
+
+
+def check_schedulers_monitor(schedulers, net) -> None:
+
+    # the Fabric loop only has training_step's metrics: no self.log registry and no
+    # validation during fit (FL validation is a separate evaluate on the global model).
+    # Never substitute another metric for the requested one
+    plateaus = [s for s in schedulers if isinstance(s.scheduler, ReduceLROnPlateau)]
+    if not plateaus:
+        return
+    available = sorted(signature_of_mode(net, "train").__required_keys__)
+    for s in plateaus:
+        if s.monitor is None:
+            raise PybiscusValueException("ReduceLROnPlateau requires a 'monitor' metric")
+        if s.monitor not in available:
+            raise PybiscusValueException(
+                f"ReduceLROnPlateau monitors '{s.monitor}', which is not a training metric; "
+                f"available: {available} (no validation metric exists during fit)"
+            )
 
 
 def signature_of_mode(net, mode):
@@ -17,7 +61,7 @@ def signature_of_mode(net, mode):
         return net.signature
 
 
-def train_loop(fabric, net, trainloader, optimizer, epochs: int, verbose=False):
+def train_loop(fabric, net, trainloader, optimizer, epochs: int, verbose=False, schedulers=()):
     """Train the network on the training set."""
 
     net.train()
@@ -45,6 +89,10 @@ def train_loop(fabric, net, trainloader, optimizer, epochs: int, verbose=False):
                 fabric.backward(loss)
                 optimizer.step()
 
+            for s in schedulers:
+                if s.interval == "step":
+                    s.tick(results)
+
             for key in results_epoch.keys():
                 value = results[key]
 
@@ -61,6 +109,10 @@ def train_loop(fabric, net, trainloader, optimizer, epochs: int, verbose=False):
         for key in results_epoch.keys():
             results_epoch[key] /= len(trainloader)
             results_epoch[key] = results_epoch[key].item()
+
+        for s in schedulers:
+            if s.interval == "epoch":
+                s.tick(results_epoch)
     return results_epoch
 
 
