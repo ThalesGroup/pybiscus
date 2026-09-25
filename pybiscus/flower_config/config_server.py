@@ -1,7 +1,7 @@
 from enum import Enum
 from typing import List, Optional, ClassVar
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 from pybiscus.flower_config.config_computecontext import ConfigServerComputeContext
 from pybiscus.plugin.registries.logger_registry import LoggerConfig
@@ -79,16 +79,18 @@ class ConfigServerRun(BaseModel):
 
     Attributes
     ----------
-    num_rounds: int    = the number of rounds for the FL session.
-    clients_fit_local_epochs = the number of local epochs performed by clients at each round
+    num_rounds: int    = the number of rounds for the FL session (>= 1).
+    clients_fit_local_epochs = the number of local epochs performed by clients at each round (>= 1)
     clients_configs    = list of paths to the configuration files used by all clients.
     save_on_train_end  = end of FL session model weights save flag
     """
 
     PYBISCUS_CONFIG: ClassVar[str] = "server_run"
 
-    num_rounds:        int = 10
-    clients_fit_local_epochs: int = 1
+    # >= 1: 0 local epochs crashed clients at their first fit (round 1, far from the cause),
+    # 0 rounds silently trained nothing
+    num_rounds:        int = Field(default=10, ge=1)
+    clients_fit_local_epochs: int = Field(default=1, ge=1)
     client_configs:    list[str] = []
     loggers:           list[LoggerConfig()] # pyright: ignore[reportInvalidTypeForm]
     reporting:         ConfigServerReporting
