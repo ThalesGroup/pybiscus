@@ -15,7 +15,7 @@ from pybiscus.plugin.registries.data_registry import datamodule_registry
 from pybiscus.plugin.registries.model_registry import model_registry 
 from pybiscus.flower_config.config_client import ConfigClient
 
-from pybiscus.commands.apps_common import load_config
+from pybiscus.commands.apps_common import exit_on_invalid_config, load_config
 
 torch.backends.cudnn.enabled = True
 
@@ -76,7 +76,7 @@ def check_client_config(
 
     The command loads the configuration file and checks the validity of the configuration using Pydantic.
     If the configuration is alright with respect to ConfigClient Pydantic BaseModel, nothing happens.
-    Otherwise, raises the ValidationError by Pydantic -- which is quite verbose and should be useful understanding the issue with the configuration provided.
+    Otherwise, prints the ValidationError by Pydantic -- which is quite verbose and should be useful understanding the issue with the configuration provided -- and exits with code 65.
 
     You may pass optional parameters (in addition to the configuration file itself) to override the parameters given in the configuration.
 
@@ -93,8 +93,8 @@ def check_client_config(
     ------
     typer.Abort
         _description_
-    ValidationError
-        _description_
+    typer.Exit
+        with code 65 if the configuration is not valid
     """
 
     # handling mandatory config path parameter
@@ -112,10 +112,9 @@ def check_client_config(
         conf_loaded["server_address"] = server_address
     try:
         _ = check_and_build_client_config(conf_loaded)
-        logm.console.log("This is a valid config!")
     except ValidationError as e:
-        logm.console.log("This is not a valid config!")
-        raise e
+        exit_on_invalid_config(e)
+    logm.console.log("This is a valid config!")
 
 
 @app.command(name="launch")
@@ -162,7 +161,10 @@ def launch_config(
         conf_loaded["flower_client"]["server_address"] = server_address
     # logm.console.log(f"Conf specified: {dict(conf)}")
 
-    conf = check_and_build_client_config(config=conf_loaded)
+    try:
+        conf = check_and_build_client_config(config=conf_loaded)
+    except ValidationError as e:
+        exit_on_invalid_config(e)
 
     # load the data management module from registry
     data_class = datamodule_registry()[conf.data.name]

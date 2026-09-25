@@ -17,7 +17,7 @@ from pybiscus.core.logger.multiplelogger.multipleloggerfactory import MultipleLo
 from pybiscus.core.metricslogger.multiplemetricslogger.multiplemetricsloggerfactory import MultipleMetricsLoggerFactory
 from pybiscus.flower_config.config_server import ConfigServer
 from pybiscus.commands.onnx_mngt import to_onnx_with_datamodule
-from pybiscus.commands.apps_common import load_config
+from pybiscus.commands.apps_common import exit_on_invalid_config, load_config
 from pybiscus.plugin.registries.data_registry import datamodule_registry
 from pybiscus.plugin.registries.logger_registry import logger_registry
 from pybiscus.plugin.registries.metriclogger_registry import metricslogger_registry
@@ -70,7 +70,7 @@ def check_server_config(
 
     The command loads the configuration file and checks the validity of the configuration using Pydantic.
     If the configuration is alright with respect to ConfigServer Pydantic BaseModel, nothing happens.
-    Otherwise, raises the ValidationError by Pydantic -- which is quite verbose and should be useful understanding the issue with the configuration provided.
+    Otherwise, prints the ValidationError by Pydantic -- which is quite verbose and should be useful understanding the issue with the configuration provided -- and exits with code 65.
 
     You may pass optional parameters (in addition to the configuration file itself) to override the parameters given in the configuration.
 
@@ -100,10 +100,9 @@ def check_server_config(
 
     try:
         _ = check_and_build_server_config(conf_loaded=conf_loaded)
-        logm.console.log("This is a valid conf!")
     except ValidationError as e:
-        logm.console.log(f"This is not a valid config ! {e}")
-        raise e
+        exit_on_invalid_config(e)
+    logm.console.log("This is a valid config!")
 
 #                    ------------------------------------------------
 
@@ -181,7 +180,10 @@ def launch_config(
     if server_listen_address is not None:
         conf_loaded.flower_server.listen_address = server_listen_address
 
-    conf = check_and_build_server_config(conf_loaded)
+    try:
+        conf = check_and_build_server_config(conf_loaded)
+    except ValidationError as e:
+        exit_on_invalid_config(e)
 
     # compute the reporting path
     

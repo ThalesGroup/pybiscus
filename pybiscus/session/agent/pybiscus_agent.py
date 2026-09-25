@@ -15,6 +15,7 @@ import argparse
 from pybiscus.pydantic2xxx.pydantic2html import generate_model_page
 from pybiscus.session.agent.tuples2yaml import parse_tuples_to_yaml_string
 from pybiscus.core.pybiscusexception import PybiscusInternalException, PybiscusValueException
+from pybiscus.commands.apps_common import CONFIG_VALIDATION_EXIT_CODE
 from pybiscus.session.agent import agent_weblog
 from pybiscus.session.agent.agent_weblog import AgentState
 
@@ -85,29 +86,29 @@ def run_typer_command(command: list[str]) -> str:
         line = click.unstyle(line)
         #print(f"##### {line} ####")
 
-        validation_error_index = line.find("This is not a valid config!")
-
-        if validation_error_index != -1:
-            
-            agent_weblog.agent_logger.log("Invalid configuration !", state=AgentState.NOT_VALIDATED)
-
-            raise PybiscusValueException(f"Invalid configuration")
-
         lines.append(line)
 
     # catch complete output at the end of process (incompatible with line by line output read)
     #stdout, stderr = process.communicate()
 
     return_code = process.wait()
+    output = ''.join(lines)
+
+    if return_code == CONFIG_VALIDATION_EXIT_CODE:
+        agent_weblog.agent_logger.log("Invalid configuration !", state=AgentState.NOT_VALIDATED)
+
+        # the marker only locates the Pydantic details for the user, detection relies on the exit code
+        details_index = output.find("This is not a valid config!")
+        raise PybiscusValueException(output[details_index:] if details_index != -1 else "Invalid configuration")
 
     if return_code == 0:
         agent_weblog.agent_logger.log("Process has finished.")
     else:
-        agent_weblog.agent_logger.log(f"Processus {command} has failed with code {return_code}")
+        agent_weblog.agent_logger.log(f"Processus {command} has failed with code {return_code}", state=AgentState.FAILED)
 
         raise PybiscusInternalException(f"Processus {command} has failed with code {return_code}")
 
-    return ''.join(lines)
+    return output
 
 # ..........................................................
 # .... GET /exit ...........................................
@@ -162,18 +163,12 @@ def checkConfigurationFile( mode: str, file_path: str ):
 
             agent_weblog.agent_logger.log("checking yaml file", state=AgentState.VALIDATING)
 
-            output = run_typer_command( ["uv", "run", "pybiscus", mode, "check", file_path ] )
+            run_typer_command( ["uv", "run", "pybiscus", mode, "check", file_path ] )
         else:
-            raise PybiscusValueException( f"Invalid mode : {mode} (should be server or client)" )
+            raise PybiscusInternalException( f"Invalid mode : {mode} (should be server or client)" )
 
-        validation_error_index = output.find("Validation error")
-
-        if validation_error_index != -1:
-
-            agent_weblog.agent_logger.log("Validation error !", state=AgentState.NOT_VALIDATED)
-
-            validation_error = output[validation_error_index:]
-            return jsonify({"error": validation_error}), 400
+    except PybiscusValueException as e:
+        return jsonify({"error": str(e)}), 400
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500

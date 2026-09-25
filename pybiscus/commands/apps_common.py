@@ -3,8 +3,18 @@ import os
 import typer
 from pathlib import Path
 from omegaconf import DictConfig, ListConfig, OmegaConf
-from typing import Union
+from typing import NoReturn, Union
 from dotenv import load_dotenv
+from pydantic import ValidationError
+
+# the agent tells an invalid config from a crash by this exit code, not by parsing the output
+# (65 = EX_DATAERR ; typer already uses 2 for usage errors)
+CONFIG_VALIDATION_EXIT_CODE = 65
+
+
+def exit_on_invalid_config(error: ValidationError) -> NoReturn:
+    logm.console.log(f"This is not a valid config!\n{error}")
+    raise typer.Exit(code=CONFIG_VALIDATION_EXIT_CODE)
 
 
 def load_config( config: Path ) -> DictConfig:

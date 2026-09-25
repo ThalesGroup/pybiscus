@@ -6,6 +6,7 @@ from collections import deque
 import click
 from rich import print as rich_print
 
+from pybiscus.commands.apps_common import CONFIG_VALIDATION_EXIT_CODE
 from pybiscus.core.pybiscusexception import PybiscusValueException
 from pybiscus.session.agent import agent_weblog
 from pybiscus.session.agent.agent_weblog import AgentState
@@ -112,21 +113,16 @@ class RunSession:
             )
             self._process = process
 
-            invalid_config = False
-
             for line in process.stdout:
                 rich_print(line, end="")
 
                 line = click.unstyle(line).rstrip("\n")
 
-                if "This is not a valid config!" in line:
-                    invalid_config = True
-
                 self._append_line(line)
 
             return_code = process.wait()
 
-            if invalid_config:
+            if return_code == CONFIG_VALIDATION_EXIT_CODE:
                 agent_weblog.agent_logger.log("Validation error !", state=AgentState.NOT_VALIDATED)
                 self._set_status(FAILURE, "invalid configuration")
             elif return_code == 0:
