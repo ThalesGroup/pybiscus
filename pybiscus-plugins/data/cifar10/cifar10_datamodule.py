@@ -236,7 +236,9 @@ class CifarLightningDataModule(pl.LightningDataModule):
         if self.data_val is None:
             raise ValueError("Val dataset undefined: bad setup")
         
-        return DataLoader( self.data_val,   batch_size=self.batch_size, num_workers=self.num_workers, drop_last=True, shuffle=False,)
+        # evaluation keeps the last partial batch (drop_last=True skipped 16 of the 10000 images
+        # at batch size 32); training keeps drop_last=True: a tiny last batch destabilizes BatchNorm
+        return DataLoader( self.data_val,   batch_size=self.batch_size, num_workers=self.num_workers, drop_last=False, shuffle=False,)
 
     @override
     def test_dataloader(self) -> DataLoader:
@@ -244,5 +246,5 @@ class CifarLightningDataModule(pl.LightningDataModule):
         if self.data_test is None:
             raise ValueError("Test dataset undefined: bad setup")
         
-        return DataLoader( self.data_test,  batch_size=self.batch_size, num_workers=self.num_workers, drop_last=True, shuffle=False,)
+        return DataLoader( self.data_test,  batch_size=self.batch_size, num_workers=self.num_workers, drop_last=False, shuffle=False,)
 

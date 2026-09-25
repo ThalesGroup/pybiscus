@@ -99,11 +99,13 @@ class MnistLitDataModule(pl.LightningDataModule):
         )
 
     def val_dataloader(self):
+        # evaluation keeps the last partial batch (drop_last=True skipped part of the 10000
+        # images); training keeps drop_last=True: a tiny last batch destabilizes BatchNorm
         return DataLoader(
             self.data_val,
             batch_size=self.batch_size,
             num_workers=self.num_workers,
-            drop_last=True,
+            drop_last=False,
             shuffle=False,
             #pin_memory=torch.cuda.is_available(),
         )
@@ -113,7 +115,7 @@ class MnistLitDataModule(pl.LightningDataModule):
             self.data_test,
             batch_size=self.batch_size,
             num_workers=self.num_workers,
-            drop_last=True,
+            drop_last=False,
             shuffle=False,
             #pin_memory=torch.cuda.is_available(),
         )
