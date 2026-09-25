@@ -194,6 +194,9 @@ def launch_config(
             timestamp = datetime.now().isoformat()
             reporting_path = reporting_path / timestamp
 
+            # os.symlink fails if basedir does not exist yet (first run in a fresh basedir)
+            ensure_dir_exists(reporting_path)
+
             # path symbolic link to "current"
             current_link = Path(conf.server_run.reporting.basedir) / "current"
 
