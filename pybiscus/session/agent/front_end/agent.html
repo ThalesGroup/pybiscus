@@ -785,8 +785,13 @@
 
     {{ large_unions_js | safe }}
 
+    // ************* list views *************
+
+    {{ compact_lists_js | safe }}
+
     // after the handlers above and the lists built on load (on_document_load_js)
     document.addEventListener('DOMContentLoaded', () => pybiscusLargeUnions.init());
+    document.addEventListener('DOMContentLoaded', () => pybiscusCompactLists.init());
 
 </script>
 

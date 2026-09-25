@@ -677,6 +677,8 @@ def generate_model_page(model: BaseModel, templatePath: str, templateName: str, 
             buttons_js = file.read()
         with importlib.resources.files("pybiscus.session.agent.front_end").joinpath("large_unions.js").open('r') as file:
             large_unions_js = file.read()
+        with importlib.resources.files("pybiscus.session.agent.front_end").joinpath("compact_lists.js").open('r') as file:
+            compact_lists_js = file.read()
 
         body = generate_model_html(model, True, "")
 
@@ -697,6 +699,7 @@ def generate_model_page(model: BaseModel, templatePath: str, templateName: str, 
             buttons_js=buttons_js_rendered,
             on_document_load_js=on_document_load_js,
             large_unions_js=large_unions_js,
+            compact_lists_js=compact_lists_js,
         )
 
         return rendered_html        

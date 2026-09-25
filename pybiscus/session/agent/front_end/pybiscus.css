@@ -1531,3 +1531,66 @@ input:hover, textarea:hover, select:hover {
 /* setting "long option lists", next to the theme buttons */
 .pybiscus-lu-setting { display: inline-flex; align-items: center; gap: 4px; margin-left: 20px; }
 .pybiscus-lu-setting .themes_button { font-size: 18px; min-width: 38px; }
+
+/* ==========================================================================
+   Listes : vue compacte (compact_lists.js) — graphe linéaire des items + item courant
+   ========================================================================== */
+
+.pybiscus-cl-toggle {
+    display: inline-flex; align-items: center; justify-content: center;
+    min-width: 40px; min-height: 40px; margin-left: var(--spacing-xs);
+    font: inherit; font-size: 1.2em; cursor: pointer;
+    background: linear-gradient(135deg, var(--color-white) 0%, var(--color-gray-50) 100%);
+    color: var(--color-gray-800, #1e293b);
+    border: 1px solid var(--color-border); border-radius: var(--border-radius);
+}
+.pybiscus-cl-toggle:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
+
+/* compact view: only the current item is shown; the others stay in the DOM (and in the YAML) */
+.pybiscus-list-content.pybiscus-cl-hidden { display: none; }
+.pybiscus-cl-compact .pybiscus-cl-own-control { display: none; }
+
+.pybiscus-cl-graph {
+    display: flex; flex-wrap: wrap; align-items: center; gap: var(--spacing-md);
+    padding: var(--spacing-sm) var(--spacing-xs) var(--spacing-md);
+}
+/* the display above overrides the browser's [hidden] rule: the graph stayed visible (and stale)
+   in the expanded view */
+.pybiscus-cl-graph[hidden] { display: none; }
+.pybiscus-cl-chain {
+    position: relative;                       /* offsetParent of the nodes, for centring the current one */
+    display: flex; align-items: center; gap: 0.35rem;
+    flex: 1 1 24rem; min-width: 0; overflow-x: auto; padding: 0.4rem 0.2rem;
+}
+.pybiscus-cl-link { color: var(--fieldset-border); font-size: 1.3rem; flex: none; }
+.pybiscus-cl-node {
+    flex: none; display: grid; grid-template-columns: auto auto; align-items: center; column-gap: 0.45rem;
+    padding: 0.35rem 0.8rem 0.35rem 0.35rem; border-radius: 999px; cursor: pointer; font: inherit;
+    background: transparent; color: var(--theme-color);
+    border: 2px solid var(--fieldset-border); text-align: left;
+}
+.pybiscus-cl-node:hover { border-color: var(--color-accent-light); }
+.pybiscus-cl-node.current {
+    background: var(--theme-color); color: var(--theme-bg);
+    border-color: var(--color-accent-light); font-weight: var(--font-weight-bold);
+}
+.pybiscus-cl-rank {
+    grid-row: span 2; display: inline-flex; align-items: center; justify-content: center;
+    min-width: 1.6rem; height: 1.6rem; border-radius: 50%;
+    font-size: 0.8rem; font-weight: var(--font-weight-bold); font-variant-numeric: tabular-nums;
+    background: var(--color-accent-light); color: #fff;
+}
+.pybiscus-cl-name { white-space: nowrap; }
+.pybiscus-cl-type { font-size: 0.72rem; font-weight: 400; opacity: 0.75; white-space: nowrap; }
+.pybiscus-cl-empty { color: var(--theme-color); opacity: 0.7; font-style: italic; }
+.pybiscus-cl-actions { display: flex; gap: var(--spacing-xs); flex: none; }
+.pybiscus-cl-action {
+    min-width: 40px; min-height: 40px; font: inherit; font-size: 1.1em; cursor: pointer;
+    background: var(--fieldset-bg); color: var(--theme-color);
+    border: 1px solid var(--fieldset-border); border-radius: var(--border-radius);
+}
+.pybiscus-cl-action:hover:not(:disabled) { border-color: var(--color-accent-light); }
+.pybiscus-cl-action:disabled { opacity: 0.35; cursor: default; }
+.pybiscus-cl-node:focus-visible, .pybiscus-cl-action:focus-visible, .pybiscus-cl-toggle:focus-visible {
+    outline: 3px solid var(--color-accent-light); outline-offset: 2px;
+}
