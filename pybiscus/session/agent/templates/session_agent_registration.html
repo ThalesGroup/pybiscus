@@ -567,8 +567,9 @@
 
         async function notifyAgentBackEnd(formData, managerUrl) {
 
-            const agentUrl = formData.get('baseUrl');
-            const endpoint = `${agentUrl.replace(/\/$/, '')}/session/agent/registration`;
+            // this page is served by the agent to notify, hence a relative URL: baseUrl is how
+            // OTHER hosts reach the agent (possibly a public name), not necessarily this page's origin
+            const endpoint = '/session/agent/registration';
             
             const geoLocation = getGeoLocationValue(formData);
             

@@ -1,6 +1,5 @@
 import importlib
 from flask import Flask, jsonify, request
-from flask_cors import CORS
 
 from rich import print as rich_print
 from pathlib import Path
@@ -18,10 +17,9 @@ from pybiscus.session.agent import agent_weblog
 from pybiscus.session.agent.agent_weblog import AgentState
 
 rest_server = Flask(__name__)
-
-#TODO: CORS origin is *
-CORS(rest_server, origins="*")
-#CORS(rest_server, origins=["http://localhost:5001"])
+# no CORS: every page of the agent calls it with relative URLs (same origin); other agents
+# and the session manager reach it server to server, where CORS does not apply. A wildcard
+# let any web page open in a browser of the host read the agent's responses
 
 uploaded_file_path = None
 
@@ -394,6 +392,21 @@ def parse_args():
         default=None,
         help="Path to the YAML configuration file"
     )
+    # loopback by default: client agents are only reached by the local browser. A server agent
+    # of a multi-host session must listen on the network (client agents post their run config
+    # to it, the session manager pings it), as must an agent in a container
+    parser.add_argument(
+        '--host',
+        type=str,
+        default="127.0.0.1",
+        help="Listening address (default: 127.0.0.1; 0.0.0.0 for a server agent reached by other hosts, or in a container)"
+    )
+    # off by default: the Werkzeug debugger exposes a Python console to whoever reaches the agent
+    parser.add_argument(
+        '--debug',
+        action='store_true',
+        help="Development mode: auto-reload on code change and in-browser debugger"
+    )
     return parser.parse_args()
 
 def main():
@@ -417,14 +430,14 @@ def main():
         except Exception as e:
             print(f"YAML config loading error : {e}")
 
-    agent_weblog.agent_logger.log(f"Starting Pybiscus-Agent on port {args.port}")
+    agent_weblog.agent_logger.log(f"Starting Pybiscus-Agent on {args.host}:{args.port}")
 
     if args.config is None:
         print(f"Using no configuration file")
     else:
         print(f"Using configuration file: {args.config}")
 
-    rest_server.run(debug=True, host='0.0.0.0', port=args.port)
+    rest_server.run(debug=args.debug, host=args.host, port=args.port)
 
 if __name__ == "__main__":
     main()
