@@ -640,9 +640,11 @@ body > div > fieldset > legend::before {
    La classe pybiscus-tab-vertical est posée à la génération (pydantic2html).
    Contrat DOM inchangé : mêmes boutons et mêmes .pybiscus-tab-content pilotés
    par data-pybiscus-status ; seule la mise en page change. */
+/* la liste d'options prend la largeur de son plus long nom (plafonnée) ; c'est le
+   contenu qui cède la place et défile, sinon un contenu large écrasait la liste */
 .pybiscus-tab-container.pybiscus-tab-vertical {
     display: grid;
-    grid-template-columns: minmax(9rem, 13rem) 1fr;
+    grid-template-columns: fit-content(16rem) minmax(0, 1fr);
     align-items: stretch;
 }
 
@@ -652,8 +654,12 @@ body > div > fieldset > legend::before {
     flex-direction: column;
     flex-wrap: nowrap;
     align-items: stretch;
-    border-bottom: none;
-    border-right: 1px solid var(--color-border-light);
+    /* boîte complète : un trait à droite seul se lisait comme une boîte aux trois
+       autres côtés manquants. Marge : le conteneur (overflow:hidden + coins arrondis)
+       rognerait les traits collés à ses bords */
+    border: 1px solid var(--fieldset-border);
+    border-radius: var(--border-radius);
+    margin: var(--spacing-xs);
     max-height: 22rem;
     overflow-y: auto;
     /* bande haute vide de même hauteur que le contenu : premier bouton et premier
@@ -668,13 +674,17 @@ body > div > fieldset > legend::before {
     position: relative;                       /* ancre le marqueur en position absolue */
     /* padding-haut = bande réservée au marqueur (hors flux), champs alignés avec les boutons */
     padding: var(--spacing-xl) var(--spacing-lg) var(--spacing-md);
+    /* le conteneur est en overflow:hidden : sans défilement propre, le contenu serait rogné */
+    overflow-x: auto;
 }
 
 .pybiscus-tab-vertical > .pybiscus-tab-buttons > .pybiscus-tab-button {
-    justify-content: flex-start;
+    /* block, pas flex : text-overflow ne s'applique pas au texte d'un conteneur flex */
+    display: block;
     text-align: left;
     width: 100%;
     overflow: hidden;
+    white-space: nowrap;
     text-overflow: ellipsis;
 }
 
