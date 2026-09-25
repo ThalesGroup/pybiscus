@@ -2796,7 +2796,7 @@ requires-dist = [
     { name = "einops", specifier = ">=0.8.0" },
     { name = "flask", specifier = ">=3.1.0" },
     { name = "flask-cors", specifier = ">=5.0.1" },
-    { name = "flwr", specifier = ">=1.7.0" },
+    { name = "flwr", specifier = ">=1.7.0,<2" },
     { name = "lightning", extras = ["pytorch-extra"], specifier = ">=2.4.0" },
     { name = "matplotlib", specifier = ">=3.10.0" },
     { name = "onnx", specifier = ">=1.18.0" },
