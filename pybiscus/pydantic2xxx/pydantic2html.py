@@ -436,8 +436,17 @@ def generate_field_html(field_name: str, field_type, field_default, field_descri
                 and len(field_type.__args__) >= vertical_tabs_min_options
                 else ""
             )
+            # Au-delà, même la colonne ne tient plus (14 stratégies) : le front-end
+            # (large_unions.js) remplace la colonne par des pastilles / un menu circulaire,
+            # au choix de l'utilisateur. Seuil ajustable.
+            large_union_min_options = 9
+            large_cls = (
+                " pybiscus-tab-large"
+                if vertical_cls and len(field_type.__args__) >= large_union_min_options
+                else ""
+            )
 
-            field_html += f'''   <div class="pybiscus-tab-container{vertical_cls}">
+            field_html += f'''   <div class="pybiscus-tab-container{vertical_cls}{large_cls}">
 <div class="pybiscus-tab-buttons">
 '''
 
@@ -471,7 +480,11 @@ def generate_field_html(field_name: str, field_type, field_default, field_descri
                     else:
                         tab_name = generate_tab_name( sub_type, f'Tab {index}' )
 
-                    field_html += f'        <div class="pybiscus-tab-button {active}" data-tab="tab{tab_nb}-{index}" {status}>{tab_name}</div>\n'
+                    # family of the option (config metadata), used to group large unions
+                    group = getattr(sub_type, "PYBISCUS_GROUP", None)
+                    group_attr = f' data-pybiscus-group="{html_module.escape(group, quote=True)}"' if group else ""
+
+                    field_html += f'        <div class="pybiscus-tab-button {active}" data-tab="tab{tab_nb}-{index}" {status}{group_attr}>{tab_name}</div>\n'
 
             field_html += "    </div>\n"
 
@@ -662,6 +675,8 @@ def generate_model_page(model: BaseModel, templatePath: str, templateName: str, 
             buttons_html = file.read()
         with importlib.resources.files("pybiscus.session.agent.front_end").joinpath(f"{buttons_type}.js").open('r') as file:
             buttons_js = file.read()
+        with importlib.resources.files("pybiscus.session.agent.front_end").joinpath("large_unions.js").open('r') as file:
+            large_unions_js = file.read()
 
         body = generate_model_html(model, True, "")
 
@@ -681,6 +696,7 @@ def generate_model_page(model: BaseModel, templatePath: str, templateName: str, 
             buttons_html=buttons_html,
             buttons_js=buttons_js_rendered,
             on_document_load_js=on_document_load_js,
+            large_unions_js=large_unions_js,
         )
 
         return rendered_html        

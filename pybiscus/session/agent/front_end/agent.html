@@ -62,38 +62,56 @@
         container.querySelectorAll(my_buttons).forEach(button => {
             button.addEventListener('click', () => {
 
-                // desactivate active tabs of the container
-                const my_active_buttons  = ':scope > .pybiscus-tab-buttons > .pybiscus-tab-button.active'
-                
-                container.querySelectorAll(my_active_buttons).forEach(b => {
+                // The clicked tab used to be activated from inside the loop over the active
+                // tab: a click during the 600 ms switch found no active tab and was lost.
+                // Activation no longer depends on it, and a new click cancels the pending switch.
+                const switching = container._pybiscusSwitch !== undefined;
+                if (button.classList.contains('active') && !switching) {
+                    return;
+                }
+                clearTimeout(container._pybiscusSwitch);
+                clearTimeout(container._pybiscusReveal);
+
+                const target = container.querySelector(`#${button.dataset.tab}`);
+
+                // desactivate the other tabs of the container
+                container.querySelectorAll(my_buttons).forEach(b => {
+                    if (b === button) {
+                        return;
+                    }
                     b.classList.remove('active');
                     b.setAttribute('data-pybiscus-status', 'ignored');
 
-                    associatedDiv = container.querySelector(`#${b.dataset.tab}`);
-                    associatedDiv.setAttribute('data-pybiscus-status', 'ignored');
-                    associatedDiv.classList.add('hidden');
+                    const div = container.querySelector(`#${b.dataset.tab}`);
+                    div.setAttribute('data-pybiscus-status', 'ignored');
+                    if (div.classList.contains('active')) {
+                        div.classList.add('hidden');
+                    }
+                });
 
-                    setTimeout(() => {
-                        associatedDiv.classList.remove('active');
-                        associatedDiv.classList.remove('hidden');
+                container._pybiscusSwitch = setTimeout(() => {
+                    container._pybiscusSwitch = undefined;
 
-                        // activate the clicked tab and its associated content
+                    container.querySelectorAll(my_contents).forEach(div => {
+                        if (div !== target) {
+                            div.classList.remove('active');
+                            div.classList.remove('hidden');
+                        }
+                    });
 
-                        button.classList.add('active');
-                        button.setAttribute('data-pybiscus-status', 'valid');
+                    // activate the clicked tab and its associated content
+                    button.classList.add('active');
+                    button.setAttribute('data-pybiscus-status', 'valid');
 
-                        associatedDiv = container.querySelector(`#${button.dataset.tab}`);
-                        associatedDiv.setAttribute('data-pybiscus-status', 'valid');
+                    target.setAttribute('data-pybiscus-status', 'valid');
+                    target.classList.add('active');
+                    target.classList.add('hidden');
 
-                        associatedDiv.classList.add('active');
-                        associatedDiv.classList.add('hidden');
+                    container._pybiscusReveal = setTimeout(() => {
+                        target.classList.remove('hidden');
+                    }, 300);
 
-                        setTimeout(() => {
-                            associatedDiv.classList.remove('hidden');
-                        }, 300);
-
-                    }, 600);
-                } );
+                }, 600);
             });
         });
     };
@@ -743,7 +761,8 @@
     });
 
     // Manual mode toggle
-    document.getElementById('modeToggle').addEventListener('change', (e) => {
+    // no page has this checkbox any more: without "?." the TypeError stopped the rest of this script
+    document.getElementById('modeToggle')?.addEventListener('change', (e) => {
         setMode(e.target.checked ? 'dark' : 'light');
     });
 
@@ -759,6 +778,15 @@
         console.log('dark');
         setMode('dark');
     });
+
+    // **************************************
+    // ***** long option lists (unions) *****
+    // **************************************
+
+    {{ large_unions_js | safe }}
+
+    // after the handlers above and the lists built on load (on_document_load_js)
+    document.addEventListener('DOMContentLoaded', () => pybiscusLargeUnions.init());
 
 </script>
 

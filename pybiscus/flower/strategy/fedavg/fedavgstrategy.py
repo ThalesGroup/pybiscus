@@ -49,6 +49,7 @@ class ConfigFabricFedAvgStrategyData(BaseModel):
 class ConfigFabricFedAvgStrategy(BaseModel):
 
     PYBISCUS_ALIAS: ClassVar[str] = "FedAvg"
+    PYBISCUS_GROUP: ClassVar[str] = "Averaging"
 
     name:   Literal["fedavg"]
     config: ConfigFabricFedAvgStrategyData

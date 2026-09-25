@@ -138,6 +138,7 @@ class ConfigFedAvgGenericData(ConfigFlowerFailuresData):
 class ConfigFedAvgGeneric(BaseModel):
 
     PYBISCUS_ALIAS: ClassVar[str] = "FedAvgGeneric"
+    PYBISCUS_GROUP: ClassVar[str] = "Averaging"
 
     name:   Literal["fedavggeneric"]
     config: ConfigFedAvgGenericData
@@ -159,6 +160,7 @@ class ConfigFedAvgMData(ConfigFlowerFailuresData):
 
 class ConfigFedAvgM(BaseModel):
     PYBISCUS_ALIAS: ClassVar[str] = "FedAvgM"
+    PYBISCUS_GROUP: ClassVar[str] = "Averaging"
     name:   Literal["fedavgm"]
     config: ConfigFedAvgMData
     model_config = ConfigDict(extra="forbid")
@@ -182,6 +184,7 @@ class ConfigFedAdamData(ConfigFlowerFailuresData):
 
 class ConfigFedAdam(BaseModel):
     PYBISCUS_ALIAS: ClassVar[str] = "FedAdam"
+    PYBISCUS_GROUP: ClassVar[str] = "Server optimizers"
     name:   Literal["fedadam"]
     config: ConfigFedAdamData
     model_config = ConfigDict(extra="forbid")
@@ -202,6 +205,7 @@ class ConfigFedYogiData(ConfigFlowerFailuresData):
 
 class ConfigFedYogi(BaseModel):
     PYBISCUS_ALIAS: ClassVar[str] = "FedYogi"
+    PYBISCUS_GROUP: ClassVar[str] = "Server optimizers"
     name:   Literal["fedyogi"]
     config: ConfigFedYogiData
     model_config = ConfigDict(extra="forbid")
@@ -220,6 +224,7 @@ class ConfigFedAdagradData(ConfigFlowerFailuresData):
 
 class ConfigFedAdagrad(BaseModel):
     PYBISCUS_ALIAS: ClassVar[str] = "FedAdagrad"
+    PYBISCUS_GROUP: ClassVar[str] = "Server optimizers"
     name:   Literal["fedadagrad"]
     config: ConfigFedAdagradData
     model_config = ConfigDict(extra="forbid")
@@ -238,6 +243,7 @@ class ConfigFedMedianData(ConfigFlowerFailuresData):
 
 class ConfigFedMedian(BaseModel):
     PYBISCUS_ALIAS: ClassVar[str] = "FedMedian"
+    PYBISCUS_GROUP: ClassVar[str] = "Robust aggregation"
     name:   Literal["fedmedian"]
     config: ConfigFedMedianData
     model_config = ConfigDict(extra="forbid")
@@ -254,6 +260,7 @@ class ConfigFedTrimmedAvgData(ConfigFlowerFailuresData):
 
 class ConfigFedTrimmedAvg(BaseModel):
     PYBISCUS_ALIAS: ClassVar[str] = "FedTrimmedAvg"
+    PYBISCUS_GROUP: ClassVar[str] = "Robust aggregation"
     name:   Literal["fedtrimmedavg"]
     config: ConfigFedTrimmedAvgData
     model_config = ConfigDict(extra="forbid")
@@ -272,6 +279,7 @@ class ConfigKrumData(ConfigFlowerFailuresData):
 
 class ConfigKrum(BaseModel):
     PYBISCUS_ALIAS: ClassVar[str] = "Krum"
+    PYBISCUS_GROUP: ClassVar[str] = "Robust aggregation"
     name:   Literal["krum"]
     config: ConfigKrumData
     model_config = ConfigDict(extra="forbid")
@@ -290,6 +298,7 @@ class ConfigBulyanData(ConfigFlowerFailuresData):
 
 class ConfigBulyan(BaseModel):
     PYBISCUS_ALIAS: ClassVar[str] = "Bulyan"
+    PYBISCUS_GROUP: ClassVar[str] = "Robust aggregation"
     name:   Literal["bulyan"]
     config: ConfigBulyanData
     model_config = ConfigDict(extra="forbid")
@@ -316,6 +325,7 @@ class ConfigQFedAvgData(ConfigFlowerFailuresData):
 
 class ConfigQFedAvg(BaseModel):
     PYBISCUS_ALIAS: ClassVar[str] = "QFedAvg"
+    PYBISCUS_GROUP: ClassVar[str] = "Fairness & fault tolerance"
     name:   Literal["qfedavg"]
     config: ConfigQFedAvgData
     model_config = ConfigDict(extra="forbid")
@@ -333,6 +343,7 @@ class ConfigFaultTolerantFedAvgData(ConfigFlowerSamplingData):
 
 class ConfigFaultTolerantFedAvg(BaseModel):
     PYBISCUS_ALIAS: ClassVar[str] = "FaultTolerantFedAvg"
+    PYBISCUS_GROUP: ClassVar[str] = "Fairness & fault tolerance"
     name:   Literal["faulttolerantfedavg"]
     config: ConfigFaultTolerantFedAvgData
     model_config = ConfigDict(extra="forbid")
