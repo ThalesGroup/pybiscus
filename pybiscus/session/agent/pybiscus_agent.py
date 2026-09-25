@@ -1,4 +1,3 @@
-import sys
 import importlib
 from flask import Flask, jsonify, request
 from flask_cors import CORS
@@ -6,7 +5,6 @@ from flask_cors import CORS
 from rich import print as rich_print
 from pathlib import Path
 import click
-import sys
 import os
 import subprocess
 
@@ -54,23 +52,6 @@ def reset_session():
 #######################################
 #######################################
 
-def shutdown_server():
-    """Arrête proprement le serveur Flask."""
-    print("############################")
-    func = request.environ.get("werkzeug.server.shutdown")
-    if func is None:
-        #raise RuntimeError("Impossible d'arrêter le serveur. Es-tu en mode debug ?")
-        print("## 1")
-        sys.exit(0)
-        print("## 2")
-        sys.exit("Forced server stop !")
-        print("## 3")
-        pid = os.getpid()
-        os.kill(pid,9)
-    else:
-        print("## 0")
-        func()
-
 def run_typer_command(command: list[str]) -> str:
 
     # run the Typer script as a subprocess
@@ -109,23 +90,6 @@ def run_typer_command(command: list[str]) -> str:
         raise PybiscusInternalException(f"Processus {command} has failed with code {return_code}")
 
     return output
-
-# ..........................................................
-# .... GET /exit ...........................................
-# ..........................................................
-
-@rest_server.route("/exit", methods=["GET"])
-def exitFlask():
-    sys.exit(0)
-
-# ..........................................................
-# .... GET /shutdown .......................................
-# ..........................................................
-
-@rest_server.route("/shutdown", methods=["GET"])
-def shutdown():
-    shutdown_server()
-    return "Server shut down."
 
 #  YAML files storage path
 UPLOAD_FOLDER = "configs/uploaded/"
