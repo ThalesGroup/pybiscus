@@ -116,12 +116,13 @@ def session_registration():
     }
 
     # load YAML configuration file
-    if 'CONFIG_PATH' in rest_server.config:
+    # main() always sets the key, to None without --config (the container entrypoint passes
+    # none): testing the key's presence led to open(None) and a 500
+    config_path = rest_server.config.get('CONFIG_PATH')
+    if config_path:
 
         import yaml
 
-        config_path = rest_server.config['CONFIG_PATH']
-    
         try:
             with open(config_path, 'r', encoding='utf-8') as file:
                 config = yaml.safe_load(file)
