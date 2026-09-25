@@ -6,6 +6,7 @@ from rich.progress import track
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 
 from pybiscus.core.pybiscusexception import PybiscusValueException
+import pybiscus.core.pybiscus_logger as logm
 
 torch.backends.cudnn.enabled = True
 
@@ -70,8 +71,9 @@ def train_loop(fabric, net, trainloader, optimizer, epochs: int, verbose=False, 
         optimizer = None
     elif isinstance(optimizer, list) and len(optimizer) == 1:
         optimizer = optimizer[0]
-    
-    for _ in range(epochs):
+
+    history = []
+    for epoch in range(epochs):
         results_epoch = {
             key: torch.tensor(0.0, device=net.device)
             for key in signature_of_mode(net, "train").__required_keys__
@@ -110,9 +112,24 @@ def train_loop(fabric, net, trainloader, optimizer, epochs: int, verbose=False, 
             results_epoch[key] /= len(trainloader)
             results_epoch[key] = results_epoch[key].item()
 
+        history.append(dict(results_epoch))
+        if epochs > 1:
+            logm.console.log(
+                f"Epoch {epoch + 1}/{epochs} "
+                + " ".join(f"{key}={value:.4f}" for key, value in results_epoch.items())
+            )
+
         for s in schedulers:
             if s.interval == "epoch":
                 s.tick(results_epoch)
+
+    # the plain keys describe the LAST local epoch only (the state of the model sent to the
+    # server); with several epochs, each one is added as <key>_epoch_<i> so that the local
+    # trajectory (client drift) stays visible. With a single epoch the output is unchanged
+    if epochs > 1:
+        for epoch_number, epoch_results in enumerate(history, 1):
+            for key, value in epoch_results.items():
+                results_epoch[f"{key}_epoch_{epoch_number}"] = value
     return results_epoch
 
 

@@ -80,7 +80,9 @@ class ConfigServerRun(BaseModel):
     Attributes
     ----------
     num_rounds: int    = the number of rounds for the FL session (>= 1).
-    clients_fit_local_epochs = the number of local epochs performed by clients at each round (>= 1)
+    clients_fit_local_epochs = the number of local epochs performed by clients at each round (>= 1);
+                         fit metrics describe the last local epoch, and when > 1 each epoch is also
+                         reported as <metric>_epoch_<i>
     clients_configs    = list of paths to the configuration files used by all clients.
     save_on_train_end  = end of FL session model weights save flag
     """
