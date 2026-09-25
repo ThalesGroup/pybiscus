@@ -4,6 +4,7 @@ from typing import Annotated
 import flwr as fl
 import torch
 import typer
+from omegaconf import OmegaConf
 from pydantic import ValidationError
 from torch.utils.data import DataLoader, IterableDataset
 
@@ -34,6 +35,20 @@ def count_examples(loader: DataLoader) -> int:
     if loader.drop_last:
         return len(loader) * loader.batch_size
     return len(loader.sampler)
+
+
+def apply_client_overrides(conf_loaded, cid, root_dir, server_address) -> None:
+
+    # shared by check and launch: they used to diverge, check writing cid and
+    # server_address at the root, where ConfigClient (extra="forbid") rejects them.
+    # OmegaConf.update creates a missing section instead of raising ConfigKeyError,
+    # leaving the diagnosis to Pydantic
+    if cid is not None:
+        OmegaConf.update(conf_loaded, "client_run.cid", cid)
+    if root_dir is not None:
+        OmegaConf.update(conf_loaded, "root_dir", root_dir)
+    if server_address is not None:
+        OmegaConf.update(conf_loaded, "flower_client.server_address", server_address)
 
 
 def check_and_build_client_config(config: dict) -> ConfigClient:
@@ -84,10 +99,12 @@ def check_client_config(
     ----------
     config : Path
         the Path to the configuration file.
+    cid : int, optional
+        the client id, by default None
+    root_dir : str, optional
+        the path to a "root" directory, relatively to which can be found Data, Experiments and other useful directories, by default None
     server_address : str, optional
         the server address and port, by default None
-    to_onnx : bool, optional
-        if true, saves the final model into ONNX format. Only available now for Unet3D model! by default False
 
     Raises
     ------
@@ -103,13 +120,8 @@ def check_client_config(
 
     # handling optional cid, rootdir and server address parameters
     # it overrides the values from configuration file
+    apply_client_overrides(conf_loaded, cid, root_dir, server_address)
 
-    if cid is not None:
-        conf_loaded["cid"] = cid
-    if root_dir is not None:
-        conf_loaded["root_dir"] = root_dir
-    if server_address is not None:
-        conf_loaded["server_address"] = server_address
     try:
         _ = check_and_build_client_config(conf_loaded)
     except ValidationError as e:
@@ -152,13 +164,7 @@ def launch_config(
 
     # handling optional cid, rootdir and server address parameters
     # it overrides the values from configuration file
-
-    if cid is not None:
-        conf_loaded["client_run"]["cid"] = cid
-    if root_dir is not None:
-        conf_loaded["root_dir"] = root_dir
-    if server_address is not None:
-        conf_loaded["flower_client"]["server_address"] = server_address
+    apply_client_overrides(conf_loaded, cid, root_dir, server_address)
     # logm.console.log(f"Conf specified: {dict(conf)}")
 
     try:
