@@ -1,4 +1,5 @@
 import importlib
+import sys
 from flask import Flask, jsonify, request
 
 from rich import print as rich_print
@@ -11,8 +12,8 @@ import argparse
 
 from pybiscus.pydantic2xxx.pydantic2html import generate_model_page
 from pybiscus.session.agent.tuples2yaml import parse_tuples_to_yaml_string
-from pybiscus.core.pybiscusexception import PybiscusInternalException, PybiscusValueException
-from pybiscus.commands.apps_common import CONFIG_VALIDATION_EXIT_CODE
+from pybiscus.core.pybiscusexception import PybiscusInternalException, PybiscusPluginError, PybiscusValueException
+from pybiscus.commands.apps_common import CONFIG_VALIDATION_EXIT_CODE, PLUGIN_ERROR_EXIT_CODE
 from pybiscus.session.agent import agent_weblog
 from pybiscus.session.agent.agent_weblog import AgentState
 
@@ -413,6 +414,13 @@ def main():
     """Main entry point for launching the Flask server."""
     args = parse_args()
 
+    # the routes build the config models, which load the plugins
+    try:
+        from pybiscus.session.agent.routes import configsession, clientsession, serversession, runsession  # noqa: F401
+    except PybiscusPluginError as e:
+        print(f"❌ [plugins] {e}", file=sys.stderr)
+        sys.exit(PLUGIN_ERROR_EXIT_CODE)
+
     # Store the config path in the Flask app config (accessible via current_app.config)
     rest_server.config['CONFIG_PATH'] = args.config
 
@@ -440,4 +448,7 @@ def main():
     rest_server.run(debug=args.debug, host=args.host, port=args.port)
 
 if __name__ == "__main__":
-    main()
+    # run as a script (container entrypoint), this file is a second copy of the module named
+    # __main__: the routes register on the package copy's rest_server, so serve that one
+    from pybiscus.session.agent.pybiscus_agent import main as package_main
+    package_main()

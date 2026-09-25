@@ -8,3 +8,8 @@ class PybiscusValueException(Exception):
 
     def __init__(self, message: str):
         super().__init__(message)
+
+class PybiscusPluginError(Exception):
+
+    def __init__(self, message: str):
+        super().__init__(message)

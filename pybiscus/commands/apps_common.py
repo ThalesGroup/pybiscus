@@ -10,10 +10,21 @@ from pydantic import ValidationError
 # the agent tells an invalid config from a crash by this exit code, not by parsing the output
 # (65 = EX_DATAERR ; typer already uses 2 for usage errors)
 CONFIG_VALIDATION_EXIT_CODE = 65
+# plugin manifest or plugin import failure (78 = EX_CONFIG)
+PLUGIN_ERROR_EXIT_CODE = 78
 
 
 def exit_on_invalid_config(error: ValidationError) -> NoReturn:
-    logm.console.log(f"This is not a valid config!\n{error}")
+    from pybiscus.plugin.pluginmanager import get_skipped_plugins
+
+    message = f"This is not a valid config!\n{error}"
+    # a config naming a skipped plugin only gets "tag '...' does not match": give the cause
+    skipped = get_skipped_plugins()
+    if skipped:
+        message += "\nSkipped plugins (missing dependency): " + ", ".join(
+            f"{category}/{module} (needs '{dependency}')" for category, module, dependency in skipped
+        )
+    logm.console.log(message)
     raise typer.Exit(code=CONFIG_VALIDATION_EXIT_CODE)
 
 
