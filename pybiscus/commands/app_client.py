@@ -5,8 +5,10 @@ import flwr as fl
 import torch
 import typer
 from pydantic import ValidationError
+from torch.utils.data import DataLoader, IterableDataset
 
 import pybiscus.core.pybiscus_logger as logm
+from pybiscus.core.pybiscusexception import PybiscusValueException
 from pybiscus.flower_fabric.client.flowerfabricclient.flowerfabricclientfactory import FlowerFabricClientFactory
 from pybiscus.plugin.registries.client_registry import client_registry
 from pybiscus.plugin.registries.data_registry import datamodule_registry
@@ -16,6 +18,22 @@ from pybiscus.flower_config.config_client import ConfigClient
 from pybiscus.commands.apps_common import load_config
 
 torch.backends.cudnn.enabled = True
+
+
+def count_examples(loader: DataLoader) -> int:
+
+    # FedAvg weights clients by this value; len(loader) counts batches, which skews FedAvg as soon as clients use different batch sizes
+    if isinstance(loader.dataset, IterableDataset):
+        # its sampler has no length, and a declared __len__ is duplicated across workers
+        raise PybiscusValueException(
+            f"{type(loader.dataset).__name__} is an IterableDataset: "
+            "counting examples for FedAvg weighting is not supported"
+        )
+    if loader.batch_size is None:
+        return sum(len(batch) for batch in loader.batch_sampler)
+    if loader.drop_last:
+        return len(loader) * loader.batch_size
+    return len(loader.sampler)
 
 
 def check_and_build_client_config(config: dict) -> ConfigClient:
@@ -151,9 +169,11 @@ def launch_config(
     data = data_class(**conf.data.config.model_dump())
 
     data.setup(stage="fit")
+    # counted on the raw loaders: fabric.setup_dataloaders may swap in a DistributedSampler
+    # that only sees this process' shard
     num_examples = {
-        "trainset": len(data.train_dataloader()),
-        "valset": len(data.val_dataloader()),
+        "trainset": count_examples(data.train_dataloader()),
+        "valset": count_examples(data.val_dataloader()),
     }
 
     # load the model

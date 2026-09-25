@@ -59,7 +59,7 @@ def get_evaluate_fn(
     return evaluate
 
 def weighted_average(metrics: list[tuple[int, Metrics]], context="") -> Metrics:
-    print(f"@@@@ metrics: {metrics}")
+    logm.console.log(f"{context} metrics (num_examples, metrics): {metrics}")
 
     _set_common_keys = set()
 
