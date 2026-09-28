@@ -1382,16 +1382,26 @@ input:hover, textarea:hover, select:hover {
     transition: all var(--transition-fast);
 }
 
+/* same rule as the options (.pybiscus-tab-button): the current section carries the contrasted
+   fill, the others stay discreet; the reverse gave the current one the page's colour, so it
+   looked switched off */
 .menu-item-level-1.active .pybiscus-config {
-    background-color: var(--theme-bg);
-    color: var(--theme-color);
+    background-color: var(--theme-color);
+    color: var(--theme-bg);
     border: 3px solid var(--color-accent-light);
+    font-weight: var(--font-weight-bold);
 }
 
 .menu-item-level-1:not(.active) .pybiscus-config {
-    background-color: var(--theme-color);
-    color: var(--theme-bg);    
-    border: 3px solid var(--color-accent-dark);
+    background-color: transparent;
+    color: var(--theme-color);
+    border: 3px solid transparent;
+    box-shadow: inset 0 0 0 1px var(--fieldset-border);
+    opacity: 0.75;
+}
+
+.menu-item-level-1:not(.active):hover .pybiscus-config {
+    opacity: 1;
 }
 
 .menu-item-level-1.active {
