@@ -7,6 +7,7 @@ from flwr.common import EvaluateRes, FitRes, Parameters, Scalar
 from flwr.server.client_proxy import ClientProxy
 from pydantic import BaseModel, ConfigDict, Field
 
+import pybiscus.core.gui_events as gui_events
 import pybiscus.core.pybiscus_logger as logm
 from pybiscus.interfaces.flower.fabricstrategyfactory import FabricStrategyFactory
 from pybiscus.flower.utils_server import (
@@ -35,6 +36,7 @@ class FabricLoggingMixin:
             logmsg += f"{emo[key]} {key}={value:.3f} "
             self.fabric.log(f"val_{key}_glob", value, step=server_round)
         logm.console.log(f"🔁 Round {server_round} 🧪 Test {logmsg}")
+        gui_events.log_round_metric("test", metrics, server_round)
 
         return eval_res
 

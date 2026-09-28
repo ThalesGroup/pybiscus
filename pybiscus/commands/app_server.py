@@ -12,6 +12,7 @@ from pybiscus.core.ensure_filesystem import ensure_dir_exists, ensure_file_dir_e
 from pybiscus.core.logger.filelogger.filelogger import FileLoggerFactory
 from pybiscus.core.logger.richlogger.richloggerfactory import RichLoggerFactory
 from pybiscus.core.metricslogger.file.filemetricslogger import FileMetricsLoggerFactory
+import pybiscus.core.gui_events as gui_events
 import pybiscus.core.pybiscus_logger as logm
 from pybiscus.core.logger.multiplelogger.multipleloggerfactory import MultipleLoggerFactory
 from pybiscus.core.metricslogger.multiplemetricslogger.multiplemetricsloggerfactory import MultipleMetricsLoggerFactory
@@ -253,6 +254,7 @@ def launch_config(
     _model = model_class(**conf.model.config.model_dump())
 
     model = fabric.setup_module(_model)
+    gui_events.set_main_metric(gui_events.main_metric_for_model(_model))
 
     # load the data management module from registry
     data_class = datamodule_registry()[conf.data.name]

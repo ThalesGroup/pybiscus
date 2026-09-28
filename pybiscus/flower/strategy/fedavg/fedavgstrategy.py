@@ -20,6 +20,7 @@ from lightning.fabric import Fabric
 from lightning.pytorch import LightningModule
 from pydantic import BaseModel, ConfigDict
 
+import pybiscus.core.gui_events as gui_events
 import pybiscus.core.pybiscus_logger as logm
 from pybiscus.interfaces.flower.fabricstrategyfactory import FabricStrategyFactory
 from pybiscus.flower.utils_server import evaluate_config, get_evaluate_fn, make_fit_config, weighted_average
@@ -130,6 +131,7 @@ class FabricFedAvgStrategy(fl.server.strategy.FedAvg):
             self.fabric.log(f"val_{key}_glob", value, step=server_round)
 
         logm.console.log(f"🔁 Round {server_round} 🧪 Test {logmsg}")
+        gui_events.log_round_metric("test", metrics, server_round)
 
         return loss, metrics
 

@@ -193,7 +193,9 @@ def pybiscus_manager_list_clients():
 # - ConfigSession ( cnx to Pybiscus server )
 @pybiscus_manager_app.route("/pybiscus-session/manage")
 def pybiscus_manager_manage():
-    return render_template("pybiscus/manager.html", manager_port=pybiscus.session.manager.session_manager.manager_port)
+    from pybiscus.core.gui_events import gui_log_patterns
+    return render_template("pybiscus/manager.html", manager_port=pybiscus.session.manager.session_manager.manager_port,
+                           gui_log_patterns=gui_log_patterns())
 
 # **************************
 

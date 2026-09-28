@@ -8,6 +8,7 @@ from flwr.common import Metrics, Scalar
 from lightning.fabric import Fabric
 from lightning.pytorch import LightningModule
 
+import pybiscus.core.gui_events as gui_events
 import pybiscus.core.pybiscus_logger as logm
 from pybiscus.ml.loops_fabric import test_loop
 
@@ -108,5 +109,6 @@ def weighted_average(metrics: list[tuple[int, Metrics]], context="") -> Metrics:
 
     # print(f"Final outputs before logging: {outputs}")
     logm.console.log(f"Averaged {context} metrics: {outputs}")
+    gui_events.log_round_metric(context, outputs)
     
     return outputs

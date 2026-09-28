@@ -176,7 +176,7 @@
     <!-- MID : accuracy (hero) + loss -->
     <div class="col-mid">
       <section class="panel">
-        <header><span class="eyebrow">Accuracy</span>
+        <header><span class="eyebrow" id="main-metric-name">Accuracy</span>
           <div class="acc-legend">
             <span class="it"><span class="sw" style="background:var(--fit)"></span>Fit <span class="v num" id="acc-fit">—</span></span>
             <span class="it"><span class="sw" style="background:var(--test)"></span>Test <span class="v num" id="acc-test">—</span></span>
@@ -299,19 +299,26 @@
     });
   }
 
+  // patterns come from pybiscus.core.gui_events (single source with the lines the server writes);
+  // the charted metric is the model's main one (accuracy, f1score, loss…), not a fixed name
+  const GUI_PATTERNS = {{ gui_log_patterns | tojson }};
+  const RE = Object.fromEntries(Object.entries(GUI_PATTERNS).map(([k, src]) => [k, new RegExp(src)]));
+  const PHASE_BUFFER = { fit: fit_accuracies, test: test_accuracies, evaluate: evaluate_accuracies };
+  let mainMetricName = null;
+
   function checkLogs(newItems){
     newItems.forEach(item=>{
-      const mRound = item.message.match(/🔁 [rR]ound[:]\s*(\d+)/);
+      const mRound = item.message.match(RE.round);
       if(mRound) session.roundNumber = parseInt(mRound[1],10);
-      const mTest = item.message.match(/Round\s*(\d+).*?accuracy=(\d+(\.\d+)?)/);
-      if(mTest){ test_accuracies.add(parseFloat(mTest[2])); return; }
-      const mFit = item.message.match(/Averaged fit metrics:.*?'accuracy': (\d+(\.\d+)?)/);
-      if(mFit){ fit_accuracies.add(parseFloat(mFit[1])); return; }
-      const mEval = item.message.match(/Averaged evaluate metrics:.*?'accuracy': (\d+(\.\d+)?)/);
-      if(mEval){ evaluate_accuracies.add(parseFloat(mEval[1])); return; }
-      const mDur = item.message.match(/time diff is (\d+(\.\d+)?)s/);
+      const mMetric = item.message.match(RE.round_metric);
+      if(mMetric){
+        mainMetricName = mMetric[3];
+        PHASE_BUFFER[mMetric[1]].add(parseFloat(mMetric[4]));
+        return;
+      }
+      const mDur = item.message.match(RE.duration);
       if(mDur){ durations.add(parseFloat(mDur[1])); return; }
-      const mMd = item.message.match(/metric diff is (\d+(?:\.\d+)?)\s*$/);
+      const mMd = item.message.match(RE.metric_diff);
       if(mMd){ metricDiffs.add(parseFloat(mMd[1])); return; }
     });
   }
@@ -326,13 +333,18 @@
 
   // ============ charts (nouveau rendu SVG à partir des buffers) ============
   function renderAccuracy(){
-    const W=600,H=200,padL=30,padR=8,padT=10,padB=16, lo=0,hi=1;                 // range fixe 0 -> 1
     const arrs={fit:fit_accuracies.all,test:test_accuracies.all,eval:evaluate_accuracies.all}, colors={fit:'#ff5d73',test:'#4ecdc4',eval:'#ffb454'};
+    if(mainMetricName) setTxt('main-metric-name', mainMetricName);
+    // 0 -> 1 for a rate (accuracy, f1…); otherwise (a loss…) the range of the values
+    const all=[...arrs.fit,...arrs.test,...arrs.eval];
+    const unit=all.every(v=>v>=0 && v<=1);
+    const vmin=all.length?Math.min(...all):0, vmax=all.length?Math.max(...all):1, span=(vmax-vmin)||1;
+    const W=600,H=200,padL=30,padR=8,padT=10,padB=16, lo=unit?0:Math.max(0,vmin-span*0.1), hi=unit?1:vmax+span*0.1;
     const off={fit:1, test:0, eval:1};   // fit/eval décalés d'un round (le serveur calcule fit/test avant le round 1)
     const nRef=Math.max(arrs.test.length, arrs.fit.length+1, arrs.eval.length+1);
     const x=i=>padL+(W-padL-padR)*(nRef>1? i/(nRef-1):0), y=v=>padT+(H-padT-padB)*(1-(v-lo)/(hi-lo));
     let s='';
-    for(let g=0;g<=5;g++){const v=lo+(hi-lo)*g/5; s+=`<line class="grid-l" x1="${padL}" y1="${y(v)}" x2="${W-padR}" y2="${y(v)}"/><text class="axis" x="3" y="${y(v)+3}">${v.toFixed(1)}</text>`;}
+    for(let g=0;g<=5;g++){const v=lo+(hi-lo)*g/5; s+=`<line class="grid-l" x1="${padL}" y1="${y(v)}" x2="${W-padR}" y2="${y(v)}"/><text class="axis" x="3" y="${y(v)+3}">${v.toFixed(unit?1:2)}</text>`;}
     for(let i=0;i<nRef;i++) s+=`<line class="round-l" x1="${x(i)}" y1="${padT}" x2="${x(i)}" y2="${H-padB}"/>`;   // marques de round
     ['eval','test','fit'].forEach(k=>{const arr=arrs[k]; if(arr.length<1)return; const o=off[k]; const pts=arr.map((v,i)=>`${x(i+o)},${y(v)}`).join(' ');
       s+=`<polyline points="${pts}" fill="none" stroke="${colors[k]}" stroke-width="1.5" stroke-linejoin="round"/>`;
