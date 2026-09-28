@@ -303,7 +303,12 @@ window.pybiscusLargeUnions = (() => {
         }
         const m = model(container);
         const ui = el("div", "pybiscus-lu-ui");
-        const render = () => (mode === "chips" ? renderChips : renderRadial)(container, m, ui);
+        // a tab clicked other than through this UI leaves no option active during the page's
+        // 600 ms switch: nothing to draw then, the observer redraws once the option is active
+        const render = () => {
+            if (m.selectedLabel() === undefined) return;
+            (mode === "chips" ? renderChips : renderRadial)(container, m, ui);
+        };
         container.classList.add("pybiscus-lu-mounted");
         container.prepend(ui);
         render();
