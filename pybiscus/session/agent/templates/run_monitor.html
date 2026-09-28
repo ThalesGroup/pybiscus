@@ -237,8 +237,8 @@
             fetch('/run/stop', { method: 'POST' });
         });
 
-        // /session/agent/registration remet à zéro le contexte de l'agent
-        // (reset_session + reset_registration) avant de réafficher le formulaire
+        // le contexte de l'agent (reset_session + reset_registration) est remis à zéro par
+        // l'envoi du formulaire, pas par son affichage
         regButton.addEventListener('click', () => {
             window.location.href = '/session/agent/registration';
         });

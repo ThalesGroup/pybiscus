@@ -1,5 +1,5 @@
 
-from flask import jsonify, render_template, request
+from flask import jsonify, redirect, render_template, request
 from pybiscus.session.agent.pybiscus_agent import reset_registration, reset_session, rest_server
 import pybiscus.session.agent.pybiscus_agent as pybagent
 
@@ -11,6 +11,10 @@ client_registration_resume = ""
 
 @rest_server.route('/session/agent/registration/waiting')
 def session_registration_waiting():
+
+    # reached without a registration (tab reloaded or restored, agent restarted): nothing to wait for
+    if not {'manager_url', 'role'} <= pybagent.registration_parameters.keys():
+        return redirect('/session/agent/registration')
 
     manager_url = pybagent.registration_parameters['manager_url']
     role        = pybagent.registration_parameters['role']
@@ -96,9 +100,6 @@ def session_registration_waiting():
 @rest_server.route('/session/agent/registration', methods=['GET'])
 def session_registration():
 
-    reset_session()
-    reset_registration()
-
     default_config = {
         'manager_url': 'http://localhost:5555',
         'agent_name': 'John Doe',
@@ -152,6 +153,10 @@ def session_registration_parameters():
 
     if the_json:
 
+        # a new registration starts a new session; done here and not when the form is shown, since
+        # any GET of the form (reload, probe, prefetch) then wiped a registration being completed
+        reset_session()
+        reset_registration()
         pybagent.registration_parameters = the_json
 
         return jsonify({"status": "ok"})
