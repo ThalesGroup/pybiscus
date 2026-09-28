@@ -21,6 +21,7 @@ class ConfigMetricDiffComputeStrategyDecoratorData(BaseModel):
 class ConfigMetricDiffComputeStrategyDecorator(BaseModel):
     
     PYBISCUS_ALIAS: ClassVar[str] = "MetricDiffCompute"
+    PYBISCUS_GROUP: ClassVar[str] = "Metrics"
     name: Literal["metricdiffcompute"]
 
     config: ConfigMetricDiffComputeStrategyDecoratorData

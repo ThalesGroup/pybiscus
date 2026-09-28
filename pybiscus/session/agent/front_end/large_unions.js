@@ -42,15 +42,27 @@ window.pybiscusLargeUnions = (() => {
 
     // ------------------------------------------------------------------ model
 
+    // one hue per family, in order of first appearance among the union's options; shared with
+    // the compact list view, so that a family has the same colour there
+    function familyHues(buttons) {
+        const hues = new Map();
+        buttons.forEach(b => {
+            const name = b.dataset.pybiscusGroup || OTHER;
+            if (!hues.has(name)) hues.set(name, HUES[hues.size % HUES.length]);
+        });
+        return hues;
+    }
+
     function model(container) {
         const buttons = [...container.querySelectorAll(":scope > .pybiscus-tab-buttons > .pybiscus-tab-button")];
         const labels = buttons.map(b => b.textContent.trim());
         const groupOf = buttons.map(b => b.dataset.pybiscusGroup || OTHER);
+        const hues = familyHues(buttons);
         const families = [];
         groupOf.forEach((name, i) => {
             let family = families.find(f => f.name === name);
             if (!family) {
-                family = { name, hue: HUES[families.length % HUES.length], members: [] };
+                family = { name, hue: hues.get(name), members: [] };
                 families.push(family);
             }
             family.members.push(labels[i]);
@@ -361,5 +373,5 @@ window.pybiscusLargeUnions = (() => {
         }).observe(document.getElementById("top-div") || document.body, { childList: true, subtree: true });
     }
 
-    return { init, setMode, MODES };
+    return { init, setMode, MODES, familyHues };
 })();

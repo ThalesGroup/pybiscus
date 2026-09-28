@@ -27,6 +27,7 @@ class ConfigSaveServerFitParamsDecoratorData(BaseModel):
 class ConfigSaveServerFitParamsDecorator(BaseModel):
     
     PYBISCUS_ALIAS: ClassVar[str] = "SaveServerFitParams"
+    PYBISCUS_GROUP: ClassVar[str] = "Saving"
     name: Literal["saveserverfitparams"]
 
     config: ConfigSaveServerFitParamsDecoratorData

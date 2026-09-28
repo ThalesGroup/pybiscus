@@ -1591,6 +1591,8 @@ input:hover, textarea:hover, select:hover {
     background: var(--color-accent-light); color: #fff;
 }
 .pybiscus-cl-name { white-space: nowrap; }
+/* the family's colour (same hue as in the large unions' chips) on the rank badge */
+.pybiscus-cl-node.pybiscus-cl-family .pybiscus-cl-rank { background: hsl(var(--lu-hue, 210) 70% 52%); }
 .pybiscus-cl-type { font-size: 0.72rem; font-weight: 400; opacity: 0.75; white-space: nowrap; }
 .pybiscus-cl-empty { color: var(--theme-color); opacity: 0.7; font-style: italic; }
 .pybiscus-cl-actions { display: flex; gap: var(--spacing-xs); flex: none; }

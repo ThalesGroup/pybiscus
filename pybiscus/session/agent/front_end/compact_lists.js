@@ -30,9 +30,12 @@ window.pybiscusCompactLists = (() => {
     function describe(item, rank) {
         // union item: its selected option; otherwise a "name" field, then the first input
         const union = item.querySelector(".pybiscus-tab-container");
-        const active = union && union.querySelector(":scope > .pybiscus-tab-buttons > .pybiscus-tab-button.active");
+        const buttons = union ? [...union.querySelectorAll(":scope > .pybiscus-tab-buttons > .pybiscus-tab-button")] : [];
+        const active = buttons.find(b => b.classList.contains("active"));
         if (active && active.textContent.trim()) {
-            return { name: active.textContent.trim(), type: active.dataset.pybiscusGroup || "" };
+            const type = active.dataset.pybiscusGroup || "";
+            const hue = type && window.pybiscusLargeUnions ? pybiscusLargeUnions.familyHues(buttons).get(type) : undefined;
+            return { name: active.textContent.trim(), type, hue };
         }
         const named = item.querySelector('input[data-pybiscus-name$=".name"]');
         const first = named || item.querySelector("input[data-pybiscus-name]:not([type=checkbox]):not([type=radio])");
@@ -77,9 +80,10 @@ window.pybiscusCompactLists = (() => {
         }
         items.forEach((item, rank) => {
             if (rank > 0) chain.append(Object.assign(document.createElement("span"), { className: "pybiscus-cl-link", textContent: "→" }));
-            const { name, type } = describe(item, rank);
-            const node = button("pybiscus-cl-node" + (item === state.current ? " current" : ""), "", `${rank} · ${name}`,
-                                () => { state.current = item; render(fs); });
+            const { name, type, hue } = describe(item, rank);
+            const node = button("pybiscus-cl-node" + (item === state.current ? " current" : "") + (hue !== undefined ? " pybiscus-cl-family" : ""),
+                                "", `${rank} · ${name}` + (type ? ` (${type})` : ""), () => { state.current = item; render(fs); });
+            if (hue !== undefined) node.style.setProperty("--lu-hue", hue);
             node.append(Object.assign(document.createElement("span"), { className: "pybiscus-cl-rank", textContent: rank }),
                         Object.assign(document.createElement("span"), { className: "pybiscus-cl-name", textContent: name }));
             if (type) node.append(Object.assign(document.createElement("span"), { className: "pybiscus-cl-type", textContent: type }));

@@ -28,6 +28,7 @@ class ConfigSaveClientsFitInParamsDecoratorData(BaseModel):
 class ConfigSaveClientsFitInParamsDecorator(BaseModel):
     
     PYBISCUS_ALIAS: ClassVar[str] = "SaveClientsFitInParams"
+    PYBISCUS_GROUP: ClassVar[str] = "Saving"
     name: Literal["saveclientsfitin"]
 
     config: ConfigSaveClientsFitInParamsDecoratorData

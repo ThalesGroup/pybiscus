@@ -36,6 +36,7 @@ class ConfigModelWeightVignetteDecoratorData(BaseModel):
 class ConfigModelWeightVignetteStrategyDecorator(BaseModel):
     
     PYBISCUS_ALIAS: ClassVar[str] = "VisualizeModelLayers"
+    PYBISCUS_GROUP: ClassVar[str] = "Visualization"
     name: Literal["visualizemodellayers"]
 
     config: ConfigModelWeightVignetteDecoratorData

@@ -22,6 +22,7 @@ class ConfigTimeDiffComputeStrategyDecoratorData(BaseModel):
 class ConfigTimeDiffComputeStrategyDecorator(BaseModel):
     
     PYBISCUS_ALIAS: ClassVar[str] = "TimeDiffCompute"
+    PYBISCUS_GROUP: ClassVar[str] = "Metrics"
     name: Literal["timediffcompute"]
 
     config: ConfigTimeDiffComputeStrategyDecoratorData

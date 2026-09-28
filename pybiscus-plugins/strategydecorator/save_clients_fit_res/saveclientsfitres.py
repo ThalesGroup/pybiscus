@@ -25,6 +25,7 @@ class ConfigSaveClientsFitResStrategyDecoratorData(BaseModel):
 class ConfigSaveClientsFitResStrategyDecorator(BaseModel):
     
     PYBISCUS_ALIAS: ClassVar[str] = "SaveClientsFitRes"
+    PYBISCUS_GROUP: ClassVar[str] = "Saving"
     name: Literal["saveclientsfitres"]
 
     config: ConfigSaveClientsFitResStrategyDecoratorData

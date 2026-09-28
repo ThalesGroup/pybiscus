@@ -30,6 +30,7 @@ class ConfigPersonalizeClientsFitInParamsStrategyDecoratorData(BaseModel):
 class ConfigPersonalizeClientsFitInParamsStrategyDecorator(BaseModel):
     
     PYBISCUS_ALIAS: ClassVar[str] = "PersonalizeClientsFitInParams"
+    PYBISCUS_GROUP: ClassVar[str] = "Personalization"
     name: Literal["personalizeclientsfitin"]
 
     config: ConfigPersonalizeClientsFitInParamsStrategyDecoratorData

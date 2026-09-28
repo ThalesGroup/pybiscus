@@ -29,6 +29,7 @@ class ConfigFileWritingDecoratorData(BaseModel):
 class ConfigFileWritingDecorator(BaseModel):
     
     PYBISCUS_ALIAS: ClassVar[str] = "FileWriting"
+    PYBISCUS_GROUP: ClassVar[str] = "Saving"
     name: Literal["filewriting"]
 
     config: ConfigFileWritingDecoratorData
