@@ -130,8 +130,8 @@
 </head>
 <body>
 
+<script>const AGENT_STATE_PROTOCOL = {{ agent_state_protocol | tojson }};</script>
 <script src="{{ url_for('static', filename='pybiscus/js/session_utils.js') }}"></script>
-<script src="{{ url_for('static', filename='pybiscus/js/session_graphics.js') }}"></script>
 
 <div class="app">
 
@@ -280,21 +280,11 @@
       if(match){
         const agentName = match[1];
 
-        // état déclaré par l'agent : c'est le protocole (cf. AgentState, agent_weblog.py).
-        // L'analyse du texte ci-dessous n'est qu'un repli pour les agents plus anciens.
-        if(item.state){
-          session.setAgentState(agentName, item.state);
-          if(session.sessionState==="sessionCompleted" && Session.isFinalAgentState(item.state)) updateGraph();
-          return;
-        }
-
-        if(item.message.endsWith("checking yaml file")) session.setAgentState(agentName,"validating");
-        else if(item.message.endsWith("yaml file checked successfully")) session.setAgentState(agentName,"validated");
-        else if(item.message.endsWith("launching pybiscus server")) session.setAgentState(agentName,"executing");
-        else if(item.message.endsWith("launching pybiscus client")) session.setAgentState(agentName,"executing");
-        else if(item.message.endsWith("pybiscus run completed")){ session.setAgentState(agentName,"terminated"); if(session.sessionState==="sessionCompleted") updateGraph(); }
-        else if(item.message.endsWith("pybiscus run failed")){ session.setAgentState(agentName,"failed"); if(session.sessionState==="sessionCompleted") updateGraph(); }
-        else if(item.message.endsWith("Validation error !")) session.setAgentState(agentName,"not validated");
+        // only the declared state (AgentState, agent_weblog.py) drives the state machine: the
+        // former fallback on message text had drifted from the messages ("pybiscus run failed : …")
+        if(!item.state) return;
+        session.setAgentState(agentName, item.state);
+        if(session.sessionState==="sessionCompleted" && Session.isFinalAgentState(item.state)) updateGraph();
       }
     });
   }
@@ -377,9 +367,14 @@
   function renderCharts(){ renderAccuracy(); renderLoss(); renderDround(); setTxt('round-num', session.roundNumber); }
 
   // ============ topology + geo ============
-  function stateClass(st){ return (st==='terminated'||st==='failed'||st==='not validated'||st==='down') ? 'down' : (st==='executing'||st==='validated') ? 'up' : 'wait'; }
   const ROLE_ICON  = { server:'🧠', client:'💻' };
-  const STATE_ICON = { declared:'⚪', validating:'🔍', validated:'☑️', executing:'▶️', terminated:'🏁', failed:'💥', 'not validated':'❌' };
+  // "declared" is the manager's own state for an agent that has not reported yet
+  const STATE_ICON  = { declared:'⚪', validating:'🔍', validated:'☑️', executing:'▶️', terminated:'🏁', failed:'💥', 'not validated':'❌' };
+  const STATE_CLASS = { declared:'wait', validating:'wait', validated:'up', executing:'up', terminated:'down', failed:'down', 'not validated':'down' };
+  const stateClass = st => STATE_CLASS[st] || 'wait';
+  // a state added to AgentState without its display would silently show as "waiting"
+  AGENT_STATE_PROTOCOL.states.filter(st => !(st in STATE_ICON && st in STATE_CLASS))
+    .forEach(st => console.warn(`agent state "${st}" has no icon or class in manager.html`));
   const esc = s => String(s).replace(/[<>&"]/g, c=>({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c]));
   function renderTopology(servers, clients, meta){
     meta = meta || {};

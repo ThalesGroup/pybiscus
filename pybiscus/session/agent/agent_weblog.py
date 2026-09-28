@@ -18,6 +18,15 @@ class AgentState:
     TERMINATED    = "terminated"
     FAILED        = "failed"
 
+    # the manager stops polling once every agent is in one of these; "not validated" is left out:
+    # validation is local to the agent, which may fix its config and submit it again
+    FINAL = (TERMINATED, FAILED)
+
+def agent_state_protocol() -> dict:
+    # served to the manager page, which would otherwise repeat these names in JavaScript
+    states = [value for name, value in vars(AgentState).items() if name.isupper() and isinstance(value, str)]
+    return {"states": states, "final": list(AgentState.FINAL)}
+
 # ------------------------
 
 class PrintAgentLogger():

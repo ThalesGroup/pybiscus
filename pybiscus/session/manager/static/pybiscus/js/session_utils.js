@@ -52,11 +52,9 @@ class CircularBuffer {
     }
 }
 
-// états au-delà desquels un agent ne bougera plus : la session peut s'arrêter de poller.
-// Miroir de AgentState dans pybiscus/session/agent/agent_weblog.py
-// "not validated" en est volontairement exclu : la validation est un état local à l'agent,
-// qui peut corriger sa config et la resoumettre.
-const AGENT_FINAL_STATES = ["terminated", "failed"];
+// AGENT_STATE_PROTOCOL is written into the page by the manager from AgentState
+// (pybiscus/session/agent/agent_weblog.py): a single source instead of a JavaScript copy
+const AGENT_FINAL_STATES = AGENT_STATE_PROTOCOL.final;
 
 class Session {
 
