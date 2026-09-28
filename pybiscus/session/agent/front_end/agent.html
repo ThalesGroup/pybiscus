@@ -277,6 +277,9 @@
         return result;
     }
 
+    // before the buttons (Pin) and the load-time code (restoring a pinned configuration)
+    {{ pinned_state_js | safe }}
+
     {{ buttons_js | safe }}
 
     function set_option(prefix, value) {

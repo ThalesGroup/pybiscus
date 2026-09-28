@@ -20,7 +20,7 @@ pin_Button.style.display   = 'none';
 // ***********************************************************************************************
 
 function updateOrigin() {
-  fetch('/server/config/html', { method: 'HEAD' })
+  fetch('/server/config/pin', { method: 'HEAD' })
     .then(res => {
       if (res.ok) {
 
@@ -290,69 +290,12 @@ saveButton.addEventListener('click', function() {
 // ********** Pin config button ******************************************************************
 // ***********************************************************************************************
 
-function getFullDocumentHTML() {
-
-  const doc = document.documentElement.cloneNode(true);
-
-  // Optionnel : injecter les valeurs réelles des champs
-  doc.querySelectorAll('input, textarea, select').forEach(el => {
-    if (el.tagName === 'TEXTAREA') {
-      el.innerHTML = el.value;
-    } else if (el.tagName === 'SELECT') {
-      [...el.options].forEach(opt =>
-        opt.selected ? opt.setAttribute("selected", "") : opt.removeAttribute("selected")
-      );
-    } else if (el.type === 'checkbox' || el.type === 'radio') {
-      if (el.checked) el.setAttribute("checked", "");
-      else el.removeAttribute("checked");
-    } else {
-      el.setAttribute("value", el.value);
-    }
-  });
-
-  return '<!DOCTYPE html>\n' + doc.outerHTML;
-}
-
-function getCurrentStateHTML() {
-
-    // Clone body in order to keep the original DOM intact
-    // const clone = document.body.cloneNode(true);
-    const clone = document.documentElement.cloneNode(true);
-
-    // update clone's input with their actual values
-    const inputs = clone.querySelectorAll("input, textarea, select");
-    inputs.forEach(input => {
-        if (input.tagName === "INPUT" && (input.type === "checkbox" || input.type === "radio")) {
-            if (input.checked) input.setAttribute("checked", "checked");
-            else input.removeAttribute("checked");
-        } else {
-            input.setAttribute("value", input.value);
-        }
-
-        if (input.tagName === "TEXTAREA") {
-            input.innerHTML = input.value;
-        }
-
-        if (input.tagName === "SELECT") {
-            const options = input.querySelectorAll("option");
-            options.forEach(option => {
-                if (option.selected) option.setAttribute("selected", "selected");
-                else option.removeAttribute("selected");
-            });
-        }
-    });
-
-    return clone.innerHTML;
-}
-
 function savePageState() {
 
-    const html = getCurrentStateHTML();
-
-    fetch("/server/config/html", {
+    fetch("/server/config/pin", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ html })
+        body: JSON.stringify({ state: pybiscusPinnedState.capture() })
     }).then(res => {
         if (res.ok) {
           alert("Configuration pinned !");
@@ -367,9 +310,9 @@ pin_Button.addEventListener('click', savePageState);
 // ********** Blank config button ****************************************************************
 // ***********************************************************************************************
 
-function deleteConfigHtml() {
+function deletePinnedConfig() {
 
-  fetch('/server/config/html', {
+  return fetch('/server/config/pin', {
     method: 'DELETE'
   })
   .then(response => {
@@ -377,26 +320,19 @@ function deleteConfigHtml() {
     return response.json();
   })
   .then(data => {
-    alert("Cache deletion result: " + data.status + ", configuration is going to be blanked");
+    alert("Pinned configuration deletion result: " + data.status + ", configuration is going to be blanked");
+    return true;
   })
   .catch(error => {
-    console.error("Cache suppress error :", error);
-    alert("Error during cache suppress.");
+    console.error("Pinned configuration deletion error :", error);
+    alert("Error while deleting the pinned configuration.");
+    return false;
   });
 }
 
-// function blankConfig() {
-
-//   // delete backend config cache
-//   deleteConfigHtml();
-
-//   // force URL reload
-//   // window.location.href = window.location.href;
-//   window.location.href = window.location.href + (window.location.href.includes('?') ? '&' : '?') + '_nocache=' + Date.now();
-// }
-function blankConfig() {
-  // delete backend config cache
-  deleteConfigHtml();
+async function blankConfig() {
+  // reloading before the answer let Firefox abort the DELETE: the pinned configuration came back
+  if (!await deletePinnedConfig()) return;
 
   // base URL with existing _nocache parameter erased
   const url = new URL(window.location.href);

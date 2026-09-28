@@ -4,7 +4,6 @@ import json
 from flask import Response, jsonify, request
 import urllib
 import os
-import re
 
 from pybiscus.core.ensure_filesystem import ensure_file_dir_exists
 from pybiscus.flower_config.config_server import ConfigServer
@@ -18,50 +17,54 @@ from pathlib import Path
 import pybiscus.core.pybiscus_logger as logm
 import pybiscus.session.agent.pybiscus_agent as pybagent
 
-server_cache_path = ".pybiscus-cache/html-config/server.html"
+# the form's state (options, list items, values), replayed on a freshly generated page: the
+# former HTML snapshot froze the interface injected by the scripts, which then got it twice
+server_pin_path = ".pybiscus-cache/html-config/server-pin.json"
 
 # ..........................................................
-# .... HEAD /server/config/html ............................
+# .... HEAD /server/config/pin .............................
 # ..........................................................
-# called by server front-end to check if an html config is cached
+# called by server front-end to check if a configuration is pinned
 # (used to show a graphical indicator)
 # ..........................................................
 
-@rest_server.route('/server/config/html', methods=['HEAD', 'GET'])
-def check_html_cache():
+@rest_server.route('/server/config/pin', methods=['HEAD', 'GET'])
+def check_pinned_config():
 
-    if os.path.isfile(server_cache_path):
+    if os.path.isfile(server_pin_path):
 
         return Response(status=200)
     else:
         return Response(status=404)
 
 # ..........................................................
-# .... POST /server/config/html ............................
+# .... POST /server/config/pin .............................
 # ..........................................................
-# called by server front-end to cache its current html (pin button)
+# called by server front-end to pin the form's current state (pin button)
 # ..........................................................
 
-@rest_server.route('/server/config/html', methods=['POST'])
-def pinConfigHtml():
-    data = request.get_json()
-    html = data.get("html", "")
+@rest_server.route('/server/config/pin', methods=['POST'])
+def pinConfig():
+    state = (request.get_json(silent=True) or {}).get("state")
+    if not isinstance(state, dict):
+        return {"status": "error", "message": "a 'state' object is required"}, 400
 
-    with open(server_cache_path, "w", encoding="utf-8") as f:
-        f.write(html)
+    os.makedirs(os.path.dirname(server_pin_path), exist_ok=True)
+    with open(server_pin_path, "w", encoding="utf-8") as f:
+        json.dump(state, f)
     return {"status": "ok"}
 
 # ..........................................................
-# .... DELETE /server/config/html ..........................
+# .... DELETE /server/config/pin ...........................
 # ..........................................................
-# called by server front-end to delete the html cache (blank button)
+# called by server front-end to forget the pinned configuration (blank button)
 # ..........................................................
 
-@rest_server.route('/server/config/html', methods=['DELETE'])
-def deleteConfigHtml():
+@rest_server.route('/server/config/pin', methods=['DELETE'])
+def deletePinnedConfig():
 
     try:
-        os.remove(server_cache_path)
+        os.remove(server_pin_path)
         return {"status": "deleted"}, 200
     except FileNotFoundError:
         return {"status": "not found"}, 404
@@ -70,22 +73,28 @@ def deleteConfigHtml():
 
 # -----------------------------
 
-def serverConfigHtmlFromCache():
+def pinned_config_js() -> str:
 
-    if os.path.exists(server_cache_path):
-        with open(server_cache_path, encoding="utf-8") as f:
-            contenu_html = f.read()
+    if not os.path.exists(server_pin_path):
+        return ""
 
-        return contenu_html
-    
-    return None
+    try:
+        with open(server_pin_path, encoding="utf-8") as f:
+            state = json.load(f)
+    except (OSError, ValueError) as e:
+        logm.console.log(f"server: pinned configuration ignored, unreadable: {e}")
+        return ""
+
+    logm.console.log("server: pinned configuration restored")
+    # "</" would end the page's <script> element if a value contained "</script>"
+    state_js = json.dumps(state).replace("</", "<\\/")
+    return f"\n    pybiscusPinnedState.restore({state_js});\n"
 
 # ..........................................................
 # .... GET /server/config ..................................
 # ..........................................................
-# called by server front-end to get the configuration HTML page
-# by default the cached one if there is one (with saved customizations)
-# otherwise the dynamically generated one (vanilla)
+# called by server front-end to get the configuration HTML page, generated, with the pinned
+# configuration replayed if there is one, then the session presets
 # ..........................................................
 
 @rest_server.route("/server/config", methods=["GET"])
@@ -94,7 +103,7 @@ def serverConfigDownload():
 
     presets_raw = request.args.get("presets")
 
-    from pybiscus.session.agent.pybiscus_agent import PRESETS, PRESETS_BEGIN, PRESETS_END
+    from pybiscus.session.agent.pybiscus_agent import PRESETS
     
     if presets_raw:
         try:
@@ -119,37 +128,20 @@ def serverConfigDownload():
 
     #                      -----------------
 
-    cachedConfig = serverConfigHtmlFromCache()
+    with importlib.resources.files("pybiscus.session.agent.front_end").joinpath("show_server_items.js").open('r') as file:
+        show_server_items = file.read()
 
-    if cachedConfig is not None:
+    with importlib.resources.files("pybiscus.session.agent.front_end").joinpath("fold_fieldset.js").open('r') as file:
+        fold_fieldsets = file.read()
 
-        logm.console.log("server: configuration read from cache")
+    with importlib.resources.files("pybiscus.session.agent.front_end").joinpath("lists_management.js").open('r') as file:
+        lists_management = file.read()
 
-        pattern = re.compile(
-            re.escape(PRESETS_BEGIN) + r"(.*?)" + re.escape(PRESETS_END),
-            flags=re.DOTALL
-        )
+    # after the lists' default items (the pinned lists replace them), before the session presets
+    # (which override and lock)
+    js_code = show_server_items + fold_fieldsets + lists_management + pinned_config_js() + presets_js
 
-        patchedCachedConfig = pattern.sub( presets_js, cachedConfig )
-
-        return patchedCachedConfig
-    
-    else:
-
-        logm.console.log("server: configuration generated")
-    
-        with importlib.resources.files("pybiscus.session.agent.front_end").joinpath("show_server_items.js").open('r') as file:
-            show_server_items = file.read()
-
-        with importlib.resources.files("pybiscus.session.agent.front_end").joinpath("fold_fieldset.js").open('r') as file:
-            fold_fieldsets = file.read()
-
-        with importlib.resources.files("pybiscus.session.agent.front_end").joinpath("lists_management.js").open('r') as file:
-            lists_management = file.read()
-
-        js_code = show_server_items + fold_fieldsets + lists_management + presets_js
-
-        return generate_model_page(ConfigServer,'pybiscus.session.agent.front_end','agent.html','check_exec_buttons', js_code)
+    return generate_model_page(ConfigServer,'pybiscus.session.agent.front_end','agent.html','check_exec_buttons', js_code)
 
 # ..........................................................
 # .... POST /server/config .................................
