@@ -79,6 +79,8 @@
         .status-success { color: #3fb950; }
         .status-failure .status-dot { background: #f85149; }
         .status-failure { color: #f85149; }
+        .status-stopped .status-dot { background: #d29922; }
+        .status-stopped { color: #d29922; }
 
         @keyframes blink { 0%, 80%, 100% { opacity: .3; } 40% { opacity: 1; } }
 
@@ -187,7 +189,7 @@
             statusPill.className = 'status-pill status-' + status;
             statusLabel.textContent = status;
             detailDiv.textContent = detail || '';
-            const finished = (status === 'success' || status === 'failure');
+            const finished = (status === 'success' || status === 'failure' || status === 'stopped');
 
             stopButton.style.display = finished ? 'none' : '';
             stopButton.disabled = status !== 'running';

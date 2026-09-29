@@ -1,5 +1,8 @@
  #!/usr/bin/bash 
 
-# the agents require the X-Pybiscus header on the requests that change something (CSRF)
-curl -X POST -H "X-Pybiscus: 1" http://127.0.0.1:5002/client/config -F "file=@configs/toupload/client_2.yml"
-curl -X POST -H "X-Pybiscus: 1" "http://127.0.0.1:5002/client"
+# the agents require the X-Pybiscus header on the requests that change something (CSRF), and
+# their access token when they require one: kept where the agent was started (the repository root
+# for launch/agent/cli)
+TOKEN="${PYBISCUS_AGENT_TOKEN:-$(cat .pybiscus-cache/tokens/agent-5002 2>/dev/null)}"
+curl -X POST -H "X-Pybiscus: 1" -H "Authorization: Bearer $TOKEN" http://127.0.0.1:5002/client/config -F "file=@configs/toupload/client_2.yml"
+curl -X POST -H "X-Pybiscus: 1" -H "Authorization: Bearer $TOKEN" "http://127.0.0.1:5002/client"

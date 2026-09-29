@@ -15,6 +15,7 @@ from pybiscus.session.agent.ConfigSession import make_session_model
 from pybiscus.session.agent.pybiscus_agent import rest_server
 from pathlib import Path
 import pybiscus.core.pybiscus_logger as logm
+from pybiscus.session.auth import session_access
 import pybiscus.session.agent.pybiscus_agent as pybagent
 
 # the form's state (options, list items, values), replayed on a freshly generated page: the
@@ -189,6 +190,7 @@ def server():
 # ..........................................................
 
 @rest_server.route("/session/config", methods=["GET"])
+@session_access
 def sessionConfigDownload():
     """get the session parameters form
     the button calls the /server/config?param={json} service
@@ -211,6 +213,7 @@ def sessionConfigDownload():
 # ..........................................................    
 
 @rest_server.route("/session/log/client/<client_name>/runconfig", methods=["POST"])
+@session_access
 def log_client_runconfig(client_name: str):
     """ the client agent front-end after setting its run configuration
     send it to the server which stores them

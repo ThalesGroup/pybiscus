@@ -7,7 +7,6 @@ from flask import Flask, jsonify, request
 # (no CORS) and the manager grants to its allowed origins only. Pybiscus' own pages and the calls
 # between its components add it. Not an authentication: anyone on the network can send it.
 HEADER = "X-Pybiscus"
-HEADERS = {HEADER: "1"}
 
 _SAFE_METHODS = ("GET", "HEAD", "OPTIONS")
 

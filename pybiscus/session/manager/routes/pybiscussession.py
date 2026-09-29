@@ -10,6 +10,7 @@ import urllib
 import pybiscus.session.manager.session_manager
 from pybiscus.session.manager.session_manager import generate_new_cid, pybiscus_manager_app
 import pybiscus.core.pybiscus_logger as logm
+from pybiscus.session.auth import session_access
 
 # **************************
 
@@ -64,6 +65,7 @@ def pybiscus_manager_run_session():
 # **************************
 
 @pybiscus_manager_app.route("/pybiscus-session/agent", methods=["POST"])
+@session_access
 def pybiscus_manager_register_agent():
 
     data = request.json
@@ -148,6 +150,7 @@ def pybiscus_manager_register_agent():
 # **************************
 
 @pybiscus_manager_app.route("/pybiscus-session/params", methods=["GET"])
+@session_access
 def pybiscus_manager_get_session_params():
 
     if not pybiscus.session.manager.session_manager.session_is_running:
@@ -243,6 +246,7 @@ def pybiscus_manager_manage():
     from pybiscus.core.gui_events import gui_log_patterns
     from pybiscus.session.agent.agent_weblog import agent_state_protocol
     return render_template("pybiscus/manager.html", manager_port=pybiscus.session.manager.session_manager.manager_port,
+                           session_token=pybiscus.session.manager.session_manager.session_token,
                            gui_log_patterns=gui_log_patterns(), agent_state_protocol=agent_state_protocol())
 
 # **************************
@@ -265,6 +269,7 @@ agent_lock = Lock()  # lock used to prevent agent logs concurrent access
 # **************************
 
 @pybiscus_manager_app.route('/webhook/agents', methods=['POST'])
+@session_access
 def pybiscus_manager_receive_agents():
     data = request.json
     message = data.get('content', '')
@@ -303,6 +308,7 @@ log_lock = Lock()  # lock used to prevent logs concurrent access
 # **************************
 
 @pybiscus_manager_app.route('/webhook/logs', methods=['POST'])
+@session_access
 def pybiscus_manager_receive_log():
     data = request.json
     message = data.get('content', '')
@@ -337,6 +343,7 @@ metrics_lock = Lock()  # lock used to prevent metrics concurrent access
 # **************************
 
 @pybiscus_manager_app.route('/webhook/metrics', methods=['POST'])
+@session_access
 def pybiscus_manager_receive_metrics():
     data = request.json
     metrics = data.get('metrics', '')
@@ -373,6 +380,7 @@ vignettes_lock = Lock()  # lock used to prevent logs concurrent access
 VIGNETTES_DIR = "pybiscus/session/manager/static/pybiscus/vignettes"
 
 @pybiscus_manager_app.route('/webhook/vignettes', methods=['POST'])
+@session_access
 def pybiscus_manager_post_vignette():
     
     # check file presence

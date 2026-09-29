@@ -1,6 +1,6 @@
 import requests
 from requests.exceptions import RequestException, Timeout
-from pybiscus.session.csrf import HEADERS
+from pybiscus.session.auth import headers_for
 
 # ------------------------
 
@@ -18,10 +18,11 @@ class AgentState:
     EXECUTING     = "executing"
     TERMINATED    = "terminated"
     FAILED        = "failed"
+    STOPPED       = "stopped"
 
     # the manager stops polling once every agent is in one of these; "not validated" is left out:
     # validation is local to the agent, which may fix its config and submit it again
-    FINAL = (TERMINATED, FAILED)
+    FINAL = (TERMINATED, FAILED, STOPPED)
 
 def agent_state_protocol() -> dict:
     # served to the manager page, which would otherwise repeat these names in JavaScript
@@ -60,7 +61,7 @@ class WebHookAgentLogger():
             if state is not None:
                 msg['state'] = state
 
-            response = requests.post(self.webhook_url, json=msg, timeout=5, headers=HEADERS)
+            response = requests.post(self.webhook_url, json=msg, timeout=5, headers=headers_for(self.webhook_url))
             response.raise_for_status()  # raise an exception upon codes 4xx/5xx
 
             print("✅ Agent log Webhook call success")

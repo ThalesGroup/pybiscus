@@ -1,5 +1,5 @@
 import requests
-from pybiscus.session.csrf import HEADERS
+from pybiscus.session.auth import headers_for
 
 class WebHookLogger:
 
@@ -30,7 +30,7 @@ class WebHookLogger:
         
         try:
             # send the message to the webhook using a POST request
-            response = requests.post(self.webhook_url, json=payload, headers=HEADERS)
+            response = requests.post(self.webhook_url, json=payload, headers=headers_for(self.webhook_url))
             response.raise_for_status()  # check error in case of error status
 
             print("✅ Log Webhook call success : ", payload)

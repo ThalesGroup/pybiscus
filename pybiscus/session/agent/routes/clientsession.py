@@ -10,7 +10,7 @@ from pybiscus.pydantic2xxx.pydantic2html import generate_model_page
 from pybiscus.session.agent.pybiscus_agent import checkConfigurationFile, generate_param_js, interpretConfigurationFile, rest_server, saveConfigFromRequest
 import pybiscus.session.agent.pybiscus_agent as pybagent
 import pybiscus.core.pybiscus_logger as logm
-from pybiscus.session.csrf import HEADERS
+from pybiscus.session.auth import headers_for
  
 # ..........................................................
 # .... GET /client/config ..................................
@@ -108,7 +108,7 @@ def send_yaml_file(yaml_file, url, timeout=10):
                 "file": (f.name, f, "application/x-yaml")
             }
 
-            response = requests.post(url, files=files, timeout=timeout, headers=HEADERS)
+            response = requests.post(url, files=files, timeout=timeout, headers=headers_for(url))
             response.raise_for_status()
 
             print("✅ Status:", response.status_code)

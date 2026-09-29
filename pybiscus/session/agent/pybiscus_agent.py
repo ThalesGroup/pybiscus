@@ -14,10 +14,22 @@ from pybiscus.core.pybiscusexception import PybiscusInternalException, PybiscusP
 from pybiscus.commands.apps_common import CONFIG_VALIDATION_EXIT_CODE, PLUGIN_ERROR_EXIT_CODE
 from pybiscus.session.agent import agent_weblog
 from pybiscus.session.agent.agent_weblog import AgentState
+from pybiscus.session.auth import SESSION_TOKEN_ENV, agent_token_name, component_token, print_access, require_tokens, tokens_required
 from pybiscus.session.csrf import require_pybiscus_header
 
 rest_server = Flask(__name__)
 require_pybiscus_header(rest_server)
+
+agent_port  = None
+agent_token = None
+tokens_are_required = False
+
+# the session token is the one given at the registration (set_session_token)
+require_tokens(rest_server, "agent",
+               enabled=lambda: tokens_are_required,
+               cookie=lambda: f"pybiscus-agent-{agent_port}",
+               access_token=lambda: agent_token,
+               session_token=lambda: os.environ.get(SESSION_TOKEN_ENV))
 # no CORS: every page of the agent calls it with relative URLs (same origin); other agents
 # and the session manager reach it server to server, where CORS does not apply. A wildcard
 # let any web page open in a browser of the host read the agent's responses
@@ -382,6 +394,17 @@ def parse_args():
         action='store_true',
         help="Development mode: auto-reload on code change and in-browser debugger"
     )
+    parser.add_argument(
+        '--token',
+        type=str,
+        default=os.environ.get("PYBISCUS_AGENT_TOKEN"),
+        help="access token of the agent's pages (default: $PYBISCUS_AGENT_TOKEN, else the one of the previous start, else a new one)"
+    )
+    parser.add_argument(
+        '--require-token',
+        action='store_true',
+        help="require the tokens on the loopback too (always required when listening beyond it)"
+    )
     return parser.parse_args()
 
 def main():
@@ -399,6 +422,11 @@ def main():
     rest_server.config['CONFIG_PATH'] = args.config
 
     set_upload_folder(args.port)
+
+    global agent_port, agent_token, tokens_are_required
+    agent_port  = args.port
+    tokens_are_required = tokens_required(args.host, args.require_token)
+    agent_token = component_token(agent_token_name(args.port), args.token) if tokens_are_required else None
 
     from pybiscus.session.agent import ui_settings
     ui_settings.set_agent_port(args.port)
@@ -423,6 +451,9 @@ def main():
         print(f"Using no configuration file")
     else:
         print(f"Using configuration file: {args.config}")
+
+    browsed_host = "127.0.0.1" if args.host in ("0.0.0.0", "::") else args.host
+    print_access("agent", f"http://{browsed_host}:{args.port}/session/agent/registration", agent_token)
 
     rest_server.run(debug=args.debug, host=args.host, port=args.port)
 

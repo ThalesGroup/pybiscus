@@ -1,13 +1,27 @@
 import argparse
+import os
 from flask import Flask
 from flask_cors import CORS
 
+from pybiscus.session.auth import SESSION_TOKEN_ENV, component_token, manager_token_names, print_access, require_tokens, tokens_required
 from pybiscus.session.csrf import HEADER, require_pybiscus_header
 
 # **************************
 
 pybiscus_manager_app = Flask(__name__)
 require_pybiscus_header(pybiscus_manager_app)
+
+admin_token = None     # the operator's: the manager's pages and actions
+# the participants': registration, session parameters, webhooks. Created even when the manager
+# requires none: an agent listening on the network requires it from the others
+session_token = None
+tokens_are_required = False
+
+require_tokens(pybiscus_manager_app, "manager",
+               enabled=lambda: tokens_are_required,
+               cookie=lambda: f"pybiscus-manager-{manager_port}",
+               access_token=lambda: admin_token,
+               session_token=lambda: session_token)
 
 # the agents' pages call the manager from their own origin (registration, waiting for the session):
 # the local ones are always allowed, those of other hosts through --allow-origin. The former "*"
@@ -88,14 +102,27 @@ def main():
         default=[],
         help="origin of agent pages on another host, e.g. http://agenthost:5001 (repeatable; local origins are always allowed)",
     )
+    parser.add_argument("--admin-token", default=os.environ.get("PYBISCUS_MANAGER_TOKEN"),
+                        help="token of the manager's pages (default: $PYBISCUS_MANAGER_TOKEN, else the one of the previous start, else a new one)")
+    parser.add_argument("--session-token", default=os.environ.get(SESSION_TOKEN_ENV),
+                        help=f"token given to the agents (default: ${SESSION_TOKEN_ENV}, else the one of the previous start, else a new one)")
+    parser.add_argument("--require-token", action="store_true",
+                        help="require the tokens on the loopback too (always required when listening beyond it)")
     args = parser.parse_args()
 
-    CORS(pybiscus_manager_app, origins=[LOCAL_ORIGINS, *args.allow_origin], allow_headers=["Content-Type", HEADER])
+    CORS(pybiscus_manager_app, origins=[LOCAL_ORIGINS, *args.allow_origin], allow_headers=["Content-Type", "Authorization", HEADER])
 
-    global manager_port
+    global manager_port, admin_token, session_token, tokens_are_required
     manager_port=args.port
+    tokens_are_required = tokens_required(args.host, args.require_token)
+    admin_name, session_name = manager_token_names(manager_port)
+    admin_token = component_token(admin_name, args.admin_token) if tokens_are_required else None
+    session_token = component_token(session_name, args.session_token)
 
     print(f"🚀 Manager starting on port {manager_port}")
+    browsed_host = "127.0.0.1" if args.host in ("0.0.0.0", "::") else args.host
+    print_access("manager", f"http://{browsed_host}:{manager_port}/pybiscus-session/manage", admin_token)
+    print(f"🔑 session token, for the agents (shown in the manager page too): {session_token}", flush=True)
     pybiscus_manager_app.run(host=args.host, port=manager_port)
 
 # **************************

@@ -1,9 +1,11 @@
 
+import json
 import urllib.parse
 
 from flask import jsonify, redirect, render_template, request
 from pybiscus.session.agent.pybiscus_agent import reset_registration, reset_session, rest_server
 import pybiscus.session.agent.pybiscus_agent as pybagent
+from pybiscus.session.auth import session_token_for, set_session_token
 
 client_registration_resume = ""
 
@@ -22,6 +24,8 @@ def session_registration_waiting():
     role        = pybagent.registration_parameters['role']
     # the manager gives each client a stable cid and its share of the data from the agent's name
     agent_query = urllib.parse.quote(str(pybagent.registration_parameters.get('name', '')))
+    # the page of the agent, which only its operator opens: the manager wants the session token
+    session_token = json.dumps(pybagent.registration_parameters.get('session_token') or '')
 
     return render_template( 'session_agent_waiting.html',
                            state = 'Connecting to session',
@@ -58,7 +62,9 @@ def session_registration_waiting():
         }}
                                    
         function pollSessionParams(interval = 2000) {{
-            fetch('{manager_url}/pybiscus-session/params?agent={agent_query}')
+            fetch('{manager_url}/pybiscus-session/params?agent={agent_query}', {{
+                headers: {{ 'Authorization': 'Bearer ' + {session_token} }}
+            }})
                 .then(res => {{
                     if (!res.ok) {{
                         return res.json().then(err => {{
@@ -145,8 +151,12 @@ def session_registration():
     global client_registration_resume
     client_registration_resume = f"{config['role']} {config['agent_name']}@{config['organisation']} in {config['bouquet']}"
 
+    # proposed, so that an agent of the manager's machine needs no copy (see session_token_for)
+    session_token = config.get('session_token') or session_token_for(config.get('manager_url')) or ''
+
     from pybiscus.session.agent.machine import machine_name, physical_cores
-    return render_template( 'session_agent_registration.html', config=config, machine=machine_name(), cpu_cores=physical_cores())
+    return render_template( 'session_agent_registration.html', config=config, session_token=session_token,
+                            machine=machine_name(), cpu_cores=physical_cores())
 
 # ..........................................................
 # ............ POST /session/agent/registration ...........
@@ -164,6 +174,7 @@ def session_registration_parameters():
         reset_session()
         reset_registration()
         pybagent.registration_parameters = the_json
+        set_session_token(the_json.get('session_token'))
 
         return jsonify({"status": "ok"})
     

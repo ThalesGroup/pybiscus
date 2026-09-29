@@ -17,7 +17,8 @@ launch the session manager :
 ./launch/session/run_manager.sh
 ```
 
-connect to http://localhost:5555/pybiscus-session/manage
+open the URL the manager prints when it starts: http://127.0.0.1:5555/pybiscus-session/manage,
+with its access token (`…?token=…`) when it requires one (see [Access tokens](#access-tokens) below)
 
 The session configuration (server agent) has an optional `data_partition` block: when set, the
 manager shares the training data between the clients registered when the session is launched, each
@@ -32,7 +33,48 @@ cifar10 clients on a 14-core machine took 233 s per round instead of 20 s.
 
 The manager listens on 127.0.0.1 by default. When agents run on other hosts (they send it their
 registration and logs), start it with `--host 0.0.0.0` (or a given address), e.g.
-`launch/session/run_manager.sh --host 0.0.0.0`.
+`launch/session/run_manager.sh --host 0.0.0.0`. For a session spread over several machines, see
+[multi-machine.md](multi-machine.md).
+
+#### Access tokens
+
+A component listening beyond the loopback (`--host 0.0.0.0` or an address) requires tokens:
+whoever reaches a port opened to the network must not drive the session nor launch runs. On
+127.0.0.1 (the default), it requires none, unless started with `--require-token` (a machine shared
+with other users). Each component decides for itself: a client agent on 127.0.0.1 requires no
+token, while the manager and the server agent it registers with, listening on the network, do.
+It prints at start either `🔑 … open …?token=…`, or `🔓 … no token required`.
+
+- **Access token of a component**: the manager and each agent have their own, for their pages and
+  actions. Each prints, when it starts, the URL to open (`…?token=…`); the browser then keeps it in a
+  cookie, and the page asks for it otherwise. The manager's is its administration token (launch or
+  drop the session, follow it).
+- **Session token**: the manager's, given to the participants (created even when the manager
+  requires none, since a server agent listening on the network requires it from the others). An agent gives it at its
+  registration (field *Session token* of its registration page, copied from the manager's
+  🔑 button); it then presents it to the manager (registration, session parameters, logs), passes
+  it to the runs it launches (webhooks), and accepts it from the other components (a client's run
+  configuration, the session form opened by the manager). It does not open the manager's pages.
+
+A token is kept, readable by its owner only, in `.pybiscus-cache/tokens/` of the directory where
+the component was started: a restart keeps it (the browsers stay logged in). Delete the file to get
+a new one, or give it:
+
+| component | option | environment variable | file |
+|---|---|---|---|
+| manager (administration) | `--admin-token` | `PYBISCUS_MANAGER_TOKEN` | `manager-<port>-admin` |
+| manager (session) | `--session-token` | `PYBISCUS_SESSION_TOKEN` | `manager-<port>-session` |
+| agent | `--token` | `PYBISCUS_AGENT_TOKEN` | `agent-<port>` |
+
+On the manager's machine, the agents and the runs started from the same directory find the session
+token in its file: the registration page proposes it, and the webhooks of a run launched by hand
+present it. Elsewhere, give it at the registration, or through `PYBISCUS_SESSION_TOKEN` (a run
+launched by hand whose webhooks target the manager, or the `session_token` key of an agent's
+registration configuration).
+
+A scripted call presents the token as `Authorization: Bearer <token>` (see below).
+
+Without TLS, the tokens travel in clear between machines: see [multi-machine.md](multi-machine.md).
 
 #### Requests from other sites
 
@@ -40,11 +82,12 @@ A page of another site open in the operator's browser must not drive the agents 
 Every request that changes something (POST, PUT, PATCH, DELETE) must therefore carry the header
 `X-Pybiscus: 1`, otherwise it is refused with a 403; the actions (registration, session run, run of
 an agent) are never triggered by a GET. Pybiscus' pages and components add the header; a scripted
-call must add it too, e.g. (see `launch/agent/mngt/*.sh`):
+call must add it too, with the agent's token when it requires one, e.g. (see `launch/agent/mngt/*.sh`):
 
 ```bash
-curl -X POST -H "X-Pybiscus: 1" http://localhost:5000/server/config -F file=@server.yml
-curl -X POST -H "X-Pybiscus: 1" http://localhost:5000/server
+TOKEN=$(cat .pybiscus-cache/tokens/agent-5000)
+curl -X POST -H "X-Pybiscus: 1" -H "Authorization: Bearer $TOKEN" http://localhost:5000/server/config -F file=@server.yml
+curl -X POST -H "X-Pybiscus: 1" -H "Authorization: Bearer $TOKEN" http://localhost:5000/server
 ```
 
 The registration page of an agent calls the manager from the agent's origin: the manager accepts
@@ -55,9 +98,7 @@ agents are opened from other hosts, allow their origins, one option per origin:
 launch/session/run_manager.sh --host 0.0.0.0 --allow-origin http://site-a.example:5001
 ```
 
-This is a protection against other sites, not an authentication: anyone who can reach the ports
-can send the header, and any page served from a local origin (another local application) is
-allowed by the manager.
+The header protects against other sites; the tokens (above) against whoever reaches the ports.
 
 ![Session Manager init](images/session_manager_init.png "Session Manager init")
 
@@ -85,7 +126,8 @@ launch the client2 agent :
 
 ### Init of the session : server side
 
-connect to http://localhost:5000/session/agent/registration
+open the URL the agent prints when it starts: http://127.0.0.1:5000/session/agent/registration
+(with `?token=…` when it requires one)
 
 ![Server registration](images/session_server_registration.png "Server registration")
 
@@ -98,7 +140,7 @@ sets the parameters and register agent, it now waits for the session start
 ### Init of the session : client 1 side
 
 
-connect to http://localhost:5001/session/client/registration
+open the URL the agent 5001 prints when it starts
 
 ![Client1 registration](images/session_client1_registration.png "Client1 registration")
 
@@ -107,7 +149,7 @@ and the client 1 registers to the session
 ### Init of the session : client 2 side
 
 
-connect to http://localhost:5002/session/client/registration
+open the URL the agent 5002 prints when it starts
 
 ![Client2 registration](images/session_client2_registration.png "Client2 registration")
 

@@ -19,6 +19,7 @@ IDLE    = "idle"
 RUNNING = "running"
 SUCCESS = "success"
 FAILURE = "failure"
+STOPPED = "stopped"
 
 
 class RunSession:
@@ -29,6 +30,8 @@ class RunSession:
         self._lines       = deque(maxlen=MAX_BUFFERED_LINES)
         self._subscribers = set()
         self._process     = None
+        # the terminated process exits with a non-zero code: without this, a stop looked like a failure
+        self._stop_requested = False
 
         self.mode   = None
         self.status = IDLE
@@ -88,6 +91,7 @@ class RunSession:
             self.mode   = mode
             self.status = RUNNING
             self.detail = ""
+            self._stop_requested = False
 
         self._publish({"type": "reset", "mode": mode})
 
@@ -99,6 +103,7 @@ class RunSession:
         process = self._process
         if process is None or process.poll() is not None:
             return False
+        self._stop_requested = True
         process.terminate()
         return True
 
@@ -125,6 +130,9 @@ class RunSession:
             if return_code == CONFIG_VALIDATION_EXIT_CODE:
                 agent_weblog.agent_logger.log("Validation error !", state=AgentState.NOT_VALIDATED)
                 self._set_status(FAILURE, "invalid configuration")
+            elif self._stop_requested:
+                agent_weblog.agent_logger.log("pybiscus run stopped by the operator", state=AgentState.STOPPED)
+                self._set_status(STOPPED, "stopped by the operator")
             elif return_code == 0:
                 agent_weblog.agent_logger.log("pybiscus run completed", state=AgentState.TERMINATED)
                 self._set_status(SUCCESS, "pybiscus run completed")
