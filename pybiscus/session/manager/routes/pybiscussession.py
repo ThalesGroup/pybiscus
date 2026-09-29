@@ -13,7 +13,7 @@ import pybiscus.core.pybiscus_logger as logm
 
 # **************************
 
-@pybiscus_manager_app.route("/pybiscus-session/run", methods=["GET"])
+@pybiscus_manager_app.route("/pybiscus-session/run", methods=["POST"])
 def pybiscus_manager_run_session():
     """    an optional "presets" of type json customizes the html :
     - options values to be set

@@ -1,5 +1,6 @@
 import requests
 from requests.exceptions import RequestException, Timeout
+from pybiscus.session.csrf import HEADERS
 
 # ------------------------
 
@@ -59,7 +60,7 @@ class WebHookAgentLogger():
             if state is not None:
                 msg['state'] = state
 
-            response = requests.post(self.webhook_url, json=msg, timeout=5)
+            response = requests.post(self.webhook_url, json=msg, timeout=5, headers=HEADERS)
             response.raise_for_status()  # raise an exception upon codes 4xx/5xx
 
             print("✅ Agent log Webhook call success")

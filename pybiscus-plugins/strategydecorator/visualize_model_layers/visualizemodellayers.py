@@ -11,6 +11,7 @@ import seaborn as sns
 from pybiscus.core.ensure_filesystem import ensure_dir_exists
 from pybiscus.interfaces.flower.strategydecorator import StrategyDecorator
 import pybiscus.core.pybiscus_logger as logm
+from pybiscus.session.csrf import HEADERS
 
 # -------------------------------------------------------------------------
 
@@ -362,7 +363,7 @@ def visualize_federated_layers(
                 files = {"file": f}
                 data = {"metadata": json.dumps(payload)}
 
-                response = requests.post(url, files=files, data=data)
+                response = requests.post(url, files=files, data=data, headers=HEADERS)
 
                 # logm.console.log(response)
                 # print(response.json())

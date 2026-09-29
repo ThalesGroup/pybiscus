@@ -168,7 +168,7 @@ def serverConfigUpload():
 # called by server front-end to run pybiscus in server mode
 # ..........................................................
 
-@rest_server.route("/server", methods=["GET"])
+@rest_server.route("/server", methods=["POST"])
 def server():
     """run in server mode using the uploaded configuration"""
 

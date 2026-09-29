@@ -82,7 +82,8 @@ check_button.addEventListener('click', function() {
     const options = {
       method: "POST",
       headers: {
-        "Content-Type": "application/json"
+        "Content-Type": "application/json",
+        "X-Pybiscus": "1"
       },
       body: JSON.stringify(data)
     };
@@ -142,9 +143,10 @@ execute_button.addEventListener('click', function() {
     // target URL for posting configuration
     const url_conf = "/{{action}}";
 
-    // request options
+    // request options: a POST carrying the X-Pybiscus header, a GET would let another site start a run
     const options = {
-      method: "GET",
+      method: "POST",
+      headers: { "X-Pybiscus": "1" },
     };
 
     // ask the backend to start the run, then leave the configuration page
@@ -197,7 +199,8 @@ saveButton.addEventListener('click', function() {
   const options = {
     method: "POST",
     headers: {
-      "Content-Type": "application/json"
+      "Content-Type": "application/json",
+      "X-Pybiscus": "1"
     },
     body: JSON.stringify(data)
   };
@@ -294,7 +297,7 @@ function savePageState() {
 
     fetch("/server/config/pin", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "X-Pybiscus": "1" },
         body: JSON.stringify({ state: pybiscusPinnedState.capture() })
     }).then(res => {
         if (res.ok) {
@@ -313,7 +316,8 @@ pin_Button.addEventListener('click', savePageState);
 function deletePinnedConfig() {
 
   return fetch('/server/config/pin', {
-    method: 'DELETE'
+    method: 'DELETE',
+    headers: { "X-Pybiscus": "1" }
   })
   .then(response => {
     if (!response.ok) throw new Error("HTTP error " + response.status);

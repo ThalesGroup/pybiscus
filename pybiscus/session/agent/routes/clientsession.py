@@ -10,6 +10,7 @@ from pybiscus.pydantic2xxx.pydantic2html import generate_model_page
 from pybiscus.session.agent.pybiscus_agent import checkConfigurationFile, generate_param_js, interpretConfigurationFile, rest_server, saveConfigFromRequest
 import pybiscus.session.agent.pybiscus_agent as pybagent
 import pybiscus.core.pybiscus_logger as logm
+from pybiscus.session.csrf import HEADERS
  
 # ..........................................................
 # .... GET /client/config ..................................
@@ -76,7 +77,7 @@ def clientConfigUpload():
 # called by client front-end to run pybiscus in client mode
 # ..........................................................
 
-@rest_server.route("/client", methods=["GET"])
+@rest_server.route("/client", methods=["POST"])
 def client():
     """run in client mode using the uploaded configuration"""
 
@@ -107,7 +108,7 @@ def send_yaml_file(yaml_file, url, timeout=10):
                 "file": (f.name, f, "application/x-yaml")
             }
 
-            response = requests.post(url, files=files, timeout=timeout)
+            response = requests.post(url, files=files, timeout=timeout, headers=HEADERS)
             response.raise_for_status()
 
             print("✅ Status:", response.status_code)

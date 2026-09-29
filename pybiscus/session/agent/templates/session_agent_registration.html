@@ -589,7 +589,8 @@
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'Accept': 'application/json'
+                        'Accept': 'application/json',
+                        'X-Pybiscus': '1'
                     },
                     body: JSON.stringify(payload)
                 });
@@ -641,7 +642,8 @@
                 mode: 'cors',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Accept': 'application/json'
+                    'Accept': 'application/json',
+                    'X-Pybiscus': '1'
                 },
                 body: JSON.stringify(payload)
             });

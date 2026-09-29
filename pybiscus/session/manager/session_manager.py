@@ -2,10 +2,17 @@ import argparse
 from flask import Flask
 from flask_cors import CORS
 
+from pybiscus.session.csrf import HEADER, require_pybiscus_header
+
 # **************************
 
 pybiscus_manager_app = Flask(__name__)
-CORS(pybiscus_manager_app, origins="*")
+require_pybiscus_header(pybiscus_manager_app)
+
+# the agents' pages call the manager from their own origin (registration, waiting for the session):
+# the local ones are always allowed, those of other hosts through --allow-origin. The former "*"
+# let any site open in the operator's browser read the manager and drive it
+LOCAL_ORIGINS = r"^https?://(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$"
 
 # **************************
 
@@ -75,7 +82,15 @@ def main():
         default="127.0.0.1",
         help="Listening address (default: 127.0.0.1; 0.0.0.0 when agents run on other hosts, or in a container)",
     )
+    parser.add_argument(
+        "--allow-origin",
+        action="append",
+        default=[],
+        help="origin of agent pages on another host, e.g. http://agenthost:5001 (repeatable; local origins are always allowed)",
+    )
     args = parser.parse_args()
+
+    CORS(pybiscus_manager_app, origins=[LOCAL_ORIGINS, *args.allow_origin], allow_headers=["Content-Type", HEADER])
 
     global manager_port
     manager_port=args.port

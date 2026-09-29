@@ -56,8 +56,8 @@ window.pybiscusUiSettings = (() => {
     // ------------------------------------------------------------------ agent
 
     async function request(method, url, body) {
-        const res = await fetch(url, body === undefined ? { method } :
-            { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+        const res = await fetch(url, body === undefined ? { method, headers: { "X-Pybiscus": "1" } } :
+            { method, headers: { "Content-Type": "application/json", "X-Pybiscus": "1" }, body: JSON.stringify(body) });
         const answer = await res.json();
         if (!res.ok) throw new Error(answer.error || `HTTP ${res.status}`);
         return answer;

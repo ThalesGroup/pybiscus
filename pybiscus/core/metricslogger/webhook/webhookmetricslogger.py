@@ -1,5 +1,6 @@
 import requests
 from requests.exceptions import RequestException, Timeout
+from pybiscus.session.csrf import HEADERS
 
 class WebHookMetricsLogger():
 
@@ -17,7 +18,7 @@ class WebHookMetricsLogger():
             _metrics['step'] = step
             msg = { 'source' : self.logger_id, 'metrics' : _metrics }
 
-            response = requests.post(self.webhook_url, json=msg, timeout=5)
+            response = requests.post(self.webhook_url, json=msg, timeout=5, headers=HEADERS)
             response.raise_for_status()  # raise an exception upon codes 4xx/5xx
 
             print("✅ Metrics log Webhook call success")

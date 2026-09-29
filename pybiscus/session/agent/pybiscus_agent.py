@@ -1,4 +1,3 @@
-import importlib
 import sys
 from flask import Flask, jsonify, request
 
@@ -10,14 +9,15 @@ import subprocess
 
 import argparse
 
-from pybiscus.pydantic2xxx.pydantic2html import generate_model_page
 from pybiscus.session.agent.tuples2yaml import parse_tuples_to_yaml_string
 from pybiscus.core.pybiscusexception import PybiscusInternalException, PybiscusPluginError, PybiscusValueException
 from pybiscus.commands.apps_common import CONFIG_VALIDATION_EXIT_CODE, PLUGIN_ERROR_EXIT_CODE
 from pybiscus.session.agent import agent_weblog
 from pybiscus.session.agent.agent_weblog import AgentState
+from pybiscus.session.csrf import require_pybiscus_header
 
 rest_server = Flask(__name__)
+require_pybiscus_header(rest_server)
 # no CORS: every page of the agent calls it with relative URLs (same origin); other agents
 # and the session manager reach it server to server, where CORS does not apply. A wildcard
 # let any web page open in a browser of the host read the agent's responses
@@ -351,39 +351,6 @@ def set_server_url():
         return jsonify({"message": "server_url set", "server_url": server_url})
     else:
         return jsonify({"error": "server_url is required"}), 400
-
-# ..........................................................
-# ............. GET /test/html .............................
-# ..........................................................    
-
-@rest_server.route('/test/html')
-def test_html():
-
-    from pydantic import BaseModel
-    from typing import Optional, List
-    from pybiscus.flower_config.config_server import ConfigServerOnnxExport, OnnxAxe
-
-    class MyContent(BaseModel):
-        #opt_int: Optional[int] # pyright: ignore[reportInvalidTypeForm]
-        # onnx_export: ConfigServerOnnxExport
-        an_axe: OnnxAxe
-        axes: List[OnnxAxe]
-
-    class MyConf(BaseModel):
-    
-        # loggers: list[LoggerConfig()] # pyright: ignore[reportInvalidTypeForm]
-        # strategy: Optional[StrategyConfig()] # pyright: ignore[reportInvalidTypeForm]
-        # opt_int: Optional[int] # pyright: ignore[reportInvalidTypeForm]
-        content: MyContent
-        # label_de_cadix: int = 0
-
-    with importlib.resources.files("pybiscus.session.agent.front_end").joinpath("lists_management.js").open('r') as file:
-        lists_management = file.read()
-
-    # return generate_field_html_by_name()
-    return generate_model_page(MyConf,'pybiscus.session.agent.front_end','agent.html','check_exec_buttons', lists_management)
-
-# ..........................................................    
 
 def parse_args():
     """Parse command-line arguments for configuration and port."""

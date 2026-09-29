@@ -234,7 +234,7 @@
 
         stopButton.addEventListener('click', () => {
             stopButton.disabled = true;
-            fetch('/run/stop', { method: 'POST' });
+            fetch('/run/stop', { method: 'POST', headers: { 'X-Pybiscus': '1' } });
         });
 
         // le contexte de l'agent (reset_session + reset_registration) est remis à zéro par

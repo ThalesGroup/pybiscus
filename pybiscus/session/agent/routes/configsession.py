@@ -38,7 +38,8 @@ def session_registration_waiting():
             fetch('/server-url', {{
                 method: 'POST',
                 headers: {{
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
+                'X-Pybiscus': '1'
                 }},
                 body: JSON.stringify(data)
             }})

@@ -34,6 +34,31 @@ The manager listens on 127.0.0.1 by default. When agents run on other hosts (the
 registration and logs), start it with `--host 0.0.0.0` (or a given address), e.g.
 `launch/session/run_manager.sh --host 0.0.0.0`.
 
+#### Requests from other sites
+
+A page of another site open in the operator's browser must not drive the agents or the manager.
+Every request that changes something (POST, PUT, PATCH, DELETE) must therefore carry the header
+`X-Pybiscus: 1`, otherwise it is refused with a 403; the actions (registration, session run, run of
+an agent) are never triggered by a GET. Pybiscus' pages and components add the header; a scripted
+call must add it too, e.g. (see `launch/agent/mngt/*.sh`):
+
+```bash
+curl -X POST -H "X-Pybiscus: 1" http://localhost:5000/server/config -F file=@server.yml
+curl -X POST -H "X-Pybiscus: 1" http://localhost:5000/server
+```
+
+The registration page of an agent calls the manager from the agent's origin: the manager accepts
+such cross-origin calls from local origins (`localhost`, `127.0.0.1`, `[::1]`, any port) only. When
+agents are opened from other hosts, allow their origins, one option per origin:
+
+```bash
+launch/session/run_manager.sh --host 0.0.0.0 --allow-origin http://site-a.example:5001
+```
+
+This is a protection against other sites, not an authentication: anyone who can reach the ports
+can send the header, and any page served from a local origin (another local application) is
+allowed by the manager.
+
 ![Session Manager init](images/session_manager_init.png "Session Manager init")
 
 ### Init of the agents
