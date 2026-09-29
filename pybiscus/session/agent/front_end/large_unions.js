@@ -7,7 +7,6 @@
 window.pybiscusLargeUnions = (() => {
 
     const MODES = ["chips", "radial", "column"];
-    const MODE_KEY = "pybiscus-large-union-mode";
     const MAX_ALTERNATIVES = 3;
     const OTHER = "Other";
     const HUES = [210, 280, 25, 145, 340, 55, 185];
@@ -15,16 +14,13 @@ window.pybiscusLargeUnions = (() => {
 
     // ------------------------------------------------------------------ storage
 
+    // the representation is a display setting saved by the agent (ui_settings.js)
     function storedMode() {
-        try {
-            const mode = localStorage.getItem(MODE_KEY);
-            return MODES.includes(mode) ? mode : "chips";
-        } catch (e) {
-            return "chips";
-        }
+        const mode = pybiscusUiSettings.get("large_union_mode");
+        return MODES.includes(mode) ? mode : "chips";
     }
     function storeMode(mode) {
-        try { localStorage.setItem(MODE_KEY, mode); } catch (e) { /* not persisted: still applied */ }
+        pybiscusUiSettings.save("agent", { large_union_mode: mode });
     }
     function recentKey(container) {
         const fieldset = container.closest("[data-pybiscus-prefix]");
@@ -347,7 +343,11 @@ window.pybiscusLargeUnions = (() => {
 
     function refresh() {
         const mode = storedMode();
-        document.querySelectorAll(".pybiscus-tab-container.pybiscus-tab-large").forEach(c => mount(c, mode));
+        // the thresholds can change live: a union may stop being a large one
+        document.querySelectorAll(".pybiscus-tab-container").forEach(c => {
+            if (c.classList.contains("pybiscus-tab-large")) mount(c, mode);
+            else if (c._pybiscusLargeUnion) unmount(c);
+        });
         MODES.forEach(mo => {
             const button = document.getElementById("largeUnionMode-" + mo);
             if (button) button.classList.toggle("active", mo === mode);
@@ -362,6 +362,7 @@ window.pybiscusLargeUnions = (() => {
 
     function init() {
         refresh();
+        pybiscusUiSettings.onChange(refresh);
         // list items (pipeline decorators…) are cloned from a template after load
         new MutationObserver(records => {
             const mode = storedMode();

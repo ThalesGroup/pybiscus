@@ -4,21 +4,15 @@
 // movers and eraser, the list generator): both views share one code path and one numbering.
 window.pybiscusCompactLists = (() => {
 
-    // v2: the first version stored the view at every page load, so its default ("expanded") was
-    // recorded for every list and would now hide the compact default; those values are ignored
-    const VIEW_KEY_PREFIX = "pybiscus-list-view-v2-";
-
     const listPrefix = fs => {
         const probe = fs.querySelector(".pybiscus-list-template [data-pybiscus-prefix], .pybiscus-list-template [data-pybiscus-name]");
         const path = probe ? (probe.getAttribute("data-pybiscus-prefix") || probe.getAttribute("data-pybiscus-name")) : "";
         return path.split(".#")[0] || fs.querySelector(":scope > legend .pybiscus-config")?.textContent.trim() || "list";
     };
-    // compact by default: only an explicit "show all" choice is remembered as expanded
-    function storedCompact(fs) {
-        try { return localStorage.getItem(VIEW_KEY_PREFIX + listPrefix(fs)) !== "expanded"; } catch (e) { return true; }
-    }
+    // a display setting saved by the agent (ui_settings.js); compact unless chosen otherwise
+    const storedCompact = fs => pybiscusUiSettings.listView(listPrefix(fs)) !== "expanded";
     function storeCompact(fs, compact) {
-        try { localStorage.setItem(VIEW_KEY_PREFIX + listPrefix(fs), compact ? "compact" : "expanded"); } catch (e) { /* not remembered */ }
+        pybiscusUiSettings.save("agent", { list_views: { [listPrefix(fs)]: compact ? "compact" : "expanded" } });
     }
 
     const contentsOf = fs => fs.querySelector(":scope > .pybiscus-list > .pybiscus-list-contents");
@@ -179,6 +173,10 @@ window.pybiscusCompactLists = (() => {
 
     function init() {
         document.querySelectorAll(".pybiscus-list-fs").forEach(mount);
+        // views reset from the settings panel
+        pybiscusUiSettings.onChange(() => document.querySelectorAll(".pybiscus-list-fs").forEach(fs => {
+            if (fs._pybiscusCompact && storedCompact(fs) !== fs.classList.contains("pybiscus-cl-compact")) setCompact(fs, storedCompact(fs));
+        }));
         // lists nested in items appear with their item
         new MutationObserver(records => records.forEach(r => r.addedNodes.forEach(n => {
             if (n.nodeType !== 1) return;

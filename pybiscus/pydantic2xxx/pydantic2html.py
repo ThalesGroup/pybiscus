@@ -425,28 +425,9 @@ def generate_field_html(field_name: str, field_type, field_default, field_descri
 
             tab_nb = new_index()
 
-            # Disposition "onglets verticaux" (2 colonnes : options à gauche, contenu à
-            # droite) au-delà de ce nombre d'options : la rangée horizontale de boutons
-            # devient illisible / déborde sur plusieurs lignes. Les Optional (Some/None)
-            # gardent leur rendu inline. Seuil ajustable.
-            vertical_tabs_min_options = 3
-            vertical_cls = (
-                " pybiscus-tab-vertical"
-                if is_an_union and not is_an_option
-                and len(field_type.__args__) >= vertical_tabs_min_options
-                else ""
-            )
-            # Au-delà, même la colonne ne tient plus (14 stratégies) : le front-end
-            # (large_unions.js) remplace la colonne par des pastilles / un menu circulaire,
-            # au choix de l'utilisateur. Seuil ajustable.
-            large_union_min_options = 9
-            large_cls = (
-                " pybiscus-tab-large"
-                if vertical_cls and len(field_type.__args__) >= large_union_min_options
-                else ""
-            )
-
-            field_html += f'''   <div class="pybiscus-tab-container{vertical_cls}{large_cls}">
+            # vertical (two-column) and large-union layouts: chosen by the page (ui_settings.js)
+            # from the number of options, with thresholds the user can change live
+            field_html += '''   <div class="pybiscus-tab-container">
 <div class="pybiscus-tab-buttons">
 '''
 
@@ -681,6 +662,10 @@ def generate_model_page(model: BaseModel, templatePath: str, templateName: str, 
             compact_lists_js = file.read()
         with importlib.resources.files("pybiscus.session.agent.front_end").joinpath("pinned_state.js").open('r') as file:
             pinned_state_js = file.read()
+        with importlib.resources.files("pybiscus.session.agent.front_end").joinpath("ui_settings.js").open('r') as file:
+            ui_settings_js = file.read()
+
+        from pybiscus.session.agent import ui_settings
 
         body = generate_model_html(model, True, "")
 
@@ -703,6 +688,8 @@ def generate_model_page(model: BaseModel, templatePath: str, templateName: str, 
             large_unions_js=large_unions_js,
             compact_lists_js=compact_lists_js,
             pinned_state_js=pinned_state_js,
+            ui_settings_js=ui_settings_js,
+            ui_settings_state=ui_settings.state(),
         )
 
         return rendered_html        

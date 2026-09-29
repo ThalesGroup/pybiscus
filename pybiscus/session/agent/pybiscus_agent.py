@@ -423,7 +423,7 @@ def main():
 
     # the routes build the config models, which load the plugins
     try:
-        from pybiscus.session.agent.routes import configsession, clientsession, serversession, runsession  # noqa: F401
+        from pybiscus.session.agent.routes import configsession, clientsession, serversession, runsession, uisettings  # noqa: F401
     except PybiscusPluginError as e:
         print(f"❌ [plugins] {e}", file=sys.stderr)
         sys.exit(PLUGIN_ERROR_EXIT_CODE)
@@ -432,6 +432,9 @@ def main():
     rest_server.config['CONFIG_PATH'] = args.config
 
     set_upload_folder(args.port)
+
+    from pybiscus.session.agent import ui_settings
+    ui_settings.set_agent_port(args.port)
 
     if args.config is not None:
 

@@ -786,6 +786,11 @@
     // ***** long option lists (unions) *****
     // **************************************
 
+    {{ ui_settings_js | safe }}
+
+    // layout classes and sizes before anything reads them (large unions, list views)
+    pybiscusUiSettings.init({{ ui_settings_state | tojson }});
+
     {{ large_unions_js | safe }}
 
     // ************* list views *************

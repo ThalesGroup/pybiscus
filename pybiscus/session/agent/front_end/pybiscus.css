@@ -596,7 +596,7 @@ body > div > fieldset > legend::before {
     background-color: var(--theme-color);
     color: var(--theme-bg);
     border: 3px solid var(--color-accent-light);
-    font-weight: var(--font-weight-bold);
+    font-weight: var(--pybiscus-active-weight, var(--font-weight-bold));
 }
 
 .pybiscus-tab-button:not(.active) {
@@ -648,14 +648,14 @@ body > div > fieldset > legend::before {
 }
 
 /* Onglets verticaux (2 colonnes) pour les unions à nombreuses options.
-   La classe pybiscus-tab-vertical est posée à la génération (pydantic2html).
+   La classe pybiscus-tab-vertical est posée par ui_settings.js (seuil réglable).
    Contrat DOM inchangé : mêmes boutons et mêmes .pybiscus-tab-content pilotés
    par data-pybiscus-status ; seule la mise en page change. */
 /* la liste d'options prend la largeur de son plus long nom (plafonnée) ; c'est le
    contenu qui cède la place et défile, sinon un contenu large écrasait la liste */
 .pybiscus-tab-container.pybiscus-tab-vertical {
     display: grid;
-    grid-template-columns: fit-content(16rem) minmax(0, 1fr);
+    grid-template-columns: fit-content(var(--pybiscus-options-col-max, 16rem)) minmax(0, 1fr);
     align-items: stretch;
 }
 
@@ -671,7 +671,7 @@ body > div > fieldset > legend::before {
     border: 1px solid var(--fieldset-border);
     border-radius: var(--border-radius);
     margin: var(--spacing-xs);
-    max-height: 22rem;
+    max-height: var(--pybiscus-options-col-max-height, 22rem);
     overflow-y: auto;
     /* bande haute vide de même hauteur que le contenu : premier bouton et premier
        champ restent alignés, le marqueur d'origine occupe cette bande côté contenu */
@@ -1030,7 +1030,7 @@ fieldset.foldable:not(.collapsed) > div.pybiscus-field:has(> fieldset) {
     display: grid;
     /* colonne valeur en 'auto' (taille du contenu), pas '1fr' : sinon la valeur remplit
        le champ -> le fieldset -> 100%, et se couple à la largeur des champs frères. */
-    grid-template-columns: 13rem auto;   /* colonne noms ajustable */
+    grid-template-columns: var(--pybiscus-field-name-col, 13rem) auto;   /* réglable (ui_settings.js) */
     justify-items: start;                /* les inputs ne s'étirent pas pour remplir */
     align-items: center;
     gap: var(--spacing-sm) var(--spacing-md);
@@ -1389,7 +1389,7 @@ input:hover, textarea:hover, select:hover {
     background-color: var(--theme-color);
     color: var(--theme-bg);
     border: 3px solid var(--color-accent-light);
-    font-weight: var(--font-weight-bold);
+    font-weight: var(--pybiscus-active-weight, var(--font-weight-bold));
 }
 
 .menu-item-level-1:not(.active) .pybiscus-config {
@@ -1606,3 +1606,23 @@ input:hover, textarea:hover, select:hover {
 .pybiscus-cl-node:focus-visible, .pybiscus-cl-action:focus-visible, .pybiscus-cl-toggle:focus-visible {
     outline: 3px solid var(--color-accent-light); outline-offset: 2px;
 }
+
+/* ---------- display settings panel (ui_settings.js) ---------- */
+.pybiscus-ui-panel {
+    position: fixed; top: 4rem; right: 1.5rem; z-index: 1000; width: min(34rem, calc(100vw - 2rem));
+    max-height: calc(100vh - 6rem); overflow-y: auto;
+    padding: var(--spacing-md) var(--spacing-lg); border-radius: var(--border-radius-large);
+    background: var(--fieldset-bg); color: var(--theme-color);
+    border: 1px solid var(--fieldset-border); box-shadow: var(--shadow-lg);
+}
+.pybiscus-ui-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--spacing-sm); }
+.pybiscus-ui-close { background: transparent; color: inherit; border: none; font-size: 1.1rem; cursor: pointer; }
+.pybiscus-ui-scopes { display: flex; flex-wrap: wrap; gap: var(--spacing-md); margin-bottom: var(--spacing-md); }
+.pybiscus-ui-grid { display: grid; grid-template-columns: auto 6rem auto 1fr; gap: var(--spacing-sm) var(--spacing-sm); align-items: center; }
+.pybiscus-ui-grid input, .pybiscus-ui-grid select { width: 100%; box-sizing: border-box; }
+.pybiscus-ui-grid input.invalid { outline: 2px solid #d9534f; }
+.pybiscus-ui-unit, .pybiscus-ui-source, .pybiscus-ui-note { font-size: 0.8rem; opacity: 0.75; }
+.pybiscus-ui-actions { display: flex; gap: var(--spacing-sm); margin-top: var(--spacing-md); }
+.pybiscus-ui-actions button, .pybiscus-ui-grid button { cursor: pointer; }
+.pybiscus-ui-save { font-weight: var(--font-weight-bold); }
+.pybiscus-ui-note { margin-top: var(--spacing-sm); min-height: 1em; }
