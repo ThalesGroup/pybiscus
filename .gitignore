@@ -15,3 +15,6 @@ saved_models_path
 **/.ruffcache
 **/lightning_logs
 pybiscus-plugins/models/others
+
+# runtime state of the agents (pinned configuration, display settings)
+.pybiscus-cache/
