@@ -1,27 +1,45 @@
-from typing import Literal, ClassVar, Optional
-from pydantic import BaseModel, ConfigDict, Field
+from typing import Literal, ClassVar
+from pydantic import BaseModel, ConfigDict, model_validator
+
+from pybiscus.ml.datasplit import ConfigTestSet, ConfigTrainSet, ConfigValSet, reject_former_fields
+
+
+class CifarTrainSet(ConfigTrainSet):
+    dir: str = "${root_dir}/datasets/train/"
+
+
+class CifarValSet(ConfigValSet):
+    dir: str = "${root_dir}/datasets/val/"
+
+
+class CifarTestSet(ConfigTestSet):
+    dir: str = "${root_dir}/datasets/test/"
+
 
 class ConfigCifar10Data(BaseModel):
     """Pydantic Model used to validate the LightningDataModule config
 
     Attributes
     ----------
-    dir_train:   str, optional = the training data directory path (required for clients)
-    dir_val:     str, optional = the validating data directory path (required for clients)
-    dir_test:    str, optional = the testing data directory path (required for server)
-    batch_size:  int, optional = the batch size (default to 32)
+    train:       the training set: directory, loader options, indices file or partition between clients
+    val:         the validation set: source (official test split, holdout, indices file), loader options
+    test:        the testing set (required for the server): directory, loader options
     num_workers: int, optional = the number of workers for the DataLoaders (default to 0)
     """
 
     PYBISCUS_CONFIG: ClassVar[str] = "config"
 
-    dir_train:   Optional[str] = "${root_dir}/datasets/train/"
-    dir_val:     Optional[str] = "${root_dir}/datasets/val/"
-    dir_test:    Optional[str] = "${root_dir}/datasets/test/"
-    batch_size:  int = 32
+    train:       CifarTrainSet = CifarTrainSet()
+    val:         CifarValSet = CifarValSet()
+    test:        CifarTestSet = CifarTestSet()
     num_workers: int = 0
 
     model_config = ConfigDict(extra="forbid")
+
+    @model_validator(mode="before")
+    @classmethod
+    def _former_fields(cls, data):
+        return reject_former_fields(data)
 
 # --- Pybiscus Cifar10 configuration definition 
 
@@ -33,4 +51,3 @@ class ConfigData_Cifar10(BaseModel):
     config: ConfigCifar10Data
 
     model_config = ConfigDict(extra="forbid")
-

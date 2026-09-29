@@ -18,8 +18,20 @@ model:
 data:
   name: cifar
   config:
-    dir_train: ${root_dir}/datasets/train/
-    dir_val: ${root_dir}/datasets/val/
-    dir_test: ${root_dir}/datasets/test/
-    batch_size: '32'
-    num_workers: '0'
+    # each client trains on its own half of the official train split and validates on a tenth of
+    # that half: the official test split stays held out (the server evaluates on it)
+    train:
+      dir: ${root_dir}/datasets/train/
+      batch_size: 32
+      partition:
+        num_partitions: 2
+        partition_id: 1
+        seed: 42
+    val:
+      source: holdout
+      dir: ${root_dir}/datasets/val/
+      fraction: 0.1
+      batch_size: 32
+    test:
+      dir: ${root_dir}/datasets/test/
+    num_workers: 0

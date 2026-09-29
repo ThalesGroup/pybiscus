@@ -8,6 +8,9 @@ from torch.utils.data import DataLoader
 from torchvision.datasets import CIFAR10
 
 import pybiscus.core.pybiscus_logger as logm
+from pybiscus.ml.datasplit import make_loader, reject_former_fields, train_and_val_sets
+
+from cifar10.cifar10_dataconfig import CifarTestSet, CifarTrainSet, CifarValSet
 
 class CifarLightningDataModule(pl.LightningDataModule):
     """
@@ -170,16 +173,18 @@ class CifarLightningDataModule(pl.LightningDataModule):
     """
 
     @override
-    def __init__( self, dir_train, dir_val, dir_test, batch_size, num_workers: int = 0,):
+    def __init__( self, train=None, val=None, test=None, num_workers: int = 0, **former_fields):
 
         super().__init__()
 
-        # init parameters memo
-        self.data_dir_train = dir_train
-        self.data_dir_val   = dir_val
-        self.data_dir_test  = dir_test
+        # pybiscus local passes the YAML's sections unvalidated: validated here
+        reject_former_fields(former_fields)
+        if former_fields:
+            raise TypeError(f"unexpected data fields: {sorted(former_fields)}")
+        self.train          = CifarTrainSet.model_validate(train or {})
+        self.val            = CifarValSet.model_validate(val or {})
+        self.test           = CifarTestSet.model_validate(test or {})
         self.num_workers    = num_workers
-        self.batch_size     = batch_size
 
         self.transform      = transforms.Compose(
             [
@@ -209,17 +214,18 @@ class CifarLightningDataModule(pl.LightningDataModule):
         """
 
         if stage == "fit" or stage is None:
-            self.data_train = CIFAR10( root=self.data_dir_train, train=True,  download=True, transform=self.transform,)
-            logm.console.log("x_train shape: ", self.data_train.data.shape)
-            self.data_val   = CIFAR10( root=self.data_dir_val,   train=False, download=True, transform=self.transform,)
-            logm.console.log("y_train shape: ", self.data_val.data.shape)
+            train_full = CIFAR10( root=self.train.dir, train=True,  download=True, transform=self.transform,)
+            logm.console.log("x_train shape: ", train_full.data.shape)
 
             # print number of targets and  values targets
-            logm.console.log("Number of Targets :", len(np.unique(self.data_train.targets)))
-            logm.console.log("Targets Values    :",     np.unique(self.data_train.targets))
+            logm.console.log("Number of Targets :", len(np.unique(train_full.targets)))
+            logm.console.log("Targets Values    :",     np.unique(train_full.targets))
+
+            official_val = lambda: CIFAR10( root=self.val.dir, train=False, download=True, transform=self.transform,)
+            self.data_train, self.data_val = train_and_val_sets(train_full, official_val, self.train, self.val)
 
         if stage == "test" or stage is None:
-            self.data_test  = CIFAR10( root=self.data_dir_test,  train=False, download=True, transform=self.transform,)
+            self.data_test  = CIFAR10( root=self.test.dir,  train=False, download=True, transform=self.transform,)
             logm.console.log("x_test shape", self.data_test.data.shape)
 
     @override
@@ -228,7 +234,7 @@ class CifarLightningDataModule(pl.LightningDataModule):
         if self.data_train is None:
             raise ValueError("Train dataset undefined: bad setup")
         
-        return DataLoader( self.data_train, batch_size=self.batch_size, num_workers=self.num_workers, drop_last=True, shuffle=True,)
+        return make_loader( self.data_train, self.train, self.num_workers,)
 
     @override
     def val_dataloader(self) -> DataLoader:
@@ -236,9 +242,7 @@ class CifarLightningDataModule(pl.LightningDataModule):
         if self.data_val is None:
             raise ValueError("Val dataset undefined: bad setup")
         
-        # evaluation keeps the last partial batch (drop_last=True skipped 16 of the 10000 images
-        # at batch size 32); training keeps drop_last=True: a tiny last batch destabilizes BatchNorm
-        return DataLoader( self.data_val,   batch_size=self.batch_size, num_workers=self.num_workers, drop_last=False, shuffle=False,)
+        return make_loader( self.data_val, self.val, self.num_workers,)
 
     @override
     def test_dataloader(self) -> DataLoader:
@@ -246,5 +250,5 @@ class CifarLightningDataModule(pl.LightningDataModule):
         if self.data_test is None:
             raise ValueError("Test dataset undefined: bad setup")
         
-        return DataLoader( self.data_test,  batch_size=self.batch_size, num_workers=self.num_workers, drop_last=False, shuffle=False,)
+        return make_loader( self.data_test, self.test, self.num_workers,)
 

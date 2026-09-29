@@ -1,0 +1,200 @@
+from collections.abc import Mapping
+from enum import Enum
+from typing import ClassVar, Optional
+
+import numpy as np
+import torch
+from pydantic import BaseModel, ConfigDict, Field, model_validator
+from torch.utils.data import DataLoader, Dataset, Subset
+
+import pybiscus.core.pybiscus_logger as logm
+
+# Configuration of the train / val / test sets of the data plugins that load official train and
+# test splits (cifar10, mnist): where each set comes from, which examples a client uses, how its
+# loader reads them. One section per set, each holding everything about that set.
+# Kept out of pybiscus.ml.data: the data registry scans every module of that package for plugins.
+# pydantic2html names a nested model's fields after its PYBISCUS_CONFIG, not after the field
+# holding it: each section declares its own.
+
+# ------------------------------------------------------------------ partition between clients
+
+class PartitionScheme(str, Enum):
+    # an Enum and not a Literal: the agent's form offers an Enum's values, a Literal's first only
+    iid = "iid"             # equal shares drawn at random
+
+
+class ConfigPartition(BaseModel):
+    """num_partitions: number of clients sharing the training data; partition_id: this client's
+    share (0 .. num_partitions - 1); seed: the same for every client, so that the shares are
+    disjoint without any coordination"""
+
+    num_partitions: int = Field(ge=1)
+    partition_id: int = Field(ge=0)
+    scheme: PartitionScheme = PartitionScheme.iid
+    seed: int = 42
+
+    model_config = ConfigDict(extra="forbid")
+
+    @model_validator(mode="after")
+    def _id_in_range(self):
+        if self.partition_id >= self.num_partitions:
+            raise ValueError(f"partition_id {self.partition_id} must be below num_partitions {self.num_partitions}")
+        return self
+
+# ------------------------------------------------------------------ the three sets
+
+class ConfigTrainSet(BaseModel):
+    """dir: directory of the official train split; indices: file of the example indices to train on
+    (whitespace-separated); partition: this client's share of the examples; seed: order of the
+    shuffled batches, reproducible (random if unset)"""
+
+    PYBISCUS_CONFIG: ClassVar[str] = "train"
+
+    dir: str
+    batch_size: int = Field(default=32, ge=1)
+    shuffle: bool = True
+    # a tiny last batch destabilizes BatchNorm
+    drop_last: bool = True
+    seed: Optional[int] = None
+    indices: Optional[str] = None
+    partition: Optional[ConfigPartition] = None
+
+    model_config = ConfigDict(extra="forbid")
+
+    @model_validator(mode="after")
+    def _one_selection(self):
+        if self.indices and self.partition is not None:
+            raise ValueError("train.indices and train.partition both choose the training examples: keep one")
+        return self
+
+
+class ValSource(str, Enum):
+    official = "official"   # the official test split: then no data is held out
+    holdout = "holdout"     # a fraction of the client's training examples
+    indices = "indices"     # the examples listed in the indices file
+
+
+class ConfigValSet(BaseModel):
+    """source: where the validation examples come from; dir: directory of the official test
+    split (official); fraction and seed: share and draw of the held-out examples (holdout);
+    indices: file of the example indices (indices)"""
+
+    PYBISCUS_CONFIG: ClassVar[str] = "val"
+
+    source: ValSource = ValSource.official
+    dir: str
+    fraction: float = Field(default=0.1, gt=0, lt=1)
+    seed: int = 42
+    indices: Optional[str] = None
+    batch_size: int = Field(default=32, ge=1)
+    shuffle: bool = False
+    # every example is evaluated: dropping the last batch skipped some of them
+    drop_last: bool = False
+
+    model_config = ConfigDict(extra="forbid")
+
+    @model_validator(mode="after")
+    def _indices_file(self):
+        if self.source == ValSource.indices and not self.indices:
+            raise ValueError("val.source = indices needs val.indices")
+        return self
+
+
+class ConfigTestSet(BaseModel):
+    """dir: directory of the official test split"""
+
+    PYBISCUS_CONFIG: ClassVar[str] = "test"
+
+    dir: str
+    batch_size: int = Field(default=32, ge=1)
+    shuffle: bool = False
+    drop_last: bool = False
+
+    model_config = ConfigDict(extra="forbid")
+
+
+# the configurations written before the sections: say where each field went, instead of a bare
+# "extra inputs are not permitted"
+FORMER_FIELDS = {
+    "dir_train": "train.dir",
+    "dir_val": "val.dir",
+    "dir_test": "test.dir",
+    "batch_size": "train.batch_size / val.batch_size / test.batch_size",
+    "data_train_indices_path": "train.indices",
+    "data_val_indices_path": "val.source: indices + val.indices",
+    "loaders": "shuffle / drop_last / batch_size / seed of each section",
+    "split": "val.source / val.fraction / val.indices",
+    "partition": "train.partition",
+}
+
+
+def reject_former_fields(data):
+    # a Mapping, not only a dict: the CLI validates OmegaConf DictConfig objects
+    if isinstance(data, Mapping):
+        former = [f"{name} → {FORMER_FIELDS[name]}" for name in data if name in FORMER_FIELDS]
+        if former:
+            raise ValueError("the data configuration is now grouped in train / val / test sections: " + "; ".join(former))
+    return data
+
+# ------------------------------------------------------------------ building the sets
+
+def read_indices(path: str) -> np.ndarray:
+    with open(path, encoding="utf-8") as f:
+        return np.array([int(token) for token in f.read().split()], dtype=np.int64)
+
+
+def partition_indices(size: int, partition: ConfigPartition) -> np.ndarray:
+    # a Generator with an explicit seed draws the same permutation on every machine
+    permutation = np.random.default_rng(partition.seed).permutation(size)
+    return np.array_split(permutation, partition.num_partitions)[partition.partition_id]
+
+
+def holdout(indices: np.ndarray, fraction: float, seed: int) -> tuple[np.ndarray, np.ndarray]:
+    shuffled = np.random.default_rng(seed).permutation(indices)
+    n_val = max(1, round(len(shuffled) * fraction))
+    return np.sort(shuffled[n_val:]), np.sort(shuffled[:n_val])
+
+
+def train_and_val_sets(train_full: Dataset, official_val, train: ConfigTrainSet, val: ConfigValSet) -> tuple[Dataset, Dataset]:
+    """official_val: a callable returning the official test split, loaded only when used"""
+
+    if train.indices:
+        base = read_indices(train.indices)
+    elif train.partition is not None:
+        base = partition_indices(len(train_full), train.partition)
+    else:
+        base = None
+
+    if val.source == ValSource.official:
+        train_idx, val_set = base, official_val()
+    else:
+        pool = np.arange(len(train_full)) if base is None else base
+        if val.source == ValSource.holdout:
+            train_idx, val_idx = holdout(pool, val.fraction, val.seed)
+        else:
+            val_idx = read_indices(val.indices)
+            # without a train indices file, the validation examples are removed from the training ones
+            train_idx = base if train.indices else np.setdiff1d(pool, val_idx)
+        val_set = Subset(train_full, val_idx.tolist())
+
+    train_set = train_full if train_idx is None else Subset(train_full, np.asarray(train_idx).tolist())
+    partition = train.partition
+    logm.console.log(f"data: {len(train_set)} training examples, {len(val_set)} validation examples "
+                     f"(validation: {val.source.value}"
+                     + (f", partition {partition.partition_id + 1}/{partition.num_partitions}" if partition else "") + ")")
+    return train_set, val_set
+
+
+def make_loader(dataset: Dataset, options, num_workers: int) -> DataLoader:
+    generator = None
+    # val.seed draws the held-out examples, not an order: only train's seed orders the batches
+    if isinstance(options, ConfigTrainSet) and options.shuffle and options.seed is not None:
+        generator = torch.Generator().manual_seed(options.seed)
+    return DataLoader(
+        dataset,
+        batch_size=options.batch_size,
+        num_workers=num_workers,
+        shuffle=options.shuffle,
+        drop_last=options.drop_last,
+        generator=generator,
+    )

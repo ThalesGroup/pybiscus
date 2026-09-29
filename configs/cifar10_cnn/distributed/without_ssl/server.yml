@@ -47,11 +47,11 @@ server_strategy:
 data:
   name: cifar
   config:
-    dir_train: ${root_dir}/datasets/train/
-    dir_val: ${root_dir}/datasets/val/
-    dir_test: ${root_dir}/datasets/test/
-    batch_size: '32'
-    num_workers: '0'
+    # the server only evaluates, on the whole official test split
+    test:
+      dir: ${root_dir}/datasets/test/
+      batch_size: 32
+    num_workers: 0
 model:
   name: cifar
   config:

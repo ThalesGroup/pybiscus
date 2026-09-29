@@ -74,12 +74,26 @@ model:
 data:
   name: cifar
   config:
-    dir_train: ${root_dir}/datasets/client1/train/
-    dir_val: ${root_dir}/datasets/client1/val/
-    dir_test: None
-    batch_size: 32
+    train:
+      dir: ${root_dir}/datasets/train/
+      batch_size: 32
+      # optional: this client's share of the training examples
+      partition:
+        num_partitions: 2
+        partition_id: 0
+    val:
+      source: holdout          # official (the official test split) | holdout | indices
+      fraction: 0.1
+    test:
+      dir: ${root_dir}/datasets/test/
+    num_workers: 0
 ...
 ```
+
+Each of `train`, `val` and `test` also takes `shuffle` and `drop_last` (defaults: the training
+set is shuffled and drops its last incomplete batch, the evaluation sets do neither); `train`
+takes a `seed` (order of the batches) and an `indices` file (example indices to train on);
+`val` with `source: indices` takes an `indices` file.
 
 ### Strategy
 
