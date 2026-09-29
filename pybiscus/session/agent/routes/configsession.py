@@ -144,7 +144,8 @@ def session_registration():
     global client_registration_resume
     client_registration_resume = f"{config['role']} {config['agent_name']}@{config['organisation']} in {config['bouquet']}"
 
-    return render_template( 'session_agent_registration.html', config=config)
+    from pybiscus.session.agent.machine import machine_name, physical_cores
+    return render_template( 'session_agent_registration.html', config=config, machine=machine_name(), cpu_cores=physical_cores())
 
 # ..........................................................
 # ............ POST /session/agent/registration ...........

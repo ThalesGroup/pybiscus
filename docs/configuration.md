@@ -139,3 +139,9 @@ or an html one :
  uv run python pybiscus/pydantic2xxx/pydantic2xxx.py client html
  uv run python pybiscus/pydantic2xxx/pydantic2xxx.py all html
 ```
+### CPU threads
+
+`server_compute_context.num_threads` / `client_compute_context.num_threads` (optional) limit the
+CPU threads of PyTorch (`torch.set_num_threads`). Unset, each process takes every physical core,
+which makes several clients on one machine wait for each other: give each one about
+cores / clients. In a session, the manager sets it for the clients (see the session manager doc).

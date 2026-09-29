@@ -3,7 +3,7 @@ import os
 import typer
 from pathlib import Path
 from omegaconf import DictConfig, ListConfig, OmegaConf
-from typing import NoReturn, Union
+from typing import NoReturn, Optional, Union
 from dotenv import load_dotenv
 from pydantic import ValidationError
 
@@ -148,3 +148,13 @@ if __name__ == "__main__":
         logm.interactiveConsole.log(OmegaConf.to_yaml(config))
     except Exception as e:
         logm.interactiveConsole.log(f"Failed to load config: {e}")
+
+
+def apply_num_threads(num_threads: Optional[int]) -> None:
+    # PyTorch takes every physical core in each process: several clients on one machine then run
+    # far more threads than cores, which wait for each other at every parallel operation (the
+    # round of three cifar10 clients that never ended)
+    if num_threads is not None:
+        import torch
+        torch.set_num_threads(num_threads)
+        logm.console.log(f"🧵 PyTorch limited to {num_threads} CPU threads")

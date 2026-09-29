@@ -132,6 +132,9 @@ def pybiscus_manager_register_agent():
                     "message": f"Client '{name}' already registered with a different URL.",
                 }), 400
 
+        pybiscus.session.manager.session_manager.registered_clients_cpu[name] = {
+            "machine": data.get("machine"), "cpu_cores": data.get("cpu_cores"),
+        }
         pybiscus.session.manager.session_manager.registered_clients[name] = agent_url
 
         return jsonify({
@@ -156,6 +159,7 @@ def pybiscus_manager_get_session_params():
     for key, empty in (("options_set", {}), ("options_lock", []), ("values_set", {}), ("values_lock", [])):
         custom_presets.setdefault(key, empty)
     data_partition = custom_presets.pop("data_partition", None)
+    share_cpu_threads = custom_presets.pop("share_cpu_threads", False)
 
     # each call used to take a new cid: the server's page and every reload consumed one, and the
     # cids of the clients were neither consecutive nor stable. Pages name their agent now.
@@ -176,6 +180,13 @@ def pybiscus_manager_get_session_params():
     if cid is not None:
         custom_presets["values_set"]["client_run.cid"] = cid
         custom_presets["values_lock"].append("client_run.cid")
+
+    # not locked: the operator may still adjust a client's threads
+    threads = session.client_threads(agent) if share_cpu_threads and index is not None else None
+    if threads is not None:
+        # " " selects Some for an Optional[T] (see set_option)
+        custom_presets["options_set"]["client_compute_context.num_threads"] = " "
+        custom_presets["values_set"]["client_compute_context.num_threads"] = threads
 
     if data_partition and index is not None:
         prefix = "data.config.train.partition"

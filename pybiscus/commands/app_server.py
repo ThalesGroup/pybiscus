@@ -18,7 +18,7 @@ from pybiscus.core.logger.multiplelogger.multipleloggerfactory import MultipleLo
 from pybiscus.core.metricslogger.multiplemetricslogger.multiplemetricsloggerfactory import MultipleMetricsLoggerFactory
 from pybiscus.flower_config.config_server import ConfigServer
 from pybiscus.commands.onnx_mngt import to_onnx_with_datamodule
-from pybiscus.commands.apps_common import exit_on_invalid_config, load_config
+from pybiscus.commands.apps_common import apply_num_threads, exit_on_invalid_config, load_config
 from pybiscus.plugin.registries.data_registry import datamodule_registry
 from pybiscus.plugin.registries.logger_registry import logger_registry
 from pybiscus.plugin.registries.metriclogger_registry import metricslogger_registry
@@ -185,6 +185,8 @@ def launch_config(
         conf = check_and_build_server_config(conf_loaded)
     except ValidationError as e:
         exit_on_invalid_config(e)
+
+    apply_num_threads(conf.server_compute_context.num_threads)
 
     # compute the reporting path
     

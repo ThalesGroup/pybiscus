@@ -21,6 +21,7 @@ session_client_id_counter = -1
 # whatever the number of polls of their waiting page
 session_clients = []
 late_client_cids = {}         # name -> cid of the clients registered after the launch
+registered_clients_cpu = {}   # name -> {machine, cpu_cores}, sent by the agent at registration
 
 def clear_session():
     global registered_clients
@@ -42,6 +43,19 @@ def clear_session():
     session_clients = []
     global late_client_cids
     late_client_cids = {}
+    global registered_clients_cpu
+    registered_clients_cpu = {}
+
+def client_threads(name):
+    """the physical cores of the client's machine shared between the session's clients on it, or
+    None when the agent did not say (former agent pages)"""
+
+    info = registered_clients_cpu.get(name) or {}
+    machine, cores = info.get("machine"), info.get("cpu_cores")
+    if not machine or not isinstance(cores, int) or cores < 1:
+        return None
+    on_machine = [c for c in session_clients if (registered_clients_cpu.get(c) or {}).get("machine") == machine]
+    return max(1, cores // max(1, len(on_machine)))
 
 def generate_new_cid():
     global session_client_id_counter

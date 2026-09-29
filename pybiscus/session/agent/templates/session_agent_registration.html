@@ -630,7 +630,10 @@
                 location:     formData.get('location'),
                 geo_location: geoLocation,
                 organisation: formData.get('organisation'),
-                role:         formData.get('role')
+                role:         formData.get('role'),
+                // the manager shares the cores of a machine between its clients (num_threads)
+                machine:      {{ machine | tojson }},
+                cpu_cores:    {{ cpu_cores | tojson }},
             };
             
             const response = await fetch(registrationUrl, {

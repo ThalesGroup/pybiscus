@@ -24,6 +24,12 @@ manager shares the training data between the clients registered when the session
 client getting its `partition_id` (its rank) and the number of partitions, locked in its form, along
 with a stable `cid` equal to that rank.
 
+Its `share_cpu_threads` setting (on by default) shares the CPU of each machine between the clients
+running on it: each agent tells the manager its machine and number of physical cores when it
+registers, and each client gets `client_compute_context.num_threads` = cores / clients on its
+machine (still editable in its form). Without it, every PyTorch client takes all the cores: three
+cifar10 clients on a 14-core machine took 233 s per round instead of 20 s.
+
 The manager listens on 127.0.0.1 by default. When agents run on other hosts (they send it their
 registration and logs), start it with `--host 0.0.0.0` (or a given address), e.g.
 `launch/session/run_manager.sh --host 0.0.0.0`.

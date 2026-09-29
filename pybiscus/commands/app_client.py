@@ -16,7 +16,7 @@ from pybiscus.plugin.registries.data_registry import datamodule_registry
 from pybiscus.plugin.registries.model_registry import model_registry 
 from pybiscus.flower_config.config_client import ConfigClient
 
-from pybiscus.commands.apps_common import exit_on_invalid_config, load_config
+from pybiscus.commands.apps_common import exit_on_invalid_config, load_config, apply_num_threads
 
 torch.backends.cudnn.enabled = True
 
@@ -171,6 +171,8 @@ def launch_config(
         conf = check_and_build_client_config(config=conf_loaded)
     except ValidationError as e:
         exit_on_invalid_config(e)
+
+    apply_num_threads(conf.client_compute_context.num_threads)
 
     # load the data management module from registry
     data_class = datamodule_registry()[conf.data.name]

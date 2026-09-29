@@ -45,5 +45,8 @@ def make_session_model(models: list[str], models_confs, data: list[str], data_co
         # shares the training data between the clients registered when the session is launched:
         # the manager gives each one its partition_id (and the number of partitions)
         data_partition: Optional[ConfigPartitionScheme] = None
+        # the manager gives each client the cores of its machine divided by the clients on it
+        # (num_threads): each PyTorch process takes every core otherwise
+        share_cpu_threads: bool = True
 
     return ConfigSession
