@@ -73,6 +73,7 @@ class ConfigTrainSet(BaseModel):
     seed: Optional[int] = None
     indices: Optional[str] = None
     partition: Optional[ConfigPartition] = None
+    max_samples: Optional[int] = Field(default=None, ge=1)
 
     model_config = ConfigDict(extra="forbid")
 
@@ -105,6 +106,7 @@ class ConfigValSet(BaseModel):
     shuffle: bool = False
     # every example is evaluated: dropping the last batch skipped some of them
     drop_last: bool = False
+    max_samples: Optional[int] = Field(default=None, ge=1)
 
     model_config = ConfigDict(extra="forbid")
 
@@ -124,6 +126,7 @@ class ConfigTestSet(BaseModel):
     batch_size: int = Field(default=32, ge=1)
     shuffle: bool = False
     drop_last: bool = False
+    max_samples: Optional[int] = Field(default=None, ge=1)
 
     model_config = ConfigDict(extra="forbid")
 
@@ -143,10 +146,10 @@ FORMER_FIELDS = {
 }
 
 
-def reject_former_fields(data):
+def reject_former_fields(data, former_fields: Mapping[str, str] = FORMER_FIELDS):
     # a Mapping, not only a dict: the CLI validates OmegaConf DictConfig objects
     if isinstance(data, Mapping):
-        former = [f"{name} → {FORMER_FIELDS[name]}" for name in data if name in FORMER_FIELDS]
+        former = [f"{name} → {former_fields[name]}" for name in data if name in former_fields]
         if former:
             raise ValueError("the data configuration is now grouped in train / val / test sections: " + "; ".join(former))
     return data
@@ -213,29 +216,31 @@ def split_indices(train_full: Dataset, train: ConfigTrainSet, val: ConfigValSet)
     """indices of the training and validation examples in the official train split; None: all of
     them for training, the official test split for validation"""
 
-    if train.indices:
-        base = read_indices(train.indices)
+    # other plugins' sections have no indices file, and a val without source is not drawn from train
+    train_indices = getattr(train, "indices", None)
+    if train_indices:
+        base = read_indices(train_indices)
     elif train.partition is not None:
         base = all_partitions(train_full, train.partition)[train.partition.partition_id]
     else:
         base = None
 
-    if val.source == ValSource.official:
+    if val is None or getattr(val, "source", ValSource.official) == ValSource.official:
         return base, None
     pool = np.arange(len(train_full)) if base is None else base
     if val.source == ValSource.holdout:
         return holdout(pool, val.fraction, val.seed)
     val_idx = read_indices(val.indices)
     # without a train indices file, the validation examples are removed from the training ones
-    return (base if train.indices else np.setdiff1d(pool, val_idx)), val_idx
+    return (base if train_indices else np.setdiff1d(pool, val_idx)), val_idx
 
 
 def train_and_val_sets(train_full: Dataset, official_val, train: ConfigTrainSet, val: ConfigValSet) -> tuple[Dataset, Dataset]:
     """official_val: a callable returning the official test split, loaded only when used"""
 
     train_idx, val_idx = split_indices(train_full, train, val)
-    train_set = train_full if train_idx is None else Subset(train_full, np.asarray(train_idx).tolist())
-    val_set = official_val() if val_idx is None else Subset(train_full, val_idx.tolist())
+    train_set = limit(train_full if train_idx is None else Subset(train_full, np.asarray(train_idx).tolist()), train.max_samples)
+    val_set = limit(official_val() if val_idx is None else Subset(train_full, val_idx.tolist()), val.max_samples)
     partition = train.partition
     logm.console.log(f"data: {len(train_set)} training examples, {len(val_set)} validation examples "
                      f"(validation: {val.source.value}"
@@ -243,11 +248,28 @@ def train_and_val_sets(train_full: Dataset, official_val, train: ConfigTrainSet,
     return train_set, val_set
 
 
-def make_loader(dataset: Dataset, options, num_workers: int) -> DataLoader:
+def limit(dataset: Dataset, max_samples: Optional[int]) -> Dataset:
+    """at most max_samples examples, the same on every run (drawn with a fixed seed, kept in order)"""
+
+    if max_samples is None or max_samples >= len(dataset):
+        return dataset
+    kept = np.sort(np.random.default_rng(0).permutation(len(dataset))[:max_samples])
+    return Subset(dataset, kept.tolist())
+
+
+def partition_subset(dataset: Dataset, partition: Optional[ConfigPartition]) -> Dataset:
+    if partition is None:
+        return dataset
+    return Subset(dataset, all_partitions(dataset, partition)[partition.partition_id].tolist())
+
+
+def make_loader(dataset: Dataset, options, num_workers: int = 0, order_seed: Optional[int] = None) -> DataLoader:
+    """order_seed: reproducible order of the shuffled batches (train's seed; a val seed may mean
+    something else, such as cifar's holdout draw)"""
+
     generator = None
-    # val.seed draws the held-out examples, not an order: only train's seed orders the batches
-    if isinstance(options, ConfigTrainSet) and options.shuffle and options.seed is not None:
-        generator = torch.Generator().manual_seed(options.seed)
+    if options.shuffle and order_seed is not None:
+        generator = torch.Generator().manual_seed(order_seed)
     return DataLoader(
         dataset,
         batch_size=options.batch_size,

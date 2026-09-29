@@ -5,7 +5,7 @@ import torchvision.transforms as transforms
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 from torchvision.datasets import MNIST
 
-from pybiscus.ml.datasplit import ConfigTestSet, ConfigTrainSet, ConfigValSet, make_loader, reject_former_fields, train_and_val_sets
+from pybiscus.ml.datasplit import ConfigTestSet, ConfigTrainSet, ConfigValSet, limit, make_loader, reject_former_fields, train_and_val_sets
 
 
 class MnistTrainSet(ConfigTrainSet):
@@ -88,19 +88,19 @@ class MnistLitDataModule(pl.LightningDataModule):
             self.data_train, self.data_val = train_and_val_sets(train_full, official_val, self.train, self.val)
 
         if stage == "test" or stage is None:
-            self.data_test = MNIST(
+            self.data_test = limit(MNIST(
                 root=self.test.dir,
                 train=False,
                 download=True,
                 transform=self.transform,
-            )
+            ), self.test.max_samples)
 
     def train_source(self):
         """the official train split, in which the partitions and indices files pick their examples"""
         return MNIST(root=self.train.dir, train=True, download=True, transform=self.transform)
 
     def train_dataloader(self):
-        return make_loader(self.data_train, self.train, self.num_workers)
+        return make_loader(self.data_train, self.train, self.num_workers, order_seed=self.train.seed)
 
     def val_dataloader(self):
         return make_loader(self.data_val, self.val, self.num_workers)

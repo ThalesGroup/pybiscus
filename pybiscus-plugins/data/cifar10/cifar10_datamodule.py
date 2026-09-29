@@ -8,7 +8,7 @@ from torch.utils.data import DataLoader
 from torchvision.datasets import CIFAR10
 
 import pybiscus.core.pybiscus_logger as logm
-from pybiscus.ml.datasplit import make_loader, reject_former_fields, train_and_val_sets
+from pybiscus.ml.datasplit import limit, make_loader, reject_former_fields, train_and_val_sets
 
 from cifar10.cifar10_dataconfig import CifarTestSet, CifarTrainSet, CifarValSet
 
@@ -225,8 +225,9 @@ class CifarLightningDataModule(pl.LightningDataModule):
             self.data_train, self.data_val = train_and_val_sets(train_full, official_val, self.train, self.val)
 
         if stage == "test" or stage is None:
-            self.data_test  = CIFAR10( root=self.test.dir,  train=False, download=True, transform=self.transform,)
-            logm.console.log("x_test shape", self.data_test.data.shape)
+            test_full       = CIFAR10( root=self.test.dir,  train=False, download=True, transform=self.transform,)
+            logm.console.log("x_test shape", test_full.data.shape)
+            self.data_test  = limit( test_full, self.test.max_samples)
 
     def train_source(self):
         """the official train split, in which the partitions and indices files pick their examples"""
@@ -238,7 +239,7 @@ class CifarLightningDataModule(pl.LightningDataModule):
         if self.data_train is None:
             raise ValueError("Train dataset undefined: bad setup")
         
-        return make_loader( self.data_train, self.train, self.num_workers,)
+        return make_loader( self.data_train, self.train, self.num_workers, order_seed=self.train.seed,)
 
     @override
     def val_dataloader(self) -> DataLoader:
