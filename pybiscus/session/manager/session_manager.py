@@ -46,13 +46,20 @@ def main():
 
     parser = argparse.ArgumentParser(description="Start the Federated Learning Manager Server.")
     parser.add_argument("--port", type=int, default=5555, help="Port to run the manager on")
+    # agents on other hosts send it their registration and logs: they need 0.0.0.0 (or an address)
+    parser.add_argument(
+        "--host",
+        type=str,
+        default="127.0.0.1",
+        help="Listening address (default: 127.0.0.1; 0.0.0.0 when agents run on other hosts, or in a container)",
+    )
     args = parser.parse_args()
 
     global manager_port
     manager_port=args.port
 
     print(f"🚀 Manager starting on port {manager_port}")
-    pybiscus_manager_app.run(port=manager_port)
+    pybiscus_manager_app.run(host=args.host, port=manager_port)
 
 # **************************
 

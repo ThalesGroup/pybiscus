@@ -19,6 +19,10 @@ launch the session manager :
 
 connect to http://localhost:5555/pybiscus-session/manage
 
+The manager listens on 127.0.0.1 by default. When agents run on other hosts (they send it their
+registration and logs), start it with `--host 0.0.0.0` (or a given address), e.g.
+`launch/session/run_manager.sh --host 0.0.0.0`.
+
 ![Session Manager init](images/session_manager_init.png "Session Manager init")
 
 ### Init of the agents
