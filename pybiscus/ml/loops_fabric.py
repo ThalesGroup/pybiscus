@@ -62,6 +62,73 @@ def signature_of_mode(net, mode):
         return net.signature
 
 
+def batch_size_of(results, batch) -> Optional[int]:
+    """the model may say it (a "batch_size" key in its step's results); otherwise the first dimension
+    of the batch's inputs: batch[0] for an (inputs, targets) pair, the length of a list of samples
+    of various shapes (detection images) rather than an image's channels"""
+
+    if isinstance(results, dict) and results.get("batch_size") is not None:
+        return int(results["batch_size"])
+    first = batch[0] if isinstance(batch, (list, tuple)) and batch else batch
+    if isinstance(first, dict):
+        first = next((value for value in first.values() if isinstance(value, torch.Tensor)), None)
+    if isinstance(first, torch.Tensor):
+        return int(first.shape[0]) if first.dim() > 0 else None
+    if isinstance(first, (list, tuple)):
+        return len(first)
+    return None
+
+
+_unsized_warned = False
+
+
+class BatchMean:
+    """means over the examples of metrics given per batch: an unweighted mean of the batch means
+    gave the last, partial batch the weight of a full one (x2 for 10000 examples in batches of
+    32, up to x31 with a one-example last batch). Additive metrics only (a mean loss, an
+    accuracy): an F1 or an AUC needs counts accumulated over the epoch"""
+
+    def __init__(self, keys, device):
+        self.device = device
+        self.weighted = {key: torch.tensor(0.0, device=device) for key in keys}
+        self.plain = {key: torch.tensor(0.0, device=device) for key in keys}
+        self.examples = 0
+        self.batches = 0
+        self.sized = True
+
+    def add(self, results, batch) -> None:
+        global _unsized_warned
+        size = batch_size_of(results, batch)
+        if size is None:
+            self.sized = False
+            if not _unsized_warned:
+                _unsized_warned = True
+                logm.console.log("⚠️ batch size unknown (give a 'batch_size' key in the step's results): "
+                                 "metrics averaged per batch, the last partial batch weighing as a full one")
+        self.batches += 1
+        self.examples += size or 0
+        for key in self.plain:
+            value = results[key]
+
+            # hardening code --- begin ---
+            if not isinstance(value, torch.Tensor):
+                value = torch.tensor(value, device=self.device)
+
+            if value.shape != self.plain[key].shape:
+                value = value.reshape(self.plain[key].shape)
+            # hardening code --- end ---
+
+            value = value.detach()
+            self.plain[key] += value
+            if size:
+                self.weighted[key] += value * size
+
+    def means(self) -> dict:
+        if self.sized and self.examples > 0:
+            return {key: (value / self.examples).item() for key, value in self.weighted.items()}
+        return {key: (value / max(1, self.batches)).item() for key, value in self.plain.items()}
+
+
 def train_loop(fabric, net, trainloader, optimizer, epochs: int, verbose=False, schedulers=()):
     """Train the network on the training set."""
 
@@ -74,10 +141,7 @@ def train_loop(fabric, net, trainloader, optimizer, epochs: int, verbose=False, 
 
     history = []
     for epoch in range(epochs):
-        results_epoch = {
-            key: torch.tensor(0.0, device=net.device)
-            for key in signature_of_mode(net, "train").__required_keys__
-        }
+        epoch_mean = BatchMean(signature_of_mode(net, "train").__required_keys__, net.device)
         for batch_idx, batch in track(
             enumerate(trainloader),
             total=len(trainloader),
@@ -95,23 +159,9 @@ def train_loop(fabric, net, trainloader, optimizer, epochs: int, verbose=False, 
                 if s.interval == "step":
                     s.tick(results)
 
-            for key in results_epoch.keys():
-                value = results[key]
+            epoch_mean.add(results, batch)
 
-                # hardening code --- begin ---
-                if not isinstance(value, torch.Tensor):
-                    value = torch.tensor(value, device=net.device)
-
-                if value.shape != results_epoch[key].shape:
-                    value = value.reshape(results_epoch[key].shape)
-                # hardening code --- end ---
-
-                results_epoch[key] += value
-
-        for key in results_epoch.keys():
-            results_epoch[key] /= len(trainloader)
-            results_epoch[key] = results_epoch[key].item()
-
+        results_epoch = epoch_mean.means()
         history.append(dict(results_epoch))
         if epochs > 1:
             logm.console.log(
@@ -139,10 +189,7 @@ def test_loop(fabric, net, testloader):
     net.eval()
 
     with torch.no_grad():
-        results_epoch = {
-            key: torch.tensor(0.0, device=net.device)
-            for key in signature_of_mode(net, "test").__required_keys__
-        }
+        mean = BatchMean(signature_of_mode(net, "test").__required_keys__, net.device)
         for batch_idx, batch in track(
             enumerate(testloader),
             total=len(testloader),
@@ -160,22 +207,6 @@ def test_loop(fabric, net, testloader):
                 # other format => convert to tensor and put it into a dict
                 results = {"loss": torch.as_tensor(results)}
 
+            mean.add(results, batch)
 
-
-            for key in results_epoch.keys():
-                value = results[key]
-
-                # hardening code --- begin ---
-                if not isinstance(value, torch.Tensor):
-                    value = torch.tensor(value, device=net.device)
-
-                if value.shape != results_epoch[key].shape:
-                    value = value.reshape(results_epoch[key].shape)
-                # hardening code --- end ---
-
-                results_epoch[key] += value
-
-    for key in results_epoch.keys():
-        results_epoch[key] /= len(testloader)
-        results_epoch[key] = results_epoch[key].item()
-    return results_epoch
+    return mean.means()

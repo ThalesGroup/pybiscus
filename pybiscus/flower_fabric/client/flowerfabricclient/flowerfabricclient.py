@@ -73,6 +73,7 @@ class FlowerFabricClient(fl.client.NumPyClient):
         num_examples: dict[str, int],
         conf_fabric: dict,
         pre_train_val: bool = False,
+        optimizer_state: str = "reset",
     ) -> None:
         """Initialize the FlowerClient instance.
 
@@ -99,16 +100,28 @@ class FlowerFabricClient(fl.client.NumPyClient):
         self.conf_fabric = conf_fabric.model_dump()
         self.num_examples = num_examples
         self.pre_train_val = pre_train_val
+        self.optimizer_state = str(getattr(optimizer_state, "value", optimizer_state))
 
-        self.optimizers, self.schedulers = parse_optimizers(self.model.configure_optimizers())
-        # train_loop drives a single optimizer: fail here rather than in the first fit
-        if len(self.optimizers) > 1:
-            raise PybiscusValueException(
-                f"{type(model).__name__}: multiple optimizers are not supported by the Fabric training loop"
-            )
+        self.optimizers, self.schedulers = self._configure_optimizers()
         check_schedulers_monitor(self.schedulers, model)
 
         self.fabric = Fabric(**self.conf_fabric)
+
+    def _configure_optimizers(self):
+        optimizers, schedulers = parse_optimizers(self.model.configure_optimizers())
+        # train_loop drives a single optimizer: fail here rather than in the first fit
+        if len(optimizers) > 1:
+            raise PybiscusValueException(
+                f"{type(self.model).__name__}: multiple optimizers are not supported by the Fabric training loop"
+            )
+        return optimizers, schedulers
+
+    def _reset_optimizers(self):
+        # the global weights replace the local ones at every round: a momentum or Adam moments
+        # computed on the previous round's weights would push the first steps in a stale
+        # direction, and a client absent from some rounds would carry an even older state
+        optimizers, self.schedulers = self._configure_optimizers()
+        self.optimizers = [self.fabric.setup_optimizers(optimizer) for optimizer in optimizers]
 
     def initialize(self):
         self.fabric.launch()
@@ -149,6 +162,9 @@ class FlowerFabricClient(fl.client.NumPyClient):
             )
             for key, val in results_pre_train.items():
                 metrics[f"{key}_pre_train_val"] = val
+
+        if self.optimizer_state == "reset":
+            self._reset_optimizers()
 
         logm.console.log(f"Round {config['server_round']}, training Started...")
 

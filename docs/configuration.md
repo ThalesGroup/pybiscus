@@ -145,3 +145,17 @@ or an html one :
 CPU threads of PyTorch (`torch.set_num_threads`). Unset, each process takes every physical core,
 which makes several clients on one machine wait for each other: give each one about
 cores / clients. In a session, the manager sets it for the clients (see the session manager doc).
+
+### Optimizer state between rounds
+
+`client_run.optimizer_state` (`reset` by default, or `keep`): with `reset`, the client creates its
+optimizer (and schedulers) again at every round, as in standard FedAvg; with `keep`, it keeps its
+state (SGD momentum, Adam moments, scheduler progress) from the previous rounds, although those
+were computed on the weights the global model has since replaced.
+
+### Reported metrics
+
+The training and evaluation metrics are means over the examples: each batch weighs its size. The
+size comes from a `batch_size` key in the step's results if the model gives one, otherwise from
+the first dimension of the batch's inputs (or the length of a list of samples). These means are
+exact for additive metrics (a mean loss, an accuracy), not for an F1 or an AUC.

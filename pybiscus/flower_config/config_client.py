@@ -1,3 +1,4 @@
+from enum import Enum
 from typing import Optional, ClassVar
 from typing_extensions import Annotated
 
@@ -36,18 +37,27 @@ class ConfigSslClient(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
 
+class OptimizerState(str, Enum):
+    # an Enum and not a Literal: the agent's form offers an Enum's values, a Literal's first only
+    reset = "reset"   # a new optimizer (and schedulers) at every round, as in standard FedAvg
+    keep  = "keep"    # the state of the previous rounds (momentum, Adam moments) is kept
+
+
 class ConfigClientRun(BaseModel):
     """A Pydantic Model to validate the server run configuration given by the user.
 
     Attributes
     ----------
     cid: int = client identifier
+    optimizer_state: reset | keep = whether the optimizer starts afresh at every round (default) or
+        keeps its state (momentum, Adam moments) from the previous rounds, computed on other weights
     """
 
     PYBISCUS_CONFIG: ClassVar[str] = "client_run"
 
     cid: int            = 1
     pre_train_val: bool = False
+    optimizer_state: OptimizerState = OptimizerState.reset
 
     model_config = ConfigDict(extra="forbid")
 
