@@ -90,9 +90,16 @@ def run_typer_command(command: list[str]) -> str:
 
     return output
 
-#  YAML files storage path
-UPLOAD_FOLDER = "configs/uploaded/"
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)  # directory creation if required
+#  YAML files storage path, one folder per agent (set_upload_folder): agents started from the
+#  same directory shared configs/uploaded/ConfigClient.yml, so a client checked after another
+#  one but before its launch replaced that one's configuration (duplicated cid)
+UPLOAD_ROOT = "configs/uploaded"
+upload_folder = UPLOAD_ROOT
+
+def set_upload_folder(port: int):
+    global upload_folder
+    upload_folder = os.path.join(UPLOAD_ROOT, str(port))
+    os.makedirs(upload_folder, exist_ok=True)
 
 def saveConfigFromRequest( request ) -> bool:
 
@@ -109,7 +116,7 @@ def saveConfigFromRequest( request ) -> bool:
     global uploaded_file_path
     #print(file.filename)
     #print(os.path.basename(file.filename))
-    uploaded_file_path = os.path.join(UPLOAD_FOLDER, os.path.basename(file.filename) )
+    uploaded_file_path = os.path.join(upload_folder, os.path.basename(file.filename) )
     
     # save the yaml file
     file.save(uploaded_file_path)
@@ -216,7 +223,7 @@ def upload_json(model_name: str):
 
             # define storage path
             global uploaded_file_path
-            uploaded_file_path = os.path.join(UPLOAD_FOLDER, f"{model_name}.yml")
+            uploaded_file_path = os.path.join(upload_folder, f"{model_name}.yml")
             with open(uploaded_file_path, "w", encoding="utf-8") as file:
                 file.write(yaml_string) 
 
@@ -253,7 +260,7 @@ def upload_yaml():
     global uploaded_file_path
     print(file.filename)
     print(os.path.basename(file.filename))
-    uploaded_file_path = os.path.join(UPLOAD_FOLDER, os.path.basename(file.filename) )
+    uploaded_file_path = os.path.join(upload_folder, os.path.basename(file.filename) )
     
     # save the yaml file
     file.save(uploaded_file_path)
@@ -423,6 +430,8 @@ def main():
 
     # Store the config path in the Flask app config (accessible via current_app.config)
     rest_server.config['CONFIG_PATH'] = args.config
+
+    set_upload_folder(args.port)
 
     if args.config is not None:
 
