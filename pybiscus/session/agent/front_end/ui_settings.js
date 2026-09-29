@@ -8,7 +8,7 @@ window.pybiscusUiSettings = (() => {
     let preview = null;        // values shown by the open panel, not saved yet
     const listeners = [];      // redraw what depends on the settings (large unions, list views)
 
-    const WEIGHTS = { bold: 700, semibold: 600 };
+    const WEIGHTS = { "bold-stable": 700, bold: 700, semibold: 600 };
     const LIST_VIEW_KEY = "pybiscus-list-view-";
     const LARGE_UNION_KEY = "pybiscus-large-union-mode";
 
@@ -30,7 +30,19 @@ window.pybiscusUiSettings = (() => {
         toggle(container, "pybiscus-tab-large", vertical && options >= get("large_union_min_options"));
     }
 
+    // the CSS reserves each label's bold width with a copy of it, and CSS cannot copy an element's
+    // text: the label goes into an attribute. Optional[T] buttons have blank labels: left out
+    function labelize() {
+        document.querySelectorAll(".pybiscus-tab-button, .menu-item-level-1 .pybiscus-config").forEach(e => {
+            if (e.closest(".pybiscus-option-fs > .pybiscus-tab-container")) return;
+            const label = e.textContent.trim();
+            if (e.getAttribute("data-pybiscus-label") !== label) e.setAttribute("data-pybiscus-label", label);
+        });
+    }
+
     function apply() {
+        labelize();
+        toggle(document.documentElement, "pybiscus-stable-weight", get("active_option_weight") === "bold-stable");
         const root = document.documentElement.style;
         root.setProperty("--pybiscus-options-col-max", get("options_column_max_width_rem") + "rem");
         root.setProperty("--pybiscus-options-col-max-height", get("options_column_max_height_rem") + "rem");
@@ -232,6 +244,8 @@ window.pybiscusUiSettings = (() => {
     function init(initialState) {
         state = initialState;
         apply();
+        // the section menu is built on DOMContentLoaded, by a handler registered before this one
+        document.addEventListener("DOMContentLoaded", labelize);
         migrateBrowserSettings();
     }
 

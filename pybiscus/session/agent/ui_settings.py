@@ -20,7 +20,8 @@ SPEC = {
     "options_column_max_width_rem":  ("number", 16,      {"min": 6, "max": 40}),
     "options_column_max_height_rem": ("number", 22,      {"min": 8, "max": 80}),
     "field_name_column_width_rem":   ("number", 13,      {"min": 6, "max": 40}),
-    "active_option_weight":          ("choice", "bold",  {"choices": ["bold", "semibold"]}),
+    # bold-stable: bold, with every option's width reserved for its bold label (no shift on selection)
+    "active_option_weight":          ("choice", "bold-stable", {"choices": ["bold-stable", "bold", "semibold"]}),
     "large_union_mode":              ("choice", "chips", {"choices": ["chips", "radial", "column"]}),
     # list prefix -> view; a list absent from it shows compact
     "list_views":                    ("views",  {},      {"choices": list(LIST_VIEWS)}),

@@ -627,6 +627,26 @@ body > div > fieldset > legend::before {
     left: 100%;
 }
 
+/* bold at a stable width (ui_settings.js: active_option_weight = bold-stable): each button also
+   holds an invisible, zero-height bold copy of its label, so its width is already that of its
+   bold label and selecting it no longer pushes its neighbours. The copy goes below the text:
+   column direction, same centring */
+.pybiscus-stable-weight .pybiscus-tab-button[data-pybiscus-label],
+.pybiscus-stable-weight .menu-item-level-1 .pybiscus-config[data-pybiscus-label] {
+    flex-direction: column;
+}
+.pybiscus-stable-weight .pybiscus-tab-button[data-pybiscus-label]::after,
+.pybiscus-stable-weight .menu-item-level-1 .pybiscus-config[data-pybiscus-label]::after {
+    content: attr(data-pybiscus-label);
+    display: block;
+    height: 0;
+    overflow: hidden;
+    visibility: hidden;
+    font-weight: var(--font-weight-bold);
+    pointer-events: none;
+    user-select: none;
+}
+
 .pybiscus-tab-content {
     padding: var(--spacing-xl);
     border-top: none;
