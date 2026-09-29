@@ -173,11 +173,20 @@ class FedAvgMFactory(FlowerStrategyFactory):
 
 
 # ------------------------- FedAdam / FedYogi / FedAdagrad ---------------------
-# server-side adaptive optimizers; Flower defaults differ per class, kept as is
+# server-side adaptive optimizers, applied to the pseudo-gradient (mean of the clients' weights
+# minus the global ones). With a tiny tau, the first update is eta_norm * sign(delta): Flower's
+# FedAdam / FedAdagrad eta 0.1 moved every weight by about 0.07 whatever the clients learned, far
+# above a CNN's weights (0.05 to 0.1), and cifar10 stayed at chance (0.10). eta 1e-2 learns; a
+# larger tau (1e-3, FedYogi's Flower default) crushed this model's small updates instead. Measured
+# with launch/campaign (cifar10, 3 clients, 5 rounds): eta 1e-2 / tau 1e-9 matches FedAvg with
+# dirichlet shares and exceeds it with iid ones, for the three strategies (DEVLOG).
+# eta_l, the clients' learning rate, is stored by Flower but used by none of these strategies:
+# each model sets its own.
 
 class ConfigFedAdamData(ConfigFlowerFailuresData):
-    """Server-side Adam, see flwr.server.strategy.FedAdam."""
-    eta:    float = Field(default=0.1,  gt=0)
+    """Server-side Adam, see flwr.server.strategy.FedAdam. eta: server learning rate; tau: adaptivity
+    (a tiny tau makes every step the sign of the update); eta_l: informative only (unused by Flower)."""
+    eta:    float = Field(default=1e-2, gt=0)
     eta_l:  float = Field(default=0.1,  gt=0)
     beta_1: float = Field(default=0.9,  ge=0, lt=1)
     beta_2: float = Field(default=0.99, ge=0, lt=1)
@@ -197,12 +206,13 @@ class FedAdamFactory(FlowerStrategyFactory):
 
 
 class ConfigFedYogiData(ConfigFlowerFailuresData):
-    """Server-side Yogi, see flwr.server.strategy.FedYogi."""
+    """Server-side Yogi, see flwr.server.strategy.FedYogi. eta: server learning rate; tau:
+    adaptivity; eta_l: informative only (unused by Flower)."""
     eta:    float = Field(default=0.01,   gt=0)
     eta_l:  float = Field(default=0.0316, gt=0)
     beta_1: float = Field(default=0.9,    ge=0, lt=1)
     beta_2: float = Field(default=0.99,   ge=0, lt=1)
-    tau:    float = Field(default=1e-3,   gt=0)
+    tau:    float = Field(default=1e-9,   gt=0)
 
 
 class ConfigFedYogi(BaseModel):
@@ -218,8 +228,9 @@ class FedYogiFactory(FlowerStrategyFactory):
 
 
 class ConfigFedAdagradData(ConfigFlowerFailuresData):
-    """Server-side Adagrad, see flwr.server.strategy.FedAdagrad."""
-    eta:   float = Field(default=0.1,  gt=0)
+    """Server-side Adagrad, see flwr.server.strategy.FedAdagrad. eta: server learning rate; tau:
+    adaptivity (a tiny tau makes every step the sign of the update); eta_l: informative only."""
+    eta:   float = Field(default=1e-2, gt=0)
     eta_l: float = Field(default=0.1,  gt=0)
     tau:   float = Field(default=1e-9, gt=0)
 
@@ -320,7 +331,12 @@ class BulyanFactory(FlowerStrategyFactory):
 # ------------------------- fairness / fault tolerance -------------------------
 
 class ConfigQFedAvgData(ConfigFlowerFailuresData):
-    """q-Fair FedAvg, see flwr.server.strategy.QFedAvg."""
+    """q-Fair FedAvg, see flwr.server.strategy.QFedAvg. qffl_learning_rate: QFedAvg rebuilds each
+    client's gradient as (w - w_client) / qffl_learning_rate, which assumes plain SGD steps at that
+    rate; with momentum and many local steps, the clients' own rate (0.001 for cifar10) learned
+    worst: 0.1 did best (launch/campaign, DEVLOG). Note: Flower weighs every client with the same
+    loss, the global model's one evaluated by the server, so q does not favour the clients the
+    global model serves badly."""
     q_param:            float = Field(default=0.2, ge=0)
     qffl_learning_rate: float = Field(default=0.1, gt=0)
 

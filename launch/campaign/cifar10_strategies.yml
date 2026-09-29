@@ -1,0 +1,55 @@
+# Campaign of launch/campaign/strategy_campaign.py: server strategies compared on cifar10.
+#   uv run python launch/campaign/strategy_campaign.py launch/campaign/cifar10_strategies.yml
+# About 1 minute per variant on a 14-core machine; do not run it next to a live session.
+
+server_config: configs/cifar10_cnn/distributed/without_ssl/server.yml
+client_config: configs/cifar10_cnn/distributed/without_ssl/client_1.yml
+output: experiments/campaigns
+
+clients: 3
+rounds: 5
+port: 3399                 # the Flower server of each run: must be free
+threads_per_client: auto   # physical cores / clients
+timeout: 1800              # seconds per run
+
+# merged into every client's data.config: a share of the training split each (the script sets
+# num_partitions / partition_id), a 10 % holdout for validation, a smaller set for speed
+client_data:
+  train:
+    max_samples: 8000
+    partition:
+      scheme: iid          # iid | dirichlet (alpha) | shards
+      seed: 42
+  val:
+    source: holdout
+    fraction: 0.1
+
+# merged into the server's data.config
+server_data:
+  test:
+    max_samples: 2000
+
+variants:
+  - label: FedAvg
+    strategy: {name: fedavggeneric, config: {}}
+
+  - label: FedAdam defaults (eta 1e-2, tau 1e-9)
+    strategy: {name: fedadam, config: {}}
+  - label: FedAdam former defaults (eta 1e-1, tau 1e-9)
+    strategy: {name: fedadam, config: {eta: 0.1}}
+  - label: FedAdam eta 1e-2, tau 1e-3
+    strategy: {name: fedadam, config: {tau: 1.0e-3}}
+  - label: FedAdam eta 3e-3
+    strategy: {name: fedadam, config: {eta: 0.003}}
+
+  - label: FedYogi defaults (eta 1e-2, tau 1e-9)
+    strategy: {name: fedyogi, config: {}}
+  - label: FedAdagrad defaults (eta 1e-2, tau 1e-9)
+    strategy: {name: fedadagrad, config: {}}
+
+  - label: QFedAvg defaults (qffl_learning_rate 0.1)
+    strategy: {name: qfedavg, config: {}}
+  - label: QFedAvg qffl_learning_rate 0.01
+    strategy: {name: qfedavg, config: {qffl_learning_rate: 0.01}}
+  - label: QFedAvg qffl_learning_rate 0.001 (the clients' lr)
+    strategy: {name: qfedavg, config: {qffl_learning_rate: 0.001}}

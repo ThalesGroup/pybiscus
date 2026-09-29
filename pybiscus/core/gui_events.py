@@ -53,7 +53,8 @@ def log_round_metric(phase: str, metrics: Mapping[str, object], server_round: Op
         return
     name, value = selected
     round_text = "-" if server_round is None else str(server_round)
-    logm.console.log(f"📈 [gui] phase={phase} round={round_text} metric={name} value={value:.6g}")
+    # no square brackets: rich reads "[gui]" as a markup tag and removed it from the console output
+    logm.console.log(f"📈 gui phase={phase} round={round_text} metric={name} value={value:.6g}")
 
 
 def gui_log_patterns() -> dict[str, str]:
@@ -62,7 +63,7 @@ def gui_log_patterns() -> dict[str, str]:
         # round number, from the aggregation lines ("🔁 Round:3 aggregates using …")
         "round": r"🔁 [rR]ound:\s*(\d+)",
         # main metric of a phase: groups phase, round ("-" if unknown), metric name, value
-        "round_metric": r"📈 \[gui\] phase=(fit|test|evaluate) round=(\d+|-) metric=(\S+) value=(-?[\d.]+(?:[eE][-+]?\d+)?|nan|inf)",
+        "round_metric": r"📈 gui phase=(fit|test|evaluate) round=(\d+|-) metric=(\S+) value=(-?[\d.]+(?:[eE][-+]?\d+)?|nan|inf)",
         # duration of a round (timediffcompute decorator)
         "duration": r"time diff is (\d+(?:\.\d+)?)s",
         # variation of the aggregated evaluation loss (metricdiffcompute decorator)
