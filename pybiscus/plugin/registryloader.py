@@ -3,9 +3,11 @@ from typing_extensions import Annotated
 from pydantic import BaseModel, Field
 from pathlib import Path
 import importlib
+import inspect
 import pkgutil
 
-from importlib.metadata import inspect
+from pybiscus.core.pybiscusexception import PybiscusPluginError
+from pybiscus.plugin.pluginmanager import import_plugin, is_plugin, plugins_verbose
 
 
 def get_name_value_if_literal(cls):
@@ -31,7 +33,8 @@ class RegistryLoader(Generic[T]):
 
     def __init__(self, expected_class: Type[T], verbose: bool = True):
         self.expected_class = expected_class
-        self.verbose = verbose
+        # the details are shown on demand only (PYBISCUS_PLUGINS_VERBOSE): about 500 lines otherwise
+        self.verbose = verbose and plugins_verbose()
 
     def get_submodules_from_path(self, base_package: str) -> List[str]:
         # print(f"Trying to import base_package: {base_package}")
@@ -81,78 +84,80 @@ class RegistryLoader(Generic[T]):
                 - config_union: Annotated Union[...] with Field(discriminator="name"), or None
     """
         registry: Dict[str, Type[T]] = {}
+        registered_by: Dict[str, str] = {}
         config_classes: List[Type[BaseModel]] = []
 
         for full_module_name in packages:
 
             try:
-                mod = importlib.import_module(full_module_name)
+                # plugins go through the plugin manager: shadowing check, missing-dependency policy
+                mod = import_plugin(full_module_name) if is_plugin(full_module_name) else importlib.import_module(full_module_name)
+                if mod is None:
+                    continue
 
                 if self.verbose:
                     print(f"📦 Loading module: {full_module_name}")
 
-                if hasattr(mod, "get_modules_and_configs"):
+                if not hasattr(mod, "get_modules_and_configs"):
+                    if self.verbose:
+                        print(f"⚠️  No get_modules_and_configs() in {full_module_name}")
+                        for name in dir(mod):
+                            if not name.startswith("__"):
+                                attr = getattr(mod, name)
+                                if inspect.isfunction(attr):
+                                    print(f"   (function) {name}{inspect.signature(attr)}")
+                                elif inspect.isclass(attr):
+                                    print(f"   (class) {name}")
+                    continue
 
-                    # print(f"🔍 Content of {full_module_name} :")
-                    # for name in dir(mod):
-                    #     if not name.startswith("__"):
-                    #         attr = getattr(mod, name)
-                    #         print(f" - {name}: {type(attr)}")
-                    #         if inspect.isfunction(attr):
-                    #             print(f"   (function) {name}{inspect.signature(attr)}")
-                    #         elif inspect.isclass(attr):
-                    #             print(f"   (class) {name}")                    
+                sub_registry, sub_configs = mod.get_modules_and_configs()
 
-                    sub_registry, sub_configs = mod.get_modules_and_configs()
+                # sanity check : filtering out classes not deriving from BaseModel
+                configs_ok, configs_ko = partition(lambda config: isinstance(config, type) and issubclass(config, BaseModel), sub_configs)
+                for config in configs_ko:
+                    config_name = get_name_value_if_literal(config) if isinstance(config, type) else None
+                    dropped = sub_registry.pop(config_name, None) if config_name is not None else None
+                    print(f"⚠️ Skipped config '{getattr(config, '__name__', config)}' of {full_module_name}: it does not derive from BaseModel"
+                          + (f"; its registry entry '{config_name}' ({dropped.__name__}) is dropped too" if dropped is not None else ""))
 
-                    for key, cls in sub_registry.items():
-                        if issubclass(cls, self.expected_class):
-                            registry[key] = cls
-                            if self.verbose:
-                                print(f"  ✅ Registered: {key} ({cls.__name__})")
-                        else:
-                            if self.verbose:
-                                print(f"  ⚠️ Skipped '{key}'->'{cls.__name__}': Not a subclass of {self.expected_class.__name__}")
+                # a registry key and the "name" of its config are declared apart: a mismatch passed
+                # the configuration check and only failed at launch, on a KeyError of the registry
+                names = {get_name_value_if_literal(config) for config in configs_ok} - {None}
+                if names != set(sub_registry):
+                    raise PybiscusPluginError(
+                        f"{full_module_name}: registry keys and configuration names differ: "
+                        f"keys without a configuration {sorted(set(sub_registry) - names) or '—'}, "
+                        f"configurations without a key {sorted(names - set(sub_registry)) or '—'}"
+                    )
 
-                    if full_module_name.startswith("pybiscus."):
-                        origin_marker = "core"
-                    else:
-                        origin_marker = "plugin"
+                for key, cls in sub_registry.items():
+                    if not issubclass(cls, self.expected_class):
+                        if self.verbose:
+                            print(f"  ⚠️ Skipped '{key}'->'{cls.__name__}': Not a subclass of {self.expected_class.__name__}")
+                        continue
+                    # a second module with the same key replaced the first one silently
+                    if key in registry:
+                        raise PybiscusPluginError(
+                            f"registry key '{key}' ({self.expected_class.__name__}) declared by both "
+                            f"{registered_by[key]} and {full_module_name}"
+                        )
+                    registry[key] = cls
+                    registered_by[key] = full_module_name
+                    if self.verbose:
+                        print(f"  ✅ Registered: {key} ({cls.__name__})")
 
-                    # sanity check : filtering out classes not deriving from BaseModel
+                origin_marker = "core" if full_module_name.startswith("pybiscus.") else "plugin"
+                for config in configs_ok:
+                    setattr( config, 'PYBISCUS_MODULE_ORIGIN', origin_marker )
 
-                    configs_ok, configs_ko = partition( lambda config : issubclass(config, BaseModel), sub_configs )
+                # register correct classes
+                config_classes.extend(configs_ok)
 
-                    for config in configs_ok:
-                        setattr( config, 'PYBISCUS_MODULE_ORIGIN', origin_marker )
-
-                    # register correct classes
-                    config_classes.extend(configs_ok)
-
-                    # remove factory classes associated to bad config classes
-                    for config in configs_ko:
-                        print(f"⚠️ Skipped '{config.__name__}' as does not derive from BaseModel")
-                        config_name = get_name_value_if_literal(config)
-                        if config_name is not None:
-                            cls = registry.pop(config_name,None)
-                            print(f"  🗑️ Forget registry '{key}'->{cls.__name__}: associated config class is incorrect")
-
-                elif self.verbose:
-                    print(f"⚠️  No get_modules_and_configs() in {full_module_name}")
-                    print(f"🔍 Content of {full_module_name} :")
-                    for name in dir(mod):
-                        if not name.startswith("__"):
-                            attr = getattr(mod, name)
-                            print(f" - {name}: {type(attr)}")
-                            if inspect.isfunction(attr):
-                                print(f"   (function) {name}{inspect.signature(attr)}")
-                            elif inspect.isclass(attr):
-                                print(f"   (class) {name}")                    
-
+            except PybiscusPluginError:
+                raise
             except Exception as e:
-                if self.verbose:
-                    print(f"❌ Error loading {full_module_name}: {e}")
-                    raise
+                # raised whatever the verbosity: a quiet registry used to drop the module silently
+                raise PybiscusPluginError(f"cannot register {full_module_name}: {type(e).__name__}: {e}") from e
 
         config_union = (
             Annotated[Union[*config_classes], Field(discriminator="name")]

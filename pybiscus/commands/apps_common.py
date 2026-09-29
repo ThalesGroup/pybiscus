@@ -46,6 +46,12 @@ def load_config( config: Path ) -> DictConfig:
     return conf_loaded
 
 
+def _plugins_detail(message: str) -> None:
+    from pybiscus.plugin.pluginmanager import plugins_verbose
+    if plugins_verbose():
+        logm.interactiveConsole.log(message)
+
+
 def load_config_with_env(env_var: str, default: str) -> DictConfig:
     """
     Load configuration from multiple files specified in environment variable.
@@ -63,7 +69,7 @@ def load_config_with_env(env_var: str, default: str) -> DictConfig:
     # 2. Load and post-process each file
     def load_and_resolve_config(conf_path: Path) -> DictConfig:
         """Load a config file and resolve relative paths within it."""
-        logm.interactiveConsole.log(f"🔍 [plugins] Loading config: {conf_path}")
+        _plugins_detail(f"🔍 [plugins] Loading config: {conf_path}")
         
         # Ensure the config file exists
         if not conf_path.exists():
@@ -88,7 +94,7 @@ def load_config_with_env(env_var: str, default: str) -> DictConfig:
                             else:
                                 resolved_path = (current_base / original_path).resolve()
                             obj[key] = str(resolved_path)
-                            logm.interactiveConsole.log(f"🔍 [plugins] Resolved path: {val} => {obj[key]}")
+                            _plugins_detail(f"🔍 [plugins] Resolved path: {val} => {obj[key]}")
                     else:
                         # Recursively process nested structures
                         resolve_paths(val, current_base)
@@ -121,15 +127,15 @@ def load_config_with_env(env_var: str, default: str) -> DictConfig:
                             # Convert to regular lists, concatenate, then back to ListConfig
                             merged_list = list(merged_config[key]) + list(value)
                             merged_config[key] = OmegaConf.create(merged_list)
-                            logm.interactiveConsole.log(f"🔍 [plugins] Merged lists for key '{key}': {len(merged_config[key])} total items")
+                            _plugins_detail(f"🔍 [plugins] Merged lists for key '{key}': {len(merged_config[key])} total items")
                         else:
                             # For non-lists, use OmegaConf merge (replace behavior)
                             merged_config[key] = value
-                            logm.interactiveConsole.log(f"🔍 [plugins] Replaced key '{key}' with new value")
+                            _plugins_detail(f"🔍 [plugins] Replaced key '{key}' with new value")
                     else:
                         # Key doesn't exist in merged config, just add it
                         merged_config[key] = value
-                        logm.interactiveConsole.log(f"🔍 [plugins] Added new key '{key}'")
+                        _plugins_detail(f"🔍 [plugins] Added new key '{key}'")
         
         logm.interactiveConsole.log(f"✅ [plugins] Successfully loaded and merged {len(config_files)} config files")
         return merged_config
