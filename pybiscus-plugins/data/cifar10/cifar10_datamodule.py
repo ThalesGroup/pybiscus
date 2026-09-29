@@ -214,7 +214,7 @@ class CifarLightningDataModule(pl.LightningDataModule):
         """
 
         if stage == "fit" or stage is None:
-            train_full = CIFAR10( root=self.train.dir, train=True,  download=True, transform=self.transform,)
+            train_full = self.train_source()
             logm.console.log("x_train shape: ", train_full.data.shape)
 
             # print number of targets and  values targets
@@ -227,6 +227,10 @@ class CifarLightningDataModule(pl.LightningDataModule):
         if stage == "test" or stage is None:
             self.data_test  = CIFAR10( root=self.test.dir,  train=False, download=True, transform=self.transform,)
             logm.console.log("x_test shape", self.data_test.data.shape)
+
+    def train_source(self):
+        """the official train split, in which the partitions and indices files pick their examples"""
+        return CIFAR10( root=self.train.dir, train=True,  download=True, transform=self.transform,)
 
     @override
     def train_dataloader(self) -> DataLoader:

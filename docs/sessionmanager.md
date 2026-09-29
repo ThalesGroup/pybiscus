@@ -19,6 +19,11 @@ launch the session manager :
 
 connect to http://localhost:5555/pybiscus-session/manage
 
+The session configuration (server agent) has an optional `data_partition` block: when set, the
+manager shares the training data between the clients registered when the session is launched, each
+client getting its `partition_id` (its rank) and the number of partitions, locked in its form, along
+with a stable `cid` equal to that rank.
+
 The manager listens on 127.0.0.1 by default. When agents run on other hosts (they send it their
 registration and logs), start it with `--host 0.0.0.0` (or a given address), e.g.
 `launch/session/run_manager.sh --host 0.0.0.0`.

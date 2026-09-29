@@ -20,18 +20,33 @@ import pybiscus.core.pybiscus_logger as logm
 
 class PartitionScheme(str, Enum):
     # an Enum and not a Literal: the agent's form offers an Enum's values, a Literal's first only
-    iid = "iid"             # equal shares drawn at random
+    iid = "iid"               # equal shares drawn at random
+    dirichlet = "dirichlet"   # each class spread over the clients in proportions drawn from Dirichlet(alpha)
+    shards = "shards"         # examples sorted by class, cut in shards, a few shards per client
 
 
-class ConfigPartition(BaseModel):
+class ConfigPartitionScheme(BaseModel):
+    """how the training data is shared, the same for every client: seed: the same for every client,
+    so that the shares are disjoint without any coordination; alpha (dirichlet): the smaller, the
+    more each client is dominated by a few classes; min_partition_size (dirichlet): draws are
+    repeated until every share has at least this many examples; shards_per_partition (shards):
+    classes seen by a client, roughly"""
+
+    scheme: PartitionScheme = PartitionScheme.iid
+    seed: int = 42
+    alpha: float = Field(default=0.5, gt=0)
+    min_partition_size: int = Field(default=10, ge=0)
+    shards_per_partition: int = Field(default=2, ge=1)
+
+    model_config = ConfigDict(extra="forbid")
+
+
+class ConfigPartition(ConfigPartitionScheme):
     """num_partitions: number of clients sharing the training data; partition_id: this client's
-    share (0 .. num_partitions - 1); seed: the same for every client, so that the shares are
-    disjoint without any coordination"""
+    share (0 .. num_partitions - 1); in a session, the manager may set both"""
 
     num_partitions: int = Field(ge=1)
     partition_id: int = Field(ge=0)
-    scheme: PartitionScheme = PartitionScheme.iid
-    seed: int = 42
 
     model_config = ConfigDict(extra="forbid")
 
@@ -143,10 +158,49 @@ def read_indices(path: str) -> np.ndarray:
         return np.array([int(token) for token in f.read().split()], dtype=np.int64)
 
 
-def partition_indices(size: int, partition: ConfigPartition) -> np.ndarray:
-    # a Generator with an explicit seed draws the same permutation on every machine
-    permutation = np.random.default_rng(partition.seed).permutation(size)
-    return np.array_split(permutation, partition.num_partitions)[partition.partition_id]
+def labels_of(dataset: Dataset) -> np.ndarray:
+    # torchvision data sets expose their labels; a plugin whose data set does not can add .targets
+    targets = getattr(dataset, "targets", None)
+    if targets is None:
+        raise ValueError(f"{type(dataset).__name__} exposes no labels (.targets): only the iid partition applies")
+    return np.asarray(targets)
+
+
+def _dirichlet(labels: np.ndarray, p: ConfigPartition, rng) -> list[np.ndarray]:
+    # a draw may leave a share almost empty: drawn again, a bounded number of times
+    for _ in range(100):
+        shares = [[] for _ in range(p.num_partitions)]
+        for label in np.unique(labels):
+            members = rng.permutation(np.flatnonzero(labels == label))
+            proportions = rng.dirichlet(np.full(p.num_partitions, p.alpha))
+            cuts = (np.cumsum(proportions)[:-1] * len(members)).astype(int)
+            for share, part in zip(shares, np.split(members, cuts)):
+                share.extend(part.tolist())
+        if min(len(share) for share in shares) >= p.min_partition_size:
+            return [np.sort(np.array(share, dtype=np.int64)) for share in shares]
+    raise ValueError(f"dirichlet partition: no draw gave every share {p.min_partition_size} examples "
+                     f"(alpha {p.alpha}, {p.num_partitions} partitions): raise alpha or lower min_partition_size")
+
+
+def _shards(labels: np.ndarray, p: ConfigPartition, rng) -> list[np.ndarray]:
+    n_shards = p.num_partitions * p.shards_per_partition
+    if n_shards > len(labels):
+        raise ValueError(f"shards partition: {n_shards} shards for {len(labels)} examples")
+    # shuffled before the stable sort: the order within a class is random, not the storage one
+    shuffled = rng.permutation(len(labels))
+    by_class = shuffled[np.argsort(labels[shuffled], kind="stable")]
+    shards = np.array_split(by_class, n_shards)
+    order = rng.permutation(n_shards)
+    return [np.sort(np.concatenate([shards[k] for k in order[i::p.num_partitions]])) for i in range(p.num_partitions)]
+
+
+def all_partitions(train_full: Dataset, p: ConfigPartition) -> list[np.ndarray]:
+    # a Generator with an explicit seed draws the same shares on every machine
+    rng = np.random.default_rng(p.seed)
+    if p.scheme == PartitionScheme.iid:
+        return np.array_split(rng.permutation(len(train_full)), p.num_partitions)
+    labels = labels_of(train_full)
+    return (_dirichlet if p.scheme == PartitionScheme.dirichlet else _shards)(labels, p, rng)
 
 
 def holdout(indices: np.ndarray, fraction: float, seed: int) -> tuple[np.ndarray, np.ndarray]:
@@ -155,33 +209,37 @@ def holdout(indices: np.ndarray, fraction: float, seed: int) -> tuple[np.ndarray
     return np.sort(shuffled[n_val:]), np.sort(shuffled[:n_val])
 
 
-def train_and_val_sets(train_full: Dataset, official_val, train: ConfigTrainSet, val: ConfigValSet) -> tuple[Dataset, Dataset]:
-    """official_val: a callable returning the official test split, loaded only when used"""
+def split_indices(train_full: Dataset, train: ConfigTrainSet, val: ConfigValSet) -> tuple[Optional[np.ndarray], Optional[np.ndarray]]:
+    """indices of the training and validation examples in the official train split; None: all of
+    them for training, the official test split for validation"""
 
     if train.indices:
         base = read_indices(train.indices)
     elif train.partition is not None:
-        base = partition_indices(len(train_full), train.partition)
+        base = all_partitions(train_full, train.partition)[train.partition.partition_id]
     else:
         base = None
 
     if val.source == ValSource.official:
-        train_idx, val_set = base, official_val()
-    else:
-        pool = np.arange(len(train_full)) if base is None else base
-        if val.source == ValSource.holdout:
-            train_idx, val_idx = holdout(pool, val.fraction, val.seed)
-        else:
-            val_idx = read_indices(val.indices)
-            # without a train indices file, the validation examples are removed from the training ones
-            train_idx = base if train.indices else np.setdiff1d(pool, val_idx)
-        val_set = Subset(train_full, val_idx.tolist())
+        return base, None
+    pool = np.arange(len(train_full)) if base is None else base
+    if val.source == ValSource.holdout:
+        return holdout(pool, val.fraction, val.seed)
+    val_idx = read_indices(val.indices)
+    # without a train indices file, the validation examples are removed from the training ones
+    return (base if train.indices else np.setdiff1d(pool, val_idx)), val_idx
 
+
+def train_and_val_sets(train_full: Dataset, official_val, train: ConfigTrainSet, val: ConfigValSet) -> tuple[Dataset, Dataset]:
+    """official_val: a callable returning the official test split, loaded only when used"""
+
+    train_idx, val_idx = split_indices(train_full, train, val)
     train_set = train_full if train_idx is None else Subset(train_full, np.asarray(train_idx).tolist())
+    val_set = official_val() if val_idx is None else Subset(train_full, val_idx.tolist())
     partition = train.partition
     logm.console.log(f"data: {len(train_set)} training examples, {len(val_set)} validation examples "
                      f"(validation: {val.source.value}"
-                     + (f", partition {partition.partition_id + 1}/{partition.num_partitions}" if partition else "") + ")")
+                     + (f", partition {partition.partition_id + 1}/{partition.num_partitions} {partition.scheme.value}" if partition else "") + ")")
     return train_set, val_set
 
 

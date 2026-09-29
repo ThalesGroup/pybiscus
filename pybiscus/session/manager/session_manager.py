@@ -17,6 +17,10 @@ manager_port = None
 session_is_running = False
 agent_gui_json_presets = None
 session_client_id_counter = -1
+# clients registered when the session was launched: their rank is their cid and partition_id, stable
+# whatever the number of polls of their waiting page
+session_clients = []
+late_client_cids = {}         # name -> cid of the clients registered after the launch
 
 def clear_session():
     global registered_clients
@@ -34,6 +38,10 @@ def clear_session():
     agent_gui_json_presets = None
     global session_client_id_counter
     session_client_id_counter = -1
+    global session_clients
+    session_clients = []
+    global late_client_cids
+    late_client_cids = {}
 
 def generate_new_cid():
     global session_client_id_counter

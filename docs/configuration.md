@@ -95,6 +95,15 @@ set is shuffled and drops its last incomplete batch, the evaluation sets do neit
 takes a `seed` (order of the batches) and an `indices` file (example indices to train on);
 `val` with `source: indices` takes an `indices` file.
 
+`train.partition.scheme` chooses how the training data is shared between the clients:
+`iid` (equal random shares), `dirichlet` (each class spread in proportions drawn from a
+Dirichlet(`alpha`) distribution: the smaller `alpha`, the more each client is dominated by a few
+classes) or `shards` (examples sorted by class and cut in shards, `shards_per_partition` per
+client). The same `seed` on every client gives disjoint shares without coordination.
+`pybiscus data partition <client config> [--export <dir>]` shows every client's share and can write
+their example indices (`client_<i>_train.txt`, `client_<i>_val.txt`), usable as `train.indices` /
+`val.indices`.
+
 ### Strategy
 
 ```yaml

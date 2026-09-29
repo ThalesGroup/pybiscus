@@ -1,3 +1,4 @@
+import copy
 import os
 import glob
 import json
@@ -49,6 +50,9 @@ def pybiscus_manager_run_session():
 
     else:
         print("/pybiscus-session/run with no param")
+
+    # the clients taking part: their order gives their cid and their share of the data
+    pybiscus.session.manager.session_manager.session_clients = list(pybiscus.session.manager.session_manager.registered_clients)
 
     # set the session running flag
     pybiscus.session.manager.session_manager.session_is_running = True
@@ -146,10 +150,42 @@ def pybiscus_manager_get_session_params():
     if not pybiscus.session.manager.session_manager.session_is_running:
         return jsonify({"status": "error", "message": "session is not running yet"})
 
-    custom_presets = pybiscus.session.manager.session_manager.agent_gui_json_presets.copy()
+    session = pybiscus.session.manager.session_manager
+    # a deep copy: the shallow one let "values_lock +=" extend the shared presets at every call
+    custom_presets = copy.deepcopy(session.agent_gui_json_presets) or {}
+    for key, empty in (("options_set", {}), ("options_lock", []), ("values_set", {}), ("values_lock", [])):
+        custom_presets.setdefault(key, empty)
+    data_partition = custom_presets.pop("data_partition", None)
 
-    custom_presets["values_set"]["client_run.cid"] = generate_new_cid();
-    custom_presets["values_lock"] += [ "client_run.cid" ]    
+    # each call used to take a new cid: the server's page and every reload consumed one, and the
+    # cids of the clients were neither consecutive nor stable. Pages name their agent now.
+    agent = request.args.get("agent")
+    index = None
+    if agent is None:
+        cid = generate_new_cid()
+    elif agent in session.registered_servers:
+        cid = None
+    elif agent in session.session_clients:
+        index = session.session_clients.index(agent)
+        cid = str(index)
+    else:
+        cid = session.late_client_cids.setdefault(agent, str(len(session.session_clients) + len(session.late_client_cids)))
+        if data_partition:
+            logm.console.log(f"⚠️ {agent} registered after the session launch: it gets no share of the data partition")
+
+    if cid is not None:
+        custom_presets["values_set"]["client_run.cid"] = cid
+        custom_presets["values_lock"].append("client_run.cid")
+
+    if data_partition and index is not None:
+        prefix = "data.config.train.partition"
+        # " " selects Some for an Optional[T] (see set_option)
+        custom_presets["options_set"][prefix] = " "
+        custom_presets["options_lock"].append(prefix)
+        values = {**data_partition, "num_partitions": len(session.session_clients), "partition_id": index}
+        for name, value in values.items():
+            custom_presets["values_set"][f"{prefix}.{name}"] = value
+            custom_presets["values_lock"].append(f"{prefix}.{name}")
 
     first_server_item = next(iter(pybiscus.session.manager.session_manager.registered_servers.items()))
     _, server_url = first_server_item

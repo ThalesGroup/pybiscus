@@ -1,4 +1,6 @@
 
+import urllib.parse
+
 from flask import jsonify, redirect, render_template, request
 from pybiscus.session.agent.pybiscus_agent import reset_registration, reset_session, rest_server
 import pybiscus.session.agent.pybiscus_agent as pybagent
@@ -18,6 +20,8 @@ def session_registration_waiting():
 
     manager_url = pybagent.registration_parameters['manager_url']
     role        = pybagent.registration_parameters['role']
+    # the manager gives each client a stable cid and its share of the data from the agent's name
+    agent_query = urllib.parse.quote(str(pybagent.registration_parameters.get('name', '')))
 
     return render_template( 'session_agent_waiting.html',
                            state = 'Connecting to session',
@@ -53,7 +57,7 @@ def session_registration_waiting():
         }}
                                    
         function pollSessionParams(interval = 2000) {{
-            fetch('{manager_url}/pybiscus-session/params')
+            fetch('{manager_url}/pybiscus-session/params?agent={agent_query}')
                 .then(res => {{
                     if (!res.ok) {{
                         return res.json().then(err => {{

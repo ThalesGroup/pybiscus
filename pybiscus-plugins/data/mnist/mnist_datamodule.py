@@ -78,12 +78,7 @@ class MnistLitDataModule(pl.LightningDataModule):
 
     def setup(self, stage: Optional[str] = None):
         if stage == "fit" or stage is None:
-            train_full = MNIST(
-                root=self.train.dir,
-                train=True,
-                download=True,
-                transform=self.transform,
-            )
+            train_full = self.train_source()
             official_val = lambda: MNIST(
                 root=self.val.dir,
                 train=False,
@@ -99,6 +94,10 @@ class MnistLitDataModule(pl.LightningDataModule):
                 download=True,
                 transform=self.transform,
             )
+
+    def train_source(self):
+        """the official train split, in which the partitions and indices files pick their examples"""
+        return MNIST(root=self.train.dir, train=True, download=True, transform=self.transform)
 
     def train_dataloader(self):
         return make_loader(self.data_train, self.train, self.num_workers)

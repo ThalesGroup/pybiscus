@@ -282,9 +282,25 @@
 
     {{ buttons_js | safe }}
 
+    // several options of a union share their fields' names (cifar's and mnist's data.config.train…):
+    // a preset targets the element on the selected path, not merely the first one of the page.
+    // Optional[T] contents do not count: a preset may select Some and set its fields at once
+    function inSelectedPath(el) {
+        if (el.closest('.pybiscus-list-template')) return false;
+        for (let c = el.closest('.pybiscus-tab-content'); c; c = c.parentElement.closest('.pybiscus-tab-content')) {
+            const union = c.closest('.pybiscus-fieldset-container');
+            if (union && !union.classList.contains('pybiscus-option-fs') && !c.classList.contains('active')) return false;
+        }
+        return true;
+    }
+    function presetTarget(selector) {
+        const all = [...document.querySelectorAll(selector)];
+        return all.find(inSelectedPath) || all[0] || null;
+    }
+
     function set_option(prefix, value) {
 
-        const fieldset = document.querySelector(`.pybiscus-fieldset-container[data-pybiscus-prefix="${prefix}"]`);
+        const fieldset = presetTarget(`.pybiscus-fieldset-container[data-pybiscus-prefix="${prefix}"]`);
         if (!fieldset) {
             console.error('fieldset not found : ', prefix)
             return;
@@ -348,7 +364,7 @@
     }
 
     function lock_option( option ) {
-    	const fieldset = document.querySelector(`.pybiscus-fieldset-container[data-pybiscus-prefix="${option}"] `);
+    	const fieldset = presetTarget(`.pybiscus-fieldset-container[data-pybiscus-prefix="${option}"]`);
 	    if (!fieldset) {
 		    console.error("lock_option : fieldset not found ! ", option );
 		    return;
@@ -358,9 +374,12 @@
     }
  
      
+    // the radio buttons of an enum share one data-pybiscus-name: the one of the value is checked
+    const radioGroup = element => [...document.querySelectorAll(`input[type=radio][name="${element.name}"]`)];
+
     function set_value(data_pybiscus_name, value) {
 
-        const element = document.querySelector(`[data-pybiscus-name="${data_pybiscus_name}"]`);
+        const element = presetTarget(`[data-pybiscus-name="${data_pybiscus_name}"]`);
         if (!element) {
             console.error("set_value : value not found = ", data_pybiscus_name);
             return;
@@ -368,7 +387,12 @@
 
         if( element.tagName === "INPUT" ) {
             console.log( `set_value: ${data_pybiscus_name} = ${value}` );
-            if( element.type === "checkbox" ) {
+            if( element.type === "radio" ) {
+                radioGroup(element).forEach(radio => {
+                    radio.checked = radio.value === String(value);
+                    radio.parentElement.setAttribute('data-pybiscus-status', radio.checked ? 'valid' : 'ignored');
+                });
+            } else if( element.type === "checkbox" ) {
                 element.checked = JSON.parse(value);
             } else if( element.type === "text" ) {
                 element.value = value;
@@ -388,12 +412,16 @@
 
     function lock_value(data_pybiscus_name) {
 
-        const input = document.querySelector(`[data-pybiscus-name="${data_pybiscus_name}"]`);
+        const input = presetTarget(`[data-pybiscus-name="${data_pybiscus_name}"]`);
         if (!input) {
             console.error("lock_value : value not found = ", data_pybiscus_name);
             return;
         }
 
+        if (input.type === "radio") {
+            // readOnly does not apply to radio buttons: the other values are disabled
+            radioGroup(input).forEach(radio => { radio.disabled = !radio.checked; });
+        }
         input.readOnly = true;
 
         const label = input.previousElementSibling;

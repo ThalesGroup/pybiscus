@@ -3,6 +3,7 @@ from trogon import Trogon
 from typer.main import get_group
 
 import pybiscus.commands.app_client as client
+import pybiscus.commands.app_data as data
 import pybiscus.commands.app_local as local_train
 import pybiscus.commands.app_server as server
 
@@ -10,6 +11,7 @@ app = typer.Typer(pretty_exceptions_show_locals=False, rich_markup_mode="rich")
 app.add_typer(server.app, name="server")
 app.add_typer(client.app, name="client")
 app.add_typer(local_train.app, name="local")
+app.add_typer(data.app, name="data")
 
 
 @app.command()
@@ -21,13 +23,15 @@ def tui(ctx: typer.Context):
 def explain():
     """
 
-    **The Pybiscus app is made of three commands:**
+    **The Pybiscus app is made of four commands:**
 
     * server: to launch a server for a Federated Learning session.
 
     * client: to launch a client for a Federated Learning session.
 
     * local: to train locally a model.
+
+    * data: to inspect or export how the data is partitioned between the clients.
 
     ---
 

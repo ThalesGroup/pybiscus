@@ -1,7 +1,9 @@
 
 from enum import Enum
 from pydantic import BaseModel, ConfigDict
-from typing import Annotated, ClassVar, Union, get_args
+from typing import Annotated, ClassVar, Optional, Union, get_args
+
+from pybiscus.ml.datasplit import ConfigPartitionScheme
 
 class FlowerServerConfiguration(BaseModel):
 
@@ -40,5 +42,8 @@ def make_session_model(models: list[str], models_confs, data: list[str], data_co
         flower_server: FlowerServerConfiguration
         model:         enum_model = next(iter(enum_model))     # pyright: ignore[reportInvalidTypeForm]
         data:          enum_data  = next(iter(enum_data))      # pyright: ignore[reportInvalidTypeForm]
+        # shares the training data between the clients registered when the session is launched:
+        # the manager gives each one its partition_id (and the number of partitions)
+        data_partition: Optional[ConfigPartitionScheme] = None
 
     return ConfigSession
