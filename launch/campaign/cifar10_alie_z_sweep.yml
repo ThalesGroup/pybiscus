@@ -1,0 +1,101 @@
+# Campaign of launch/campaign/strategy_campaign.py: ALIE's z swept (1, 2, 4, 8; the paper's value
+# for 2 colluders of 7 is 0.57, cifar10_alie_dirichlet.yml): the larger z, the more the colluders'
+# common update departs from the honest mean, the more harm and the more visible. Where does an
+# attack harm without being clipped or rejected? Dirichlet 0.5 shares, cifar10, 7 clients.
+#   uv run python launch/campaign/strategy_campaign.py launch/campaign/cifar10_alie_z_sweep.yml
+# Attackers: the byzantine client plugin (test manifest only), clients 0 and 1.
+# Each client trains on its whole share (about 7 100 images), 3 local epochs: with 3000 images
+# and 1 epoch, FedAvg without attacker stayed at chance (0.107 after 5 rounds) and no strategy
+# could be told apart. About 16 minutes; do not run it next to a live session.
+
+server_config: configs/cifar10_cnn/distributed/without_ssl/server.yml
+client_config: configs/cifar10_cnn/distributed/without_ssl/client_1.yml
+output: experiments/campaigns
+plugin_manifests: [launch/campaign/test-plugins-conf.yml]
+
+clients: 7
+rounds: 5
+local_epochs: 3
+port: 3399                 # the Flower server of each run: must be free
+threads_per_client: auto   # physical cores / clients
+timeout: 1800              # seconds per run
+
+client_data:
+  train:
+    partition:
+      scheme: dirichlet
+      alpha: 0.5
+      seed: 42
+  val:
+    source: holdout
+    fraction: 0.1
+
+server_data:
+  test:
+    max_samples: 2000
+
+variants:
+  - label: FedAvg, ALIE z 1.0
+    strategy: {name: fedavggeneric, config: {}}
+    client_overrides:
+      0: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: alie, colluders: 2, num_clients: 7, z: 1.0, shared_dir: "{work}/alie"}}}}
+      1: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: alie, colluders: 2, num_clients: 7, z: 1.0, shared_dir: "{work}/alie"}}}}
+  - label: FedAvg + clipping x1.5 reject x3, ALIE z 1.0
+    strategy: {name: fedavggeneric, config: {}}
+    pipeline: [{name: clipping, config: {mode: median, median_factor: 1.5, reject_factor: 3.0}}]
+    client_overrides:
+      0: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: alie, colluders: 2, num_clients: 7, z: 1.0, shared_dir: "{work}/alie"}}}}
+      1: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: alie, colluders: 2, num_clients: 7, z: 1.0, shared_dir: "{work}/alie"}}}}
+  - label: Bulyan f 1, ALIE z 1.0
+    strategy: {name: bulyan, config: {num_malicious_clients: 1}}
+    client_overrides:
+      0: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: alie, colluders: 2, num_clients: 7, z: 1.0, shared_dir: "{work}/alie"}}}}
+      1: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: alie, colluders: 2, num_clients: 7, z: 1.0, shared_dir: "{work}/alie"}}}}
+  - label: FedAvg, ALIE z 2.0
+    strategy: {name: fedavggeneric, config: {}}
+    client_overrides:
+      0: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: alie, colluders: 2, num_clients: 7, z: 2.0, shared_dir: "{work}/alie"}}}}
+      1: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: alie, colluders: 2, num_clients: 7, z: 2.0, shared_dir: "{work}/alie"}}}}
+  - label: FedAvg + clipping x1.5 reject x3, ALIE z 2.0
+    strategy: {name: fedavggeneric, config: {}}
+    pipeline: [{name: clipping, config: {mode: median, median_factor: 1.5, reject_factor: 3.0}}]
+    client_overrides:
+      0: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: alie, colluders: 2, num_clients: 7, z: 2.0, shared_dir: "{work}/alie"}}}}
+      1: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: alie, colluders: 2, num_clients: 7, z: 2.0, shared_dir: "{work}/alie"}}}}
+  - label: Bulyan f 1, ALIE z 2.0
+    strategy: {name: bulyan, config: {num_malicious_clients: 1}}
+    client_overrides:
+      0: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: alie, colluders: 2, num_clients: 7, z: 2.0, shared_dir: "{work}/alie"}}}}
+      1: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: alie, colluders: 2, num_clients: 7, z: 2.0, shared_dir: "{work}/alie"}}}}
+  - label: FedAvg, ALIE z 4.0
+    strategy: {name: fedavggeneric, config: {}}
+    client_overrides:
+      0: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: alie, colluders: 2, num_clients: 7, z: 4.0, shared_dir: "{work}/alie"}}}}
+      1: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: alie, colluders: 2, num_clients: 7, z: 4.0, shared_dir: "{work}/alie"}}}}
+  - label: FedAvg + clipping x1.5 reject x3, ALIE z 4.0
+    strategy: {name: fedavggeneric, config: {}}
+    pipeline: [{name: clipping, config: {mode: median, median_factor: 1.5, reject_factor: 3.0}}]
+    client_overrides:
+      0: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: alie, colluders: 2, num_clients: 7, z: 4.0, shared_dir: "{work}/alie"}}}}
+      1: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: alie, colluders: 2, num_clients: 7, z: 4.0, shared_dir: "{work}/alie"}}}}
+  - label: Bulyan f 1, ALIE z 4.0
+    strategy: {name: bulyan, config: {num_malicious_clients: 1}}
+    client_overrides:
+      0: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: alie, colluders: 2, num_clients: 7, z: 4.0, shared_dir: "{work}/alie"}}}}
+      1: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: alie, colluders: 2, num_clients: 7, z: 4.0, shared_dir: "{work}/alie"}}}}
+  - label: FedAvg, ALIE z 8.0
+    strategy: {name: fedavggeneric, config: {}}
+    client_overrides:
+      0: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: alie, colluders: 2, num_clients: 7, z: 8.0, shared_dir: "{work}/alie"}}}}
+      1: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: alie, colluders: 2, num_clients: 7, z: 8.0, shared_dir: "{work}/alie"}}}}
+  - label: FedAvg + clipping x1.5 reject x3, ALIE z 8.0
+    strategy: {name: fedavggeneric, config: {}}
+    pipeline: [{name: clipping, config: {mode: median, median_factor: 1.5, reject_factor: 3.0}}]
+    client_overrides:
+      0: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: alie, colluders: 2, num_clients: 7, z: 8.0, shared_dir: "{work}/alie"}}}}
+      1: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: alie, colluders: 2, num_clients: 7, z: 8.0, shared_dir: "{work}/alie"}}}}
+  - label: Bulyan f 1, ALIE z 8.0
+    strategy: {name: bulyan, config: {num_malicious_clients: 1}}
+    client_overrides:
+      0: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: alie, colluders: 2, num_clients: 7, z: 8.0, shared_dir: "{work}/alie"}}}}
+      1: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: alie, colluders: 2, num_clients: 7, z: 8.0, shared_dir: "{work}/alie"}}}}

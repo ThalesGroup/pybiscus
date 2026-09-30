@@ -192,3 +192,25 @@ send mean - z x deviation; z comes from the number of clients and of colluders
   mean is itself an honest average and the deviation small, so what they send is nearly honest.
   The damage reported by the paper comes from attackers who know the honest distribution, or from
   a larger z; neither is tested yet.
+
+### Sweeping z
+
+The larger z, the further the colluders' common update from the honest mean: more harm, more
+visible (`launch/campaign/cifar10_alie_z_sweep.yml`, 2 ALIE attackers of 7, dirichlet shares):
+
+| defense | no attacker | z 1 | z 2 | z 4 | z 8 |
+|---|---|---|---|---|---|
+| FedAvg | 0.398 | 0.374 | 0.379 | 0.310 | 0.135 |
+| clipping x 1.5, reject x 3 | 0.395 | 0.374 | 0.358 | 0.342 | 0.347 |
+| Bulyan, f 1 | 0.333 | 0.350 | 0.294 | 0.274 | 0.308 |
+
+Attackers' norm / median ratio under the clipping defense: about 1.0 (z 1), 1.2 (z 2, neither
+clipped nor rejected), 1.8 (z 4, clipped every round), 4 (z 8, rejected every round).
+
+- Undefended FedAvg loses 9 points at z 4 and collapses at z 8.
+- The clipping defense stays the most accurate at every z. Its blind spot is around z 2: a ratio of
+  1.2 is below the clipping threshold, and the bias passes whole (about 4 points, single run: at
+  the edge of the run-to-run noise). Beyond, the attack is clipped, then rejected.
+- Lowering `median_factor` to catch it would clip honest clients too (their ratio reaches 1.5 on
+  these shares): the defense trades accuracy without attack against this margin.
+- Bulyan loses 4 to 6 points at z 2 to 4, from a lower start.
