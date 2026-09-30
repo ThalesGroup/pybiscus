@@ -1,0 +1,37 @@
+root_dir: ${oc.env:PWD}
+flower_client:
+  server_address: localhost:3333
+client_run:
+  cid: '0'
+  pre_train_val: false
+client_compute_context:
+  hardware:
+    accelerator: cpu
+    devices: auto
+model:
+  name: cifar
+  config:
+    input_shape: '3'
+    mid_shape: '6'
+    n_classes: '10'
+    lr: '0.001'
+data:
+  name: cifar
+  config:
+    # each client trains on its own half of the official train split and validates on a tenth of
+    # that half: the official test split stays held out (the server evaluates on it)
+    train:
+      dir: ${root_dir}/datasets/train/
+      batch_size: 32
+      partition:
+        num_partitions: 2
+        partition_id: 0
+        seed: 42
+    val:
+      source: holdout
+      dir: ${root_dir}/datasets/val/
+      fraction: 0.1
+      batch_size: 32
+    test:
+      dir: ${root_dir}/datasets/test/
+    num_workers: 0
