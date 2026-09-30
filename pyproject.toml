@@ -3,7 +3,7 @@ name = "pybiscus"
 version = "0.6.0"
 description = "A flexible Federated Learning framework"
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.12"
 authors = [
     {name = "Baptiste MORISSE", email = "baptiste.morisse@thalesgroup.com"},
     {name = "Laurent Morel", email = "laurent.morel@thalesgroup.com"},
