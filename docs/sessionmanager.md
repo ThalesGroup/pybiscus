@@ -28,7 +28,9 @@ with a stable `cid` equal to that rank.
 Its `share_cpu_threads` setting (on by default) shares the CPU of each machine between the clients
 running on it: each agent tells the manager its machine and number of physical cores when it
 registers, and each client gets `client_compute_context.num_threads` = cores / clients on its
-machine (still editable in its form). Without it, every PyTorch client takes all the cores: three
+machine (still editable in its form). The server gets none, since it never computes at the same
+time as the clients; with several sessions on one machine, set `server_compute_context.num_threads`
+by hand (see [CPU threads](configuration.md#cpu-threads)). Without it, every PyTorch client takes all the cores: three
 cifar10 clients on a 14-core machine took 233 s per round instead of 20 s.
 
 The manager listens on 127.0.0.1 by default. When agents run on other hosts (they send it their

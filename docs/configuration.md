@@ -146,6 +146,22 @@ CPU threads of PyTorch (`torch.set_num_threads`). Unset, each process takes ever
 which makes several clients on one machine wait for each other: give each one about
 cores / clients. In a session, the manager sets it for the clients (see the session manager doc).
 
+The server needs no share of its own within a session: it computes (aggregation, global
+evaluation) while the clients wait for the next round, and the clients train while it waits, so
+it can take every core even on the clients' machine. The manager therefore leaves
+`server_compute_context.num_threads` unset. Set it when something else keeps computing on the
+server's machine at the same time: several sessions sharing it, or another job. Give it the
+cores left to this session:
+
+```yaml
+server_compute_context:
+  hardware:
+    accelerator: cpu
+    devices: auto
+  metrics_loggers: []
+  num_threads: 7   # two sessions on a 14-core machine
+```
+
 ### Optimizer state between rounds
 
 `client_run.optimizer_state` (`reset` by default, or `keep`): with `reset`, the client creates its

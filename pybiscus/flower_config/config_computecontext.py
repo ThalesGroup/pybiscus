@@ -10,7 +10,8 @@ class ConfigServerComputeContext(BaseModel):
 
     hardware: ConfigHardware
     metrics_loggers: list[MetricsLoggerConfig()] # pyright: ignore[reportInvalidTypeForm]
-    # PyTorch's CPU threads (all the physical cores if unset)
+    # PyTorch's CPU threads (all the physical cores if unset); never set by the manager: the
+    # server computes while its clients wait, it only competes with other sessions or jobs
     num_threads: Optional[int] = Field(default=None, ge=1)
 
     model_config = ConfigDict(extra="forbid")
