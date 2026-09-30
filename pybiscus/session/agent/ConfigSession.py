@@ -4,6 +4,7 @@ from pydantic import BaseModel, ConfigDict
 from typing import Annotated, ClassVar, Optional, Union, get_args
 
 from pybiscus.ml.datasplit import ConfigPartitionScheme
+from pybiscus.plugin.registryloader import get_name_value_if_literal
 
 class FlowerServerConfiguration(BaseModel):
 
@@ -24,18 +25,33 @@ class FlowerServerConfiguration(BaseModel):
     
     model_config = ConfigDict(extra="forbid")
     
+def session_choices(names: list[str], confs) -> dict[str, str]:
+    """registry name -> label shown in the session form, for each registered plugin"""
+
+    union_type, *metadata = get_args(confs)
+    # a union of a single config collapses to that config
+    types = get_args(union_type) or (union_type,)
+    # each config labelled by its own name: pairing the registry's names with the labels of the
+    # configs that declare one shifted every label after a config without PYBISCUS_ALIAS
+    labels = {}
+    for conf in types:
+        name = get_name_value_if_literal(conf)
+        labels[name] = getattr(conf, "PYBISCUS_ALIAS", name)
+
+    choices = {}
+    for name in names:
+        label = labels.get(name, name)
+        # an Enum turns a repeated value into an alias of the first member: that option vanished
+        if label in choices.values():
+            label = f"{label} ({name})"
+        choices[name] = label
+    return choices
+
+
 def make_session_model(models: list[str], models_confs, data: list[str], data_confs):
 
-    union_type, *metadata = get_args(models_confs)
-    models_types  = get_args(union_type)
-    models_labels = [m.PYBISCUS_ALIAS for m in models_types if hasattr(m, 'PYBISCUS_ALIAS')]
-
-    union_type, *metadata = get_args(data_confs)
-    data_types  = get_args(union_type)
-    data_labels = [d.PYBISCUS_ALIAS for d in data_types if hasattr(d, 'PYBISCUS_ALIAS')]
-
-    enum_model = Enum("SessionModel", {k: v for k,v in zip(models, models_labels)}, type=str)
-    enum_data  = Enum("SessionData",  {k: v for k,v in zip(data, data_labels)},     type=str)
+    enum_model = Enum("SessionModel", session_choices(models, models_confs), type=str)
+    enum_data  = Enum("SessionData",  session_choices(data, data_confs),     type=str)
 
     class ConfigSession(BaseModel):
 
