@@ -75,3 +75,30 @@ different from one another, and a robust aggregation may discard them as outlier
   0.28 against 0.33 to 0.38): the honest spread hides the attacker less clearly.
 - Bulyan offers the best balance here. Single runs: differences of a few points are within the
   run-to-run noise.
+
+## Norm clipping: FedAvg with bounded updates
+
+Bounding the norm of each client's update before the mean keeps FedAvg's accuracy while limiting
+what one client can do. `serverdpfixed` with `noise_multiplier: 0` does exactly that (clipping of
+`w_client - w_global` to `clipping_norm`, no noise); its log's `dp_clipped_fraction` shows how many
+clients get clipped (`launch/campaign/cifar10_clipping_dirichlet.yml`, same dirichlet shares and
+attacker as above):
+
+| variant | no attacker | 1 attacker | clients clipped per round |
+|---|---|---|---|
+| FedAvg, no clipping | 0.398 | 0.102 | — |
+| C = 0.5 | 0.264 | 0.170 | all: honest updates are bridled too |
+| C = 1 | 0.373 | 0.287 | 86 % at first, then 29 % |
+| C = 2 | 0.387 | 0.284 | the attacker only (1 of 7) |
+| Bulyan, f 1 (for comparison) | 0.333 | 0.348 | — |
+
+- Just above the size of the honest updates (C = 2 here), clipping costs one point without
+  attacker — against 6.5 for Bulyan and 12 for Krum — and prevents FedAvg's collapse; under attack
+  it stays below Bulyan. The size of an honest update can be read from `weight_drift` (strategy
+  `fedprox` with `proximal_mu: 0`) or from `dp_clipped_fraction`.
+- **Adaptive clipping does not track its target**: with Flower's
+  `DifferentialPrivacyServerSideAdaptiveClipping` (behind `serverdpadaptive`), the clipping norm
+  moves away from `target_clipped_quantile`. Its update is `C *= exp(-lr * (clipped_fraction -
+  target))` where `clipped_fraction` counts the clipped updates: with 86 % clipped for a 50 %
+  target, C decreased every round (1, 0.90, 0.84, 0.78, 0.73). The rule of Andrew et al. counts the
+  unclipped ones. Until this is fixed, prefer a fixed `clipping_norm`.
