@@ -33,6 +33,16 @@ def deep_merge(base: dict, extra: dict) -> dict:
     return merged
 
 
+def with_work(obj, work: Path):
+    """"{work}" in the strings of obj replaced by the variant's directory: a directory of its own
+    (the colluders' shared one, for instance) without files left by an earlier run"""
+    if isinstance(obj, dict):
+        return {k: with_work(v, work) for k, v in obj.items()}
+    if isinstance(obj, list):
+        return [with_work(v, work) for v in obj]
+    return obj.replace("{work}", str(work)) if isinstance(obj, str) else obj
+
+
 def port_is_free(port: int) -> bool:
     for family, host in ((socket.AF_INET, "127.0.0.1"), (socket.AF_INET6, "::1")):
         with socket.socket(family, socket.SOCK_STREAM) as s:
@@ -114,7 +124,7 @@ def run_variant(campaign: dict, variant: dict, out: Path) -> dict:
             partition.update({"num_partitions": clients, "partition_id": i})
         client["data"]["config"] = data
         # merged last: a variant may change one client only (a malicious one, for instance)
-        overrides = {int(k): v for k, v in (variant.get("client_overrides") or {}).items()}
+        overrides = {int(k): with_work(v, work.resolve()) for k, v in (variant.get("client_overrides") or {}).items()}
         client = deep_merge(client, overrides.get(i))
         OmegaConf.save(OmegaConf.create(client), work / f"client_{i}.yml")
 

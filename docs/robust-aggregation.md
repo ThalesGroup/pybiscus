@@ -161,8 +161,34 @@ Dirichlet shares, same attackers:
   images), attackers 7.7 and above: a threshold of 3 leaves a wide margin. An honest client with
   far more data or local steps than the others makes larger updates: check its `clip_ratio`
   before lowering the threshold. Attacks designed to stay close to the honest updates (ALIE)
-  pass under any such threshold; clipping still bounds them.
+  pass under any such threshold; clipping still bounds them (next section).
 
 **Choosing**: FedAvg + `clipping` (median x 1.5, reject x 3) resisted best here, at no cost without
 attacker, and names the suspects; Bulyan remains the choice against attackers that stay discreet
 (not tested yet), at the price of accuracy on heterogeneous data.
+
+## A discreet, colluding attack: ALIE
+
+`attack: alie` ("A Little Is Enough", Baruch et al., 2019): the `colluders` attackers pool their
+honest updates through `shared_dir` (one file per attacker and round, a `timeout` after which an
+attacker alone sends its honest update), estimate coordinate-wise their mean and deviation, and all
+send mean - z x deviation; z comes from the number of clients and of colluders
+(`num_clients`), or is forced (`z`). For 7 clients and 2 colluders, z = 0.57
+(`launch/campaign/cifar10_alie_dirichlet.yml`, dirichlet shares):
+
+| defense | no attacker | 2 ALIE attackers |
+|---|---|---|
+| FedAvg | 0.398 | 0.391 |
+| FedMedian | 0.366 | 0.370 |
+| FedTrimmedAvg, beta 0.2 | 0.355 | 0.383 |
+| Krum, f 1 | 0.281 | 0.297 |
+| Multi-Krum, f 1, keep 3 | 0.292 | 0.333 |
+| Bulyan, f 1 | 0.333 | 0.332 |
+| clipping x 1.5, reject x 3 | 0.395 | 0.391 |
+
+- The attack passes under the defenses: nothing clipped nor rejected, the attackers' norm ratio
+  about 1 (their common update often is the median one).
+- It does no measurable harm either: estimated from the colluders' two honest updates only, the
+  mean is itself an honest average and the deviation small, so what they send is nearly honest.
+  The damage reported by the paper comes from attackers who know the honest distribution, or from
+  a larger z; neither is tested yet.
