@@ -96,9 +96,19 @@ attacker as above):
   attacker — against 6.5 for Bulyan and 12 for Krum — and prevents FedAvg's collapse; under attack
   it stays below Bulyan. The size of an honest update can be read from `weight_drift` (strategy
   `fedprox` with `proximal_mu: 0`) or from `dp_clipped_fraction`.
-- **Adaptive clipping does not track its target**: with Flower's
-  `DifferentialPrivacyServerSideAdaptiveClipping` (behind `serverdpadaptive`), the clipping norm
-  moves away from `target_clipped_quantile`. Its update is `C *= exp(-lr * (clipped_fraction -
-  target))` where `clipped_fraction` counts the clipped updates: with 86 % clipped for a 50 %
-  target, C decreased every round (1, 0.90, 0.84, 0.78, 0.73). The rule of Andrew et al. counts the
-  unclipped ones. Until this is fixed, prefer a fixed `clipping_norm`.
+- **Adaptive clipping** (`serverdpadaptive`, `noise_multiplier: 0`, `target_clipped_quantile: 0.5`)
+  sets C by itself around the median of the update norms. Flower 1.27's
+  `DifferentialPrivacyServerSideAdaptiveClipping` moved C away from its target: it counts the
+  clipped updates in a rule written for the unclipped ones (`C *= exp(-lr * (clipped_fraction -
+  target))`), and C decreased every round while 86 % of the updates were clipped. It also noised
+  the aggregate with the next round's norm. Pybiscus uses a corrected subclass
+  (`CorrectedAdaptiveClipping`): C now rises to about 1.1 and the clipped fraction stays around
+  50 % (43 to 57 %).
+
+| adaptive clipping, dirichlet | no attacker | 1 attacker |
+|---|---|---|
+| Flower's rule | 0.364 | 0.284 |
+| corrected | 0.379 | 0.310 |
+
+  Corrected, it needs no C to choose, costs about 2 points without attacker, and resists better
+  than a fixed C under attack (single runs).

@@ -3,8 +3,10 @@ from typing import ClassVar, Literal, Optional
 
 import flwr as fl
 import numpy as np
-from flwr.common import parameters_to_ndarrays
-from flwr.common.differential_privacy import get_norm
+from flwr.common import ndarrays_to_parameters, parameters_to_ndarrays
+from flwr.common.differential_privacy import (
+    adaptive_clip_inputs_inplace, add_gaussian_noise_to_params, get_norm,
+)
 from flwr.server.strategy import (
     DifferentialPrivacyServerSideAdaptiveClipping,
     DifferentialPrivacyServerSideFixedClipping,
@@ -29,6 +31,35 @@ NOT_A_MEAN = (
     fl.server.strategy.FedOpt,
     fl.server.strategy.QFedAvg,
 )
+
+
+class CorrectedAdaptiveClipping(DifferentialPrivacyServerSideAdaptiveClipping):
+    """Flower's server-side adaptive clipping, with its clipping norm update and noise corrected"""
+
+    def aggregate_fit(self, server_round, results, failures):
+        if failures or not results:
+            return None, {}
+
+        clipping_norm = self.clipping_norm
+        clipped = 0
+        for _, res in results:
+            params = parameters_to_ndarrays(res.parameters)
+            update = [np.subtract(w, w0) for w, w0 in zip(params, self.current_round_params, strict=True)]
+            clipped += adaptive_clip_inputs_inplace(update, clipping_norm)
+            res.parameters = ndarrays_to_parameters([w0 + u for w0, u in zip(self.current_round_params, update)])
+
+        # Flower 1.27 counts the clipped updates, as target_clipped_quantile does, then moves the
+        # norm by exp(-lr * (clipped - target)): with more clipped than the target, the norm shrank
+        # and even more got clipped. More clipped than the target must raise it
+        noised_fraction = float(np.random.normal(clipped, self.clipped_count_stddev)) / len(results)
+        self.clipping_norm *= math.exp(self.clip_norm_lr * (noised_fraction - self.target_clipped_quantile))
+
+        aggregated, metrics = self.strategy.aggregate_fit(server_round, results, failures)
+        if aggregated:
+            # the noise matches the norm this round's updates were clipped to; Flower used the next
+            # round's, already updated
+            aggregated = add_gaussian_noise_to_params(aggregated, self.noise_multiplier, clipping_norm, self.num_sampled_clients)
+        return aggregated, metrics
 
 
 def innermost_strategy(strategy):
@@ -76,7 +107,8 @@ class ConfigServerDPFixedData(ConfigServerDPCommon):
 class ConfigServerDPAdaptiveData(ConfigServerDPCommon):
     """Central differential privacy with a clipping norm adapted every round so that about
     target_clipped_quantile of the clients get clipped, see
-    flwr.server.strategy.DifferentialPrivacyServerSideAdaptiveClipping. The count of clipped
+    flwr.server.strategy.DifferentialPrivacyServerSideAdaptiveClipping (norm update corrected:
+    CorrectedAdaptiveClipping). The count of clipped
     clients is noised too (clipped_count_stddev, num_sampled_clients / 20 if unset): Flower
     requires noise_multiplier < 2 * clipped_count_stddev."""
     initial_clipping_norm:   float = Field(default=0.1, gt=0)
@@ -202,7 +234,7 @@ class ServerDPFixedStrategyDecorator(ServerDPStrategyDecorator):
 
 class ServerDPAdaptiveStrategyDecorator(ServerDPStrategyDecorator):
     def make_wrapper(self, base_strategy, config):
-        return DifferentialPrivacyServerSideAdaptiveClipping(
+        return CorrectedAdaptiveClipping(
             base_strategy,
             noise_multiplier=config.noise_multiplier,
             num_sampled_clients=self.num_sampled_clients,
