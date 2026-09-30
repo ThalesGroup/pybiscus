@@ -395,6 +395,10 @@ class iSAIDLightningDataModule(pl.LightningDataModule):
             collate_fn=self.collate_fn
         )
 
+    def privacy_dataloader(self) -> Optional[DataLoader]:
+        """None without dir_privacy; its examples must be those the clients' indices files number"""
+        return self.privacy_set_dataloader
+
 
 def write_list_to_file(list_indices, output_path):
     L = [f"{d}\n" for d in list_indices]

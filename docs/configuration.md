@@ -104,6 +104,24 @@ client). The same `seed` on every client gives disjoint shares without coordinat
 their example indices (`client_<i>_train.txt`, `client_<i>_val.txt`), usable as `train.indices` /
 `val.indices`.
 
+An optional `privacy` section (cifar, mnist; server side) gives a privacy evaluation such as a
+membership inference attack the examples it attacks: the official train split, never shuffled
+nor truncated, so that its example *i* is the example *i* of the exported indices files — which
+say which client trained on it.
+
+```yaml
+    privacy:
+      dir: ${root_dir}/datasets/train/
+      batch_size: 32
+      max_samples: 1000      # optional: a fixed subset, drawn the same on every run
+```
+
+With `max_samples`, the subset keeps the original index of each example
+(`pybiscus.ml.datasplit.example_indices`). The server hands the loader to its plugins through
+`pybiscus_context[PRIVACY_SET]` (`pybiscus/core/pybiscuscontext.py`, which lists the context keys);
+a data plugin provides it with a `privacy_dataloader()` method returning `None` when unset. iSAID
+builds it from `dir_privacy`, whose examples must be the ones its indices files number.
+
 ### Strategy
 
 ```yaml

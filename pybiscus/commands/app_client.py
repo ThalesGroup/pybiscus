@@ -192,7 +192,7 @@ def launch_config(
 
     # expose client context
     import pybiscus.core.pybiscuscontext as pcpc
-    pcpc.pybiscus_context["model"] = model
+    pcpc.pybiscus_context[pcpc.MODEL] = model
 
     # load the client
     if conf.flower_client.alternate_client_class is None:
