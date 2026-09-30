@@ -5,7 +5,10 @@ import torchvision.transforms as transforms
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 from torchvision.datasets import MNIST
 
-from pybiscus.ml.datasplit import ConfigTestSet, ConfigTrainSet, ConfigValSet, limit, make_loader, reject_former_fields, train_and_val_sets
+from pybiscus.ml.datasplit import (
+    ConfigPrivacySet, ConfigTestSet, ConfigTrainSet, ConfigValSet, limit, make_loader, privacy_loader, privacy_set,
+    reject_former_fields, train_and_val_sets,
+)
 
 
 class MnistTrainSet(ConfigTrainSet):
@@ -23,6 +26,11 @@ class MnistTestSet(ConfigTestSet):
     batch_size: int = Field(default=64, ge=1)
 
 
+class MnistPrivacySet(ConfigPrivacySet):
+    dir: str = "${root_dir}/datasets/mnist/train/"
+    batch_size: int = Field(default=64, ge=1)
+
+
 class ConfigMnistData(BaseModel):
     """A Pydantic Model to validate the MnistLitDataModule config givent by the user.
 
@@ -34,6 +42,8 @@ class ConfigMnistData(BaseModel):
         the validation set: source (official test split, holdout, indices file), loader options
     test:
         the testing set (required for the server): directory, loader options
+    privacy:
+        optional, the examples a server-side privacy evaluation attacks (the train split)
     num_workers: int, optional
         the number of workers for the DataLoaders (default to 2)
     """
@@ -43,6 +53,7 @@ class ConfigMnistData(BaseModel):
     train: MnistTrainSet = MnistTrainSet()
     val: MnistValSet = MnistValSet()
     test: MnistTestSet = MnistTestSet()
+    privacy: Optional[MnistPrivacySet] = None
     num_workers: int = 2
 
     model_config = ConfigDict(extra="forbid")
@@ -64,7 +75,7 @@ class ConfigData_Mnist(BaseModel):
 
 
 class MnistLitDataModule(pl.LightningDataModule):
-    def __init__(self, train=None, val=None, test=None, num_workers: int = 2, **former_fields):
+    def __init__(self, train=None, val=None, test=None, privacy=None, num_workers: int = 2, **former_fields):
         super().__init__()
         # pybiscus local passes the YAML's sections unvalidated: validated here
         reject_former_fields(former_fields)
@@ -73,6 +84,8 @@ class MnistLitDataModule(pl.LightningDataModule):
         self.train = MnistTrainSet.model_validate(train or {})
         self.val = MnistValSet.model_validate(val or {})
         self.test = MnistTestSet.model_validate(test or {})
+        self.privacy = None if privacy is None else MnistPrivacySet.model_validate(privacy)
+        self.data_privacy = None
         self.num_workers = num_workers
         self.transform = transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.1307,), (0.3081,))]) # transforms.ToTensor()
 
@@ -94,10 +107,12 @@ class MnistLitDataModule(pl.LightningDataModule):
                 download=True,
                 transform=self.transform,
             ), self.test.max_samples)
+            if self.privacy is not None:
+                self.data_privacy = privacy_set(self.train_source(self.privacy.dir), self.privacy)
 
-    def train_source(self):
+    def train_source(self, dir=None):
         """the official train split, in which the partitions and indices files pick their examples"""
-        return MNIST(root=self.train.dir, train=True, download=True, transform=self.transform)
+        return MNIST(root=dir or self.train.dir, train=True, download=True, transform=self.transform)
 
     def train_dataloader(self):
         return make_loader(self.data_train, self.train, self.num_workers, order_seed=self.train.seed)
@@ -107,3 +122,9 @@ class MnistLitDataModule(pl.LightningDataModule):
 
     def test_dataloader(self):
         return make_loader(self.data_test, self.test, self.num_workers)
+
+    def privacy_dataloader(self):
+        """None without a privacy section"""
+        if self.data_privacy is None:
+            return None
+        return privacy_loader(self.data_privacy, self.privacy, self.num_workers)

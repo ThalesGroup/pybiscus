@@ -118,8 +118,8 @@ class ServerDPStrategyDecorator(StrategyDecorator):
         import pybiscus.core.pybiscuscontext as pcpc
 
         self.config = config
-        self.fabric = pcpc.pybiscus_context.get("fabric")
-        check_float_state(pcpc.pybiscus_context.get("model"))
+        self.fabric = pcpc.pybiscus_context.get(pcpc.FABRIC)
+        check_float_state(pcpc.pybiscus_context.get(pcpc.MODEL))
 
         inner = innermost_strategy(base_strategy)
         if isinstance(inner, NOT_A_MEAN):

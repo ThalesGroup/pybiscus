@@ -131,6 +131,22 @@ class ConfigTestSet(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
 
+class ConfigPrivacySet(BaseModel):
+    """examples whose membership a privacy evaluation (FedMIA, server side) attacks: the official
+    train split, in its order, so that its example i is example i of the partitions and indices
+    files (pybiscus data partition --export); dir: directory of the official train split;
+    max_samples: a fixed subset, whose original indices stay available (example_indices)"""
+
+    PYBISCUS_CONFIG: ClassVar[str] = "privacy"
+
+    dir: str
+    # no shuffle nor drop_last: the attack reports its results per position, for every example
+    batch_size: int = Field(default=32, ge=1)
+    max_samples: Optional[int] = Field(default=None, ge=1)
+
+    model_config = ConfigDict(extra="forbid")
+
+
 # the configurations written before the sections: say where each field went, instead of a bare
 # "extra inputs are not permitted"
 FORMER_FIELDS = {
@@ -278,3 +294,28 @@ def make_loader(dataset: Dataset, options, num_workers: int = 0, order_seed: Opt
         drop_last=options.drop_last,
         generator=generator,
     )
+
+
+def privacy_set(train_full: Dataset, privacy: ConfigPrivacySet) -> Dataset:
+    dataset = limit(train_full, privacy.max_samples)
+    logm.console.log(f"data: {len(dataset)} privacy examples, from the train split of {len(train_full)}")
+    return dataset
+
+
+def privacy_loader(dataset: Dataset, privacy: ConfigPrivacySet, num_workers: int = 0, collate_fn=None) -> DataLoader:
+    return DataLoader(
+        dataset,
+        batch_size=privacy.batch_size,
+        num_workers=num_workers,
+        shuffle=False,
+        drop_last=False,
+        collate_fn=collate_fn,
+    )
+
+
+def example_indices(dataset: Dataset) -> np.ndarray:
+    """index in the source split of each example of dataset, in order (a Subset keeps them)"""
+
+    if isinstance(dataset, Subset):
+        return example_indices(dataset.dataset)[np.asarray(dataset.indices)]
+    return np.arange(len(dataset))

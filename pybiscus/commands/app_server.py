@@ -295,9 +295,13 @@ def launch_config(
 
     # expose server context
     import pybiscus.core.pybiscuscontext as pcpc
-    pcpc.pybiscus_context["reporting_path"] = Path(reporting_path)
-    pcpc.pybiscus_context["model"] = model
-    pcpc.pybiscus_context["fabric"] = fabric
+    pcpc.pybiscus_context[pcpc.REPORTING_PATH] = Path(reporting_path)
+    pcpc.pybiscus_context[pcpc.MODEL] = model
+    pcpc.pybiscus_context[pcpc.FABRIC] = fabric
+    # a method returning None, not an attribute: a datamodule that always defines the attribute
+    # (as None) passed a hasattr test and crashed Fabric's setup
+    privacy_loader = data.privacy_dataloader() if hasattr(data, "privacy_dataloader") else None
+    pcpc.pybiscus_context[pcpc.PRIVACY_SET] = None if privacy_loader is None else fabric._setup_dataloader(privacy_loader)
 
     # chaining strategy decorators 
     for conf_decorator in conf.server_strategy.pipeline:
