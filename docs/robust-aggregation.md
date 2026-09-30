@@ -126,6 +126,7 @@ server_strategy:
     config:
       mode: median          # fixed (clipping_norm) | median (median_factor x the round's median norm)
       median_factor: 1.5
+      reject_factor: 3.0    # optional: left out of the round above 3 x the median norm
 ```
 
 - `median` sets C by itself every round, without lag, and a minority of clients cannot move the
@@ -144,13 +145,24 @@ Dirichlet shares, same attackers:
 | FedAvg | 0.398 | 0.102 | — |
 | clipping, median x 1.5 | 0.396 | 0.298 | 0.210 |
 | clipping, median x 2 | 0.389 | 0.266 | 0.091 |
+| clipping, median x 1.5, reject x 3 | 0.395 | 0.377 | 0.337 |
 | Bulyan, f 1 | 0.333 | 0.348 | — |
 
 - Without attacker, median x 1.5 costs nothing (one honest client clipped once in 5 rounds).
 - The attackers were exactly the clipped clients every round (`clip_ratio` about 9.2 against 1.0).
 - Clipping limits an attacker without removing it: its update, brought down to 1.5 times the
-  median, still pulls the wrong way. Under attack, Bulyan does better; with several attackers,
-  clipping alone does not hold.
+  median, still pulls the wrong way; with several attackers, clipping alone does not hold.
+- **Rejection** (`reject_factor`) leaves out of the round's aggregation the clients above
+  `reject_factor` x the median, and clips the others above `median_factor`: without attacker,
+  nobody was rejected; with one or two, exactly the attackers, every round. It never goes below
+  what the strategy needs to aggregate (Bulyan: 4f + 3 clients; `min_fit_clients` is how many to
+  sample, not a quorum). A rejected client is back in the next round.
+- Measured norm / median ratios: honest clients at most 1.5 (dirichlet shares from 2 800 to 9 900
+  images), attackers 7.7 and above: a threshold of 3 leaves a wide margin. An honest client with
+  far more data or local steps than the others makes larger updates: check its `clip_ratio`
+  before lowering the threshold. Attacks designed to stay close to the honest updates (ALIE)
+  pass under any such threshold; clipping still bounds them.
 
-**Choosing**: no attack expected, heterogeneous data → FedAvg (+ `clipping`, median x 1.5, as a
-free safeguard and a detector); attacks expected → Bulyan (on iid-like data, Multi-Krum too).
+**Choosing**: FedAvg + `clipping` (median x 1.5, reject x 3) resisted best here, at no cost without
+attacker, and names the suspects; Bulyan remains the choice against attackers that stay discreet
+(not tested yet), at the price of accuracy on heterogeneous data.

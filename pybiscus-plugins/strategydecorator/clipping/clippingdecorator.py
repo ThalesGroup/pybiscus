@@ -1,9 +1,10 @@
 from enum import Enum
-from typing import ClassVar, Literal
+from typing import ClassVar, Literal, Optional
 
+import flwr as fl
 import numpy as np
 from flwr.common import ndarrays_to_parameters, parameters_to_ndarrays
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 import pybiscus.core.pybiscus_logger as logm
 import pybiscus.core.pybiscuscontext as pcpc
@@ -22,15 +23,25 @@ class ClippingMode(str, Enum):
 
 class ConfigClippingDecoratorData(BaseModel):
     """mode: fixed (clipping_norm) or median (median_factor x the round's median update norm:
-    set by itself, without lag, and a minority of clients cannot move it)"""
+    set by itself, without lag, and a minority of clients cannot move it); reject_factor: clients
+    whose update norm exceeds reject_factor x the median are left out of the round's aggregation
+    instead of clipped (unset: none), never below what the strategy needs to aggregate (Bulyan:
+    4f + 3 clients)"""
 
     PYBISCUS_CONFIG: ClassVar[str] = "config"
 
     mode: ClippingMode = ClippingMode.median
     median_factor: float = Field(default=1.5, gt=0)
     clipping_norm: float = Field(default=2.0, gt=0)
+    reject_factor: Optional[float] = Field(default=None, gt=1)
 
     model_config = ConfigDict(extra="forbid")
+
+    @model_validator(mode="after")
+    def _reject_above_clipping(self):
+        if self.reject_factor is not None and self.mode == ClippingMode.median and self.reject_factor <= self.median_factor:
+            raise ValueError("clipping: reject_factor must exceed median_factor (rejected clients would be clipped ones)")
+        return self
 
 
 class ConfigClippingDecorator(BaseModel):
@@ -46,6 +57,17 @@ class ConfigClippingDecorator(BaseModel):
     config: ConfigClippingDecoratorData
 
     model_config = ConfigDict(extra="forbid")
+
+
+def aggregation_quorum(strategy) -> int:
+    """results the strategy needs to aggregate: min_fit_clients is how many clients to sample, and
+    FedAvg aggregates fewer; Bulyan raises below 4f + 3"""
+    # pybiscus decorators keep base_strategy, Flower's wrappers keep strategy
+    while getattr(strategy, "base_strategy", None) or getattr(strategy, "strategy", None):
+        strategy = getattr(strategy, "base_strategy", None) or getattr(strategy, "strategy")
+    if isinstance(strategy, fl.server.strategy.Bulyan):
+        return 4 * strategy.num_malicious_clients + 3
+    return 1
 
 
 def update_norm(params, reference) -> float:
@@ -85,33 +107,46 @@ class ClippingStrategyDecorator(StrategyDecorator):
         for proxy, res in results:
             reference = self.sent.get(proxy.cid, self.global_params)
             params = parameters_to_ndarrays(res.parameters)
-            entries.append((proxy, res, reference, params, update_norm(params, reference)))
-        norms = np.array([entry[4] for entry in entries])
+            norm = update_norm(params, reference)
+            entries.append((str(res.metrics.get("cid", proxy.cid)), proxy, res, reference, params, norm))
+        norms = np.array([entry[5] for entry in entries])
         median = float(np.median(norms))
         clipping_norm = (self.config.clipping_norm if self.config.mode == ClippingMode.fixed
                          else self.config.median_factor * median)
+        # a client far above the median round after round is a suspect
+        ratios = {cid: norm / median if median > 0 else 0.0 for cid, _, _, _, _, norm in entries}
 
-        ratios, clipped = {}, []
-        for proxy, res, reference, params, norm in entries:
-            cid = str(res.metrics.get("cid", proxy.cid))
+        rejected = set()
+        if self.config.reject_factor is not None:
+            above = sorted((e for e in entries if ratios[e[0]] > self.config.reject_factor), key=lambda e: -e[5])
+            # the aggregation quorum holds (Bulyan fails below 4f + 3 clients): the largest go first,
+            # the others are clipped
+            room = max(0, len(entries) - aggregation_quorum(self.base_strategy))
+            rejected = {e[0] for e in above[:room]}
+
+        kept, clipped = [], []
+        for cid, proxy, res, reference, params, norm in entries:
+            if cid in rejected:
+                continue
             if norm > clipping_norm:
                 res.parameters = ndarrays_to_parameters(clipped_params(params, reference, clipping_norm / norm))
                 clipped.append(cid)
-            # a client far above the median round after round is a suspect
-            ratios[cid] = norm / median if median > 0 else 0.0
+            kept.append((proxy, res))
 
         metrics = {
             "clip_norm": clipping_norm,
-            "clip_fraction": float(np.mean(norms > clipping_norm)),
+            "clip_fraction": len(clipped) / len(entries),
+            "clip_reject_fraction": len(rejected) / len(entries),
             "clip_update_norm_median": median,
             "clip_update_norm_max": float(norms.max()),
         }
         logm.console.log(f"✂️ Round {server_round} clipping " + " ".join(f"{k}={v:.4g}" for k, v in metrics.items())
-                         + (f" clipped clients: {', '.join(sorted(clipped))}" if clipped else ""))
+                         + (f" clipped clients: {', '.join(sorted(clipped))}" if clipped else "")
+                         + (f" rejected clients: {', '.join(sorted(rejected))}" if rejected else ""))
         if self.fabric is not None:
             for key, value in metrics.items():
                 self.fabric.log(key, value, step=server_round)
             for cid, ratio in ratios.items():
                 self.fabric.log(f"clip_ratio_{cid}", ratio, step=server_round)
 
-        return super().aggregate_fit(server_round, results, failures)
+        return super().aggregate_fit(server_round, kept, failures)
