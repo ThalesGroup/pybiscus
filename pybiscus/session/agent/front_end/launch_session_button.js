@@ -23,15 +23,21 @@ launch_session_button.addEventListener('click', function() {
     // console.log( server_protocol );
 
     const exclude = ['flower_server.server_host', 'flower_server.server_port', 'flower_server.server_protocol', 'flower_server.server_listen_to'];
-    // the data partition is not an option to select: the manager turns it into each client's partition
+    // the data partition and holdout are not options to select: the manager turns them into each
+    // client's train.partition and val section
     const is_partition = row => row[0].startsWith('data_partition.');
+    const is_holdout = row => row[0].startsWith('data_holdout.');
     // a manager setting too, not an option to select
     const share_row = raw_data.find(row => row[0] === 'share_cpu_threads');
     const share_cpu_threads = share_row ? share_row[1] === true || share_row[1] === 'true' : false;
-    const new_data = raw_data.filter(row => ! exclude.includes(row[0]) && ! is_partition(row) && row !== share_row);
+    const new_data = raw_data.filter(row => ! exclude.includes(row[0]) && ! is_partition(row) && ! is_holdout(row) && row !== share_row);
     const partition_rows = raw_data.filter(is_partition);
     const data_partition = partition_rows.length
         ? Object.fromEntries(partition_rows.map(([key, value]) => [key.slice('data_partition.'.length), value]))
+        : null;
+    const holdout_rows = raw_data.filter(is_holdout);
+    const data_holdout = holdout_rows.length
+        ? Object.fromEntries(holdout_rows.map(([key, value]) => [key.slice('data_holdout.'.length), value]))
         : null;
 
     // console.log( new_data );
@@ -74,6 +80,7 @@ launch_session_button.addEventListener('click', function() {
         values_set,
         values_lock,
         data_partition,
+        data_holdout,
         share_cpu_threads,
     };    
 

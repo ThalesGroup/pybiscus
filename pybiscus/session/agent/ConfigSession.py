@@ -1,6 +1,6 @@
 
 from enum import Enum
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 from typing import Annotated, ClassVar, Optional, Union, get_args
 
 from pybiscus.ml.datasplit import ConfigPartitionScheme
@@ -25,6 +25,16 @@ class FlowerServerConfiguration(BaseModel):
     
     model_config = ConfigDict(extra="forbid")
     
+class ConfigSessionHoldout(BaseModel):
+    """validation examples held out of each client's own training share (val.source: holdout):
+    fraction of the share, and seed of the draw (data plugins with a holdout: cifar, mnist, hdfs)"""
+
+    fraction: float = Field(default=0.1, gt=0, lt=1)
+    seed: int = 42
+
+    model_config = ConfigDict(extra="forbid")
+
+
 def session_choices(names: list[str], confs) -> dict[str, str]:
     """registry name -> label shown in the session form, for each registered plugin"""
 
@@ -61,6 +71,8 @@ def make_session_model(models: list[str], models_confs, data: list[str], data_co
         # shares the training data between the clients registered when the session is launched:
         # the manager gives each one its partition_id (and the number of partitions)
         data_partition: Optional[ConfigPartitionScheme] = None
+        # every client validates on a part of its own share instead of what its form says
+        data_holdout: Optional[ConfigSessionHoldout] = None
         # the manager gives each client the cores of its machine divided by the clients on it
         # (num_threads): each PyTorch process takes every core otherwise
         share_cpu_threads: bool = True

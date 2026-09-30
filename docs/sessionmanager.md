@@ -25,6 +25,11 @@ manager shares the training data between the clients registered when the session
 client getting its `partition_id` (its rank) and the number of partitions, locked in its form, along
 with a stable `cid` equal to that rank.
 
+Its optional `data_holdout` block (`fraction`, `seed`) makes every client validate on examples
+held out of its own training share: the manager sets and locks `val.source: holdout`, `val.fraction`
+and `val.seed` in each client's form, late clients included (data plugins with a holdout: cifar,
+mnist, hdfs; turbofan validates on its own engines and ignores it).
+
 Its `share_cpu_threads` setting (on by default) shares the CPU of each machine between the clients
 running on it: each agent tells the manager its machine and number of physical cores when it
 registers, and each client gets `client_compute_context.num_threads` = cores / clients on its

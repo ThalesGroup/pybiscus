@@ -162,6 +162,7 @@ def pybiscus_manager_get_session_params():
     for key, empty in (("options_set", {}), ("options_lock", []), ("values_set", {}), ("values_lock", [])):
         custom_presets.setdefault(key, empty)
     data_partition = custom_presets.pop("data_partition", None)
+    data_holdout = custom_presets.pop("data_holdout", None)
     share_cpu_threads = custom_presets.pop("share_cpu_threads", False)
 
     # each call used to take a new cid: the server's page and every reload consumed one, and the
@@ -197,6 +198,14 @@ def pybiscus_manager_get_session_params():
         custom_presets["options_set"][prefix] = " "
         custom_presets["options_lock"].append(prefix)
         values = {**data_partition, "num_partitions": len(session.session_clients), "partition_id": index}
+        for name, value in values.items():
+            custom_presets["values_set"][f"{prefix}.{name}"] = value
+            custom_presets["values_lock"].append(f"{prefix}.{name}")
+
+    # every client, late ones included: the holdout draws from the client's own share, whatever it is
+    if data_holdout and cid is not None:
+        prefix = "data.config.val"
+        values = {"source": "holdout", **data_holdout}
         for name, value in values.items():
             custom_presets["values_set"][f"{prefix}.{name}"] = value
             custom_presets["values_lock"].append(f"{prefix}.{name}")
