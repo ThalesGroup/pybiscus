@@ -70,9 +70,11 @@ server_strategy:
 data:
   name: hdfs
   config:
-    test_file: ./datasets/hdfs_datasets/test.csv
-    batch_size: '64'
-    window_size: '10'
+    # labelled sessions (seq,label): the format of Deeplog's anomaly F1, every session in one batch
+    window: 10
+    test:
+      file: ./datasets/hdfs_datasets/test.csv
+      format: sessions
 model:
   name: deeplog
   config:

@@ -1,129 +1,131 @@
-from collections import Counter
-from torch.utils.data import DataLoader
-from torch.utils.data import Dataset
-import pandas as pd
 import csv
+from typing import Optional
+
 import lightning.pytorch as pl
 import numpy as np
+import pandas as pd
 import torch
+from torch.utils.data import DataLoader, Dataset
 
 import pybiscus.core.pybiscus_logger as logm
+from pybiscus.ml.datasplit import ConfigPartition, all_partitions, holdout, limit, make_loader, reject_former_fields
 
-# ------------------------------------------------------------
-
-class HDFSDataset(Dataset):
-    def __init__(self, data_path, window_size):
-        super().__init__()
-        self.num_classes = 33
-        self.window_size = window_size
-        self.data, self.labels = self.read_data(data_path)
+from hdfs.hdfs_dataconfig import (
+    HDFS_FORMER_FIELDS, HdfsTestFormat, HdfsTestSet, HdfsTrainSet, HdfsValSet, HdfsValSource,
+)
 
 
+def read_sequences(path: str) -> list[tuple[int, ...]]:
+    """one sequence of event ids per line, shifted to start at 0"""
+    with open(path, newline="") as f:
+        return [tuple(int(event) - 1 for event in row) for row in csv.reader(f) if row]
 
-    def read_data(self,data_path):
-        with open(data_path, 'r') as read_obj: 
-  
-            # Return a reader object which will 
-            # iterate over lines in the given csvfile 
-            csv_reader = csv.reader(read_obj) 
-        
-            # convert string to list 
-            list_of_csv = list(csv_reader) 
-            
-            list_of_csv = list(map(lambda x: [int(xi) for xi in x], list_of_csv))
 
-            data, label = self.preprocess_data(list_of_csv)
-        
-        return data,label
+class HDFSWindows(Dataset):
+    """every window of `window` events of the sequences, with the event that follows it"""
 
-    def preprocess_data(self,data):
-        result_logs = []
-        labels = []
-
-        for sequence in data:
-            # Convert the sequence to a tuple of integers (subtract 1 to make it 0-indexed)
-            sequence = tuple(map(lambda n: n - 1, map(int, sequence)))
-
-            for i in range(len(sequence) - self.window_size):
-                sequential_pattern = list(sequence[i:i + self.window_size])
-                
-                sequential_pattern = np.array(sequential_pattern)[:,np.newaxis]
-
-                result_logs.append(sequential_pattern)
-                labels.append(sequence[i + self.window_size])
-
-        return result_logs, labels
+    def __init__(self, sequences, window):
+        inputs, targets = [], []
+        for sequence in sequences:
+            for i in range(len(sequence) - window):
+                inputs.append(sequence[i:i + window])
+                targets.append(sequence[i + window])
+        # (N, window, 1): Deeplog's input has one channel
+        self.inputs = torch.tensor(inputs, dtype=torch.float).reshape(len(inputs), window, 1)
+        self.targets = torch.tensor(targets, dtype=torch.long)
 
     def __len__(self):
-        return len(self.data)
+        return len(self.targets)
 
     def __getitem__(self, idx):
-        return torch.tensor(self.data[idx], dtype=torch.float), self.labels[idx]
+        return self.inputs[idx], self.targets[idx]
 
-# ------------------------------------------------------------
+
+class HDFSSessions(Dataset):
+    """labelled sessions (CSV "seq,label"), each distinct sequence once with its count: Deeplog
+    flags a session as soon as one of its events is not among the predicted candidates"""
+
+    def __init__(self, path, window):
+        counts, labels = {}, {}
+        for _, row in pd.read_csv(path).iterrows():
+            events = [int(n) - 1 for n in str(row["seq"]).split(",")]
+            # a session shorter than the window is padded to one window and its next event
+            events += [-1] * (window + 1 - len(events))
+            key = tuple(events)
+            counts[key] = counts.get(key, 0) + 1
+            labels[key] = int(row["label"])
+        sequences = list(counts)
+        width = max(len(sequence) for sequence in sequences)
+        # -99 marks the end of a session in the padded batch (Deeplog stops there)
+        self.sequences = torch.tensor([list(s) + [-99] * (width - len(s)) for s in sequences], dtype=torch.float)
+        self.counts = [counts[s] for s in sequences]
+        self.labels = [labels[s] for s in sequences]
+
+    def __len__(self):
+        return len(self.sequences)
+
+    def __getitem__(self, idx):
+        return self.sequences[idx], (self.counts[idx], self.labels[idx])
+
 
 class HDFSDataModule(pl.LightningDataModule):
-    def __init__(
-        self, 
-        train_file: str | None = None, 
-        test_file: str | None = None, 
-        val_file: str | None = None, 
-        batch_size: int = 32, 
-        window_size: int = 10,
-    ):
+
+    def __init__(self, window: int = 10, train=None, val=None, test=None, num_workers: int = 0, **former_fields):
         super().__init__()
-        self.train_file = train_file
-        self.test_file = test_file
-        self.val_file = val_file
-        self.batch_size = batch_size
-        self.window_size = window_size
+        # pybiscus local passes the YAML's sections unvalidated: validated here
+        reject_former_fields(former_fields, HDFS_FORMER_FIELDS)
+        if former_fields:
+            raise TypeError(f"unexpected data fields: {sorted(former_fields)}")
+        self.window = window
+        self.train = HdfsTrainSet.model_validate(train or {})
+        self.val = HdfsValSet.model_validate(val or {})
+        self.test = HdfsTestSet.model_validate(test or {})
+        self.num_workers = num_workers
+        self.data_train = self.data_val = self.data_test = None
 
+    def train_source(self):
+        """the training sequences, which the partitions and holdout share out"""
+        return read_sequences(self.train.file)
 
-    def setup(self, stage: str=None):
-        if self.train_file is not None:
-            logm.console.log("HDFS train data reading")
-            self.data_train = HDFSDataset(data_path=self.train_file,window_size=self.window_size)
-        else: 
-            self.data_train = None
+    def split_units(self, partition: Optional[ConfigPartition]) -> tuple[np.ndarray, Optional[np.ndarray]]:
+        """indices of the training and (holdout) validation sequences of a partition"""
+        sequences = self.train_source()
+        base = np.arange(len(sequences)) if partition is None else all_partitions(sequences, partition)[partition.partition_id]
+        if self.val.source == HdfsValSource.holdout:
+            return holdout(base, self.val.fraction, self.val.seed)
+        return np.sort(base), None
 
-        if self.test_file is not None:
-            logm.console.log("HDFS test data reading")
-            self.data_test = HDFSDataset(data_path=self.test_file,window_size=self.window_size)
-        else:
-            self.data_test = None
+    def setup(self, stage: Optional[str] = None):
+        if stage == "fit" or stage is None:
+            sequences = self.train_source()
+            train_idx, val_idx = self.split_units(self.train.partition)
+            self.data_train = limit(HDFSWindows([sequences[i] for i in train_idx], self.window), self.train.max_samples)
+            val_sequences = [sequences[i] for i in val_idx] if val_idx is not None else read_sequences(self.val.file)
+            self.data_val = limit(HDFSWindows(val_sequences, self.window), self.val.max_samples)
+            partition = self.train.partition
+            logm.console.log(
+                f"hdfs: {len(train_idx)} training sequences ({len(self.data_train)} windows), "
+                f"{len(val_sequences)} validation sequences ({len(self.data_val)} windows, {self.val.source.value})"
+                + (f", partition {partition.partition_id + 1}/{partition.num_partitions}" if partition else "")
+            )
+        if stage == "test" or stage is None:
+            if not self.test.file:
+                raise ValueError("hdfs: test.file is required to test (the server's data section)")
+            if self.test.format == HdfsTestFormat.sessions:
+                self.data_test = HDFSSessions(self.test.file, self.window)
+                logm.console.log(f"hdfs: {len(self.data_test)} distinct test sessions ({sum(self.data_test.counts)} in all)")
+            else:
+                self.data_test = limit(HDFSWindows(read_sequences(self.test.file), self.window), self.test.max_samples)
+                logm.console.log(f"hdfs: {len(self.data_test)} test windows")
 
-        if self.val_file is not None:
-            logm.console.log("HDFS val data reading")
-            self.data_val = HDFSDataset(data_path=self.val_file,window_size=self.window_size)
-        else:
-            self.data_val = None
+    def train_dataloader(self) -> DataLoader:
+        return make_loader(self.data_train, self.train, self.num_workers, order_seed=self.train.seed)
 
-    def train_dataloader(self):
-        if self.data_train is None:
-            logm.console.log("Training data not found.")
-            raise ValueError("Training data not found.")
-        return DataLoader(self.data_train, batch_size=self.batch_size,shuffle=True)
-    
-    def test_dataloader(self):
-        if self.data_test is None:
-            logm.console.log("Training data not found.")
-            raise ValueError("Training data not found.")
-        return DataLoader(self.data_test, batch_size=self.batch_size,shuffle=False)
-    
-    def val_dataloader(self):
-        if self.data_val is None:
-            logm.console.log("Training data not found.")
-            raise ValueError("Training data not found.")
-        return DataLoader(self.data_val, batch_size=self.batch_size, shuffle=False)
+    def val_dataloader(self) -> DataLoader:
+        return make_loader(self.data_val, self.val, self.num_workers)
 
-
-if __name__ == "__main__":
-
-    hdfs_dataset = HDFSDataset('../datasets/hdfs_datasets/test_normal.csv',10)
-    print(hdfs_dataset[0])
-
-    module = HDFSDataModule(test_file='../datasets/hdfs_datasets/test_normal.csv',batch_size=32,window_size=10) 
-    module.setup()
-    for seq, label in iter(module.test_dataloader()):
-       print(seq.dtype)
-                           
+    def test_dataloader(self) -> DataLoader:
+        if self.test.format == HdfsTestFormat.sessions:
+            # Deeplog's F1 is computed per batch: right only with every session in one batch
+            return DataLoader(self.data_test, batch_size=len(self.data_test), shuffle=False, num_workers=self.num_workers)
+        return make_loader(self.data_test, self.test, self.num_workers)

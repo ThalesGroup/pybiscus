@@ -70,12 +70,18 @@ def partition(
         export.mkdir(parents=True, exist_ok=True)
 
     p = train.partition
-    logm.console.log(f"{p.scheme.value} partition of {len(train_full)} examples between {p.num_partitions} clients (seed {p.seed})")
+    unit = "units" if hasattr(datamodule, "split_units") else "examples"
+    logm.console.log(f"{p.scheme.value} partition of {len(train_full)} {unit} between {p.num_partitions} clients (seed {p.seed})")
     for i in range(p.num_partitions):
-        train_idx, val_idx = split_indices(train_full, train.model_copy(update={"partition": p.model_copy(update={"partition_id": i})}), val)
-        line = f"client {i}: {len(train_idx)} training examples"
+        share = p.model_copy(update={"partition_id": i})
+        # a plugin whose units are not the examples (hdfs: whole sequences) splits them itself
+        if hasattr(datamodule, "split_units"):
+            train_idx, val_idx = datamodule.split_units(share)
+        else:
+            train_idx, val_idx = split_indices(train_full, train.model_copy(update={"partition": share}), val)
+        line = f"client {i}: {len(train_idx)} training {unit}"
         if val_idx is not None:
-            line += f", {len(val_idx)} validation examples"
+            line += f", {len(val_idx)} validation {unit}"
         if labels is not None:
             counts = np.bincount(labels[train_idx])
             line += f" | classes present (> 2 %): {int((counts / len(train_idx) > 0.02).sum())}, main class {counts.max() / len(train_idx):.0%}"

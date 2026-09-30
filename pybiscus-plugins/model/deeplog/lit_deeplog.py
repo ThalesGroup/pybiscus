@@ -7,9 +7,19 @@ from pydantic import BaseModel, ConfigDict, Field
 from torchmetrics import Accuracy
 from tqdm import tqdm
 
+import pybiscus.core.pybiscus_logger as logm
 from deeplog.deeplog import DeepLog
 
 # ------------------------------------------------------------------------------------
+
+def detection_scores(tp, fp, fn) -> tuple[float, float, float]:
+    """precision, recall and F1 in %: 0 when undefined (no alert raised, no anomaly present), which
+    raised a ZeroDivisionError"""
+    precision = 100 * tp / (tp + fp) if tp + fp else 0.0
+    recall = 100 * tp / (tp + fn) if tp + fn else 0.0
+    f1 = 2 * precision * recall / (precision + recall) if precision + recall else 0.0
+    return precision, recall, f1
+
 
 class ConfigDeeplog(BaseModel):
     """A Pydantic Model to validate the LitDeeplog config given by the user.
@@ -145,7 +155,6 @@ class LitDeeplog(pl.LightningModule):
         log, targets = batch
 
         if isinstance(targets,list):
-            print('SERVER CASE')
             counts = targets[0]
             labels = targets[1]
 
@@ -160,9 +169,9 @@ class LitDeeplog(pl.LightningModule):
                     next_event = line[i + self.window_size]
 
 
-                    seq0 = torch.tensor(seq0, dtype=torch.float).clone().detach().view(
+                    seq0 = seq0.detach().float().view(
                         -1, self.window_size, self.input_shape)
-                    next_event = torch.tensor(next_event).clone().detach().view(-1)
+                    next_event = next_event.detach().view(-1)
                     output = self.forward(seq0)
               
                     predicted = torch.argsort(output,
@@ -178,10 +187,8 @@ class LitDeeplog(pl.LightningModule):
 
             counts_abnormal=[ count.item() for count,label in zip(counts,labels) if label.item()==1]
             FN = sum(counts_abnormal) - TP
-            P = 100 * TP / (TP + FP)
-            R = 100 * TP / (TP + FN)
-            F1 = 2 * P * R / (P + R)
-            print('false positive (FP): {}, false negative (FN): {}, Precision: {:.3f}%, Recall: {:.3f}%, F1-measure: {:.3f}%'
+            P, R, F1 = detection_scores(TP, FP, FN)
+            logm.console.log('false positive (FP): {}, false negative (FN): {}, Precision: {:.3f}%, Recall: {:.3f}%, F1-measure: {:.3f}%'
                 .format(FP, FN, P, R, F1))  
 
             if self._logging:
@@ -190,10 +197,8 @@ class LitDeeplog(pl.LightningModule):
             return {"loss": 0, "f1score": F1}
         
         else: 
-            print('CLIENT CASE')
             outputs = self.forward(log)
             loss    = self.loss(outputs, targets)
-            print(loss)
             #acc     = self.accuracy(torch.max(outputs.data, 1)[1], labels)
 
             if self._logging:
@@ -210,7 +215,6 @@ class LitDeeplog(pl.LightningModule):
         log, targets = batch
 
         if isinstance(targets, list):
-            print('SERVER CASE')
             counts = targets[0]
             labels = targets[1]
 
@@ -224,9 +228,9 @@ class LitDeeplog(pl.LightningModule):
                     seq0 = line[i:i + self.window_size]
                     next_event = line[i + self.window_size]
 
-                    seq0 = torch.tensor(seq0, dtype=torch.float).clone().detach().view(
+                    seq0 = seq0.detach().float().view(
                         -1, self.window_size, self.input_shape)
-                    next_event = torch.tensor(next_event).clone().detach().view(-1)
+                    next_event = next_event.detach().view(-1)
                     output = self.forward(seq0)
 
                     predicted = torch.argsort(output,
@@ -242,10 +246,8 @@ class LitDeeplog(pl.LightningModule):
 
             counts_abnormal = [count.item() for count, label in zip(counts, labels) if label.item() == 1]
             FN = sum(counts_abnormal) - TP
-            P = 100 * TP / (TP + FP)
-            R = 100 * TP / (TP + FN)
-            F1 = 2 * P * R / (P + R)
-            print(
+            P, R, F1 = detection_scores(TP, FP, FN)
+            logm.console.log(
                 'false positive (FP): {}, false negative (FN): {}, Precision: {:.3f}%, Recall: {:.3f}%, F1-measure: {:.3f}%'
                 .format(FP, FN, P, R, F1))
 
@@ -255,10 +257,8 @@ class LitDeeplog(pl.LightningModule):
             return {"loss": 0, "f1score": F1}
 
         else:
-            print('CLIENT CASE')
             outputs = self.forward(log)
             loss = self.loss(outputs, targets)
-            print(loss)
             # acc     = self.accuracy(torch.max(outputs.data, 1)[1], labels)
 
             if self._logging:

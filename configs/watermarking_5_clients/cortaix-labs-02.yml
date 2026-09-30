@@ -21,8 +21,12 @@ model:
 data:
   name: hdfs
   config:
-    train_file: ${root_dir}/datasets/hdfs_datasets/setting_5_clients/train1.csv
-    val_file: ${root_dir}/datasets/hdfs_datasets/setting_5_clients/val1.csv
-    dir_test: None
-    batch_size: 512
-    window_size: 10
+    # this client's sequences, split beforehand into its own files
+    window: 10
+    train:
+      file: ${root_dir}/datasets/hdfs_datasets/setting_5_clients/train1.csv
+      batch_size: 512
+    val:
+      source: file
+      file: ${root_dir}/datasets/hdfs_datasets/setting_5_clients/val1.csv
+      batch_size: 512

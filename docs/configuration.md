@@ -129,6 +129,29 @@ computes the same ones, and the server's `train.engines` must be the clients'. E
 longer than the training engines: without `rul_clip`, its RUL often exceeds anything seen in
 training (demo `configs/turbofan_lstm/`, campaign `launch/campaign/turbofan_lstm.yml`).
 
+The `hdfs` plugin (HDFS log sequences, one per CSV line; Deeplog predicts the next event of a
+window) shares and holds out **whole sequences**, whose windows overlap:
+
+```yaml
+data:
+  name: hdfs
+  config:
+    window: 10
+    train:
+      file: ${root_dir}/datasets/hdfs_datasets/train.csv
+      partition: {num_partitions: 5, partition_id: 0, seed: 42}   # iid only
+    val:
+      source: holdout          # holdout (fraction, seed) | file (+ file)
+      fraction: 0.1
+    test:
+      file: ${root_dir}/datasets/hdfs_datasets/test.csv    # no default
+      format: sessions         # windows | sessions (CSV "seq,label": Deeplog's anomaly F1)
+```
+
+`format: sessions` reads labelled sessions, each distinct sequence once with its count, all in
+one batch: Deeplog's precision / recall / F1 are computed per batch. `pybiscus data partition`
+exports the clients' sequence indices (line numbers of `train.file`).
+
 An optional `privacy` section (cifar, mnist; server side) gives a privacy evaluation such as a
 membership inference attack the examples it attacks: the official train split, never shuffled
 nor truncated, so that its example *i* is the example *i* of the exported indices files — which
