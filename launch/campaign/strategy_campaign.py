@@ -46,9 +46,21 @@ def physical_cores() -> int:
     return cores()
 
 
-def launch(args: list, log: Path) -> subprocess.Popen:
+def launch(args: list, log: Path, env: dict = None) -> subprocess.Popen:
     # a process group of its own: stopped as a whole, never by a name pattern
-    return subprocess.Popen(args, stdout=log.open("w"), stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL, start_new_session=True)
+    return subprocess.Popen(args, stdout=log.open("w"), stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL,
+                            start_new_session=True, env=env)
+
+
+def plugin_env(campaign: dict) -> dict:
+    """the campaign's extra plugin manifests (test-only plugins such as byzantine) appended to the
+    default one"""
+    env = dict(os.environ)
+    extra = campaign.get("plugin_manifests") or []
+    if extra:
+        base = env.get("PYBISCUS_PLUGIN_CONF_PATH", "pybiscus-plugins-conf.yml")
+        env["PYBISCUS_PLUGIN_CONF_PATH"] = ":".join([base, *extra])
+    return env
 
 
 def stop(process: subprocess.Popen) -> None:
@@ -101,18 +113,22 @@ def run_variant(campaign: dict, variant: dict, out: Path) -> dict:
         if partition is not None:
             partition.update({"num_partitions": clients, "partition_id": i})
         client["data"]["config"] = data
+        # merged last: a variant may change one client only (a malicious one, for instance)
+        overrides = {int(k): v for k, v in (variant.get("client_overrides") or {}).items()}
+        client = deep_merge(client, overrides.get(i))
         OmegaConf.save(OmegaConf.create(client), work / f"client_{i}.yml")
 
     command = [sys.executable, "pybiscus/main.py"]
+    env = plugin_env(campaign)
     started = time.time()
-    processes = [launch(command + ["server", "launch", str(work / "server.yml")], work / "server.log")]
+    processes = [launch(command + ["server", "launch", str(work / "server.yml")], work / "server.log", env)]
     try:
         for _ in range(120):
             if not port_is_free(port) or processes[0].poll() is not None:
                 break
             time.sleep(1)
         for i in range(clients):
-            processes.append(launch(command + ["client", "launch", str(work / f"client_{i}.yml")], work / f"client_{i}.log"))
+            processes.append(launch(command + ["client", "launch", str(work / f"client_{i}.yml")], work / f"client_{i}.log", env))
         try:
             processes[0].wait(timeout=campaign.get("timeout", 1800))
             status = "ok" if processes[0].returncode == 0 else f"server exit {processes[0].returncode}"

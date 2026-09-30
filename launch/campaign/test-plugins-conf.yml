@@ -1,0 +1,7 @@
+# Plugins used by the campaigns only, added to the default manifest by strategy_campaign.py
+# (PYBISCUS_PLUGIN_CONF_PATH=pybiscus-plugins-conf.yml:<this file>). Never listed in the default
+# manifest: they must not appear in a real session's forms. Paths are relative to this file.
+client:
+  - path: "../../pybiscus-plugins/client"
+    modules:
+      - byzantine

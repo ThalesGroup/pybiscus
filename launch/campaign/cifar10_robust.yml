@@ -1,0 +1,109 @@
+# Campaign of launch/campaign/strategy_campaign.py: the robust aggregations against malicious
+# (byzantine) clients on cifar10, 7 clients (Bulyan needs 4f + 3 = 7 for f = 1).
+#   uv run python launch/campaign/strategy_campaign.py launch/campaign/cifar10_robust.yml
+# Attackers: the byzantine client plugin (test manifest only), sign flip x10 of their update.
+# With 2 attackers, the strategies set for f = 1 are beyond what they claim to tolerate.
+# Each client trains on its whole share (about 7 100 images), 3 local epochs: with 3000 images
+# and 1 epoch, FedAvg without attacker stayed at chance (0.107 after 5 rounds) and no strategy
+# could be told apart. About 40 minutes; do not run it next to a live session.
+
+server_config: configs/cifar10_cnn/distributed/without_ssl/server.yml
+client_config: configs/cifar10_cnn/distributed/without_ssl/client_1.yml
+output: experiments/campaigns
+plugin_manifests: [launch/campaign/test-plugins-conf.yml]
+
+clients: 7
+rounds: 5
+local_epochs: 3
+port: 3399                 # the Flower server of each run: must be free
+threads_per_client: auto   # physical cores / clients
+timeout: 1800              # seconds per run
+
+client_data:
+  train:
+    partition:
+      scheme: iid          # iid | dirichlet (alpha) | shards
+      seed: 42
+  val:
+    source: holdout
+    fraction: 0.1
+
+server_data:
+  test:
+    max_samples: 2000
+
+variants:
+  - label: FedAvg, no attacker
+    strategy: {name: fedavggeneric, config: {}}
+  - label: FedAvg, 1 attacker
+    strategy: {name: fedavggeneric, config: {}}
+    client_overrides:
+      0: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: sign_flip, scale: 10.0}}}}
+  - label: FedAvg, 2 attackers
+    strategy: {name: fedavggeneric, config: {}}
+    client_overrides:
+      0: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: sign_flip, scale: 10.0}}}}
+      1: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: sign_flip, scale: 10.0}}}}
+  - label: FedMedian, no attacker
+    strategy: {name: fedmedian, config: {}}
+  - label: FedMedian, 1 attacker
+    strategy: {name: fedmedian, config: {}}
+    client_overrides:
+      0: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: sign_flip, scale: 10.0}}}}
+  - label: FedMedian, 2 attackers
+    strategy: {name: fedmedian, config: {}}
+    client_overrides:
+      0: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: sign_flip, scale: 10.0}}}}
+      1: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: sign_flip, scale: 10.0}}}}
+  - label: FedTrimmedAvg beta 0.2, no attacker
+    strategy: {name: fedtrimmedavg, config: {beta: 0.2}}
+  - label: FedTrimmedAvg beta 0.2, 1 attacker
+    strategy: {name: fedtrimmedavg, config: {beta: 0.2}}
+    client_overrides:
+      0: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: sign_flip, scale: 10.0}}}}
+  - label: FedTrimmedAvg beta 0.2, 2 attackers
+    strategy: {name: fedtrimmedavg, config: {beta: 0.2}}
+    client_overrides:
+      0: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: sign_flip, scale: 10.0}}}}
+      1: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: sign_flip, scale: 10.0}}}}
+  - label: Krum f 1, no attacker
+    strategy: {name: krum, config: {num_malicious_clients: 1}}
+  - label: Krum f 1, 1 attacker
+    strategy: {name: krum, config: {num_malicious_clients: 1}}
+    client_overrides:
+      0: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: sign_flip, scale: 10.0}}}}
+  - label: Krum f 1, 2 attackers
+    strategy: {name: krum, config: {num_malicious_clients: 1}}
+    client_overrides:
+      0: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: sign_flip, scale: 10.0}}}}
+      1: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: sign_flip, scale: 10.0}}}}
+  - label: Multi-Krum f 1 keep 3, no attacker
+    strategy: {name: krum, config: {num_malicious_clients: 1, num_clients_to_keep: 3}}
+  - label: Multi-Krum f 1 keep 3, 1 attacker
+    strategy: {name: krum, config: {num_malicious_clients: 1, num_clients_to_keep: 3}}
+    client_overrides:
+      0: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: sign_flip, scale: 10.0}}}}
+  - label: Multi-Krum f 1 keep 3, 2 attackers
+    strategy: {name: krum, config: {num_malicious_clients: 1, num_clients_to_keep: 3}}
+    client_overrides:
+      0: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: sign_flip, scale: 10.0}}}}
+      1: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: sign_flip, scale: 10.0}}}}
+  - label: Bulyan f 1, no attacker
+    strategy: {name: bulyan, config: {num_malicious_clients: 1}}
+  - label: Bulyan f 1, 1 attacker
+    strategy: {name: bulyan, config: {num_malicious_clients: 1}}
+    client_overrides:
+      0: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: sign_flip, scale: 10.0}}}}
+  - label: Bulyan f 1, 2 attackers
+    strategy: {name: bulyan, config: {num_malicious_clients: 1}}
+    client_overrides:
+      0: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: sign_flip, scale: 10.0}}}}
+      1: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: sign_flip, scale: 10.0}}}}
+  - label: FedAvg, 1 client reporting x20 examples
+    strategy: {name: fedavggeneric, config: {}}
+    client_overrides:
+      0: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: none, num_examples_factor: 20.0}}}}
+  - label: FedMedian, 1 client reporting x20 examples
+    strategy: {name: fedmedian, config: {}}
+    client_overrides:
+      0: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: none, num_examples_factor: 20.0}}}}

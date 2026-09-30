@@ -5,7 +5,7 @@ from typing import ClassVar, Literal, Optional, Union
 import flwr as fl
 from flwr.common import EvaluateRes, FitRes, Parameters, Scalar
 from flwr.server.client_proxy import ClientProxy
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 import pybiscus.core.gui_events as gui_events
 import pybiscus.core.pybiscus_logger as logm
@@ -333,6 +333,15 @@ class ConfigBulyanData(ConfigFlowerFailuresData):
     see flwr.server.strategy.Bulyan."""
     num_malicious_clients: int = Field(default=0, ge=0)
     krum_to_keep:          int = Field(default=0, ge=0)
+
+    # Flower raises a ValueError in the middle of the aggregation below 4f + 3 clients: the server
+    # crashed at the first round, or as soon as a client was missing
+    @model_validator(mode="after")
+    def _enough_clients(self):
+        needed = 4 * self.num_malicious_clients + 3
+        if self.min_fit_clients < needed:
+            raise ValueError(f"bulyan: min_fit_clients must be at least 4 * num_malicious_clients + 3 = {needed} (got {self.min_fit_clients})")
+        return self
 
 
 class ConfigBulyan(BaseModel):
