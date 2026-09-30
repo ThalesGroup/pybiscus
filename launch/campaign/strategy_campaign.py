@@ -80,6 +80,9 @@ def run_variant(campaign: dict, variant: dict, out: Path) -> dict:
     for key in ("min_fit_clients", "min_evaluate_clients", "min_available_clients"):
         strategy_config.setdefault(key, clients)
     server["server_strategy"]["strategy"] = strategy
+    # first in the pipeline: closest to the strategy, so that the base decorators (saved
+    # parameters, timings) see what the variant's decorators produce
+    server["server_strategy"]["pipeline"] = copy.deepcopy(variant.get("pipeline", [])) + server["server_strategy"]["pipeline"]
     server["data"]["config"] = deep_merge(server["data"]["config"], campaign.get("server_data"))
     OmegaConf.save(OmegaConf.create(server), work / "server.yml")
 

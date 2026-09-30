@@ -115,6 +115,40 @@ strategy:
 ...
 ```
 
+#### Server-side differential privacy
+
+The `serverdpfixed` and `serverdpadaptive` decorators (plugin `strategydecorator/serverdp`, over
+Flower's `DifferentialPrivacyServerSide*Clipping`) clip each client's update `w_client - w_global`
+to a norm C, then add Gaussian noise of standard deviation `noise_multiplier * C / n` to the
+aggregated model (n: clients per round). The server is trusted: the noise protects what the
+released models tell about each client's data.
+
+```yaml
+server_strategy:
+  pipeline:
+  - name: serverdpfixed          # first: the other decorators then see the noised model
+    config:
+      noise_multiplier: 0.1
+      clipping_norm: 1.0         # adaptive variant: initial_clipping_norm, target_clipped_quantile
+  - name: timediffcompute
+    ...
+```
+
+- Every round logs `dp_clipping_norm`, `dp_noise_stddev`, `dp_clipped_fraction` and, when every
+  client takes part in every round (`fraction_fit: 1`), `dp_epsilon` for the configured `delta`
+  (Rényi DP of the Gaussian mechanism).
+- C: the clients' `weight_drift` under `fedprox` with `proximal_mu: 0` gives the usual size of an
+  update.
+- The guarantee assumes a plain mean with equal weights: a warning says so around a median, Krum,
+  Bulyan, a server optimizer (FedAdam…), FedAvgM or QFedAvg, and when the clients' `num_examples`
+  differ (FedAvg weighs by them).
+- Refused at check: two DP decorators, or DP with `personalizeclientsfitin` (the update would be
+  measured against a model the clients did not receive). Refused at launch: a model with non-float
+  state entries (BatchNorm's `num_batches_tracked`), which Flower's clipping cannot scale.
+- Few clients make it costly: with 3 clients, z = 1 and C = 1 give a noise of 0.33 per weight and
+  stopped cifar10's learning (`launch/campaign/cifar10_serverdp.yml`) for an epsilon of 13 after 5
+  rounds. Meaningful central DP needs many clients.
+
 
 ### Others
 

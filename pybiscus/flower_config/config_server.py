@@ -1,7 +1,7 @@
 from enum import Enum
 from typing import List, Optional, ClassVar
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from pybiscus.flower_config.config_computecontext import ConfigServerComputeContext
 from pybiscus.plugin.registries.logger_registry import LoggerConfig
@@ -127,8 +127,20 @@ class ConfigServerStrategy(BaseModel):
 
     pipeline: list[StrategyDecoratorConfig()] # pyright: ignore[reportInvalidTypeForm]
     strategy: StrategyConfig() # pyright: ignore[reportInvalidTypeForm]
-    
+
     model_config = ConfigDict(extra="forbid")
+
+    # a decorator config declares the decorators it cannot be combined with
+    # (PYBISCUS_INCOMPATIBLE_WITH): refused at check rather than wrong results at run time
+    @model_validator(mode="after")
+    def check_compatible_decorators(self):
+        names = [decorator.name for decorator in self.pipeline]
+        for decorator in self.pipeline:
+            for other in getattr(type(decorator), "PYBISCUS_INCOMPATIBLE_WITH", ()):
+                others = names.count(other) - (other == decorator.name)
+                if others > 0:
+                    raise ValueError(f"pipeline: {decorator.name} cannot be combined with {other}")
+        return self
 
 
 class ConfigServer(BaseModel):
