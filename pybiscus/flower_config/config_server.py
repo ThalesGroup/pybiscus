@@ -140,6 +140,12 @@ class ConfigServerStrategy(BaseModel):
                 others = names.count(other) - (other == decorator.name)
                 if others > 0:
                     raise ValueError(f"pipeline: {decorator.name} cannot be combined with {other}")
+            # PYBISCUS_AFTER: decorators to list before this one when present (the first of the list
+            # is the closest to the strategy): one reading what the clients were sent must wrap the
+            # one that changes it
+            for other in getattr(type(decorator), "PYBISCUS_AFTER", ()):
+                if other in names and names.index(other) > names.index(decorator.name):
+                    raise ValueError(f"pipeline: {decorator.name} must come after {other}")
         return self
 
 

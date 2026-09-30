@@ -1,10 +1,11 @@
 # Campaign of launch/campaign/strategy_campaign.py: FedAvg with each update's norm bounded to C
-# (serverdpfixed with noise_multiplier 0: clipping without noise), on the heterogeneous shares of
+# (the clipping decorator; serverdpfixed / serverdpadaptive with noise_multiplier 0 for the
+# earlier variants), on the heterogeneous shares of
 # cifar10_robust_dirichlet.yml, against the same attacker. C around the size of an honest update
 # (the log's dp_clipped_fraction shows how many clients get clipped).
 #   uv run python launch/campaign/strategy_campaign.py launch/campaign/cifar10_clipping_dirichlet.yml
 # Attacker: the byzantine client plugin (test manifest only), sign flip x10 of its update.
-# About 8 minutes; do not run it next to a live session.
+# About 20 minutes for all variants (--only to run some); do not run it next to a live session.
 
 server_config: configs/cifar10_cnn/distributed/without_ssl/server.yml
 client_config: configs/cifar10_cnn/distributed/without_ssl/client_1.yml
@@ -65,3 +66,31 @@ variants:
     pipeline: [{name: serverdpadaptive, config: {noise_multiplier: 0.0, initial_clipping_norm: 1.0, target_clipped_quantile: 0.5}}]
     client_overrides:
       0: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: sign_flip, scale: 10.0}}}}
+  - label: FedAvg + clipping median x1.5, no attacker
+    strategy: {name: fedavggeneric, config: {}}
+    pipeline: [{name: clipping, config: {mode: median, median_factor: 1.5}}]
+  - label: FedAvg + clipping median x1.5, 1 attacker
+    strategy: {name: fedavggeneric, config: {}}
+    pipeline: [{name: clipping, config: {mode: median, median_factor: 1.5}}]
+    client_overrides:
+      0: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: sign_flip, scale: 10.0}}}}
+  - label: FedAvg + clipping median x1.5, 2 attackers
+    strategy: {name: fedavggeneric, config: {}}
+    pipeline: [{name: clipping, config: {mode: median, median_factor: 1.5}}]
+    client_overrides:
+      0: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: sign_flip, scale: 10.0}}}}
+      1: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: sign_flip, scale: 10.0}}}}
+  - label: FedAvg + clipping median x2.0, no attacker
+    strategy: {name: fedavggeneric, config: {}}
+    pipeline: [{name: clipping, config: {mode: median, median_factor: 2.0}}]
+  - label: FedAvg + clipping median x2.0, 1 attacker
+    strategy: {name: fedavggeneric, config: {}}
+    pipeline: [{name: clipping, config: {mode: median, median_factor: 2.0}}]
+    client_overrides:
+      0: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: sign_flip, scale: 10.0}}}}
+  - label: FedAvg + clipping median x2.0, 2 attackers
+    strategy: {name: fedavggeneric, config: {}}
+    pipeline: [{name: clipping, config: {mode: median, median_factor: 2.0}}]
+    client_overrides:
+      0: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: sign_flip, scale: 10.0}}}}
+      1: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: sign_flip, scale: 10.0}}}}

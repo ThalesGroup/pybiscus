@@ -112,3 +112,45 @@ attacker as above):
 
   Corrected, it needs no C to choose, costs about 2 points without attacker, and resists better
   than a fixed C under attack (single runs).
+
+## The `clipping` decorator
+
+A dedicated decorator (`pybiscus-plugins/strategydecorator/clipping`, family "Robustness") bounds
+each client's update before the aggregation, whatever the strategy behind, without going through
+DP (no epsilon, no `num_sampled_clients`, integer buffers left alone):
+
+```yaml
+server_strategy:
+  pipeline:
+  - name: clipping
+    config:
+      mode: median          # fixed (clipping_norm) | median (median_factor x the round's median norm)
+      median_factor: 1.5
+```
+
+- `median` sets C by itself every round, without lag, and a minority of clients cannot move the
+  median.
+- The update is measured against what each client was sent: listed after
+  `personalizeclientsfitin` (enforced at check), it follows the personalized models. It cannot be
+  combined with the server-side DP decorators, which clip already.
+- Every round logs `clip_norm`, `clip_fraction`, the median and maximum update norms, the clipped
+  clients, and for each client `clip_ratio_<cid>` = its update norm / the median: a client clipped
+  round after round far above the median is a suspect.
+
+Dirichlet shares, same attackers:
+
+| variant | no attacker | 1 attacker | 2 attackers |
+|---|---|---|---|
+| FedAvg | 0.398 | 0.102 | — |
+| clipping, median x 1.5 | 0.396 | 0.298 | 0.210 |
+| clipping, median x 2 | 0.389 | 0.266 | 0.091 |
+| Bulyan, f 1 | 0.333 | 0.348 | — |
+
+- Without attacker, median x 1.5 costs nothing (one honest client clipped once in 5 rounds).
+- The attackers were exactly the clipped clients every round (`clip_ratio` about 9.2 against 1.0).
+- Clipping limits an attacker without removing it: its update, brought down to 1.5 times the
+  median, still pulls the wrong way. Under attack, Bulyan does better; with several attackers,
+  clipping alone does not hold.
+
+**Choosing**: no attack expected, heterogeneous data → FedAvg (+ `clipping`, median x 1.5, as a
+free safeguard and a detector); attacks expected → Bulyan (on iid-like data, Multi-Krum too).
