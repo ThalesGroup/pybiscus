@@ -1,4 +1,4 @@
-from typing import Tuple
+from typing import Optional, Tuple
 import numpy as np
 import os
 import re
@@ -32,21 +32,22 @@ def parse_args():
     parser.add_argument(
         "--ground-truth-folder",
         type=str,
-        default="../../../datasets/cifar10/2clients_splits/",
-        help="Folder containing ground truth datasets/splits, list of indices per client and splits",
+        default="experiments/partition",
+        help="Folder of the clients' indices files (client_<cid>_train.txt...), as written by "
+             "pybiscus data partition <client config> --export <folder>",
     )
     parser.add_argument(
         "--round-path",
         type=str,
-        default="../../../experiments/current/rounds",
+        default="experiments/current/rounds",
         help="Path to rounds directory",
     )
     # Dict: client name (string) -> cid (int)
     parser.add_argument(
         "--dic-client-name",
-        type=dict,
-        default={"0": 0, "1": 1},
-        help="Dictionary mapping client name to cid. Example: '{A:0,B:1}'",
+        type=Optional[dict],
+        default=None,
+        help="Dictionary mapping the indices files' client name to cid (identity if unset). Example: '{A:0,B:1}'",
     )
     parser.add_argument(
             "--plot_per_label",
@@ -251,7 +252,13 @@ def get_dataframes(
     df_loss = pd.concat(df_loss_list)
     df_cosine = pd.concat(df_cosine_list)
 
-    cid_cols = extract_ordered_clients(f"{Path(round_path).parent}/server_logs.txt")
+    # the decorator names the columns after the Pybiscus cid, which numbers the exported indices
+    # files; earlier reports used Flower's ids, matched to the cid through the server's logs
+    client_cols = [col for col in df_cosine.columns if col not in ("Image_idx", "round")]
+    if client_cols and all(col.isdigit() for col in client_cols):
+        cid_cols = sorted(client_cols, key=int)
+    else:
+        cid_cols = extract_ordered_clients(f"{Path(round_path).parent}/server_logs.txt")
     print("ordered cids", cid_cols)
     df_cosine_random = pd.DataFrame(
         np.random.rand(len(df_cosine), len(cid_cols)),
@@ -396,6 +403,8 @@ def plot_ROCs_label(
     approach="higher_whisker",
 ):
 
+    # the privacy set may be a subset of the split the indices files number (privacy.max_samples)
+    df_gt = df_gt[df_gt["Image_idx"].isin(df_attack["Image_idx"])]
     df_gt_merged = df_gt.merge(df_labels, on="Image_idx")
 
     # All labels, sorted increasing
@@ -493,13 +502,15 @@ def plot_ROCs(
     We use as prediction value for each client, each data, each round :
     the cosine of the client minus the median cosine of the all the clients
     """
+    # the privacy set may be a subset of the split the indices files number (privacy.max_samples)
+    df_gt = df_gt[df_gt["Image_idx"].isin(df_attack["Image_idx"])].copy()
     for client_num, client in enumerate(cid_list):
         df_gt.sort_values("Image_idx", inplace=True)
         if round_num >= 0:
             df_attack = df_attack[df_attack["round"] == round_num]
-        train_truth = df_gt[
+        train_truth = set(df_gt[
             (df_gt["client_num"] == client_num) & (df_gt["split"] == "train")
-        ]["Image_idx"].tolist()
+        ]["Image_idx"])
         y_true = df_gt["Image_idx"].apply(lambda x: 1 if x in train_truth else 0).values
         y_pred, y_pred_bin = get_y_pred(df_attack, client, approach)
         print(
@@ -517,7 +528,7 @@ def plot_ROCs(
         # Compute ROC curve
         fpr, tpr, thresholds = roc_curve(y_true, y_pred)
         roc_auc = auc(fpr, tpr)
-        print(f"Client {client_num} {client} {plot_title} round {round_num}")
+        print(f"Client {client_num} {client} {plot_title} round {round_num} AUC={roc_auc:.3f}")
         print("TPR@FPR 10-3", "(tpr, fpr, ratio)", get_tpr_at_frp(tpr, fpr, 0.001))
         print("TPR@FPR 10-2", "(tpr, fpr, ratio)", get_tpr_at_frp(tpr, fpr, 0.01))
         print("TPR@FPR 10-1", "(tpr, fpr, ratio)", get_tpr_at_frp(tpr, fpr, 0.1))

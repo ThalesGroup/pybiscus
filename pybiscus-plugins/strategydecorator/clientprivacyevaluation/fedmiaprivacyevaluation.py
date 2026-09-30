@@ -16,9 +16,11 @@ import flwr as fl
 from flwr.common import Parameters, parameters_to_ndarrays
 
 from pybiscus.interfaces.flower.strategydecorator import StrategyDecorator
-from pybiscus.interfaces.flower.fabricstrategyfactory import FabricStrategyFactory
 from pybiscus.core.ensure_filesystem import ensure_file_dir_exists, ensure_dir_exists
+from pybiscus.core.pybiscusexception import PybiscusValueException
+import pybiscus.core.pybiscuscontext as pcpc
 import pybiscus.core.pybiscus_logger as logm
+from pybiscus.ml.datasplit import example_indices
 
 
 from tqdm import tqdm
@@ -50,13 +52,13 @@ class ConfigFedMIAPrivacyEvaluationStrategyDecoratorData(BaseModel):
     client_fitres_parameters_file_prefix: str = "client_fitres_parameters"
     # parameters_iterator : Iterator[Parameter] = None
     # Todo fournir plutot un fichier avec la liste
-    device: str="cuda"
 
     model_config = ConfigDict(extra="forbid")
 
 class ConfigFedMIAPrivacyEvaluationStrategyDecorator(BaseModel):
 
     PYBISCUS_ALIAS: ClassVar[str] = "FedMIAPrivacyEvaluation"
+    PYBISCUS_GROUP: ClassVar[str] = "Privacy"
     name:   Literal["fedmiaprivacyevaluation"]
 
     config: ConfigFedMIAPrivacyEvaluationStrategyDecoratorData
@@ -71,31 +73,21 @@ class FedMIAPrivacyEvaluationStrategyDecorator(StrategyDecorator):
     otherwise the servet fit params fit
     """
     
-    def __init__(
-        self,
-        base_strategy: Strategy,
-        pybiscus_strategy: FabricStrategyFactory,
-        config : ConfigFedMIAPrivacyEvaluationStrategyDecorator
-        
-        
-    ):
-        """
-        Args:
-            base_strategy: the base strategy to decorate
-            result_modifier: configuration of the result modifier
-        """
+    def __init__(self, base_strategy: Strategy, config):
+        # read from the server context, filled before the decorators are built: an extra
+        # constructor parameter would change every decorator's and strategy factory's signature
         self.base_strategy = base_strategy
-        self.model = pybiscus_strategy.model
-        self.state_dict = self.model.state_dict()
-        # Todo permettre de lister les parametres
-        self.parameters_iterator = self.model.parameters()
-        if hasattr(pybiscus_strategy, 'privacyset'):
-            self.privacyset = pybiscus_strategy.privacyset
-        else:
-            self.privacyset = None
+        self.model = pcpc.pybiscus_context[pcpc.MODEL]
+        self.fabric = pcpc.pybiscus_context[pcpc.FABRIC]
+        self.reporting_path = pcpc.pybiscus_context[pcpc.REPORTING_PATH]
+        self.privacyset = pcpc.pybiscus_context.get(pcpc.PRIVACY_SET)
         if self.privacyset is None:
-            logm.console.log("No privacyset defined in the strategy, cannot perform the Privacy Evaluation")
-        self.fabric = pybiscus_strategy.fabric
+            raise PybiscusValueException(
+                "FedMIA privacy evaluation needs the examples it attacks: add a privacy section to the "
+                "server's data configuration (or dir_privacy for iSAID)"
+            )
+        self.state_dict = self.model.state_dict()
+        self.parameters_iterator = self.model.parameters()
         self.criterion = self._make_loss(config.criterion)
         self.conf = config
 
@@ -125,16 +117,6 @@ class FedMIAPrivacyEvaluationStrategyDecorator(StrategyDecorator):
         client_manager: ClientManager,
     ) -> List[Tuple[ClientProxy, fl.common.FitIns]]:
         """send personalized models to clients"""
-
-        import pybiscus.core.pybiscuscontext as pcpc
-        self.reporting_path = pcpc.pybiscus_context["reporting_path"]
-
-        if self.model is None:
-            self.fabric = pcpc.pybiscus_context["fabric"]
-            self.model = pcpc.pybiscus_context["model"]
-            self.state_dict = self.model.state_dict()
-            if self.parameters_iterator is None:
-                self.parameters_iterator = self.model.parameters()
 
         # get base config
         base_config = self.base_strategy.configure_fit( server_round, parameters, client_manager )
@@ -167,12 +149,16 @@ class FedMIAPrivacyEvaluationStrategyDecorator(StrategyDecorator):
         round_path = self.reporting_path / self.conf.reporting_sub_dir
         ensure_dir_exists(round_path)
         cid_list = []
+        # the result files are named after Flower's id of the client, the only one configure_fit
+        # knows; the reports after the Pybiscus cid, which numbers the exported indices files
+        client_names = []
         for client_proxy, fit_res in results:
 
             cid = client_proxy.cid
             cid_list.append(cid)
+            client_names.append(str(fit_res.metrics.get("cid", cid)))
             logm.console.log(f"Source is flower => client_id = {cid}")
-            logm.console.log(f"Source is metrics => cid = {fit_res.metrics['cid']}")
+            logm.console.log(f"Source is metrics => cid = {fit_res.metrics.get('cid')}")
 
             result_path = round_path / f"round_{server_round}" / f"{self.conf.client_fitres_parameters_file_prefix}_{cid}.npz"
 
@@ -180,16 +166,13 @@ class FedMIAPrivacyEvaluationStrategyDecorator(StrategyDecorator):
 
             np.savez(result_path, *result)
         
-        if server_round>=1 :
-            if self.privacyset is not None:
-                self._process_client_round(
-                    round_num= server_round,
-                    cid_list= cid_list,
-                    MIADataloader = self.privacyset,
-                    criterion = self.criterion,
-                    device= self.conf.device)
-            else:
-                logm.console.log("No privacyset defined in the strategy, cannot perform the Privacy Evaluation")
+        self._process_client_round(
+            round_num= server_round,
+            cid_list= cid_list,
+            client_names= client_names,
+            MIADataloader = self.privacyset,
+            criterion = self.criterion,
+            device= self.fabric.device)
 
         self.model.load_state_dict(current_model_state_dict)
         return super().aggregate_fit(server_round, results, failures)
@@ -341,7 +324,8 @@ class FedMIAPrivacyEvaluationStrategyDecorator(StrategyDecorator):
     def _process_client_round(
         self,
         round_num: int,
-        cid_list: list[int],
+        cid_list: list[str],
+        client_names: list[str],
         MIADataloader: torch.utils.data.DataLoader,
         criterion,
         device
@@ -349,14 +333,13 @@ class FedMIAPrivacyEvaluationStrategyDecorator(StrategyDecorator):
 
         
         MIADataset = MIADataloader.dataset
-        MIAindices = [i for i in range(len(MIADataset))]
-        if hasattr(MIADataset, 'indices'):
-            MIAindices = MIADataset.indices
+        # the reports' Image_idx: index in the train split, what the exported indices files list
+        MIAindices = example_indices(MIADataset)
 
         batch_size = MIADataloader.batch_size
 
         MIADataloader = self.fabric._setup_dataloader(
-            DataLoader( MIADataset,  batch_size=batch_size, num_workers=8, drop_last=False, shuffle=False, collate_fn=MIADataloader.collate_fn))
+            DataLoader( MIADataset,  batch_size=batch_size, num_workers=MIADataloader.num_workers, drop_last=False, shuffle=False, collate_fn=MIADataloader.collate_fn))
 
         round_path = self.reporting_path / self.conf.reporting_sub_dir
         ensure_dir_exists(round_path)
@@ -392,8 +375,9 @@ class FedMIAPrivacyEvaluationStrategyDecorator(StrategyDecorator):
                 ))
             # Δw par clé de paramètre
             client_update = []
-            for k, _ in self.model.named_parameters():
-                key = f"model.{k.partition('model.')[2]}"
+            # the underlying module's parameter names are the state_dict keys; the Fabric wrapper's
+            # carry a prefix
+            for key, _ in getattr(self.model, "module", self.model).named_parameters():
                 client_update.append(
                     torch.tensor(np.asarray(client_res_state_dict[key], dtype=np.float32) 
                                  - np.asarray(client_in_state_dict[key], dtype=np.float32))
@@ -412,13 +396,13 @@ class FedMIAPrivacyEvaluationStrategyDecorator(StrategyDecorator):
         )
         # Cosine_matrix (nb_data,nb_clients), server_losses is of length nb_data
         logm.console.log("done", cosine_matrix.shape, len(server_losses))
-        data_matrix = {cid_client : cosine_matrix[:,i].tolist() for i, cid_client in enumerate(cid_list)}
+        data_matrix = {name : cosine_matrix[:,i].tolist() for i, name in enumerate(client_names)}
         df_matrix = pd.DataFrame(data=data_matrix, index=MIAindices)
         df_matrix.to_csv(f"{round_path}/round_{round_num}/{self.conf.cosine_matrix_path}", index_label='Image_idx')
 
-        data_losses = {f"{cid_client}_in" : clients_in_losses[i] for i, cid_client in enumerate(cid_list)}
-        for i, cid_client in enumerate(cid_list):
-            data_losses[f"{cid_client}_res"] = clients_res_losses[i]
+        data_losses = {f"{name}_in" : clients_in_losses[i] for i, name in enumerate(client_names)}
+        for i, name in enumerate(client_names):
+            data_losses[f"{name}_res"] = clients_res_losses[i]
         data_losses["server_in"] = server_losses
         df_losses = pd.DataFrame(data=data_losses, index=MIAindices)
         df_losses.to_csv(f"{round_path}/round_{round_num}/{self.conf.losses_path}", index_label='Image_idx')

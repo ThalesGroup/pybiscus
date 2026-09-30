@@ -1,0 +1,36 @@
+# Campaign of launch/campaign/strategy_campaign.py: FedMIA membership inference on cifar10.
+#   uv run python launch/campaign/strategy_campaign.py launch/campaign/cifar10_fedmia.yml
+# then, per variant, the analyser against the clients' exported partitions:
+#   uv run pybiscus data partition <variant>/client_0.yml --export <dir>
+#   uv run python pybiscus-plugins/strategydecorator/clientprivacyevaluation/fedmiaprivacy_analyser.py \
+#       --round-path <variant>/experiments/<run>/rounds --ground-truth-folder <dir> --plot_per_label false
+# No train.max_samples here: a client would train on part of its share while the exported indices
+# list all of it, counting untrained examples as members.
+# FedMIA attacks from the server, with each client's own update: server-side DP noises only the
+# aggregated model and is not expected to lower its AUC (the DP variant checks it).
+
+server_config: configs/cifar10_cnn/distributed/without_ssl/with_privacy_eval_cpu/server.yml
+client_config: configs/cifar10_cnn/distributed/without_ssl/with_privacy_eval_cpu/client_1.yml
+output: experiments/campaigns
+
+clients: 3
+rounds: 3
+port: 3399                 # the Flower server of each run: must be free
+threads_per_client: auto   # physical cores / clients
+timeout: 3600              # seconds per run
+
+client_data:
+  train:
+    partition:
+      scheme: iid
+      seed: 42
+  val:
+    source: holdout
+    fraction: 0.1
+
+variants:
+  - label: FedAvg + FedMIA
+    strategy: {name: fedavggeneric, config: {}}
+  - label: DP fixed z 1, C 1 + FedMIA
+    strategy: {name: fedavggeneric, config: {}}
+    pipeline: [{name: serverdpfixed, config: {noise_multiplier: 1.0, clipping_norm: 1.0}}]
