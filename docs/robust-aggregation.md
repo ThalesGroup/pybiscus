@@ -50,7 +50,28 @@ Test accuracy at round 5; attackers flip the sign of their update and scale it b
   collude, and each lands far from the honest clients. Colluding attackers that stay close to
   them (smaller, coordinated changes) are the case these guarantees are about; not tested yet.
 - Without attacker, the robust aggregations cost little on iid shares (single runs, differences of
-  the order of the run-to-run noise). Heterogeneous (dirichlet) shares, where honest clients look
-  different, are the next test.
+  the order of the run-to-run noise).
 - A client reporting 20 times its examples with an honest update barely changes FedAvg
   (0.373): the lie is harmful combined with a malicious update, not alone.
+
+## Heterogeneous shares (dirichlet 0.5)
+
+Same setting, each client dominated by a few classes (2 834 to 9 930 images): honest clients look
+different from one another, and a robust aggregation may discard them as outliers
+(`launch/campaign/cifar10_robust_dirichlet.yml`).
+
+| strategy | no attacker | 1 attacker |
+|---|---|---|
+| FedAvg | 0.398 | 0.102 (collapsed) |
+| FedMedian | 0.366 | 0.278 |
+| FedTrimmedAvg, beta 0.2 | 0.355 | 0.285 |
+| Krum, f 1 | 0.281 | 0.275 |
+| Multi-Krum, f 1, keep 3 | 0.292 | 0.328 |
+| Bulyan, f 1 | 0.333 | 0.348 |
+
+- Without attacker, the robust aggregations now cost 3 to 12 points: Krum, which keeps a single
+  client, loses the most (0.281 against 0.398), Bulyan the least of the Krum family.
+- Against one attacker, the median and the trimmed mean hold less well than on iid shares (about
+  0.28 against 0.33 to 0.38): the honest spread hides the attacker less clearly.
+- Bulyan offers the best balance here. Single runs: differences of a few points are within the
+  run-to-run noise.
