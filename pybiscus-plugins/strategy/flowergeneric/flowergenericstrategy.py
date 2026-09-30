@@ -172,6 +172,32 @@ class FedAvgMFactory(FlowerStrategyFactory):
     flower_strategy_class = fl.server.strategy.FedAvgM
 
 
+# ------------------------------- FedProx -------------------------------------
+# the server only sends proximal_mu in the fit config; the proximal term itself is added by the
+# client's train_loop. A client that ignores it would silently train as with FedAvg
+# mu scales with the drift: measured on cifar10 (launch/campaign/cifar10_fedprox.yml, dirichlet
+# 0.3, 3 local epochs), ||w - w_global|| after local training is about 1, so the term is about
+# mu / 2 next to a data loss of 2. Up to 0.01 the accuracy stays within FedAvg's noise; 0.1 slows
+# the learning and 1 almost stops it (DEVLOG)
+
+class ConfigFedProxData(ConfigFlowerFailuresData):
+    """FedAvg with a proximal term mu/2 * ||w - w_global||^2 in the clients' loss, which limits
+    their drift from the global model, see flwr.server.strategy.FedProx. mu = 0 is FedAvg."""
+    proximal_mu: float = Field(default=0.01, ge=0)
+
+
+class ConfigFedProx(BaseModel):
+    PYBISCUS_ALIAS: ClassVar[str] = "FedProx"
+    PYBISCUS_GROUP: ClassVar[str] = "Averaging"
+    name:   Literal["fedprox"]
+    config: ConfigFedProxData
+    model_config = ConfigDict(extra="forbid")
+
+
+class FedProxFactory(FlowerStrategyFactory):
+    flower_strategy_class = fl.server.strategy.FedProx
+
+
 # ------------------------- FedAdam / FedYogi / FedAdagrad ---------------------
 # server-side adaptive optimizers, applied to the pseudo-gradient (mean of the clients' weights
 # minus the global ones). With a tiny tau, the first update is eta_norm * sign(delta): Flower's
@@ -375,6 +401,7 @@ class FaultTolerantFedAvgFactory(FlowerStrategyFactory):
 FLOWER_STRATEGIES = {
     "fedavggeneric":       (FedAvgGenericFactory,       ConfigFedAvgGeneric),
     "fedavgm":             (FedAvgMFactory,             ConfigFedAvgM),
+    "fedprox":             (FedProxFactory,             ConfigFedProx),
     "fedadam":             (FedAdamFactory,             ConfigFedAdam),
     "fedyogi":             (FedYogiFactory,             ConfigFedYogi),
     "fedadagrad":          (FedAdagradFactory,          ConfigFedAdagrad),

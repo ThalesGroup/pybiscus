@@ -6,7 +6,9 @@ import torch
 
 from pybiscus.core.pybiscusexception import PybiscusValueException
 from pybiscus.flower_config.config_computecontext import ConfigClientComputeContext
-from pybiscus.ml.loops_fabric import SchedulerConfig, check_schedulers_monitor, test_loop, train_loop
+from pybiscus.ml.loops_fabric import (
+    SchedulerConfig, check_schedulers_monitor, squared_distance, test_loop, trainable_params, train_loop,
+)
 import pybiscus.core.pybiscus_logger as logm
 
 
@@ -166,6 +168,13 @@ class FlowerFabricClient(fl.client.NumPyClient):
         if self.optimizer_state == "reset":
             self._reset_optimizers()
 
+        # sent by FedProx only; mu = 0 trains as FedAvg but still reports weight_drift, the
+        # reference that shows what a given mu changes
+        proximal_mu = config.get("proximal_mu")
+        global_params = None
+        if proximal_mu is not None:
+            global_params = [p.detach().clone() for p in trainable_params(self.model)]
+
         logm.console.log(f"Round {config['server_round']}, training Started...")
 
         results_train = train_loop(
@@ -175,12 +184,18 @@ class FlowerFabricClient(fl.client.NumPyClient):
             self.optimizers,
             epochs=config["local_epochs"],
             schedulers=self.schedulers,
+            proximal_mu=float(proximal_mu or 0.0),
+            global_params=global_params,
         )
             
         logm.console.log(f"Training Finished! Loss is {results_train['loss']}")
         metrics["cid"] = self.cid
         for key, val in results_train.items():
             metrics[key] = val
+        if global_params is not None:
+            with torch.no_grad():
+                drift = squared_distance(trainable_params(self.model), global_params).sqrt()
+            metrics["weight_drift"] = float(drift)
         return self.get_parameters(config={}), self.num_examples["trainset"], metrics
 
     def evaluate(self, parameters, config):

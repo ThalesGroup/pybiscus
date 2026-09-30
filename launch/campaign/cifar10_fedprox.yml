@@ -1,0 +1,46 @@
+# Campaign of launch/campaign/strategy_campaign.py: FedProx's proximal_mu against FedAvg on cifar10.
+#   uv run python launch/campaign/strategy_campaign.py launch/campaign/cifar10_fedprox.yml
+# FedProx only matters when the clients drift apart: heterogeneous shares (dirichlet, low alpha)
+# and several local epochs. fedprox with mu 0 trains as FedAvg but reports each client's
+# weight_drift (||w - w_global|| after its local training), the reference for the other mu.
+# About 2 minutes per variant on a 14-core machine; do not run it next to a live session.
+
+server_config: configs/cifar10_cnn/distributed/without_ssl/server.yml
+client_config: configs/cifar10_cnn/distributed/without_ssl/client_1.yml
+output: experiments/campaigns
+
+clients: 3
+rounds: 5
+local_epochs: 3
+port: 3399                 # the Flower server of each run: must be free
+threads_per_client: auto   # physical cores / clients
+timeout: 1800              # seconds per run
+
+client_data:
+  train:
+    max_samples: 8000
+    partition:
+      scheme: dirichlet
+      alpha: 0.3
+      seed: 42
+  val:
+    source: holdout
+    fraction: 0.1
+
+server_data:
+  test:
+    max_samples: 2000
+
+variants:
+  - label: FedAvg
+    strategy: {name: fedavggeneric, config: {}}
+  - label: FedProx mu 0
+    strategy: {name: fedprox, config: {proximal_mu: 0.0}}
+  - label: FedProx mu 0.001
+    strategy: {name: fedprox, config: {proximal_mu: 0.001}}
+  - label: FedProx mu 0.01
+    strategy: {name: fedprox, config: {proximal_mu: 0.01}}
+  - label: FedProx mu 0.1
+    strategy: {name: fedprox, config: {proximal_mu: 0.1}}
+  - label: FedProx mu 1
+    strategy: {name: fedprox, config: {proximal_mu: 1.0}}

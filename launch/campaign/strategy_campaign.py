@@ -70,6 +70,8 @@ def run_variant(campaign: dict, variant: dict, out: Path) -> dict:
     server = OmegaConf.to_container(OmegaConf.load(campaign["server_config"]))
     server["flower_server"]["listen_address"] = f"[::1]:{port}"
     server["server_run"]["num_rounds"] = campaign["rounds"]
+    if "local_epochs" in campaign:
+        server["server_run"]["clients_fit_local_epochs"] = campaign["local_epochs"]
     server["server_run"]["reporting"]["basedir"] = str(work / "experiments")
     strategy = copy.deepcopy(variant["strategy"])
     strategy_config = strategy.setdefault("config", {}) or {}

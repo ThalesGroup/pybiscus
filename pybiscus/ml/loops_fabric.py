@@ -129,10 +129,23 @@ class BatchMean:
         return {key: (value / max(1, self.batches)).item() for key, value in self.plain.items()}
 
 
-def train_loop(fabric, net, trainloader, optimizer, epochs: int, verbose=False, schedulers=()):
+def trainable_params(net) -> list:
+    return [p for p in net.parameters() if p.requires_grad]
+
+
+def squared_distance(params, reference_params) -> torch.Tensor:
+    return sum((w - w0).pow(2).sum() for w, w0 in zip(params, reference_params))
+
+
+def train_loop(fabric, net, trainloader, optimizer, epochs: int, verbose=False, schedulers=(),
+               proximal_mu: float = 0.0, global_params=None):
     """Train the network on the training set."""
 
     net.train()
+
+    proximal = global_params is not None and proximal_mu > 0
+    if proximal:
+        trainable = trainable_params(net)
 
     if not optimizer:
         optimizer = None
@@ -149,6 +162,10 @@ def train_loop(fabric, net, trainloader, optimizer, epochs: int, verbose=False, 
         ):
             results = net.training_step(batch, batch_idx)
             loss = results["loss"]
+            # FedProx: the term only steers the gradient, the reported loss stays the data one so
+            # that its curves remain comparable with the other strategies'
+            if proximal:
+                loss = loss + proximal_mu / 2 * squared_distance(trainable, global_params)
 
             if optimizer is not None:
                 optimizer.zero_grad()
