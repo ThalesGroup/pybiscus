@@ -73,6 +73,8 @@ class ConfigTurbofanData(BaseModel):
     must be the clients'); rul_clip: cap on the remaining useful life to predict (unset: none)"""
 
     PYBISCUS_CONFIG: ClassVar[str] = "config"
+    # the server reads train.engines too: they set the normalization statistics
+    PYBISCUS_SERVER_SECTIONS: ClassVar[tuple] = ("train", "test")
 
     # the file shipped with the plugin; a "${root_dir}" default would not be interpolated
     file: str = str(Path(__file__).parent / "turbofan.txt")
@@ -129,6 +131,14 @@ class LitTurbofanDataModule(pl.LightningDataModule):
         self.test = TurbofanTestSet.model_validate(test or {})
         self.num_workers = num_workers
         self.data_train = self.data_val = self.data_test = None
+
+    def train_source(self):
+        """the training engines, which the partitions share out whole"""
+        return list(self.train.engines)
+
+    def split_units(self, partition: Optional[ConfigPartition]) -> tuple[np.ndarray, None]:
+        """engine numbers of a partition; no holdout: validation has its own engines"""
+        return np.array(partition_engines(self.train.engines, partition)), None
 
     def setup(self, stage: Optional[str] = None):
         frame = read_engines(self.file)

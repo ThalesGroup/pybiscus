@@ -128,6 +128,7 @@ The normalization statistics come from all the `train.engines`, before partition
 computes the same ones, and the server's `train.engines` must be the clients'. Engine 69 lives
 longer than the training engines: without `rul_clip`, its RUL often exceeds anything seen in
 training (demo `configs/turbofan_lstm/`, campaign `launch/campaign/turbofan_lstm.yml`).
+`pybiscus data partition` exports each client's engine numbers.
 
 The `hdfs` plugin (HDFS log sequences, one per CSV line; Deeplog predicts the next event of a
 window) shares and holds out **whole sequences**, whose windows overlap:
@@ -151,6 +152,15 @@ data:
 `format: sessions` reads labelled sessions, each distinct sequence once with its count, all in
 one batch: Deeplog's precision / recall / F1 are computed per batch. `pybiscus data partition`
 exports the clients' sequence indices (line numbers of `train.file`).
+
+The server reads only the `test` (and `privacy`) section of the data configuration — turbofan's
+also `train.engines`. `server check` warns when its `train` or `val` section differs from the
+defaults: those settings have no effect on the server (the agent's form writes every section with
+its defaults, which does not warn).
+
+Defaults holding an interpolation (`reporting.basedir: ${root_dir}/experiments`, the data plugins'
+`dir`, `root_dir: ${oc.env:PWD}` itself) are resolved like the values written in the YAML: a
+configuration may omit them.
 
 An optional `privacy` section (cifar, mnist; server side) gives a privacy evaluation such as a
 membership inference attack the examples it attacks: the official train split, never shuffled

@@ -16,7 +16,7 @@ from pybiscus.plugin.registries.data_registry import datamodule_registry
 from pybiscus.plugin.registries.model_registry import model_registry 
 from pybiscus.flower_config.config_client import ConfigClient
 
-from pybiscus.commands.apps_common import exit_on_invalid_config, load_config, apply_num_threads
+from pybiscus.commands.apps_common import exit_on_invalid_config, load_config, apply_num_threads, resolve_defaults
 
 torch.backends.cudnn.enabled = True
 
@@ -54,7 +54,7 @@ def apply_client_overrides(conf_loaded, cid, root_dir, server_address) -> None:
 def check_and_build_client_config(config: dict) -> ConfigClient:
 
     logm.console.log(config)
-    _conf = ConfigClient(**config)
+    _conf = resolve_defaults(ConfigClient, ConfigClient(**config))
     logm.console.log(_conf)
 
     return _conf

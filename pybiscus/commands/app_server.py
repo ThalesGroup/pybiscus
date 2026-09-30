@@ -18,7 +18,7 @@ from pybiscus.core.logger.multiplelogger.multipleloggerfactory import MultipleLo
 from pybiscus.core.metricslogger.multiplemetricslogger.multiplemetricsloggerfactory import MultipleMetricsLoggerFactory
 from pybiscus.flower_config.config_server import ConfigServer
 from pybiscus.commands.onnx_mngt import to_onnx_with_datamodule
-from pybiscus.commands.apps_common import apply_num_threads, exit_on_invalid_config, load_config
+from pybiscus.commands.apps_common import apply_num_threads, exit_on_invalid_config, load_config, resolve_defaults
 from pybiscus.plugin.registries.data_registry import datamodule_registry
 from pybiscus.plugin.registries.logger_registry import logger_registry
 from pybiscus.plugin.registries.metriclogger_registry import metricslogger_registry
@@ -28,12 +28,28 @@ from pybiscus.plugin.registries.strategydecorator_registry import strategydecora
 
 #                    ------------------------------------------------
 
+# the sections of a data configuration the server reads, unless the plugin declares its own
+SERVER_DATA_SECTIONS = ("test", "privacy")
+
+
+def warn_unused_data_sections(conf_loaded, conf: ConfigServer) -> None:
+    raw = (OmegaConf.to_container(OmegaConf.create(conf_loaded), resolve=False).get("data") or {}).get("config") or {}
+    used = getattr(type(conf.data.config), "PYBISCUS_SERVER_SECTIONS", SERVER_DATA_SECTIONS)
+    for section in sorted(set(raw) & {"train", "val"} - set(used)):
+        section_class = type(getattr(conf.data.config, section))
+        # the agent's form writes every section with its defaults: only a changed one says something.
+        # Compared unresolved, as the defaults are ("${root_dir}/...")
+        if section_class.model_validate(raw[section]).model_dump() != section_class().model_dump():
+            logm.console.log(f"⚠️ data.config.{section}: not used by the server (it reads {', '.join(used)}): its settings have no effect")
+
+
 def check_and_build_server_config(conf_loaded: dict) -> ConfigServer :
 
     logm.console.log(conf_loaded)
-    _conf = ConfigServer(**conf_loaded)
+    _conf = resolve_defaults(ConfigServer, ConfigServer(**conf_loaded))
     logm.console.log(_conf)
-        
+    warn_unused_data_sections(conf_loaded, _conf)
+
     return _conf
 
 #                    ------------------------------------------------

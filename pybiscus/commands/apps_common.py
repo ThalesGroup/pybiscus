@@ -28,6 +28,17 @@ def exit_on_invalid_config(error: ValidationError) -> NoReturn:
     raise typer.Exit(code=CONFIG_VALIDATION_EXIT_CODE)
 
 
+def resolve_defaults(model_class, conf):
+    """conf validated again with the interpolations of its defaults resolved"""
+    dumped = conf.model_dump(mode="json")
+    # OmegaConf resolves the YAML, then Pydantic adds the defaults: one holding an interpolation
+    # (reporting.basedir = "${root_dir}/experiments", the data plugins' dir) stayed a literal
+    # string, and a directory named "${root_dir}" appeared
+    if "${" not in str(dumped):
+        return conf
+    return model_class(**OmegaConf.to_container(OmegaConf.create(dumped), resolve=True))
+
+
 def load_config( config: Path ) -> DictConfig:
 
     if config is None:
