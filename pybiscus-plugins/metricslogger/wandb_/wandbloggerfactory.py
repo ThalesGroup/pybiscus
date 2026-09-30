@@ -1,88 +1,50 @@
-
-from enum import Enum
 import os
-from typing import ClassVar, Literal, Union
+from enum import Enum
+from typing import ClassVar, Literal, Optional
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 import wandb
 
+import pybiscus.core.pybiscus_logger as logm
+import pybiscus.core.pybiscuscontext as pcpc
+from pybiscus.core.pybiscusexception import PybiscusValueException
 from pybiscus.interfaces.core.metricsloggerfactory import MetricsLoggerFactory
 
-class EnvVar(BaseModel):
 
-    env_var_name: str = "WANDB_API_KEY"    
+class WandbMode(str, Enum):
+    # an Enum and not a Literal: the agent's form offers an Enum's values, a Literal's first only
+    online = "online"        # sent to the W&B server as the run goes
+    offline = "offline"      # kept under the experiment directory, sent later with "wandb sync <dir>"
+    disabled = "disabled"    # nothing logged
 
-    model_config = ConfigDict(extra="forbid")
-
-class String(BaseModel):
-
-    value: str = "xxxxxxxxxx"    
-
-    model_config = ConfigDict(extra="forbid")
-
-class Undefined(BaseModel):
-
-    model_config = ConfigDict(extra="forbid")
-    
-class WandbRole(Enum):
-    Client = True
-    Server = False
-
-class ConfigWandbLoggerFactoryParams(BaseModel):
-    """
-        project_name: Name of the W&B project
-        entity_name: Optional name of the W&B entity (team or username)
-        run_name: Optional name for this specific run
-        run_group: Optional group to organize related runs
-        job_type: Optional job type (e.g. 'server', 'client')
-        config: Optional dictionary of configuration parameters to log
-        is_client: Boolean indicating if this is a client
-        partition_id: Optional client partition ID (required if is_client=True)
-    """
-
-    PYBISCUS_CONFIG: ClassVar[str] = "params"
-
-    project_name: str = "DefaultProjectName"
-    entity_name:  str = "DefaultEntityName"
-    run_name:     str = "DefaultRunName"
-    run_group:    str = "DefaultRunGroup"
-    job_type:     str = "DefaultJobType"
-    # config: Optional[Dict[str, Any]] = None,
-    #     config={
-    #    "round": config["round"],
-    # )
-    # config={
-    #     "model_checkpoint": model_checkpoint,
-    #     "num_rounds": num_rounds,
-    #     "fraction_fit": fraction_fit,
-    #     "num_labels": num_labels,
-    # },
-
-    is_client:    WandbRole = WandbRole.Server.value
-    # partition_id: int  = 1
-
-    model_config = ConfigDict(extra="forbid")
 
 class ConfigWandbLoggerFactoryData(BaseModel):
+    """Weights & Biases run of the server, which logs every metric (the clients' too).
+    project: W&B project; entity: team or user (unset: the account's default); name, group, tags:
+    of the run (name unset: drawn by W&B); mode: online, offline (no network needed) or disabled;
+    api_key_env_var: environment variable holding the API key, read only when set and present,
+    otherwise W&B uses WANDB_API_KEY or the machine's "wandb login"."""
 
-    # PYBISCUS_CONFIG ajoute le segment "config" au chemin (sinon api_key_definition et
-    # params remontent d'un niveau -> YAML invalide). PYBISCUS_ALIAS conservé.
     PYBISCUS_CONFIG: ClassVar[str] = "config"
-    PYBISCUS_ALIAS: ClassVar[str] = """🚨 <span style="color: white; background-color: red;">Untested Wandb configuration</span> 🚨"""
 
-
-    api_key_definition: Union[EnvVar, String, Undefined]
-    params:             ConfigWandbLoggerFactoryParams
+    project: str = "pybiscus"
+    entity: Optional[str] = None
+    name: Optional[str] = None
+    group: Optional[str] = None
+    tags: list[str] = Field(default_factory=list)
+    mode: WandbMode = WandbMode.online
+    # never the key itself: the configuration is saved with the experiment and shown in the forms
+    api_key_env_var: str = "WANDB_API_KEY"
 
     model_config = ConfigDict(extra="forbid")
+
 
 class ConfigWandbLoggerFactory(BaseModel):
 
+    PYBISCUS_ALIAS: ClassVar[str] = "Weights & Biases"
+
     name:   Literal["wandb"]
-
-    PYBISCUS_ALIAS: ClassVar[str] = "WanDb"
-
     config: ConfigWandbLoggerFactoryData
 
     model_config = ConfigDict(extra="forbid")
@@ -92,34 +54,52 @@ class ConfigWandbLoggerFactory(BaseModel):
         return getattr(self, attName, None)
 
 
+class WandbMetricsLogger:
+    """the interface the other metrics loggers offer: a W&B run has log(), not log_metrics()"""
+
+    def __init__(self, run):
+        self.run = run
+
+    def log_metrics(self, metrics, step=None):
+        # no finish() call: nothing finalizes the metrics loggers, W&B closes its run at exit
+        self.run.log(dict(metrics), step=step)
+
+
 class WandbLoggerFactory(MetricsLoggerFactory):
 
-    def __init__(self, conf ):
-        self.conf = conf
+    def __init__(self, config):
+        super().__init__()
+        self.config = config
 
-    def get_metricslogger(self,reporting_path):
+    def get_metricslogger(self, reporting_path):
+        conf = self.config
 
-        if wandb.run is not None:
-            return wandb.run
+        settings = {}
+        api_key = os.environ.get(conf.api_key_env_var)
+        if api_key:
+            # passed to this run only: wandb.login() would write it to the user's ~/.netrc
+            settings["api_key"] = api_key
+        elif conf.mode == WandbMode.online and conf.api_key_env_var != "WANDB_API_KEY":
+            logm.console.log(f"⚠️ W&B: {conf.api_key_env_var} is not set, relying on the machine's \"wandb login\"")
 
-        if isinstance(self.conf.api_key_definition, EnvVar):
-            print("C'est une EnvVar")
-            WANDB_API_KEY = os.getenv(self.conf.api_key_definition.env_var_name)
-            os.environ["WANDB_API_KEY"] = WANDB_API_KEY
-            wandb.init( )
-        elif isinstance(self.conf.api_key_definition, String):
-            print("C'est une String")
-            wandb.init(self.conf.api_key_definition.value )
-        elif isinstance(self.conf.api_key_definition, Undefined):
-            print("C'est un Undefined")
-            wandb.init( )
-        else:
-            return None
+        try:
+            run = wandb.init(
+                project=conf.project,
+                entity=conf.entity,
+                name=conf.name,
+                group=conf.group,
+                tags=conf.tags or None,
+                mode=conf.mode.value,
+                # with the experiment's other files rather than a ./wandb of the current directory
+                dir=str(reporting_path),
+                config=pcpc.pybiscus_context.get(pcpc.SERVER_CONFIG),
+                settings=wandb.Settings(**settings),
+            )
+        except Exception as error:
+            raise PybiscusValueException(
+                f"W&B run could not start ({error}). Online mode needs an API key: set "
+                f"{conf.api_key_env_var} or run \"wandb login\"; offline mode needs no network."
+            ) from error
 
-        wandb_server_run = wandb.init(**self.conf.params.model_dump())
-
-        if wandb_server_run is None:
-            return None
-        else:
-            return wandb_server_run
-        
+        logm.console.log(f"W&B run {run.name} ({conf.mode.value}) in {reporting_path}")
+        return WandbMetricsLogger(run)

@@ -188,6 +188,11 @@ def launch_config(
 
     apply_num_threads(conf.server_compute_context.num_threads)
 
+    # read by the metrics loggers that record the run's parameters (W&B): the configuration is only
+    # saved to the reporting directory at the end of the run
+    import pybiscus.core.pybiscuscontext as pcpc
+    pcpc.pybiscus_context[pcpc.SERVER_CONFIG] = conf.model_dump(mode="json")
+
     # compute the reporting path
     
     if conf.server_run.reporting:
@@ -294,7 +299,6 @@ def launch_config(
     logm.console.log(f"setting 🛠️ strategy <{conf.server_strategy.strategy.name}>")
 
     # expose server context
-    import pybiscus.core.pybiscuscontext as pcpc
     pcpc.pybiscus_context[pcpc.REPORTING_PATH] = Path(reporting_path)
     pcpc.pybiscus_context[pcpc.MODEL] = model
     pcpc.pybiscus_context[pcpc.FABRIC] = fabric
