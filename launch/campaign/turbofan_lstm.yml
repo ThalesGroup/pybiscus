@@ -1,0 +1,22 @@
+# Campaign of launch/campaign/strategy_campaign.py: LSTM remaining-useful-life regression on the
+# plugin's C-MAPSS turbofan engines (2 clients sharing engines 52, 62, 2; engine 64 validates,
+# engine 69 tests on the server). The metric is the test MSE: lower is better.
+#   uv run python launch/campaign/strategy_campaign.py launch/campaign/turbofan_lstm.yml
+# A few seconds per round; do not run it next to a live session.
+
+server_config: configs/turbofan_lstm/server.yml
+client_config: configs/turbofan_lstm/client_1.yml
+output: experiments/campaigns
+
+clients: 2
+rounds: 10
+local_epochs: 2
+port: 3399                 # the Flower server of each run: must be free
+threads_per_client: auto   # physical cores / clients
+timeout: 1800              # seconds per run
+
+variants:
+  - label: FedAvg
+    strategy: {name: fedavggeneric, config: {}}
+  - label: FedProx mu 0.01
+    strategy: {name: fedprox, config: {proximal_mu: 0.01}}

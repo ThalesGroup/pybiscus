@@ -24,18 +24,9 @@ class LSTMRegressor(nn.Module):
         self.linear3 = nn.Linear(in_features=12, out_features=1)
 
     def forward(self, x):
-        batch_size = x.shape[0]
-        h0 = (
-            torch.zeros(self.n_layers, batch_size, self.hidden_units)
-            .requires_grad_()
-            .to(x.get_device())
-        )
-        c0 = (
-            torch.zeros(self.n_layers, batch_size, self.hidden_units)
-            .requires_grad_()
-            .to(x.get_device())
-        )
-        _, (hn, _) = self.lstm(x, (h0, c0))
+        # no initial state: the LSTM starts from zeros on x's device; the former
+        # .to(x.get_device()) failed on CPU, where get_device() is -1
+        _, (hn, _) = self.lstm(x)
         out = self.linear1(hn[0])
         out = self.relu1(out)
         out = self.linear2(out)

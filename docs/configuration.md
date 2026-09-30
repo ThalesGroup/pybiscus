@@ -104,6 +104,31 @@ client). The same `seed` on every client gives disjoint shares without coordinat
 their example indices (`client_<i>_train.txt`, `client_<i>_val.txt`), usable as `train.indices` /
 `val.indices`.
 
+The `turbofan` plugin (NASA C-MAPSS engines 52, 62, 2, 64 and 69, shipped with the plugin) predicts
+the remaining useful life (RUL) of an engine from a window of its cycles. Its sections choose
+engines rather than examples:
+
+```yaml
+data:
+  name: turbofan
+  config:
+    window: 20                 # cycles per example, never across two engines
+    normalize: true            # features standardized with the train section's engines
+    rul_clip: 125              # optional cap on the RUL to predict (unset: none)
+    train:
+      engines: [52, 62, 2]
+      partition: {num_partitions: 2, partition_id: 0, seed: 42}   # whole engines, iid only
+    val:
+      engines: [64]
+    test:
+      engines: [69]
+```
+
+The normalization statistics come from all the `train.engines`, before partition: every client
+computes the same ones, and the server's `train.engines` must be the clients'. Engine 69 lives
+longer than the training engines: without `rul_clip`, its RUL often exceeds anything seen in
+training (demo `configs/turbofan_lstm/`, campaign `launch/campaign/turbofan_lstm.yml`).
+
 An optional `privacy` section (cifar, mnist; server side) gives a privacy evaluation such as a
 membership inference attack the examples it attacks: the official train split, never shuffled
 nor truncated, so that its example *i* is the example *i* of the exported indices files — which

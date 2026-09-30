@@ -1,0 +1,33 @@
+root_dir: ${oc.env:PWD}
+flower_client:
+  server_address: localhost:3333
+client_run:
+  cid: '0'
+  pre_train_val: false
+client_compute_context:
+  hardware:
+    accelerator: cpu
+    devices: auto
+model:
+  name: lstm
+  config:
+    n_features: 24
+    hidden_units: 12
+    lr: 0.001
+data:
+  name: turbofan
+  config:
+    # the three training engines shared between the two clients, whole engines each (same seed
+    # everywhere: disjoint shares); engine 64 validates, engine 69 is kept for the server's test
+    window: 20
+    train:
+      engines: [52, 62, 2]
+      batch_size: 8
+      partition:
+        num_partitions: 2
+        partition_id: 0
+        seed: 42
+    val:
+      engines: [64]
+    test:
+      engines: [69]
