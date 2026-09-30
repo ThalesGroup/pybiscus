@@ -2,7 +2,32 @@
 
 # Welcome to Pybiscus!
 
-You can find here a short documentation on how to use and adapt Pybiscus. The tool is aimed at being modular and as simple as possible. [getting started](getting_started.md).
+You can find here a short documentation on how to use and adapt Pybiscus. The tool is aimed at being modular and as simple as possible.
+
+## Contents
+
+### Using Pybiscus
+
+* [Getting started](getting_started.md) - installation and the three ways to run Pybiscus
+* [Command line interface](cli.md)
+* [Agent: lightweight client](agent.md)
+* [Session using the manager](sessionmanager.md)
+* [Session spread over several machines](multi-machine.md)
+* [Config files](configuration.md)
+* [Containers](containers.md)
+* [Logging and Tensorboard](logging.md)
+
+### Extending Pybiscus
+
+* [Plugins](plugins.md)
+* [How-to: add models and datasets](how-to.md)
+* [Model integration guide](pybiscus_model_guide.md)
+* [Developer guide](developper-guide.md)
+
+### Federated learning topics
+
+* [Robust aggregation against malicious clients](robust-aggregation.md)
+* [Privacy evaluation: FedMIA](privacy-evaluation.md)
 
 ![Overall Pybiscus plugin architecture](images/pybiscus_architecture.jpeg)
 
