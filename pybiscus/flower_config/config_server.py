@@ -45,7 +45,7 @@ class AxeKind(str, Enum):
 
 class OnnxAxe(BaseModel):
 
-    name: str = ""
+    name: str = Field(default="", description="name of the input or output in the ONNX model")
     kind: AxeKind = Field(default=AxeKind.input.value, description='whether the axis belongs to an input or an output of the model')
     dynamic: bool = Field(default=True, description='the size of this axis may change (the batch size, for instance)')
 
@@ -53,12 +53,12 @@ class OnnxAxe(BaseModel):
 
 class ConfigServerOnnxExport(BaseModel):
 
-    filename: str = Field(default="model.onnx", description='file of the exported model, in the reporting directory')
+    filename: str = Field(default="model.onnx", description='file of the exported model, in the reporting directory; the weights go to <file>.data beside it')
     axes: List[OnnxAxe] = Field(default=[], description='names and dynamic axes of the inputs and outputs; deduced from the model and the data if empty')
     # >= 18 requis avec l'exporteur torch dynamo (produit de l'opset 18 ; la reconversion
     # vers un opset inférieur, ex. 13, échoue)
     opset: int = Field(default=18, description='ONNX operator set: 18 or more with the dynamo exporter')
-    post_validation: bool = Field(default=False, description='check the exported model against the original: not implemented yet, no effect')
+    post_validation: bool = Field(default=False, description="check the exported model with onnx and compare its outputs with PyTorch's on a sample (logged)")
 
     model_config = ConfigDict(extra="forbid")
 

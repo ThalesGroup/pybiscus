@@ -363,10 +363,6 @@ def launch_config(
             ensure_file_dir_exists(onnx_path)
             to_onnx_with_datamodule( model, data, onnx_path, conf.server_run.reporting.onnx_export)
 
-            if conf.server_run.reporting.onnx_export.post_validation:
-                # validate_onnx_export(onnx_path: str, model, input_sample: torch.Tensor)
-                pass
-
         # server config logging
         serverconfig_path = reporting_path / conf.server_run.reporting.server_config_filename
         ensure_file_dir_exists(serverconfig_path)

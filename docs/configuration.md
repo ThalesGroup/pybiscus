@@ -299,6 +299,30 @@ fixed order), but training amplifies it: after 5 rounds of 3 local epochs on cif
 twice differed by up to 1 point of accuracy. Seeds make runs comparable, not bit for bit
 identical.
 
+### Exporting the final model (ONNX)
+
+`server_run.reporting.onnx_export` exports the global model at the end of the session:
+
+```yaml
+server_run:
+  reporting:
+    onnx_export:
+      filename: model.onnx
+      opset: 18                 # 18 or more with PyTorch's exporter
+      post_validation: true     # check the file and compare its outputs with PyTorch's (logged)
+      axes:                     # optional: names of the inputs and outputs, batch axis dynamic
+      - {name: images, kind: input}
+      - {name: logits, kind: output}
+```
+
+- The weights go to `model.onnx.data` beside `model.onnx`: keep the two files together.
+- Without `axes`, the names and the dynamic axes are deduced from the model and the data; the
+  first axis (the batch) is dynamic either way.
+- `post_validation` runs `onnx.checker`, then the exported model through onnx's reference
+  evaluator (no onnxruntime needed) on a sample, against the PyTorch model computed on CPU in
+  float64: a model trained on a GPU would otherwise differ by its TF32 convolutions (2e-4), not by
+  the export. It logs the largest difference.
+
 ### Reported metrics
 
 The training and evaluation metrics are means over the examples: each batch weighs its size. The

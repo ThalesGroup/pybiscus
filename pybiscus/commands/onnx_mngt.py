@@ -2,7 +2,7 @@ from pathlib import Path
 import torch
 import logging
 
-from pybiscus.flower_config.config_server import ConfigServerOnnxExport, OnnxAxe
+from pybiscus.flower_config.config_server import AxeKind, ConfigServerOnnxExport
 import pybiscus.core.pybiscus_logger as logm
 
 logger = logging.getLogger(__name__)
@@ -353,12 +353,12 @@ def to_onnx_with_datamodule(model, data_module, onnx_path: Path, configServerOnn
     # input and output names based on configuration
     config_input_names = [
         axe.name for axe in configServerOnnxExport.axes
-        if axe.kind == OnnxAxe.AxeKind.input
+        if axe.kind == AxeKind.input
     ]
 
     config_output_names = [
         axe.name for axe in configServerOnnxExport.axes
-        if axe.kind == OnnxAxe.AxeKind.output
+        if axe.kind == AxeKind.output
     ]
     
     # input names deduction
@@ -382,11 +382,8 @@ def to_onnx_with_datamodule(model, data_module, onnx_path: Path, configServerOnn
     # dynamic axes - configuration vs auto detection
     config_dynamic_axes = {}
     for axe in configServerOnnxExport.axes:
-        if axe.dynamic and axe.kind in {OnnxAxe.AxeKind.input, OnnxAxe.AxeKind.output}:
-            if hasattr(axe, 'dynamic_dims') and axe.dynamic_dims:
-                config_dynamic_axes[axe.name] = axe.dynamic_dims
-            else:
-                config_dynamic_axes[axe.name] = {0: "batch_size"}
+        if axe.dynamic:
+            config_dynamic_axes[axe.name] = {0: "batch_size"}
     
     # config is empty: auto detection
     if not config_dynamic_axes:
@@ -421,48 +418,48 @@ def to_onnx_with_datamodule(model, data_module, onnx_path: Path, configServerOnn
             do_constant_folding=True,  # Optimization
             verbose=False,
         )
-        return result
-        
     except Exception as e:
         logm.console.log(f"[onnx] export failure: {e}")
         raise
 
-# This code is currently unused !!! => onnxruntime dependancy is not fulfilled
-def validate_onnx_export(onnx_path: str, model, input_sample: torch.Tensor, tolerance: float = 1e-5):
-    """optional validation of ONNX export"""
+    if configServerOnnxExport.post_validation:
+        validate_onnx_export(onnx_path, model, input_sample)
+    return result
+
+def validate_onnx_export(onnx_path: Path, model, input_sample: torch.Tensor, rtol: float = 1e-4, atol: float = 1e-5) -> bool:
+    """the exported model checked by onnx, and its output compared with PyTorch's on input_sample"""
+    import numpy as np
+    import onnx
+    # onnx's own reference evaluator: onnxruntime is not a dependency, and the model is small enough
+    # to be run once in pure Python
+    from onnx.reference import ReferenceEvaluator
+
     try:
-        import onnx
-        import onnxruntime as ort
-        
-        # load ONNX model
-        onnx_model = onnx.load(onnx_path)
-        onnx.checker.check_model(onnx_model)
-        
-        # inference test
-        ort_session = ort.InferenceSession(onnx_path)
-        
-        # PyTorch prediction
-        model.eval()
-        with torch.no_grad():
-            pytorch_output = model(input_sample).cpu().numpy()
-        
-        # ONNX prediction
-        input_name = ort_session.get_inputs()[0].name
-        onnx_output = ort_session.run(None, {input_name: input_sample.cpu().numpy()})[0]
-        
-        # Comparison
-        diff = abs(pytorch_output - onnx_output).max()
-        if diff <= tolerance:
-            logm.console.log(f"[onnx] ONNX validation success (max diff: {diff})")
-            return True
-        else:
-            logm.console.log(f"[onnx] difference between PyTorch and ONNX pass threshold: {diff}")
-            return False
-            
-    except ImportError:
-        logm.console.log("[onnx] onnx and/or onnxruntime not installed, ignore validation")
-        return False
+        # the path, not the loaded model: the exporter keeps the weights in <file>.data beside it
+        onnx.checker.check_model(str(onnx_path))
+        session = ReferenceEvaluator(str(onnx_path))
+        # the reference computed on CPU in float64: on a GPU, cuDNN's TF32 convolutions put the model's
+        # own output 2e-4 away from the exact one, and failed a sound export. The module itself is moved
+        # and put back (float32 -> float64 -> float32 is exact): a copy of the server's model recursed
+        # through its links to Fabric and the loggers
+        module = getattr(model, "module", model)
+        device, dtype = next(module.parameters()).device, next(module.parameters()).dtype
+        sample = input_sample.detach().cpu()
+        try:
+            module.to("cpu", torch.float64).eval()
+            with torch.no_grad():
+                expected = module(sample.double()).numpy()
+        finally:
+            module.to(device, dtype)
+        input_name = session.input_names[0]
+        actual = session.run(None, {input_name: sample.numpy()})[0]
+        diff = float(np.max(np.abs(expected - actual)))
     except Exception as e:
-        logm.console.log(f"[onnx]] validation failure: {e}")
+        logm.console.log(f"[onnx] ❌ validation failure: {type(e).__name__}: {e}")
         return False
-    
+
+    if np.allclose(actual, expected, rtol=rtol, atol=atol):
+        logm.console.log(f"[onnx] ✅ validation success: same outputs as PyTorch (max difference {diff:.2e})")
+        return True
+    logm.console.log(f"[onnx] ❌ validation: outputs differ from PyTorch by up to {diff:.2e} (rtol {rtol:.0e}, atol {atol:.0e})")
+    return False
