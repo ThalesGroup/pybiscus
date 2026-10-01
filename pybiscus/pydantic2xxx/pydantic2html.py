@@ -104,7 +104,8 @@ def generate_field_html(field_name: str, field_type, field_default, field_descri
     field_html = ''
 
     opt_title = '' if (field_description is None or field_description is PydanticUndefined) else f' title="{html_module.escape(field_description)}" '
-    opt_value = '' if field_default     is PydanticUndefined else f' value="{field_default}" '
+    # None is no value: a number input refuses value="None" (a warning at every page load)
+    opt_value = '' if field_default is PydanticUndefined or field_default is None else f' value="{field_default}" '
 
     prefixed_name = prefix+field_name
     if prefixed_name.endswith("."):
