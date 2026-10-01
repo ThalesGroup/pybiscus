@@ -36,6 +36,11 @@ configuration gave 0.391 and 0.377. With `seeds: [1, 2, 3]` in the campaign file
 runs once per seed (the server's and the clients' `seed`, the byzantine clients' noise) and a
 second table gives the mean ± standard deviation over the seeds. The data shares stay those of the
 partition's own seed, unless `seed_partitions: true` draws them again with each seed.
+Most of that spread comes from the seed itself, shared by every variant: a variant with
+`reference: <label of another variant>` also gets its difference to that variant at the last
+round, seed by seed (mean ± standard deviation, and range), far steadier than the two means.
+The same run repeated with the same seed still differs by up to 1 point after 5 rounds (rounding,
+amplified by training): smaller differences mean nothing, even paired.
 
 ## Results (cifar10, 7 clients, iid shares, 3 local epochs, 5 rounds)
 
@@ -169,10 +174,11 @@ Dirichlet shares, same attackers:
   before lowering the threshold. Attacks designed to stay close to the honest updates (ALIE)
   pass under any such threshold; clipping still bounds them (next section).
 
-**Choosing**: FedAvg + `clipping` (median x 1.5, reject x 3) resisted best here, at no cost without
-attacker, and names the suspects. Against attackers that stay discreet (ALIE, below), it loses up
-to 10 points, but Bulyan does not do better: it costs 8 points on heterogeneous data before any
-attack.
+**Choosing**: FedAvg + `clipping` (median x 1.5, reject x 1.7) resisted best here, at no cost
+without attacker, and names the suspects. A threshold of 3 leaves a gap that discreet attackers
+use (ALIE at z 4, below: −11 points instead of −6.5). Against attackers that stay below the
+honest clients' norms (ALIE at z 2), no norm threshold helps, but Bulyan does not do better: it
+costs 8 points on heterogeneous data before any attack.
 
 ## A discreet, colluding attack: ALIE
 
@@ -232,3 +238,25 @@ clipped nor rejected), 1.8 (z 4, clipped every round), 4 (z 8, rejected every ro
   margin.
 - Bulyan loses 1 to 4 points at every z, from a start 8 points lower and with the largest
   run-to-run spread.
+
+### Rejection threshold
+
+`launch/campaign/cifar10_clipping_reject_alie.yml`: the clipping defense (median x 1.5) with three
+rejection thresholds, without attacker and against 2 ALIE attackers of 7, dirichlet shares, 3
+seeds. Test accuracy at round 5, and difference to the same threshold without attacker, seed by
+seed:
+
+| reject | no attacker | ALIE z 2 | ALIE z 4 |
+|---|---|---|---|
+| x 1.7 | 0.402 ± 0.018 | −5.4 ± 0.5 points | **−6.5 ± 0.5** (attackers rejected every round) |
+| x 2 | 0.402 ± 0.015 | −5.4 ± 0.8 | −10.0 ± 2.5 (rejected in 1 seed of 3, clipped in the others) |
+| x 3 | 0.402 ± 0.016 | −5.2 ± 0.4 | −11.0 ± 2.4 (clipped every round) |
+
+- Without attacker no threshold rejected anybody: the largest honest ratio was 1.50 over the 15
+  rounds of the 3 seeds, so x 1.7 costs nothing on these shares.
+- At z 4 the attackers' ratio is close to 2: x 2 catches them by chance, x 1.7 every round. Once
+  they are rejected, what is left (−6.5) is the loss of their 2 shares of 7, as at z 8.
+- At z 2 the attackers' ratio stays between 1.0 and 1.25, inside the honest range: no norm
+  threshold separates them, and their harm (−5.4) is about what rejecting them would cost anyway.
+- x 1.7 is measured on these shares only. Clients whose data or local steps differ more than
+  here make larger honest updates: check the `clip_ratio_<cid>` of a run without attacker first.

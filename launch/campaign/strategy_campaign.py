@@ -10,7 +10,9 @@ on the campaign's port. Configurations, logs and the table go to the output dire
 
 With seeds: [s1, s2, ...], every variant runs once per seed (server_run.seed, each client's
 client_run.seed, the byzantine clients' seed, and with seed_partitions: true the data partition)
-and a second table gives the mean ± standard deviation of the seeds.
+and a second table gives the mean ± standard deviation of the seeds. A variant with
+reference: <label of another variant> also gets its difference to that variant at the last round,
+seed by seed (paired: the seed's own share of the spread cancels out).
 """
 
 import argparse
@@ -174,7 +176,7 @@ def run_variant(campaign: dict, variant: dict, out: Path, seed: int = None) -> d
     tracebacks = sum((work / name).read_text(errors="replace").count("Traceback") for name in ["server.log"] + [f"client_{i}.log" for i in range(clients)])
     if tracebacks and status == "ok":
         status = f"{tracebacks} traceback(s)"
-    return {"label": label, "variant": variant["label"], "seed": seed, "metric": metric, "values": values, "round_time": round_times[-1] if round_times else None,
+    return {"label": label, "variant": variant["label"], "reference": variant.get("reference"), "seed": seed, "metric": metric, "values": values, "round_time": round_times[-1] if round_times else None,
             "elapsed": elapsed, "status": status}
 
 
@@ -189,14 +191,29 @@ def table(results: list, rounds: int) -> str:
     return "\n".join(lines)
 
 
+def paired_difference(runs: list, final: dict, rounds: int) -> str:
+    reference = runs[0]["reference"]
+    if not reference:
+        return ""
+    differences = [r["values"][rounds] - final[(reference, r["seed"])] for r in runs
+                   if r["values"].get(rounds) is not None and final.get((reference, r["seed"])) is not None]
+    if not differences:
+        return "—"
+    if len(differences) == 1:
+        return f"{differences[0]:+.4f}"
+    return (f"{statistics.mean(differences):+.4f} ± {statistics.stdev(differences):.4f} "
+            f"({min(differences):+.4f} to {max(differences):+.4f})")
+
+
 def summary(results: list, rounds: int) -> str:
     """mean ± sample standard deviation of each variant's seeds, round by round"""
     metric = next((r["metric"] for r in results if r["metric"]), "metric")
     by_variant = {}
     for r in results:
         by_variant.setdefault(r["variant"], []).append(r)
-    header = "| variant | " + " | ".join(f"round {r}" for r in range(rounds + 1)) + " | seeds | status |"
-    lines = [f"test {metric} per round, mean ± std over the seeds", "", header, "|" + "---|" * (rounds + 4)]
+    final = {(r["variant"], r["seed"]): r["values"].get(rounds) for r in results}
+    header = "| variant | " + " | ".join(f"round {r}" for r in range(rounds + 1)) + f" | Δ round {rounds} vs reference | seeds | status |"
+    lines = [f"test {metric} per round, mean ± std over the seeds", "", header, "|" + "---|" * (rounds + 5)]
     for variant, runs in by_variant.items():
         cells = []
         for n in range(rounds + 1):
@@ -208,7 +225,7 @@ def summary(results: list, rounds: int) -> str:
             else:
                 cells.append(f"{statistics.mean(values):.4f} ± {statistics.stdev(values):.4f}")
         failed = [f"seed {r['seed']}: {r['status']}" for r in runs if r["status"] != "ok"]
-        lines.append(f"| {variant} | " + " | ".join(cells) + f" | {len(runs)} | {'; '.join(failed) or 'ok'} |")
+        lines.append(f"| {variant} | " + " | ".join(cells) + f" | {paired_difference(runs, final, rounds)} | {len(runs)} | {'; '.join(failed) or 'ok'} |")
     return "\n".join(lines)
 
 
@@ -224,6 +241,10 @@ def main() -> None:
     if not port_is_free(campaign["port"]):
         sys.exit(f"port {campaign['port']} is in use: choose a free one (the campaign starts its own server)")
 
+    labels = [v["label"] for v in campaign["variants"]]
+    for v in campaign["variants"]:
+        if v.get("reference") and v["reference"] not in labels:
+            sys.exit(f"variant {v['label']!r}: reference {v['reference']!r} is not the label of a variant")
     variants = [v for v in campaign["variants"] if not args.only or v["label"].startswith(args.only)]
     seeds = campaign.get("seeds") or [None]
     runs = [(variant, seed) for variant in variants for seed in seeds]
@@ -234,7 +255,7 @@ def main() -> None:
         print(table(results[-1:], campaign["rounds"]).splitlines()[-1], flush=True)
 
     report = table(results, campaign["rounds"])
-    if seeds != [None]:
+    if seeds != [None] or any(v.get("reference") for v in variants):
         report += "\n\n" + summary(results, campaign["rounds"])
     (out / "results.md").write_text(report + "\n", encoding="utf-8")
     print("\n" + report + f"\n\nconfigurations, logs and table in {out}")

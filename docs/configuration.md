@@ -286,8 +286,11 @@ were computed on the weights the global model has since replaced.
 the process (Python, NumPy, PyTorch) before the model and the data are built: the server's initial
 weights and its sampling of the clients, each client's batch order (unless `train.seed` sets it),
 dropout and augmentations. Give each client its own seed, or they all draw their batches in the
-same order. Two runs with the same seeds agree to the floating point rounding: the aggregation sums
-the updates in their order of arrival, and several CPU threads sum in no fixed order.
+same order. Two runs with the same seeds start identical and differ only by floating point
+rounding (the aggregation sums the updates in their order of arrival, several CPU threads sum in no
+fixed order), but training amplifies it: after 5 rounds of 3 local epochs on cifar10, the same run
+twice differed by up to 1 point of accuracy. Seeds make runs comparable, not bit for bit
+identical.
 
 ### Reported metrics
 
