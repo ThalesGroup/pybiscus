@@ -76,5 +76,8 @@ def make_session_model(models: list[str], models_confs, data: list[str], data_co
         # the manager gives each client the cores of its machine divided by the clients on it
         # (num_threads): each PyTorch process takes every core otherwise
         share_cpu_threads: bool = True
+        # clients every round waits for (the strategy's min_fit / min_evaluate / min_available):
+        # unset, the clients registered at launch; the manager asks for confirmation otherwise
+        min_clients: Optional[int] = Field(default=None, ge=1)
 
     return ConfigSession

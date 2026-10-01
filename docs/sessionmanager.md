@@ -31,10 +31,17 @@ and `val.seed` in each client's form, late clients included (data plugins with a
 mnist, hdfs; turbofan validates on its own engines and ignores it).
 
 The manager also sets and locks the server strategy's `min_fit_clients`, `min_evaluate_clients`
-and `min_available_clients` to the number of clients registered at launch: every round waits for
-all of them (Flower's default of 2 let a session of 7 clients start with the first 2 to connect,
-and the robust aggregations size their defense on that number). A client that leaves the session
-then stalls the next round.
+and `min_available_clients`: every round waits for that many clients (Flower's default of 2 let a
+session of 7 clients start with the first 2 to connect, and the robust aggregations size their
+defense on that number). By default it is the number of clients registered at launch, shown in the
+header of the session configuration; a client that leaves the session then stalls the next round
+(Flower waits up to 24 h). The optional `min_clients` field of the session form sets another
+number, and the manager asks for a confirmation stating the risk when it differs from the clients
+registered:
+- fewer: rounds start as soon as that many clients are connected, possibly without the others,
+  and a robust aggregation sizes its defense on fewer clients; in exchange, the others may leave;
+- more: the first round waits for the missing clients, and clients registered after the launch get
+  no share of the data partition.
 
 These session values are set in every option of the forms that has the field, not only in the
 selected one: switching the strategy or the data plugin afterwards keeps them.

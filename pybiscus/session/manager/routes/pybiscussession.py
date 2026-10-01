@@ -164,6 +164,7 @@ def pybiscus_manager_get_session_params():
     data_partition = custom_presets.pop("data_partition", None)
     data_holdout = custom_presets.pop("data_holdout", None)
     share_cpu_threads = custom_presets.pop("share_cpu_threads", False)
+    min_clients = custom_presets.pop("min_clients", None) or len(session.session_clients)
 
     # each call used to take a new cid: the server's page and every reload consumed one, and the
     # cids of the clients were neither consecutive nor stable. Pages name their agent now.
@@ -183,9 +184,9 @@ def pybiscus_manager_get_session_params():
 
     # Flower's default of 2 let a session of 7 clients run its first rounds with the first 2 to
     # connect, and robust aggregations count on n
-    if agent in session.registered_servers and session.session_clients:
+    if agent in session.registered_servers and min_clients:
         for name in ("min_fit_clients", "min_evaluate_clients", "min_available_clients"):
-            custom_presets["values_set"][f"server_strategy.strategy.config.{name}"] = len(session.session_clients)
+            custom_presets["values_set"][f"server_strategy.strategy.config.{name}"] = min_clients
             custom_presets["values_lock"].append(f"server_strategy.strategy.config.{name}")
 
     if cid is not None:

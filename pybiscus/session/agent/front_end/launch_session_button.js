@@ -30,7 +30,9 @@ launch_session_button.addEventListener('click', function() {
     // a manager setting too, not an option to select
     const share_row = raw_data.find(row => row[0] === 'share_cpu_threads');
     const share_cpu_threads = share_row ? share_row[1] === true || share_row[1] === 'true' : false;
-    const new_data = raw_data.filter(row => ! exclude.includes(row[0]) && ! is_partition(row) && ! is_holdout(row) && row !== share_row);
+    const min_clients_row = raw_data.find(row => row[0] === 'min_clients');
+    const min_clients = min_clients_row ? Number(min_clients_row[1]) : null;
+    const new_data = raw_data.filter(row => ! exclude.includes(row[0]) && ! is_partition(row) && ! is_holdout(row) && row !== share_row && row !== min_clients_row);
     const partition_rows = raw_data.filter(is_partition);
     const data_partition = partition_rows.length
         ? Object.fromEntries(partition_rows.map(([key, value]) => [key.slice('data_partition.'.length), value]))
@@ -82,6 +84,7 @@ launch_session_button.addEventListener('click', function() {
         data_partition,
         data_holdout,
         share_cpu_threads,
+        min_clients,
     };    
 
     // console.log( server_data );
