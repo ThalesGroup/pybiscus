@@ -198,57 +198,33 @@ def get_modules_and_configs() -> Tuple[Dict[str, FabricStrategyFactory], List[Ba
 uv add needed-library1 needed-library2 ...
 ```
 
-At program launch, you will see the plugin manager and registry logs, 
-loading plugins and registering models, datasets and strategies, for instance :
+At program launch, the plugin manager prints one line: the number of plugins loaded, and those
+skipped because a dependency is missing:
 
 ```bash
-🔍 [plugins] Using config file: pybiscus-plugins-conf.yml
-🔍 [plugins] Processing Pybiscus plugins 🧩
+🧩 [plugins] 29 plugin(s) loaded (details: PYBISCUS_PLUGINS_VERBOSE=1)
+```
+
+To check that your plugin is found and registered, set `PYBISCUS_PLUGINS_VERBOSE=1`: the plugin
+manager and the registries then print each plugin imported and each class registered, for
+instance (excerpt):
+
+```bash
+PYBISCUS_PLUGINS_VERBOSE=1 pybiscus server check configs/cifar10_cnn/distributed/without_ssl/server.yml
+```
+
+```bash
  🔍 [plugins] Processing category 'data'...
-  ✅ Added 📦 './pybiscus-plugins/data' to sys.path
   ✅ 🧩 Successfully imported plugin 'cifar10'
-  ✅ 🧩 Successfully imported plugin 'randomvector'
-  ✅ 🧩 Successfully imported plugin 'turbofan'
+  ✅ 🧩 Successfully imported plugin 'mnist'
  🔍 [plugins] Processing category 'model'...
-  ✅ Added 📦 './pybiscus-plugins/model' to sys.path
   ✅ 🧩 Successfully imported plugin 'cnn'
-  ✅ 🧩 Successfully imported plugin 'linearregression'
-  ✅ 🧩 Successfully imported plugin 'lstm'
- 🔍 [plugins] Processing category 'strategy'...
-  ✅ Added 📦 './pybiscus-plugins/strategy' to sys.path
-  ✅ 🧩 Successfully imported plugin 'fedavgwithaggregator'
-🔍 [registry] Scanning submodules in: pybiscus.ml.data (./pybiscus/pybiscus/ml/data)
-✅ [registry] Found submodules: []
+  ✅ 🧩 Successfully imported plugin 'mnistcnn'
 📦 Loading module: cifar10
   ✅ Registered: cifar (CifarLightningDataModule)
-📦 Loading module: randomvector
-  ✅ Registered: randomvector (RandomVectorLightningDataModule)
-📦 Loading module: turbofan
-  ✅ Registered: turbofan (LitTurbofanDataModule)
-
-📦 Total LightningDataModule(s) registered: 3
-🧩 Total configs in union: 3
-
-🔍 [registry] Scanning submodules in: pybiscus.ml.models (./pybiscus/pybiscus/ml/models)
-✅ [registry] Found submodules: []
-📦 Loading module: cnn
-  ✅ Registered: cifar (LitCNN)
-📦 Loading module: linearregression
-  ✅ Registered: linearregression (LitLinearRegression)
-📦 Loading module: lstm
-  ✅ Registered: lstm (LitLSTMRegressor)
-
-📦 Total LightningModule(s) registered: 3
-🧩 Total configs in union: 3
-
-🔍 [registry] Scanning submodules in: pybiscus.flower.strategy (./pybiscus/pybiscus/flower/strategy)
-✅ [registry] Found submodules: ['pybiscus.flower.strategy.fedavg']
-📦 Loading module: pybiscus.flower.strategy.fedavg
-  ✅ Registered: fedavg (FedAvgFactory)
-📦 Loading module: fedavgwithaggregator
-  ✅ Registered: fedavgwithaggregator (FedAvgWithAggregatorFactory)
-
-📦 Total Strategy(s) registered: 2
-🧩 Total configs in union: 2
-
+📦 Loading module: mnist
+  ✅ Registered: mnist (MnistLitDataModule)
 ```
+
+What stops Pybiscus when a plugin fails to load, and what does not, is described in
+[Plugins](plugins.md#loading-what-stops-pybiscus-what-does-not).
