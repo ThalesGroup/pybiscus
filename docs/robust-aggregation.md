@@ -24,7 +24,7 @@ clients, 3 seeds, iid and dirichlet shares:
 - attackers whose updates stand out (sign flip, scaling, ALIE from z 4) are rejected every round;
   what is lost is then their share of the data (nothing on iid shares, 6.5 points on dirichlet);
 - **not stopped**: attackers that stay within the honest clients' range (ALIE at z 2: −5 points).
-  No norm threshold separates them.
+  No norm threshold separates them (see [Discreet attackers](#discreet-attackers-what-the-norm-cannot-see)).
 
 A pipeline that already has a `clipping` decorator with other settings is refused with
 `safeguard` (keep yours with `robustness: none`), as are the server-side DP decorators, which clip
@@ -163,7 +163,8 @@ server_strategy:
     config:
       mode: median          # fixed (clipping_norm) | median (median_factor x the round's median norm)
       median_factor: 1.5
-      reject_factor: 3.0    # optional: left out of the round above 3 x the median norm
+      reject_factor: 1.7    # optional: left out of the round above 1.7 x the median norm
+      log_directions: false # optional: cosine similarities of the updates (see Discreet attackers)
 ```
 
 - `median` sets C by itself every round, without lag, and a minority of clients cannot move the
@@ -174,6 +175,10 @@ server_strategy:
 - Every round logs `clip_norm`, `clip_fraction`, the median and maximum update norms, the clipped
   clients, and for each client `clip_ratio_<cid>` = its update norm / the median: a client clipped
   round after round far above the median is a suspect.
+- `log_directions: true` also logs, for each client, the cosine similarity of its update to the
+  coordinate-wise median update and to its closest other client ("🧭" lines,
+  `clip_cos_median_<cid>`, `clip_cos_closest_<cid>`). It changes nothing to the aggregation and
+  costs a copy of every update: a diagnostic, to look at your own clients before choosing a defense.
 
 Dirichlet shares, same attackers:
 
@@ -304,3 +309,56 @@ or rejected; the attackers (about 10 x) were rejected every round, in every seed
 clients of 7 out costs nothing here, as their data is much like the others' (−6.5 points on
 dirichlet shares).
 
+## Discreet attackers: what the norm cannot see
+
+### The limit
+
+The `safeguard` defense judges updates by their norm. ALIE at z ≤ 2 keeps the attackers' norms
+within the honest clients' range (1.0 to 1.25 x the median), so no norm threshold separates them:
+on dirichlet shares they cost 2.5 points at z 1 and 5.7 at z 2, paired by seed. From z 4 they
+stand out and are rejected.
+
+### Direction to the median does not help
+
+`launch/campaign/cifar10_directions_alie.yml` logs the directions (`log_directions`) on dirichlet
+shares, 7 clients, 2 seeds. Ranges over all rounds:
+
+| case | honest → median | honest → closest | attackers → median | attackers → closest |
+|---|---|---|---|---|
+| no attacker | 0.05 … 0.87 | 0.14 … 0.82 | | |
+| ALIE z 1 | 0.01 … 0.82 | 0.14 … 0.81 | 0.69 … 0.84 | 1.000 |
+| ALIE z 2 | −0.02 … 0.80 | 0.14 … 0.80 | 0.60 … 0.70 | 1.000 |
+| ALIE z 4 | 0.01 … 0.80 | 0.14 … 0.81 | 0.47 … 0.62 | 1.000 |
+| sign flip x 10 | 0.20 … 0.66 | 0.15 … 0.81 | −0.44 … 0.21 | 0.25 … 0.70 |
+
+ALIE aims at the honest mean: its updates are more aligned with the median than many honest
+ones, which heterogeneous data spreads in every direction. The direction to the median only
+singles out the sign flippers, which their norm already gives away.
+
+### The signal there is: the attackers' likeness
+
+The colluders send the same update (similarity 1.000), while two honest clients never exceeded
+0.82. Two ways to use it, neither implemented yet:
+
+- **Rejecting near-duplicates** (option A): leave out of the round the clients whose closest
+  similarity exceeds about 0.95, as `reject_factor` does for norms. Cheap, and it stops naive
+  colluders at every z. To check first: the honest clients' closest similarity on iid shares, where
+  their updates look more alike (not measured). Its weakness: colluders that each add their own
+  noise blur their likeness, at the price of part of their effect.
+- **Defenses from the literature** (option C):
+  - *FoolsGold* lowers, round after round, the weight of the clients that keep looking like each
+    other. A lasting version of the above, harder to blur with one-off noise, but it may also
+    weigh down honest clients whose data are alike.
+  - *FLTrust* compares each update with one the server computes itself on a small trusted dataset
+    (the `test` section could provide it) and weighs it by their similarity. It does not rely on
+    the attackers' likeness, but the trusted data must resemble the clients'.
+
+### Is detecting them worth it?
+
+It depends on the data. On dirichlet shares, leaving 2 clients of 7 out costs 6.6 points (their
+data are lost), about as much as ALIE at z 2 harms (5.7): even a perfect detector would gain
+little. On iid shares, leaving them out costs nothing (see [On iid shares](#on-iid-shares)): a
+detector would be worth all the harm it prevents. ALIE's harm on iid shares has not been measured.
+
+Before choosing, look at your own clients with `log_directions: true` on a run without attacker:
+how far apart their directions are, and how close the closest pair gets.
