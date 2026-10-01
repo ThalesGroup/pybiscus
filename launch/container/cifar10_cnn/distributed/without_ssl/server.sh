@@ -3,7 +3,8 @@
 CONTAINER_ENGINE=$(container_engine)
 PYBISCUS_IMAGE=$(pybiscus_image server)
 
-# pybiscus configuration override (container internal)
+# the server listens on every interface of the container (--server-listen-address below: the
+# configuration's [::1] is unreachable from outside the container)
 DOCKER_SERVER_LISTEN_IP="0.0.0.0"
 DOCKER_SERVER_PORT="3333"
 export DOCKER_SERVER_INTERFACE="$DOCKER_SERVER_LISTEN_IP:$DOCKER_SERVER_PORT"
@@ -28,7 +29,6 @@ $CONTAINER_ENGINE run \
     -v ${PWD}/datasets/:/app/datasets/       \
     -v ${PWD}/experiments:/app/experiments   \
     -v ${PWD}/configs:/app/configs           \
-    -e SERVICE="$DOCKER_SERVER_INTERFACE"    \
     -e no_proxy=$no_proxy                    \
     -e NO_PROXY=$NO_PROXY                    \
     -e http_proxy=$http_proxy                \
@@ -37,4 +37,4 @@ $CONTAINER_ENGINE run \
     -e HTTPS_PROXY=$HTTPS_PROXY              \
     -p "${PUBLIC_SERVER_PORT}:${DOCKER_SERVER_PORT}" \
     --shm-size 50G                           \
-    $PYBISCUS_IMAGE server launch configs/cifar10_cnn/distributed/without_ssl/server.yml
+    $PYBISCUS_IMAGE server launch configs/cifar10_cnn/distributed/without_ssl/server.yml --server-listen-address "$DOCKER_SERVER_INTERFACE"

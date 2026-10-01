@@ -3,8 +3,9 @@
 CONTAINER_ENGINE=$(container_engine)
 PYBISCUS_IMAGE=$(pybiscus_image client)
 
-#export SERVER_ADDRESS="server-fqdn:3333"
-export SERVER_ADDRESS="$(hostname):3333"
+# passed as --server-address below (it replaces flower_client.server_address); the client runs on
+# the host network: the server's published port is on this machine, or give the server's name
+export SERVER_ADDRESS="${SERVER_ADDRESS:-localhost:3333}"
 
 echo "[container] client1 -> server : ${SERVER_ADDRESS}"
 
@@ -22,7 +23,6 @@ $CONTAINER_ENGINE run \
     -v ${PWD}/datasets/:/app/datasets/       \
     -v ${PWD}/experiments:/app/experiments   \
     -v ${PWD}/configs:/app/configs           \
-    -e SERVER_ADDRESS="$SERVER_ADDRESS"      \
     -e no_proxy=$no_proxy                    \
     -e NO_PROXY=$NO_PROXY                    \
     -e http_proxy=$http_proxy                \
@@ -30,5 +30,5 @@ $CONTAINER_ENGINE run \
     -e HTTP_PROXY=$HTTP_PROXY                \
     -e HTTPS_PROXY=$HTTPS_PROXY              \
     --shm-size 50G                           \
-    $PYBISCUS_IMAGE client launch configs/cifar10_cnn/distributed/without_ssl/client_1.yml
+    $PYBISCUS_IMAGE client launch configs/cifar10_cnn/distributed/without_ssl/client_1.yml --server-address "$SERVER_ADDRESS"
 

@@ -45,13 +45,13 @@ mkdir -p clients
 # 1. Créer une CA racine
 echo "Creating Root CA..."
 openssl genpkey -algorithm RSA -out ca/ca.key -aes256 -pass pass:"$rootCApass"
-openssl req -x509 -new -nodes -key ca/ca.key -sha256 -days 1024 -out ca/ca.crt \
+openssl req -x509 -new -nodes -utf8 -key ca/ca.key -sha256 -days 1024 -out ca/ca.crt \
   -subj "/C=$CA_C/ST=$CA_ST/L=$CA_L/O=$CA_O/OU=$CA_OU/CN=$CA_CN" -passin pass:"$rootCApass"
 
 # 2. Créer une clé privée et une CSR pour le serveur
 echo "Creating Server Key and CSR..."
 openssl genpkey -algorithm RSA -out server/server.key
-openssl req -new -key server/server.key -out server/server.csr \
+openssl req -new -utf8 -key server/server.key -out server/server.csr \
   -subj "/C=$SERVER_C/ST=$SERVER_ST/L=$SERVER_L/O=$SERVER_O/OU=$SERVER_OU/CN=$SERVER_CN"
 
 # Extraire la clé publique du serveur
@@ -60,15 +60,19 @@ openssl rsa -in server/server.key -pubout -out server/server.pub
 
 # Signer le CSR du serveur avec la CA racine
 echo "Signing Server CSR with Root CA..."
+# gRPC checks the name the clients connect to against the subjectAltName only, not the CN:
+# the server's name, plus the local ones for a session on one machine (SERVER_SAN adds others)
+SERVER_SAN=${SERVER_SAN:-"DNS:$SERVER_CN,DNS:localhost,IP:127.0.0.1,IP:::1"}
 openssl x509 -req -in server/server.csr -CA ca/ca.crt -CAkey ca/ca.key -CAcreateserial \
-  -out server/server.crt -days 500 -sha256 -passin pass:"$rootCApass"
+  -out server/server.crt -days 500 -sha256 -passin pass:"$rootCApass" \
+  -extfile <(printf "subjectAltName=%s" "$SERVER_SAN")
 
 # 3. Créer des clés privées et des CSR pour les clients
 for i in $(seq 1 $NUM_CLIENTS); do
   CLIENT_CN="${CLIENT_CN_PREFIX}${i}"
   echo "Creating Client $i Key and CSR..."
   openssl genpkey -algorithm RSA -out clients/client$i.key
-  openssl req -new -key clients/client$i.key -out clients/client$i.csr \
+  openssl req -new -utf8 -key clients/client$i.key -out clients/client$i.csr \
     -subj "/C=$CLIENT_C/ST=$CLIENT_ST/L=$CLIENT_L/O=$CLIENT_O/OU=$CLIENT_OU/CN=$CLIENT_CN"
 
   # Extraire la clé publique du client

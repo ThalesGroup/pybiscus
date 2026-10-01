@@ -1,0 +1,26 @@
+# Local training (pybiscus local train-config): the same model on one site's data, without
+# federation, as a baseline for the federated runs. Lightning's Trainer takes the trainer keys.
+root_dir: ${oc.env:PWD}
+trainer:
+  max_epochs: 10
+  accelerator: auto
+  devices: auto
+data:
+  name: cifar
+  config:
+    train:
+      dir: ${root_dir}/datasets/train/
+    val:
+      source: holdout         # a tenth of the training split: the official test split stays held out
+      dir: ${root_dir}/datasets/val/
+      fraction: 0.1
+    test:
+      dir: ${root_dir}/datasets/test/
+    num_workers: 0
+model:
+  name: cifar
+  config:
+    input_shape: 3
+    mid_shape: 6
+    n_classes: 10
+    lr: 0.001

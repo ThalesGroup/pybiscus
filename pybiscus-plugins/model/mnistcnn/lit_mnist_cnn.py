@@ -48,11 +48,13 @@ def mnist_net(hidden: int, n_classes: int) -> nn.Module:
 class LitMnistCNN(pl.LightningModule):
 
     @override
-    def __init__(self, hidden: int, n_classes: int, lr: float):
+    def __init__(self, hidden: int, n_classes: int, lr: float, _logging: bool = False):
         super().__init__()
         self.save_hyperparameters()
 
         self.lr        = lr
+        # Lightning's own logging, for a local training (pybiscus local): Fabric does not use it
+        self._logging  = _logging
         self.model     = mnist_net(hidden, n_classes)
         self.loss      = nn.CrossEntropyLoss()
         self.accuracy  = Accuracy(task="multiclass", num_classes=n_classes, top_k=1)
@@ -69,22 +71,26 @@ class LitMnistCNN(pl.LightningModule):
     def forward(self, images):
         return self.model(images)
 
-    def _step(self, batch) -> MnistCNNSignature:
+    def _step(self, batch, stage: str) -> MnistCNNSignature:
         images, labels = batch
         outputs = self.forward(images)
-        return {"loss": self.loss(outputs, labels), "accuracy": self.accuracy(outputs.argmax(dim=1), labels)}
+        results = {"loss": self.loss(outputs, labels), "accuracy": self.accuracy(outputs.argmax(dim=1), labels)}
+        if self._logging:
+            self.log(f"{stage}_loss", results["loss"], prog_bar=True)
+            self.log(f"{stage}_acc", results["accuracy"], prog_bar=True)
+        return results
 
     @override
     def training_step(self, batch, batch_idx) -> MnistCNNSignature:
-        return self._step(batch)
+        return self._step(batch, "train")
 
     @override
     def validation_step(self, batch, batch_idx) -> MnistCNNSignature:
-        return self._step(batch)
+        return self._step(batch, "val")
 
     @override
     def test_step(self, batch, batch_idx) -> MnistCNNSignature:
-        return self._step(batch)
+        return self._step(batch, "test")
 
     @override
     def configure_optimizers(self):

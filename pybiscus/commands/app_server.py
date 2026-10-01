@@ -129,9 +129,11 @@ def server_certificates(conf_ssl):
 
     if conf_ssl is not None:
     
-        root_certificate_path  = conf_ssl["root_certificate_path"]
-        server_certificate_path= conf_ssl["server_certificate_path"]
-        server_private_key_path= conf_ssl["server_private_key_path"]
+        # a validated ConfigSslServer since the configuration overhaul: indexing it like the former
+        # dict raised a TypeError, and no SSL server could start
+        root_certificate_path  = conf_ssl.root_certificate_path
+        server_certificate_path= conf_ssl.server_certificate_path
+        server_private_key_path= conf_ssl.server_private_key_path
 
         root_certificate   = None
         server_certificate = None

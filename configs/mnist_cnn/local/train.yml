@@ -1,0 +1,25 @@
+# Local training (pybiscus local train-config): the same model on one site's data, without
+# federation, as a baseline for the federated runs. Lightning's Trainer takes the trainer keys.
+root_dir: ${oc.env:PWD}
+trainer:
+  max_epochs: 3
+  accelerator: auto
+  devices: auto
+data:
+  name: mnist
+  config:
+    train:
+      dir: ${root_dir}/datasets/mnist/train/
+    val:
+      source: holdout
+      dir: ${root_dir}/datasets/mnist/val/
+      fraction: 0.1
+    test:
+      dir: ${root_dir}/datasets/mnist/test/
+    num_workers: 0
+model:
+  name: mnist_cnn
+  config:
+    hidden: 128
+    n_classes: 10
+    lr: 0.001
