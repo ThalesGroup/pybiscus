@@ -244,9 +244,15 @@
 
   function preallocateListDefaults(){
     Object.entries(PYBISCUS_LIST_DEFAULTS).forEach(([prefix, options]) => {
-      const probe = document.querySelector(
-        `.pybiscus-list-template [data-pybiscus-prefix^="${prefix}.#"], .pybiscus-list-template [data-pybiscus-name^="${prefix}.#"]`);
-      const container = probe && probe.closest('.pybiscus-list-fs');
+      // la liste dont le gabarit porte directement les champs `${prefix}.#` : le premier élément
+      // trouvé par préfixe peut appartenir à une liste imbriquée dans une option (les `tags` du
+      // logger W&B, liste de metrics_loggers.#.config) — la pré-allocation visait alors `tags` et
+      // abandonnait faute d'y trouver l'option WebHook
+      const container = [...document.querySelectorAll('.pybiscus-list-fs')].find(fs => {
+        const template = fs.querySelector(':scope > .pybiscus-list > .pybiscus-list-template');
+        return template && [...template.querySelectorAll(`[data-pybiscus-prefix^="${prefix}.#"], [data-pybiscus-name^="${prefix}.#"]`)]
+          .some(el => el.closest('.pybiscus-list-fs') === fs);
+      });
       if (!container) return;                                        // liste absente (config/plugins)
       const contents   = container.querySelector('.pybiscus-list-contents');
       const generator  = container.querySelector('.pybiscus-list-generator');
