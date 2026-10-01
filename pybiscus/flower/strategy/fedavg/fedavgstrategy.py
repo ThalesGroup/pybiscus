@@ -36,13 +36,13 @@ class ConfigFabricFedAvgStrategyData(BaseModel):
 
     PYBISCUS_CONFIG: ClassVar[str] = "config"
 
-    # fraction_fit: float = 1,
-    # fraction_evaluate: float = 1,
-    # min_fit_clients: int = 2,
-    # min_evaluate_clients: int = 2,
-    # min_available_clients: int = 2,
-
-    min_fit_clients: int = Field(default=2, description='fewest clients that train in a round (set by the manager in a session)')
+    fraction_fit:          float = Field(default=1, ge=0, le=1, description='fraction of the available clients that train in each round')
+    fraction_evaluate:     float = Field(default=1, ge=0, le=1, description='fraction of the available clients that evaluate in each round')
+    min_fit_clients:       int   = Field(default=2, ge=1, description='fewest clients that train in a round (set by the manager in a session)')
+    # min_fit_clients alone (min_available_clients left at 2) cancelled every round started before
+    # all the clients were connected: a session could end without any training
+    min_evaluate_clients:  int   = Field(default=2, ge=0, description='fewest clients that evaluate in a round (set by the manager in a session)')
+    min_available_clients: int   = Field(default=2, ge=1, description='a round waits until this many clients are connected (set by the manager in a session)')
 
     model_config = ConfigDict(extra="forbid")
 
