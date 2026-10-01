@@ -18,19 +18,19 @@ class FlowerServerConfiguration(BaseModel):
 
     PYBISCUS_CONFIG: ClassVar[str]  = "flower_server"
 
-    server_host: str                 = "localhost"
-    server_port: int                 = 3333
-    server_listen_to: ServerListenTo = ServerListenTo.localhost
-    server_protocol: ServerProtocol  = ServerProtocol.http
+    server_host: str                 = Field(default="localhost", description="host name or address the clients reach the Flower server at")
+    server_port: int                 = Field(default=3333, description="port of the Flower server")
+    server_listen_to: ServerListenTo = Field(default=ServerListenTo.localhost, description="network the Flower server accepts clients from")
+    server_protocol: ServerProtocol  = Field(default=ServerProtocol.http, description="https: the server and the clients get an ssl section to fill")
     
     model_config = ConfigDict(extra="forbid")
     
 class ConfigSessionHoldout(BaseModel):
-    """validation examples held out of each client's own training share (val.source: holdout):
-    fraction of the share, and seed of the draw (data plugins with a holdout: cifar, mnist, hdfs)"""
+    """validation examples held out of each client's own training share (val.source: holdout; data
+    plugins with a holdout: cifar, mnist, hdfs)"""
 
-    fraction: float = Field(default=0.1, gt=0, lt=1)
-    seed: int = 42
+    fraction: float = Field(default=0.1, gt=0, lt=1, description="fraction of each client's training share held out for its validation")
+    seed: int = Field(default=42, description="seed of the draw of the held-out examples")
 
     model_config = ConfigDict(extra="forbid")
 
@@ -65,19 +65,16 @@ def make_session_model(models: list[str], models_confs, data: list[str], data_co
 
     class ConfigSession(BaseModel):
 
-        flower_server: FlowerServerConfiguration
-        model:         enum_model = next(iter(enum_model))     # pyright: ignore[reportInvalidTypeForm]
-        data:          enum_data  = next(iter(enum_data))      # pyright: ignore[reportInvalidTypeForm]
-        # shares the training data between the clients registered when the session is launched:
-        # the manager gives each one its partition_id (and the number of partitions)
-        data_partition: Optional[ConfigPartitionScheme] = None
-        # every client validates on a part of its own share instead of what its form says
-        data_holdout: Optional[ConfigSessionHoldout] = None
-        # the manager gives each client the cores of its machine divided by the clients on it
-        # (num_threads): each PyTorch process takes every core otherwise
-        share_cpu_threads: bool = True
-        # clients every round waits for (the strategy's min_fit / min_evaluate / min_available):
-        # unset, the clients registered at launch; the manager asks for confirmation otherwise
-        min_clients: Optional[int] = Field(default=None, ge=1)
+        flower_server: FlowerServerConfiguration = Field(description="where the clients reach the Flower server")
+        model:         enum_model = Field(default=next(iter(enum_model)), description="model trained by every participant, locked in their forms")  # pyright: ignore[reportInvalidTypeForm]
+        data:          enum_data  = Field(default=next(iter(enum_data)), description="data plugin of every participant, locked in their forms")   # pyright: ignore[reportInvalidTypeForm]
+        data_partition: Optional[ConfigPartitionScheme] = Field(default=None, description=
+            "shares the training data between the clients registered at launch: the manager gives each one its share")
+        data_holdout: Optional[ConfigSessionHoldout] = Field(default=None, description=
+            "every client validates on a part of its own training share, whatever its form says")
+        share_cpu_threads: bool = Field(default=True, description=
+            "each client gets the cores of its machine divided by the clients on it: every PyTorch process takes all the cores otherwise")
+        min_clients: Optional[int] = Field(default=None, ge=1, description=
+            "clients every round waits for; unset: the clients registered at launch (a confirmation states the risk of another number)")
 
     return ConfigSession

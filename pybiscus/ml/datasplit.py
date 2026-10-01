@@ -20,33 +20,35 @@ import pybiscus.core.pybiscus_logger as logm
 
 class PartitionScheme(str, Enum):
     # an Enum and not a Literal: the agent's form offers an Enum's values, a Literal's first only
-    iid = "iid"               # equal shares drawn at random
-    dirichlet = "dirichlet"   # each class spread over the clients in proportions drawn from Dirichlet(alpha)
-    shards = "shards"         # examples sorted by class, cut in shards, a few shards per client
+    iid = "iid"
+    dirichlet = "dirichlet"
+    shards = "shards"
+
+
+PartitionScheme.PYBISCUS_DESCRIPTIONS = {
+    "iid": "equal shares drawn at random",
+    "dirichlet": "each class spread over the clients in proportions drawn from Dirichlet(alpha): heterogeneous shares",
+    "shards": "examples sorted by class, cut in shards, a few shards per client",
+}
 
 
 class ConfigPartitionScheme(BaseModel):
-    """how the training data is shared, the same for every client: seed: the same for every client,
-    so that the shares are disjoint without any coordination; alpha (dirichlet): the smaller, the
-    more each client is dominated by a few classes; min_partition_size (dirichlet): draws are
-    repeated until every share has at least this many examples; shards_per_partition (shards):
-    classes seen by a client, roughly"""
+    """how the training data is shared, the same for every client"""
 
-    scheme: PartitionScheme = PartitionScheme.iid
-    seed: int = 42
-    alpha: float = Field(default=0.5, gt=0)
-    min_partition_size: int = Field(default=10, ge=0)
-    shards_per_partition: int = Field(default=2, ge=1)
+    scheme: PartitionScheme = Field(default=PartitionScheme.iid, description="how the examples are shared between the clients")
+    seed: int = Field(default=42, description="the same for every client, so that the shares are disjoint without any coordination")
+    alpha: float = Field(default=0.5, gt=0, description="dirichlet: the smaller, the more each client is dominated by a few classes")
+    min_partition_size: int = Field(default=10, ge=0, description="dirichlet: draws are repeated until every share has at least this many examples")
+    shards_per_partition: int = Field(default=2, ge=1, description="shards: shards given to each client, roughly the classes it sees")
 
     model_config = ConfigDict(extra="forbid")
 
 
 class ConfigPartition(ConfigPartitionScheme):
-    """num_partitions: number of clients sharing the training data; partition_id: this client's
-    share (0 .. num_partitions - 1); in a session, the manager may set both"""
+    """this client's share of the training data"""
 
-    num_partitions: int = Field(ge=1)
-    partition_id: int = Field(ge=0)
+    num_partitions: int = Field(ge=1, description="number of clients sharing the training data (set by the manager in a session)")
+    partition_id: int = Field(ge=0, description="this client's share, 0 .. num_partitions - 1 (set by the manager in a session)")
 
     model_config = ConfigDict(extra="forbid")
 

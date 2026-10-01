@@ -292,6 +292,24 @@ class ModelConfiguration(BaseModel):
 3. **Form rendering**: Generates parameter form from the config class `Field()` definitions
 4. **YAML generation**: User input creates structured YAML with the discriminator field
 
+**Tooltips:** hovering a field's name (or a section's title) shows its description, taken from
+`Field(description=...)`, else from a `name = description` or numpy-style `name:` line of the config
+class's docstring. A field without either gets no tooltip. An `Enum` field can describe each of its
+values, shown when hovering that value:
+
+```python
+class Scheme(str, Enum):
+    iid = "iid"
+    dirichlet = "dirichlet"
+
+# Enum members cannot carry a docstring, nor a class attribute (it would become a member)
+Scheme.PYBISCUS_DESCRIPTIONS = {"iid": "equal shares drawn at random",
+                                "dirichlet": "heterogeneous shares"}
+
+class ConfigMyData(BaseModel):
+    scheme: Scheme = Field(default=Scheme.iid, description="how the examples are shared")
+```
+
 **Generated YAML structure:**
 ```yaml
 model:
