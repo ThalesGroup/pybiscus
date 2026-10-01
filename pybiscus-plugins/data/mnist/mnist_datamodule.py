@@ -6,7 +6,7 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 from torchvision.datasets import MNIST
 
 from pybiscus.ml.datasplit import (
-    ConfigPrivacySet, ConfigTestSet, ConfigTrainSet, ConfigValSet, limit, make_loader, privacy_loader, privacy_set,
+    ConfigPrivacySet, ConfigTestSet, ConfigTrainSet, ConfigValSet, downloaded, limit, make_loader, privacy_loader, privacy_set,
     reject_former_fields, train_and_val_sets,
 )
 
@@ -92,27 +92,17 @@ class MnistLitDataModule(pl.LightningDataModule):
     def setup(self, stage: Optional[str] = None):
         if stage == "fit" or stage is None:
             train_full = self.train_source()
-            official_val = lambda: MNIST(
-                root=self.val.dir,
-                train=False,
-                download=True,
-                transform=self.transform,
-            )
+            official_val = lambda: downloaded(MNIST, self.val.dir, train=False, transform=self.transform)
             self.data_train, self.data_val = train_and_val_sets(train_full, official_val, self.train, self.val)
 
         if stage == "test" or stage is None:
-            self.data_test = limit(MNIST(
-                root=self.test.dir,
-                train=False,
-                download=True,
-                transform=self.transform,
-            ), self.test.max_samples)
+            self.data_test = limit(downloaded(MNIST, self.test.dir, train=False, transform=self.transform), self.test.max_samples)
             if self.privacy is not None:
                 self.data_privacy = privacy_set(self.train_source(self.privacy.dir), self.privacy)
 
     def train_source(self, dir=None):
         """the official train split, in which the partitions and indices files pick their examples"""
-        return MNIST(root=dir or self.train.dir, train=True, download=True, transform=self.transform)
+        return downloaded(MNIST, dir or self.train.dir, train=True, transform=self.transform)
 
     def train_dataloader(self):
         return make_loader(self.data_train, self.train, self.num_workers, order_seed=self.train.seed)

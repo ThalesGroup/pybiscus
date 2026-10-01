@@ -33,6 +33,7 @@ dependencies = [
     "setuptools<84",
     "onnxscript>=0.6.2",
     "torchmetrics[detection]>=1.9.0",
+    "filelock>=3.25",
 ]
 
 [project.scripts]

@@ -1,9 +1,11 @@
 from collections.abc import Mapping
 from enum import Enum
+from pathlib import Path
 from typing import ClassVar, Optional
 
 import numpy as np
 import torch
+from filelock import FileLock
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 from torch.utils.data import DataLoader, Dataset, Subset
 
@@ -189,6 +191,16 @@ def reject_former_fields(data, former_fields: Mapping[str, str] = FORMER_FIELDS)
     return data
 
 # ------------------------------------------------------------------ building the sets
+
+def downloaded(dataset_class, root: str, **kwargs):
+    """dataset_class(root=root, download=True, **kwargs), one process at a time per root"""
+    Path(root).mkdir(parents=True, exist_ok=True)
+    # torchvision downloads straight into the final file: the clients of one machine starting
+    # together truncated each other's file, failed its checksum, then got a 404 from the next mirror.
+    # The first one downloads, the others wait and find the files there
+    with FileLock(str(Path(root) / ".download.lock")):
+        return dataset_class(root=root, download=True, **kwargs)
+
 
 def read_indices(path: str) -> np.ndarray:
     with open(path, encoding="utf-8") as f:

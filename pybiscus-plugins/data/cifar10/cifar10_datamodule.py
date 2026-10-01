@@ -8,7 +8,7 @@ from torch.utils.data import DataLoader
 from torchvision.datasets import CIFAR10
 
 import pybiscus.core.pybiscus_logger as logm
-from pybiscus.ml.datasplit import limit, make_loader, privacy_loader, privacy_set, reject_former_fields, train_and_val_sets
+from pybiscus.ml.datasplit import downloaded, limit, make_loader, privacy_loader, privacy_set, reject_former_fields, train_and_val_sets
 
 from cifar10.cifar10_dataconfig import CifarPrivacySet, CifarTestSet, CifarTrainSet, CifarValSet
 
@@ -223,11 +223,11 @@ class CifarLightningDataModule(pl.LightningDataModule):
             logm.console.log("Number of Targets :", len(np.unique(train_full.targets)))
             logm.console.log("Targets Values    :",     np.unique(train_full.targets))
 
-            official_val = lambda: CIFAR10( root=self.val.dir, train=False, download=True, transform=self.transform,)
+            official_val = lambda: downloaded(CIFAR10, self.val.dir, train=False, transform=self.transform)
             self.data_train, self.data_val = train_and_val_sets(train_full, official_val, self.train, self.val)
 
         if stage == "test" or stage is None:
-            test_full       = CIFAR10( root=self.test.dir,  train=False, download=True, transform=self.transform,)
+            test_full       = downloaded(CIFAR10, self.test.dir, train=False, transform=self.transform)
             logm.console.log("x_test shape", test_full.data.shape)
             self.data_test  = limit( test_full, self.test.max_samples)
             if self.privacy is not None:
@@ -235,7 +235,7 @@ class CifarLightningDataModule(pl.LightningDataModule):
 
     def train_source(self, dir=None):
         """the official train split, in which the partitions and indices files pick their examples"""
-        return CIFAR10( root=dir or self.train.dir, train=True,  download=True, transform=self.transform,)
+        return downloaded(CIFAR10, dir or self.train.dir, train=True, transform=self.transform)
 
     @override
     def train_dataloader(self) -> DataLoader:
