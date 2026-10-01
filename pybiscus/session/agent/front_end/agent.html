@@ -282,29 +282,25 @@
 
     {{ buttons_js | safe }}
 
-    // several options of a union share their fields' names (cifar's and mnist's data.config.train…):
-    // a preset targets the element on the selected path, not merely the first one of the page.
-    // Optional[T] contents do not count: a preset may select Some and set its fields at once
-    function inSelectedPath(el) {
-        if (el.closest('.pybiscus-list-template')) return false;
-        for (let c = el.closest('.pybiscus-tab-content'); c; c = c.parentElement.closest('.pybiscus-tab-content')) {
-            const union = c.closest('.pybiscus-fieldset-container');
-            if (union && !union.classList.contains('pybiscus-option-fs') && !c.classList.contains('active')) return false;
-        }
-        return true;
-    }
-    function presetTarget(selector) {
-        const all = [...document.querySelectorAll(selector)];
-        return all.find(inSelectedPath) || all[0] || null;
+    // several options of a union share their fields' names (cifar's and mnist's data.config.train…,
+    // every strategy's min_fit_clients): a preset applies to all of them, not only to the selected
+    // option, since the operator may switch the union afterwards and would lose the session's value
+    // without a sign
+    function presetTargets(selector) {
+        return [...document.querySelectorAll(selector)].filter(el => !el.closest('.pybiscus-list-template'));
     }
 
     function set_option(prefix, value) {
 
-        const fieldset = presetTarget(`.pybiscus-fieldset-container[data-pybiscus-prefix="${prefix}"]`);
-        if (!fieldset) {
+        const fieldsets = presetTargets(`.pybiscus-fieldset-container[data-pybiscus-prefix="${prefix}"]`);
+        if (!fieldsets.length) {
             console.error('fieldset not found : ', prefix)
             return;
         }
+        fieldsets.forEach(fieldset => set_fieldset_option(fieldset, prefix, value));
+    }
+
+    function set_fieldset_option(fieldset, prefix, value) {
    	    /* console.log("fieldset found : ", prefix) */
         const checkbox = fieldset.querySelector(':scope > legend input.pybiscus-option-cb');
         if (checkbox) {
@@ -332,6 +328,10 @@
         const my_buttons  = ':scope > .pybiscus-tab-container > .pybiscus-tab-buttons > .pybiscus-tab-button'
 
         const buttons = fieldset.querySelectorAll(my_buttons);
+        // another union of the same name without this option: left as it is, not emptied
+        if (![...buttons].some(button => button.textContent.trim() === value)) {
+            return;
+        }
         buttons.forEach(button => {
 	        //console.log(button.textContent)
             if (button.textContent.trim() === value) {
@@ -364,13 +364,13 @@
     }
 
     function lock_option( option ) {
-    	const fieldset = presetTarget(`.pybiscus-fieldset-container[data-pybiscus-prefix="${option}"]`);
-	    if (!fieldset) {
+    	const fieldsets = presetTargets(`.pybiscus-fieldset-container[data-pybiscus-prefix="${option}"]`);
+	    if (!fieldsets.length) {
 		    console.error("lock_option : fieldset not found ! ", option );
 		    return;
 	    }
 
-        fieldset.classList.add('pybiscus-locked')
+        fieldsets.forEach(fieldset => fieldset.classList.add('pybiscus-locked'));
     }
  
      
@@ -379,11 +379,18 @@
 
     function set_value(data_pybiscus_name, value) {
 
-        const element = presetTarget(`[data-pybiscus-name="${data_pybiscus_name}"]`);
-        if (!element) {
+        const elements = presetTargets(`[data-pybiscus-name="${data_pybiscus_name}"]`);
+        if (!elements.length) {
             console.error("set_value : value not found = ", data_pybiscus_name);
             return;
         }
+        // one radio per group: the group's other buttons share the name
+        const seen = new Set();
+        elements.filter(el => el.type !== "radio" || (!seen.has(el.name) && seen.add(el.name)))
+                .forEach(element => set_element_value(element, data_pybiscus_name, value));
+    }
+
+    function set_element_value(element, data_pybiscus_name, value) {
 
         if( element.tagName === "INPUT" ) {
             console.log( `set_value: ${data_pybiscus_name} = ${value}` );
@@ -412,11 +419,15 @@
 
     function lock_value(data_pybiscus_name) {
 
-        const input = presetTarget(`[data-pybiscus-name="${data_pybiscus_name}"]`);
-        if (!input) {
+        const inputs = presetTargets(`[data-pybiscus-name="${data_pybiscus_name}"]`);
+        if (!inputs.length) {
             console.error("lock_value : value not found = ", data_pybiscus_name);
             return;
         }
+        inputs.forEach(lock_element);
+    }
+
+    function lock_element(input) {
 
         if (input.type === "radio") {
             // readOnly does not apply to radio buttons: the other values are disabled

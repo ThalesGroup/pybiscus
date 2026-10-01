@@ -181,6 +181,13 @@ def pybiscus_manager_get_session_params():
         if data_partition:
             logm.console.log(f"⚠️ {agent} registered after the session launch: it gets no share of the data partition")
 
+    # Flower's default of 2 let a session of 7 clients run its first rounds with the first 2 to
+    # connect, and robust aggregations count on n
+    if agent in session.registered_servers and session.session_clients:
+        for name in ("min_fit_clients", "min_evaluate_clients", "min_available_clients"):
+            custom_presets["values_set"][f"server_strategy.strategy.config.{name}"] = len(session.session_clients)
+            custom_presets["values_lock"].append(f"server_strategy.strategy.config.{name}")
+
     if cid is not None:
         custom_presets["values_set"]["client_run.cid"] = cid
         custom_presets["values_lock"].append("client_run.cid")

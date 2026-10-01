@@ -30,6 +30,15 @@ held out of its own training share: the manager sets and locks `val.source: hold
 and `val.seed` in each client's form, late clients included (data plugins with a holdout: cifar,
 mnist, hdfs; turbofan validates on its own engines and ignores it).
 
+The manager also sets and locks the server strategy's `min_fit_clients`, `min_evaluate_clients`
+and `min_available_clients` to the number of clients registered at launch: every round waits for
+all of them (Flower's default of 2 let a session of 7 clients start with the first 2 to connect,
+and the robust aggregations size their defense on that number). A client that leaves the session
+then stalls the next round.
+
+These session values are set in every option of the forms that has the field, not only in the
+selected one: switching the strategy or the data plugin afterwards keeps them.
+
 Its `share_cpu_threads` setting (on by default) shares the CPU of each machine between the clients
 running on it: each agent tells the manager its machine and number of physical cores when it
 registers, and each client gets `client_compute_context.num_threads` = cores / clients on its
