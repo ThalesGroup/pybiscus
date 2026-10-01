@@ -31,7 +31,7 @@ server_data:
 
 variants:
   - label: FedAvg
-    strategy: {name: fedavggeneric, config: {}}
+    strategy: {name: fedavg, config: {}}
 
   - label: FedAdam defaults (eta 1e-2, tau 1e-9)
     strategy: {name: fedadam, config: {}}

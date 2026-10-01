@@ -133,7 +133,32 @@ To add a new strategy, follow the few points below:
 
 0. choose either plugin or pybiscus directory as ROOT
 1. make a new subdirectory, like `$ROOT/my-strategy/`
-2. create a file `my_strategy.py` implementing the pybiscus.flower.strategy.interface.fabricstrategyfactory.FabricStrategyFactory class
+2. create a file `my_strategy.py`: a Flower strategy is used as it is through
+   `pybiscus.flower.flowerstrategy.FlowerStrategyFactory` (Pybiscus' logging added, the aggregation
+   left to Flower), with a configuration listing the parameters its Flower class accepts:
+
+```python
+from typing import ClassVar, Literal
+import flwr as fl
+from pydantic import BaseModel, ConfigDict, Field
+from pybiscus.flower.flowerstrategy import ConfigFlowerFailuresData, FlowerStrategyFactory
+
+class ConfigMyStrategyData(ConfigFlowerFailuresData):     # fraction_fit, min_*_clients, accept_failures
+    server_momentum: float = Field(default=0.9, ge=0, lt=1, description="momentum of the server's steps")
+
+class ConfigMyStrategy(BaseModel):
+    PYBISCUS_ALIAS: ClassVar[str] = "My strategy"
+    name:   Literal["mystrategy"]
+    config: ConfigMyStrategyData
+    model_config = ConfigDict(extra="forbid")
+
+class MyStrategyFactory(FlowerStrategyFactory):
+    flower_strategy_class = fl.server.strategy.FedAvgM
+```
+
+   A strategy of your own derives from a Flower class and keeps its `aggregate_fit` through
+   `super()` (see `pybiscus-plugins/strategy/fedavgwithaggregator`): a rewritten aggregation,
+   inherited, would turn any subclass into a FedAvg.
 3. create the file `$ROOT/my-strategy/__init__.py`:
     - write a function `get_modules_and_configs()` 
     that exports your classes derived from flwr.server.strategy.Strategy
@@ -144,14 +169,14 @@ To add a new strategy, follow the few points below:
 
 from typing import Dict, List, Tuple
 from pydantic import BaseModel
-from pybiscus.flower.strategy.interface.fabricstrategyfactory import FabricStrategyFactory
+from pybiscus.interfaces.flower.fabricstrategyfactory import FabricStrategyFactory
 
-from fedavg.fedavgstrategy2 import FabricFedAvgStrategy2, ConfigFabricFedAvgStrategy2
+from mystrategy.my_strategy import MyStrategyFactory, ConfigMyStrategy
 
 def get_modules_and_configs() -> Tuple[Dict[str, FabricStrategyFactory], List[BaseModel]]:
 
-    registry = { "fedavg2": FabricFedAvgStrategy2, }
-    configs  = [ConfigFabricFedAvgStrategy2,]
+    registry = { "mystrategy": MyStrategyFactory, }
+    configs  = [ConfigMyStrategy,]
 
     return registry, configs
 ```
@@ -178,7 +203,7 @@ loading plugins and registering models, datasets and strategies, for instance :
   ✅ 🧩 Successfully imported plugin 'lstm'
  🔍 [plugins] Processing category 'strategy'...
   ✅ Added 📦 './pybiscus-plugins/strategy' to sys.path
-  ✅ 🧩 Successfully imported plugin 'fedavg'
+  ✅ 🧩 Successfully imported plugin 'fedavgwithaggregator'
 🔍 [registry] Scanning submodules in: pybiscus.ml.data (./pybiscus/pybiscus/ml/data)
 ✅ [registry] Found submodules: []
 📦 Loading module: cifar10
@@ -206,9 +231,9 @@ loading plugins and registering models, datasets and strategies, for instance :
 🔍 [registry] Scanning submodules in: pybiscus.flower.strategy (./pybiscus/pybiscus/flower/strategy)
 ✅ [registry] Found submodules: ['pybiscus.flower.strategy.fedavg']
 📦 Loading module: pybiscus.flower.strategy.fedavg
-  ✅ Registered: fedavg (FabricFedAvgStrategy)
-📦 Loading module: fedavg
-  ✅ Registered: fedavg2 (FabricFedAvgStrategy2)
+  ✅ Registered: fedavg (FedAvgFactory)
+📦 Loading module: fedavgwithaggregator
+  ✅ Registered: fedavgwithaggregator (FedAvgWithAggregatorFactory)
 
 📦 Total Strategy(s) registered: 2
 🧩 Total configs in union: 2

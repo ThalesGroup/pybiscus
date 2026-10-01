@@ -34,7 +34,7 @@ server_strategy:
     config:
       empty_configuration: true
   strategy:
-    name: fedavgextended
+    name: fedavg
     config:
       fraction_fit: '1'
       fraction_evaluate: '1'

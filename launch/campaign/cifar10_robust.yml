@@ -34,13 +34,13 @@ server_data:
 
 variants:
   - label: FedAvg, no attacker
-    strategy: {name: fedavggeneric, config: {}}
+    strategy: {name: fedavg, config: {}}
   - label: FedAvg, 1 attacker
-    strategy: {name: fedavggeneric, config: {}}
+    strategy: {name: fedavg, config: {}}
     client_overrides:
       0: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: sign_flip, scale: 10.0}}}}
   - label: FedAvg, 2 attackers
-    strategy: {name: fedavggeneric, config: {}}
+    strategy: {name: fedavg, config: {}}
     client_overrides:
       0: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: sign_flip, scale: 10.0}}}}
       1: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: sign_flip, scale: 10.0}}}}
@@ -100,7 +100,7 @@ variants:
       0: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: sign_flip, scale: 10.0}}}}
       1: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: sign_flip, scale: 10.0}}}}
   - label: FedAvg, 1 client reporting x20 examples
-    strategy: {name: fedavggeneric, config: {}}
+    strategy: {name: fedavg, config: {}}
     client_overrides:
       0: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: none, num_examples_factor: 20.0}}}}
   - label: FedMedian, 1 client reporting x20 examples

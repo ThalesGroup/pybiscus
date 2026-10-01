@@ -33,22 +33,22 @@ server_data:
 
 variants:
   - label: FedAvg
-    strategy: {name: fedavggeneric, config: {}}
+    strategy: {name: fedavg, config: {}}
   - label: DP fixed z 0, C 100 (clipping and noise inactive)
-    strategy: {name: fedavggeneric, config: {}}
+    strategy: {name: fedavg, config: {}}
     pipeline: [{name: serverdpfixed, config: {noise_multiplier: 0.0, clipping_norm: 100.0}}]
   - label: DP fixed z 0.01, C 1
-    strategy: {name: fedavggeneric, config: {}}
+    strategy: {name: fedavg, config: {}}
     pipeline: [{name: serverdpfixed, config: {noise_multiplier: 0.01, clipping_norm: 1.0}}]
   - label: DP fixed z 0.1, C 1
-    strategy: {name: fedavggeneric, config: {}}
+    strategy: {name: fedavg, config: {}}
     pipeline: [{name: serverdpfixed, config: {noise_multiplier: 0.1, clipping_norm: 1.0}}]
   - label: DP fixed z 1, C 1
-    strategy: {name: fedavggeneric, config: {}}
+    strategy: {name: fedavg, config: {}}
     pipeline: [{name: serverdpfixed, config: {noise_multiplier: 1.0, clipping_norm: 1.0}}]
   - label: DP fixed z 0.1, C 0.3
-    strategy: {name: fedavggeneric, config: {}}
+    strategy: {name: fedavg, config: {}}
     pipeline: [{name: serverdpfixed, config: {noise_multiplier: 0.1, clipping_norm: 0.3}}]
   - label: DP adaptive z 0.1
-    strategy: {name: fedavggeneric, config: {}}
+    strategy: {name: fedavg, config: {}}
     pipeline: [{name: serverdpadaptive, config: {noise_multiplier: 0.1}}]

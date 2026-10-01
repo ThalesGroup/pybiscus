@@ -58,7 +58,7 @@ server_strategy:
       memo_clients_fit_res_in_context: true
       debug: false
   strategy:
-    name: fedavgextended
+    name: fedavg
     config:
 #      fraction_fit: '5'
 #      fraction_evaluate: '5'

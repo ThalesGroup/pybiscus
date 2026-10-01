@@ -38,7 +38,7 @@ server_data:
 
 variants:
   - label: FedAvg, 2 ALIE attackers
-    strategy: {name: fedavggeneric, config: {}}
+    strategy: {name: fedavg, config: {}}
     client_overrides:
       0: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: alie, colluders: 2, num_clients: 7, shared_dir: "{work}/alie"}}}}
       1: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: alie, colluders: 2, num_clients: 7, shared_dir: "{work}/alie"}}}}
@@ -68,7 +68,7 @@ variants:
       0: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: alie, colluders: 2, num_clients: 7, shared_dir: "{work}/alie"}}}}
       1: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: alie, colluders: 2, num_clients: 7, shared_dir: "{work}/alie"}}}}
   - label: FedAvg + clipping x1.5 reject x3, 2 ALIE attackers
-    strategy: {name: fedavggeneric, config: {}}
+    strategy: {name: fedavg, config: {}}
     pipeline: [{name: clipping, config: {mode: median, median_factor: 1.5, reject_factor: 3.0}}]
     client_overrides:
       0: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: alie, colluders: 2, num_clients: 7, shared_dir: "{work}/alie"}}}}

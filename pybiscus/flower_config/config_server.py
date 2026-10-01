@@ -169,6 +169,14 @@ def item_config(item):
     return config.model_dump()
 
 
+# the three FedAvg reimplementations merged into the core's fedavg (Flower's FedAvg, same parameters)
+MERGED_STRATEGIES = {
+    "fedavgextended": "use fedavg, which takes the same parameters",
+    "fedavggeneric": "use fedavg, which is the same strategy",
+    "fedavgextended3": "use fedavgwithaggregator, whose flower_fit_results_aggregator is now named aggregator",
+}
+
+
 class ConfigServerStrategy(BaseModel):
 
     PYBISCUS_CONFIG: ClassVar[str] = "server_strategy"
@@ -179,6 +187,16 @@ class ConfigServerStrategy(BaseModel):
         "defense against malicious clients, added to the pipeline (docs/robust-aggregation.md)")
 
     model_config = ConfigDict(extra="forbid")
+
+    # said before the discriminated union's bare "does not match any of the expected tags"
+    @model_validator(mode="before")
+    @classmethod
+    def refuse_merged_strategies(cls, data):
+        strategy = data.get("strategy") if isinstance(data, Mapping) else None
+        name = strategy.get("name") if isinstance(strategy, Mapping) else None
+        if name in MERGED_STRATEGIES:
+            raise ValueError(f"strategy {name} no longer exists: {MERGED_STRATEGIES[name]}")
+        return data
 
     # a profile and not the decorator itself: a session preset can set a field, not add an item to
     # the pipeline, and a command line user writes one line

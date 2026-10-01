@@ -191,13 +191,21 @@ The FedMIA attack that uses it is described in [privacy-evaluation.md](privacy-e
 ### Strategy
 
 ```yaml
-...
-strategy:
-  name: "fedavg"
-  config:
-    min_fit_clients: 2
-...
+server_strategy:
+  strategy:
+    name: fedavg              # Flower's FedAvg, in the core
+    config:
+      min_fit_clients: 2      # with min_evaluate_clients and min_available_clients: set by the
+      min_evaluate_clients: 2 # session manager to the session's number of clients
+      min_available_clients: 2
 ```
+
+`fedavg` is Flower's FedAvg used as it is: the weights averaged in proportion to each client's
+number of examples. `fedavgwithaggregator` (plugin) computes the weights with a
+`flowerfitresultsaggregator` plugin instead (`weightedaverage`, the same as FedAvg, or `average`,
+every client counting the same). The other Flower strategies come from the `flowergeneric` plugin
+(see [Robust aggregation](robust-aggregation.md)). The former `fedavgextended` and `fedavggeneric`
+are refused with a message: write `fedavg`; `fedavgextended3` became `fedavgwithaggregator`.
 
 #### Server-side differential privacy
 

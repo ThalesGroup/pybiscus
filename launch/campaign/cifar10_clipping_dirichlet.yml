@@ -35,75 +35,75 @@ server_data:
 
 variants:
   - label: FedAvg + clipping C 0.5, no attacker
-    strategy: {name: fedavggeneric, config: {}}
+    strategy: {name: fedavg, config: {}}
     pipeline: [{name: serverdpfixed, config: {noise_multiplier: 0.0, clipping_norm: 0.5}}]
   - label: FedAvg + clipping C 0.5, 1 attacker
-    strategy: {name: fedavggeneric, config: {}}
+    strategy: {name: fedavg, config: {}}
     pipeline: [{name: serverdpfixed, config: {noise_multiplier: 0.0, clipping_norm: 0.5}}]
     client_overrides:
       0: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: sign_flip, scale: 10.0}}}}
   - label: FedAvg + clipping C 1.0, no attacker
-    strategy: {name: fedavggeneric, config: {}}
+    strategy: {name: fedavg, config: {}}
     pipeline: [{name: serverdpfixed, config: {noise_multiplier: 0.0, clipping_norm: 1.0}}]
   - label: FedAvg + clipping C 1.0, 1 attacker
-    strategy: {name: fedavggeneric, config: {}}
+    strategy: {name: fedavg, config: {}}
     pipeline: [{name: serverdpfixed, config: {noise_multiplier: 0.0, clipping_norm: 1.0}}]
     client_overrides:
       0: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: sign_flip, scale: 10.0}}}}
   - label: FedAvg + clipping C 2.0, no attacker
-    strategy: {name: fedavggeneric, config: {}}
+    strategy: {name: fedavg, config: {}}
     pipeline: [{name: serverdpfixed, config: {noise_multiplier: 0.0, clipping_norm: 2.0}}]
   - label: FedAvg + clipping C 2.0, 1 attacker
-    strategy: {name: fedavggeneric, config: {}}
+    strategy: {name: fedavg, config: {}}
     pipeline: [{name: serverdpfixed, config: {noise_multiplier: 0.0, clipping_norm: 2.0}}]
     client_overrides:
       0: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: sign_flip, scale: 10.0}}}}
   - label: FedAvg + adaptive clipping (median), no attacker
-    strategy: {name: fedavggeneric, config: {}}
+    strategy: {name: fedavg, config: {}}
     pipeline: [{name: serverdpadaptive, config: {noise_multiplier: 0.0, initial_clipping_norm: 1.0, target_clipped_quantile: 0.5}}]
   - label: FedAvg + adaptive clipping (median), 1 attacker
-    strategy: {name: fedavggeneric, config: {}}
+    strategy: {name: fedavg, config: {}}
     pipeline: [{name: serverdpadaptive, config: {noise_multiplier: 0.0, initial_clipping_norm: 1.0, target_clipped_quantile: 0.5}}]
     client_overrides:
       0: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: sign_flip, scale: 10.0}}}}
   - label: FedAvg + clipping median x1.5, no attacker
-    strategy: {name: fedavggeneric, config: {}}
+    strategy: {name: fedavg, config: {}}
     pipeline: [{name: clipping, config: {mode: median, median_factor: 1.5}}]
   - label: FedAvg + clipping median x1.5, 1 attacker
-    strategy: {name: fedavggeneric, config: {}}
+    strategy: {name: fedavg, config: {}}
     pipeline: [{name: clipping, config: {mode: median, median_factor: 1.5}}]
     client_overrides:
       0: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: sign_flip, scale: 10.0}}}}
   - label: FedAvg + clipping median x1.5, 2 attackers
-    strategy: {name: fedavggeneric, config: {}}
+    strategy: {name: fedavg, config: {}}
     pipeline: [{name: clipping, config: {mode: median, median_factor: 1.5}}]
     client_overrides:
       0: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: sign_flip, scale: 10.0}}}}
       1: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: sign_flip, scale: 10.0}}}}
   - label: FedAvg + clipping median x2.0, no attacker
-    strategy: {name: fedavggeneric, config: {}}
+    strategy: {name: fedavg, config: {}}
     pipeline: [{name: clipping, config: {mode: median, median_factor: 2.0}}]
   - label: FedAvg + clipping median x2.0, 1 attacker
-    strategy: {name: fedavggeneric, config: {}}
+    strategy: {name: fedavg, config: {}}
     pipeline: [{name: clipping, config: {mode: median, median_factor: 2.0}}]
     client_overrides:
       0: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: sign_flip, scale: 10.0}}}}
   - label: FedAvg + clipping median x2.0, 2 attackers
-    strategy: {name: fedavggeneric, config: {}}
+    strategy: {name: fedavg, config: {}}
     pipeline: [{name: clipping, config: {mode: median, median_factor: 2.0}}]
     client_overrides:
       0: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: sign_flip, scale: 10.0}}}}
       1: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: sign_flip, scale: 10.0}}}}
   - label: FedAvg + clipping median x1.5 reject x3, no attacker
-    strategy: {name: fedavggeneric, config: {}}
+    strategy: {name: fedavg, config: {}}
     pipeline: [{name: clipping, config: {mode: median, median_factor: 1.5, reject_factor: 3.0}}]
   - label: FedAvg + clipping median x1.5 reject x3, 1 attacker
-    strategy: {name: fedavggeneric, config: {}}
+    strategy: {name: fedavg, config: {}}
     pipeline: [{name: clipping, config: {mode: median, median_factor: 1.5, reject_factor: 3.0}}]
     client_overrides:
       0: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: sign_flip, scale: 10.0}}}}
   - label: FedAvg + clipping median x1.5 reject x3, 2 attackers
-    strategy: {name: fedavggeneric, config: {}}
+    strategy: {name: fedavg, config: {}}
     pipeline: [{name: clipping, config: {mode: median, median_factor: 1.5, reject_factor: 3.0}}]
     client_overrides:
       0: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: sign_flip, scale: 10.0}}}}

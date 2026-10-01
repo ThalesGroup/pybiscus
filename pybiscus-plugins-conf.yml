@@ -25,9 +25,8 @@ model:
 strategy:
   - path: "./pybiscus-plugins/strategy"
     modules:
-      - fedavg2
-      - fedavg3
       - flowergeneric
+      - fedavgwithaggregator
 strategydecorator:
   - path: "./pybiscus-plugins/strategydecorator"
     modules:

@@ -17,6 +17,6 @@ timeout: 1800              # seconds per run
 
 variants:
   - label: FedAvg
-    strategy: {name: fedavggeneric, config: {}}
+    strategy: {name: fedavg, config: {}}
   - label: FedProx mu 0.01
     strategy: {name: fedprox, config: {proximal_mu: 0.01}}

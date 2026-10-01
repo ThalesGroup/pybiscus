@@ -38,7 +38,7 @@ server_strategy:
       reporting_sub_dir: rounds
       server_aggregated_fit_parameters_file_name: server_aggregated_fit_parameters.npz
   strategy:
-    name: fedavgextended
+    name: fedavg
     config:
       fraction_fit: '1'
       fraction_evaluate: '1'

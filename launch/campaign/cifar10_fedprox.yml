@@ -33,7 +33,7 @@ server_data:
 
 variants:
   - label: FedAvg
-    strategy: {name: fedavggeneric, config: {}}
+    strategy: {name: fedavg, config: {}}
   - label: FedProx mu 0
     strategy: {name: fedprox, config: {proximal_mu: 0.0}}
   - label: FedProx mu 0.001

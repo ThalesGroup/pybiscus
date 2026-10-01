@@ -36,9 +36,9 @@ server_data:
 
 variants:
   - label: FedAvg, no attacker
-    strategy: {name: fedavggeneric, config: {}}
+    strategy: {name: fedavg, config: {}}
   - label: FedAvg, 1 attacker
-    strategy: {name: fedavggeneric, config: {}}
+    strategy: {name: fedavg, config: {}}
     client_overrides:
       0: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: sign_flip, scale: 10.0}}}}
   - label: FedMedian, no attacker
