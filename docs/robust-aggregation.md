@@ -260,3 +260,21 @@ seed:
   threshold separates them, and their harm (−5.4) is about what rejecting them would cost anyway.
 - x 1.7 is measured on these shares only. Clients whose data or local steps differ more than
   here make larger honest updates: check the `clip_ratio_<cid>` of a run without attacker first.
+
+### On iid shares
+
+`launch/campaign/cifar10_safeguard_iid.yml`: the same defense (median x 1.5, reject x 1.7) on iid
+shares, 3 seeds, attackers flipping the sign of their update x 10. Test accuracy at round 5:
+
+| | accuracy | difference, seed by seed |
+|---|---|---|
+| FedAvg, no attacker | 0.362 ± 0.030 | |
+| clipping, no attacker | 0.363 ± 0.028 | +0.1 point vs FedAvg |
+| clipping, 1 attacker | 0.363 ± 0.027 | −0.05 vs no attacker |
+| clipping, 2 attackers | 0.363 ± 0.025 | −0.02 vs no attacker |
+
+Honest clients stay below 1.11 x the median (1.50 on dirichlet shares): nobody honest was clipped
+or rejected; the attackers (about 10 x) were rejected every round, in every seed. Leaving 2
+clients of 7 out costs nothing here, as their data is much like the others' (−6.5 points on
+dirichlet shares).
+

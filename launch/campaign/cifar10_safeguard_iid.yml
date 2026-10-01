@@ -1,0 +1,55 @@
+# Campaign of launch/campaign/strategy_campaign.py: the safeguard defense (FedAvg + clipping,
+# median x 1.5, reject x 1.7) on iid shares, where it was never measured (dirichlet only, see
+# cifar10_clipping_reject_alie.yml). Do honest clients stay below 1.7 x the median when the shares
+# are alike, and are the sign-flipping attackers still rejected? 3 seeds, compared seed by seed
+# to the run without attacker.
+#   uv run python launch/campaign/strategy_campaign.py launch/campaign/cifar10_safeguard_iid.yml
+# Attackers: the byzantine client plugin (test manifest only), sign flip x10, clients 0 (and 1).
+# 12 runs, about 16 minutes; do not run it next to a live session.
+
+server_config: configs/cifar10_cnn/distributed/without_ssl/server.yml
+client_config: configs/cifar10_cnn/distributed/without_ssl/client_1.yml
+output: experiments/campaigns
+plugin_manifests: [launch/campaign/test-plugins-conf.yml]
+
+clients: 7
+rounds: 5
+local_epochs: 3
+port: 3399                 # the Flower server of each run: must be free
+threads_per_client: auto   # physical cores / clients
+timeout: 1800              # seconds per run
+seeds: [1, 2, 3]           # every variant once per seed, then mean ± std
+
+client_data:
+  train:
+    partition:
+      scheme: iid          # iid | dirichlet (alpha) | shards
+      seed: 42
+  val:
+    source: holdout
+    fraction: 0.1
+
+server_data:
+  test:
+    max_samples: 2000
+
+variants:
+  - label: FedAvg, no attacker
+    strategy: {name: fedavggeneric, config: {}}
+  - label: safeguard, no attacker
+    reference: FedAvg, no attacker
+    strategy: {name: fedavggeneric, config: {}}
+    pipeline: [{name: clipping, config: {mode: median, median_factor: 1.5, reject_factor: 1.7}}]
+  - label: safeguard, 1 attacker
+    reference: safeguard, no attacker
+    strategy: {name: fedavggeneric, config: {}}
+    pipeline: [{name: clipping, config: {mode: median, median_factor: 1.5, reject_factor: 1.7}}]
+    client_overrides:
+      0: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: sign_flip, scale: 10.0}}}}
+  - label: safeguard, 2 attackers
+    reference: safeguard, no attacker
+    strategy: {name: fedavggeneric, config: {}}
+    pipeline: [{name: clipping, config: {mode: median, median_factor: 1.5, reject_factor: 1.7}}]
+    client_overrides:
+      0: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: sign_flip, scale: 10.0}}}}
+      1: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: sign_flip, scale: 10.0}}}}
