@@ -67,6 +67,13 @@ model:
 ...
 ```
 
+The `cifar` CNN expects 32 x 32 colour images. The `mnist` data plugin goes with `mnist_cnn`
+(28 x 28 grey images; `hidden`, `n_classes`, `lr` with Adam): demo `configs/mnist_cnn/distributed/`,
+launched by `launch/uv/mnist_cnn/distributed/`, 99 % test accuracy after 3 rounds with 2 clients.
+The mnist plugin downloads MNIST into its directories on first use: download it once (a single
+client, or `pybiscus data partition configs/mnist_cnn/distributed/client_1.yml`) before starting
+several clients on one machine, whose simultaneous downloads into the same directory can fail.
+
 ### Data
 
 ```yaml

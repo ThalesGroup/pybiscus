@@ -1,0 +1,36 @@
+root_dir: ${oc.env:PWD}
+flower_client:
+  server_address: localhost:3333
+client_run:
+  cid: '1'
+  pre_train_val: false
+client_compute_context:
+  hardware:
+    accelerator: auto
+    devices: auto
+model:
+  name: mnist_cnn
+  config:
+    hidden: 128
+    n_classes: 10
+    lr: 0.001
+data:
+  name: mnist
+  config:
+    # each client trains on its own half of the official train split and validates on a tenth of
+    # that half: the official test split stays held out (the server evaluates on it)
+    train:
+      dir: ${root_dir}/datasets/mnist/train/
+      batch_size: 32
+      partition:
+        num_partitions: 2
+        partition_id: 1
+        seed: 42
+    val:
+      source: holdout
+      dir: ${root_dir}/datasets/mnist/val/
+      fraction: 0.1
+      batch_size: 32
+    test:
+      dir: ${root_dir}/datasets/mnist/test/
+    num_workers: 0

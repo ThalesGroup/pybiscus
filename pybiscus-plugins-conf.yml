@@ -16,6 +16,7 @@ model:
   - path: "./pybiscus-plugins/model"
     modules:
       - cnn
+      - mnistcnn
       - linearregression
       - lstm
       - noop
