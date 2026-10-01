@@ -117,24 +117,24 @@ class ConfigFlowerSamplingData(BaseModel):
 
     PYBISCUS_CONFIG: ClassVar[str] = "config"
 
-    fraction_fit:          float = Field(default=1, ge=0, le=1)
-    fraction_evaluate:     float = Field(default=1, ge=0, le=1)
-    min_fit_clients:       int   = Field(default=2, ge=1)
-    min_evaluate_clients:  int   = Field(default=2, ge=0)
-    min_available_clients: int   = Field(default=2, ge=1)
+    fraction_fit:          float = Field(default=1, ge=0, le=1, description='fraction of the available clients that train in each round')
+    fraction_evaluate:     float = Field(default=1, ge=0, le=1, description='fraction of the available clients that evaluate in each round')
+    min_fit_clients:       int   = Field(default=2, ge=1, description='fewest clients that train in a round (set by the manager in a session)')
+    min_evaluate_clients:  int   = Field(default=2, ge=0, description='fewest clients that evaluate in a round (set by the manager in a session)')
+    min_available_clients: int   = Field(default=2, ge=1, description='a round waits until this many clients are connected (set by the manager in a session)')
 
     model_config = ConfigDict(extra="forbid")
 
 
 class ConfigFlowerFailuresData(ConfigFlowerSamplingData):
-    accept_failures: bool = True
+    accept_failures: bool = Field(default=True, description='aggregate the round although some clients failed; refuse it otherwise')
 
 
 # ------------------------------- FedAvg --------------------------------------
 
 class ConfigFedAvgGenericData(ConfigFlowerFailuresData):
     """Parameters of Flower's FedAvg, see flwr.server.strategy.FedAvg."""
-    inplace: bool = True
+    inplace: bool = Field(default=True, description='aggregate in place, saving memory; same result')
 
 
 class ConfigFedAvgGeneric(BaseModel):
@@ -156,8 +156,8 @@ class FedAvgGenericFactory(FlowerStrategyFactory):
 
 class ConfigFedAvgMData(ConfigFlowerFailuresData):
     """Server-side momentum, see flwr.server.strategy.FedAvgM."""
-    server_learning_rate: float = Field(default=1.0, gt=0)
-    server_momentum:      float = Field(default=0.0, ge=0, lt=1)
+    server_learning_rate: float = Field(default=1.0, gt=0, description='server learning rate: the size of the step the server takes along the aggregated update')
+    server_momentum:      float = Field(default=0.0, ge=0, lt=1, description="momentum of the server's steps; 0: plain FedAvg")
 
 
 class ConfigFedAvgM(BaseModel):
@@ -183,7 +183,7 @@ class FedAvgMFactory(FlowerStrategyFactory):
 class ConfigFedProxData(ConfigFlowerFailuresData):
     """FedAvg with a proximal term mu/2 * ||w - w_global||^2 in the clients' loss, which limits
     their drift from the global model, see flwr.server.strategy.FedProx. mu = 0 is FedAvg."""
-    proximal_mu: float = Field(default=0.01, ge=0)
+    proximal_mu: float = Field(default=0.01, ge=0, description="weight of the proximal term mu/2 * ||w - w_global||^2 in the clients' loss, which limits their drift; 0: FedAvg")
 
 
 class ConfigFedProx(BaseModel):
@@ -212,11 +212,11 @@ class FedProxFactory(FlowerStrategyFactory):
 class ConfigFedAdamData(ConfigFlowerFailuresData):
     """Server-side Adam, see flwr.server.strategy.FedAdam. eta: server learning rate; tau: adaptivity
     (a tiny tau makes every step the sign of the update); eta_l: informative only (unused by Flower)."""
-    eta:    float = Field(default=1e-2, gt=0)
-    eta_l:  float = Field(default=0.1,  gt=0)
-    beta_1: float = Field(default=0.9,  ge=0, lt=1)
-    beta_2: float = Field(default=0.99, ge=0, lt=1)
-    tau:    float = Field(default=1e-9, gt=0)
+    eta:    float = Field(default=1e-2, gt=0, description='server learning rate: the size of the step the server takes along the aggregated update')
+    eta_l:  float = Field(default=0.1,  gt=0, description="the clients' learning rate, informative only: Flower does not use it")
+    beta_1: float = Field(default=0.9,  ge=0, lt=1, description="decay of the first moment (momentum) of the server's Adam")
+    beta_2: float = Field(default=0.99, ge=0, lt=1, description="decay of the second moment of the server's Adam")
+    tau:    float = Field(default=1e-9, gt=0, description='adaptivity: added to the denominator; tiny, every step is about the sign of the update')
 
 
 class ConfigFedAdam(BaseModel):
@@ -234,11 +234,11 @@ class FedAdamFactory(FlowerStrategyFactory):
 class ConfigFedYogiData(ConfigFlowerFailuresData):
     """Server-side Yogi, see flwr.server.strategy.FedYogi. eta: server learning rate; tau:
     adaptivity; eta_l: informative only (unused by Flower)."""
-    eta:    float = Field(default=0.01,   gt=0)
-    eta_l:  float = Field(default=0.0316, gt=0)
-    beta_1: float = Field(default=0.9,    ge=0, lt=1)
-    beta_2: float = Field(default=0.99,   ge=0, lt=1)
-    tau:    float = Field(default=1e-9,   gt=0)
+    eta:    float = Field(default=0.01,   gt=0, description='server learning rate: the size of the step the server takes along the aggregated update')
+    eta_l:  float = Field(default=0.0316, gt=0, description="the clients' learning rate, informative only: Flower does not use it")
+    beta_1: float = Field(default=0.9,    ge=0, lt=1, description="decay of the first moment (momentum) of the server's Yogi")
+    beta_2: float = Field(default=0.99,   ge=0, lt=1, description="decay of the second moment of the server's Yogi")
+    tau:    float = Field(default=1e-9,   gt=0, description='adaptivity: added to the denominator; tiny, every step is about the sign of the update')
 
 
 class ConfigFedYogi(BaseModel):
@@ -256,9 +256,9 @@ class FedYogiFactory(FlowerStrategyFactory):
 class ConfigFedAdagradData(ConfigFlowerFailuresData):
     """Server-side Adagrad, see flwr.server.strategy.FedAdagrad. eta: server learning rate; tau:
     adaptivity (a tiny tau makes every step the sign of the update); eta_l: informative only."""
-    eta:   float = Field(default=1e-2, gt=0)
-    eta_l: float = Field(default=0.1,  gt=0)
-    tau:   float = Field(default=1e-9, gt=0)
+    eta:   float = Field(default=1e-2, gt=0, description='server learning rate: the size of the step the server takes along the aggregated update')
+    eta_l: float = Field(default=0.1,  gt=0, description="the clients' learning rate, informative only: Flower does not use it")
+    tau:   float = Field(default=1e-9, gt=0, description='adaptivity: added to the denominator; tiny, every step is about the sign of the update')
 
 
 class ConfigFedAdagrad(BaseModel):
@@ -277,7 +277,7 @@ class FedAdagradFactory(FlowerStrategyFactory):
 
 class ConfigFedMedianData(ConfigFlowerFailuresData):
     """Coordinate-wise median, see flwr.server.strategy.FedMedian."""
-    inplace: bool = True
+    inplace: bool = Field(default=True, description='aggregate in place, saving memory; same result')
 
 
 class ConfigFedMedian(BaseModel):
@@ -294,7 +294,7 @@ class FedMedianFactory(FlowerStrategyFactory):
 
 class ConfigFedTrimmedAvgData(ConfigFlowerFailuresData):
     """Trimmed mean, `beta` = fraction cut at each end, see flwr.server.strategy.FedTrimmedAvg."""
-    beta: float = Field(default=0.2, ge=0, lt=0.5)
+    beta: float = Field(default=0.2, ge=0, lt=0.5, description='fraction of the values cut at each end of every coordinate before averaging')
 
 
 class ConfigFedTrimmedAvg(BaseModel):
@@ -312,8 +312,8 @@ class FedTrimmedAvgFactory(FlowerStrategyFactory):
 class ConfigKrumData(ConfigFlowerFailuresData):
     """Byzantine-robust selection, needs more than 2 * num_malicious_clients + 2 clients,
     see flwr.server.strategy.Krum (num_clients_to_keep = 0: Krum, > 0: Multi-Krum)."""
-    num_malicious_clients: int = Field(default=0, ge=0)
-    num_clients_to_keep:   int = Field(default=0, ge=0)
+    num_malicious_clients: int = Field(default=0, ge=0, description='attackers to tolerate, f: needs more than 2f + 2 clients')
+    num_clients_to_keep:   int = Field(default=0, ge=0, description='0: Krum keeps the single most central update; > 0: Multi-Krum averages this many')
 
 
 class ConfigKrum(BaseModel):
@@ -331,8 +331,8 @@ class KrumFactory(FlowerStrategyFactory):
 class ConfigBulyanData(ConfigFlowerFailuresData):
     """Krum pre-selection + trimmed mean, needs at least 4 * num_malicious_clients + 3 clients,
     see flwr.server.strategy.Bulyan."""
-    num_malicious_clients: int = Field(default=0, ge=0)
-    krum_to_keep:          int = Field(default=0, ge=0)
+    num_malicious_clients: int = Field(default=0, ge=0, description='attackers to tolerate, f: needs at least 4f + 3 clients')
+    krum_to_keep:          int = Field(default=0, ge=0, description='updates the Krum pre-selection keeps before the trimmed mean')
 
     # Flower raises a ValueError in the middle of the aggregation below 4f + 3 clients: the server
     # crashed at the first round, or as soon as a client was missing
@@ -372,8 +372,8 @@ class ConfigQFedAvgData(ConfigFlowerFailuresData):
     worst: 0.1 did best (launch/campaign, DEVLOG). Note: Flower weighs every client with the same
     loss, the global model's one evaluated by the server, so q does not favour the clients the
     global model serves badly."""
-    q_param:            float = Field(default=0.2, ge=0)
-    qffl_learning_rate: float = Field(default=0.1, gt=0)
+    q_param:            float = Field(default=0.2, ge=0, description='fairness: the larger, the more weight to the clients with a high loss; 0: FedAvg-like')
+    qffl_learning_rate: float = Field(default=0.1, gt=0, description="rate used to rebuild each client's gradient from its update (0.1 did best on cifar10)")
 
 
 class ConfigQFedAvg(BaseModel):
@@ -390,8 +390,8 @@ class QFedAvgFactory(FlowerStrategyFactory):
 
 class ConfigFaultTolerantFedAvgData(ConfigFlowerSamplingData):
     """FedAvg tolerating failed clients, see flwr.server.strategy.FaultTolerantFedAvg."""
-    min_completion_rate_fit:      float = Field(default=0.5, ge=0, le=1)
-    min_completion_rate_evaluate: float = Field(default=0.5, ge=0, le=1)
+    min_completion_rate_fit:      float = Field(default=0.5, ge=0, le=1, description='fewest fraction of the sampled clients whose training must succeed')
+    min_completion_rate_evaluate: float = Field(default=0.5, ge=0, le=1, description='fewest fraction of the sampled clients whose evaluation must succeed')
 
 
 class ConfigFaultTolerantFedAvg(BaseModel):

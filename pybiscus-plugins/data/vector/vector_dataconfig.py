@@ -1,17 +1,17 @@
 from typing import Literal, ClassVar, Optional
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-from pybiscus.ml.datasplit import reject_former_fields
+from pybiscus.ml.datasplit import SET_FIELDS, reject_former_fields
 
 
 class VectorSet(BaseModel):
     """num_samples: examples of the set; max_samples: at most this many"""
 
-    num_samples: int = Field(default=5, ge=1)
-    batch_size:  int = Field(default=10, ge=1)
-    shuffle:     bool = False
-    drop_last:   bool = False
-    max_samples: Optional[int] = Field(default=None, ge=1)
+    num_samples: int = Field(default=5, ge=1, description='examples of the set')
+    batch_size:  int = Field(default=10, ge=1, description=SET_FIELDS["batch_size"])
+    shuffle:     bool = Field(default=False, description=SET_FIELDS["shuffle"])
+    drop_last:   bool = Field(default=False, description=SET_FIELDS["drop_last"])
+    max_samples: Optional[int] = Field(default=None, ge=1, description=SET_FIELDS["max_samples"])
 
     model_config = ConfigDict(extra="forbid")
 
@@ -19,7 +19,7 @@ class VectorSet(BaseModel):
 class VectorTrainSet(VectorSet):
     PYBISCUS_CONFIG: ClassVar[str] = "train"
 
-    shuffle: bool = True
+    shuffle: bool = Field(default=True, description=SET_FIELDS["shuffle"])
 
 
 class VectorValSet(VectorSet):
@@ -50,10 +50,10 @@ class ConfigIntValueVector(BaseModel):
 
     PYBISCUS_CONFIG: ClassVar[str] = "config"
 
-    int_value: int = 42
-    train:     VectorTrainSet = VectorTrainSet()
-    val:       VectorValSet = VectorValSet()
-    test:      VectorTestSet = VectorTestSet()
+    int_value: int = Field(default=42, description='the value of every example')
+    train:     VectorTrainSet = Field(default=VectorTrainSet(), description='the training examples')
+    val:       VectorValSet = Field(default=VectorValSet(), description='the validation examples')
+    test:      VectorTestSet = Field(default=VectorTestSet(), description='the test examples')
 
     model_config = ConfigDict(extra="forbid")
 

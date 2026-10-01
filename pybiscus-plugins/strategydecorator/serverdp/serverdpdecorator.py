@@ -87,11 +87,11 @@ class ConfigServerDPCommon(BaseModel):
     PYBISCUS_CONFIG: ClassVar[str] = "config"
 
     # z: the noise's standard deviation is z * C / num_sampled_clients
-    noise_multiplier:    float = Field(default=0.1, ge=0)
+    noise_multiplier:    float = Field(default=0.1, ge=0, description='z: the noise added to the aggregate has a standard deviation of z x C / num_sampled_clients')
     # unset: min_fit_clients of the strategy (every client takes part in the demos)
-    num_sampled_clients: Optional[int] = Field(default=None, ge=1)
+    num_sampled_clients: Optional[int] = Field(default=None, ge=1, description="clients per round in the noise's calibration; the strategy's min_fit_clients if unset")
     # epsilon is reported for this delta, when every client takes part in every round
-    delta:               float = Field(default=1e-5, gt=0, lt=1)
+    delta:               float = Field(default=1e-5, gt=0, lt=1, description='the epsilon reported is for this delta, when every client takes part in every round')
 
     model_config = ConfigDict(extra="forbid")
 
@@ -101,7 +101,7 @@ class ConfigServerDPFixedData(ConfigServerDPCommon):
     flwr.server.strategy.DifferentialPrivacyServerSideFixedClipping. clipping_norm: bound C on the
     norm of each client's update (w_client - w_global); the clients' weight_drift under FedProx
     mu 0 shows its usual size."""
-    clipping_norm: float = Field(default=1.0, gt=0)
+    clipping_norm: float = Field(default=1.0, gt=0, description="bound C on the norm of each client's update")
 
 
 class ConfigServerDPAdaptiveData(ConfigServerDPCommon):
@@ -111,10 +111,10 @@ class ConfigServerDPAdaptiveData(ConfigServerDPCommon):
     CorrectedAdaptiveClipping). The count of clipped
     clients is noised too (clipped_count_stddev, num_sampled_clients / 20 if unset): Flower
     requires noise_multiplier < 2 * clipped_count_stddev."""
-    initial_clipping_norm:   float = Field(default=0.1, gt=0)
-    target_clipped_quantile: float = Field(default=0.5, ge=0, le=1)
-    clip_norm_lr:            float = Field(default=0.2, gt=0)
-    clipped_count_stddev:    Optional[float] = Field(default=None, ge=0)
+    initial_clipping_norm:   float = Field(default=0.1, gt=0, description='bound C on the update norms in the first round, then adapted')
+    target_clipped_quantile: float = Field(default=0.5, ge=0, le=1, description='fraction of the clients whose update the adapted C should clip')
+    clip_norm_lr:            float = Field(default=0.2, gt=0, description='how fast C moves towards the target quantile')
+    clipped_count_stddev:    Optional[float] = Field(default=None, ge=0, description='noise on the count of clipped clients; num_sampled_clients / 20 if unset')
 
 
 # personalized models make the update measured against the global one include the

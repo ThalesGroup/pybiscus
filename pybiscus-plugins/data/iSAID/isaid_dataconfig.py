@@ -16,14 +16,14 @@ class ConfigiSAIDData(BaseModel):
     PYBISCUS_CONFIG: ClassVar[str] = "config"
 
     dir_train:   Optional[str] = "${root_dir}/datasets/train/"
-    data_train_indices_path:   Optional[str] =None
-    dir_val:   Optional[str] = "${root_dir}/datasets/val/"
-    data_val_indices_path:   Optional[str] =None
+    data_train_indices_path:   Optional[str] = Field(default=None, description='file of the indices of the training images')
+    dir_val:   Optional[str] = Field(default="${root_dir}/datasets/val/", description='directory of the validation images')
+    data_val_indices_path:   Optional[str] = Field(default=None, description='file of the indices of the validation images')
     dir_test:    Optional[str] = "${root_dir}/datasets/test/"
-    dir_privacy: Optional[str] = None
+    dir_privacy: Optional[str] = Field(default=None, description='directory of the images a privacy evaluation attacks')
     batch_size:  int = 32
     num_workers: int = 0
-    label_dict: Optional[dict] = None # label dictionnary in case labels are note increasing integer from 0 to n_classes -1. {0: label0, 1: label1 etc.}
+    label_dict: Optional[dict] = Field(default=None, description='labels of the classes when they are not 0 .. n_classes - 1: {0: label0, 1: label1, ...}') # label dictionnary in case labels are note increasing integer from 0 to n_classes -1. {0: label0, 1: label1 etc.}
 
     model_config = ConfigDict(extra="forbid")
 

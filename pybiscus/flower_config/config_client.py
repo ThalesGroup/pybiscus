@@ -3,7 +3,7 @@ from typing import Optional, ClassVar
 from typing_extensions import Annotated
 
 import torch
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 from pybiscus.flower_config.config_computecontext import ConfigClientComputeContext
 from pybiscus.plugin.registries.client_registry import ClientConfig
@@ -58,7 +58,7 @@ class ConfigClientRun(BaseModel):
     PYBISCUS_CONFIG: ClassVar[str] = "client_run"
 
     cid: int            = 1
-    pre_train_val: bool = False
+    pre_train_val: bool = Field(default=False, description='evaluate the global model received at each round before training on it (*_pre_train_val metrics)')
     optimizer_state: OptimizerState = OptimizerState.reset
     seed: Optional[int] = None
 
@@ -104,9 +104,9 @@ class ConfigClient(BaseModel):
     PYBISCUS_ALIAS: ClassVar[str] = "Pybiscus client configuration"
 
     root_dir: str           = "${oc.env:PWD}"
-    flower_client:          ConfigFlowerClient
-    client_run:             ConfigClientRun
-    client_compute_context: ConfigClientComputeContext
+    flower_client:          ConfigFlowerClient= Field(description='how the client reaches the Flower server')
+    client_run:             ConfigClientRun= Field(description='identity and behaviour of the client during the session')
+    client_compute_context: ConfigClientComputeContext= Field(description='hardware the client trains on')
     model:                  ModelConfig() # pyright: ignore[reportInvalidTypeForm]
     data:                   DataConfig() # pyright: ignore[reportInvalidTypeForm]
 

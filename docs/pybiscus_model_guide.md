@@ -310,6 +310,11 @@ class ConfigMyData(BaseModel):
     scheme: Scheme = Field(default=Scheme.iid, description="how the examples are shared")
 ```
 
+A subclass that redefines a field (another default) keeps its parent's description. A data plugin
+whose sections do not derive from `pybiscus.ml.datasplit`'s takes the descriptions of the common
+loader fields from `SET_FIELDS` there (`Field(default=32, ge=1, description=SET_FIELDS["batch_size"])`),
+so that every plugin says the same thing about the same field.
+
 **Generated YAML structure:**
 ```yaml
 model:

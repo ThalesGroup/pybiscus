@@ -1,6 +1,6 @@
 
 from typing import ClassVar, Literal
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 from pybiscus.interfaces.flower.clientfactory import ClientFactory
 
@@ -8,12 +8,12 @@ class ConfigFlowerRelayClientData(BaseModel):
 
     PYBISCUS_CONFIG: ClassVar[str] = "config"
 
-    shared_directory       : str = "/tmp/filewriterdecorator"
-    remote_session_id: str = "0"
-    timeout: int = 30
-    poll_interval: float = 0.5
-    max_cache_age_rounds: int = 3
-    fail_on_timeout: bool = True
+    shared_directory       : str = Field(default="/tmp/filewriterdecorator", description="directory where the remote session's files are written and read")
+    remote_session_id: str = Field(default="0", description='the remote session to read the results of')
+    timeout: int = Field(default=30, description="seconds to wait for a round's files")
+    poll_interval: float = Field(default=0.5, description='seconds between two looks at the directory')
+    max_cache_age_rounds: int = Field(default=3, description='rounds an earlier result may be reused when the current one is missing')
+    fail_on_timeout: bool = Field(default=True, description='report the round as failed when its files never come; reuse the cache otherwise')
 
     model_config = ConfigDict(extra="forbid")
 

@@ -60,22 +60,32 @@ class ConfigPartition(ConfigPartitionScheme):
 
 # ------------------------------------------------------------------ the three sets
 
+# the fields every data plugin's sections share, described once: the plugins whose sections do not
+# derive from the ones below (hdfs, turbofan, randomvector, vector) take their descriptions here
+SET_FIELDS = {
+    "batch_size": "examples per batch",
+    "shuffle": "examples drawn in a new random order at every epoch",
+    "drop_last": "leave out the last, incomplete batch of every epoch",
+    "train_seed": "order of the shuffled batches, reproducible; random if unset",
+    "max_samples": "at most this many examples, the same on every run; all if unset",
+    "partition": "this client's share of the training examples, disjoint from the other clients'",
+}
+
 class ConfigTrainSet(BaseModel):
-    """dir: directory of the official train split; indices: file of the example indices to train on
-    (whitespace-separated); partition: this client's share of the examples; seed: order of the
-    shuffled batches, reproducible (random if unset)"""
+    """the examples the client trains on"""
 
     PYBISCUS_CONFIG: ClassVar[str] = "train"
 
-    dir: str
-    batch_size: int = Field(default=32, ge=1)
-    shuffle: bool = True
+    dir: str = Field(description="directory of the official train split")
+    batch_size: int = Field(default=32, ge=1, description=SET_FIELDS["batch_size"])
+    shuffle: bool = Field(default=True, description=SET_FIELDS["shuffle"])
     # a tiny last batch destabilizes BatchNorm
-    drop_last: bool = True
-    seed: Optional[int] = None
-    indices: Optional[str] = None
-    partition: Optional[ConfigPartition] = None
-    max_samples: Optional[int] = Field(default=None, ge=1)
+    drop_last: bool = Field(default=True, description=SET_FIELDS["drop_last"])
+    seed: Optional[int] = Field(default=None, description=SET_FIELDS["train_seed"])
+    indices: Optional[str] = Field(default=None, description=
+        "file of the indices of the examples to train on (whitespace-separated); exclusive with partition")
+    partition: Optional[ConfigPartition] = Field(default=None, description=SET_FIELDS["partition"])
+    max_samples: Optional[int] = Field(default=None, ge=1, description=SET_FIELDS["max_samples"])
 
     model_config = ConfigDict(extra="forbid")
 
@@ -87,28 +97,33 @@ class ConfigTrainSet(BaseModel):
 
 
 class ValSource(str, Enum):
-    official = "official"   # the official test split: then no data is held out
-    holdout = "holdout"     # a fraction of the client's training examples
-    indices = "indices"     # the examples listed in the indices file
+    official = "official"
+    holdout = "holdout"
+    indices = "indices"
+
+
+ValSource.PYBISCUS_DESCRIPTIONS = {
+    "official": "the official test split: no data is held out, and the test is no longer independent",
+    "holdout": "a fraction of the client's own training examples, left out of its training",
+    "indices": "the examples listed in the indices file",
+}
 
 
 class ConfigValSet(BaseModel):
-    """source: where the validation examples come from; dir: directory of the official test
-    split (official); fraction and seed: share and draw of the held-out examples (holdout);
-    indices: file of the example indices (indices)"""
+    """the examples the client validates on"""
 
     PYBISCUS_CONFIG: ClassVar[str] = "val"
 
-    source: ValSource = ValSource.official
-    dir: str
-    fraction: float = Field(default=0.1, gt=0, lt=1)
-    seed: int = 42
-    indices: Optional[str] = None
-    batch_size: int = Field(default=32, ge=1)
-    shuffle: bool = False
+    source: ValSource = Field(default=ValSource.official, description="where the validation examples come from")
+    dir: str = Field(description="directory of the official test split (source: official)")
+    fraction: float = Field(default=0.1, gt=0, lt=1, description="share of the client's training examples held out (source: holdout)")
+    seed: int = Field(default=42, description="draw of the held-out examples (source: holdout)")
+    indices: Optional[str] = Field(default=None, description="file of the indices of the validation examples (source: indices)")
+    batch_size: int = Field(default=32, ge=1, description=SET_FIELDS["batch_size"])
+    shuffle: bool = Field(default=False, description=SET_FIELDS["shuffle"])
     # every example is evaluated: dropping the last batch skipped some of them
-    drop_last: bool = False
-    max_samples: Optional[int] = Field(default=None, ge=1)
+    drop_last: bool = Field(default=False, description=SET_FIELDS["drop_last"])
+    max_samples: Optional[int] = Field(default=None, ge=1, description=SET_FIELDS["max_samples"])
 
     model_config = ConfigDict(extra="forbid")
 
@@ -120,15 +135,15 @@ class ConfigValSet(BaseModel):
 
 
 class ConfigTestSet(BaseModel):
-    """dir: directory of the official test split"""
+    """the examples of the final evaluation (the server's, in a federated session)"""
 
     PYBISCUS_CONFIG: ClassVar[str] = "test"
 
-    dir: str
-    batch_size: int = Field(default=32, ge=1)
-    shuffle: bool = False
-    drop_last: bool = False
-    max_samples: Optional[int] = Field(default=None, ge=1)
+    dir: str = Field(description="directory of the official test split")
+    batch_size: int = Field(default=32, ge=1, description=SET_FIELDS["batch_size"])
+    shuffle: bool = Field(default=False, description=SET_FIELDS["shuffle"])
+    drop_last: bool = Field(default=False, description=SET_FIELDS["drop_last"])
+    max_samples: Optional[int] = Field(default=None, ge=1, description=SET_FIELDS["max_samples"])
 
     model_config = ConfigDict(extra="forbid")
 
@@ -141,10 +156,11 @@ class ConfigPrivacySet(BaseModel):
 
     PYBISCUS_CONFIG: ClassVar[str] = "privacy"
 
-    dir: str
+    dir: str = Field(description="directory of the official train split, whose examples are attacked")
     # no shuffle nor drop_last: the attack reports its results per position, for every example
-    batch_size: int = Field(default=32, ge=1)
-    max_samples: Optional[int] = Field(default=None, ge=1)
+    batch_size: int = Field(default=32, ge=1, description=SET_FIELDS["batch_size"])
+    max_samples: Optional[int] = Field(default=None, ge=1, description=
+        "a fixed subset of at most this many examples, whose original indices stay known; all if unset")
 
     model_config = ConfigDict(extra="forbid")
 

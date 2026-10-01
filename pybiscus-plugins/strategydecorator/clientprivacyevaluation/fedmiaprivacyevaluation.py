@@ -1,7 +1,7 @@
 from typing import ClassVar, List, Literal, Tuple, Any
 
 import numpy as np
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 import torch
 from collections import OrderedDict
 import copy
@@ -41,15 +41,15 @@ class ConfigFedMIAPrivacyEvaluationStrategyDecoratorData(BaseModel):
     
     PYBISCUS_CONFIG: ClassVar[str] = "config"
 
-    reporting_sub_dir: str = "rounds"
-    cosine_matrix_path: str = "cosine_matrix.csv"
-    losses_path: str = "loss_per_instances.csv"
+    reporting_sub_dir: str = Field(default="rounds", description='subdirectory of the reporting directory, one round_<n> directory per round inside')
+    cosine_matrix_path: str = Field(default="cosine_matrix.csv", description="file of the cosine similarities between the updates and the examples' gradients")
+    losses_path: str = Field(default="loss_per_instances.csv", description='file of the loss of every example of the privacy set')
     # model_ids_path : str = "models_ids_list.txt"
     # data_ids_path : str = "data_ids_list.txt"
-    criterion: str = "CrossEntropyLoss"
-    server_aggregated_fit_parameters_file_name: str = "server_aggregated_fit_parameters.npz"
-    client_fitin_parameters_file_prefix: str = "client_fitin_parameters"
-    client_fitres_parameters_file_prefix: str = "client_fitres_parameters"
+    criterion: str = Field(default="CrossEntropyLoss", description='loss of the attack: CrossEntropyLoss, or model_val for a model whose forward returns its loss')
+    server_aggregated_fit_parameters_file_name: str = Field(default="server_aggregated_fit_parameters.npz", description='file of the aggregated weights of the round')
+    client_fitin_parameters_file_prefix: str = Field(default="client_fitin_parameters", description='prefix of the files of the weights sent to each client')
+    client_fitres_parameters_file_prefix: str = Field(default="client_fitres_parameters", description='prefix of the files of the weights each client sent back')
     # parameters_iterator : Iterator[Parameter] = None
     # Todo fournir plutot un fichier avec la liste
 

@@ -4,7 +4,7 @@ import flwr as fl
 from flwr.server.strategy import Strategy
 
 import numpy as np
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 from pybiscus.core.ensure_filesystem import ensure_dir_exists
 from pybiscus.interfaces.flower.strategydecorator import StrategyDecorator
@@ -16,8 +16,8 @@ class ConfigSaveClientsFitResStrategyDecoratorData(BaseModel):
     
     PYBISCUS_CONFIG: ClassVar[str] = "config"
 
-    reporting_sub_dir: str = "rounds"
-    client_fitres_parameters_file_prefix: str = "client_fitres_parameters"
+    reporting_sub_dir: str = Field(default="rounds", description='subdirectory of the reporting directory, one round_<n> directory per round inside')
+    client_fitres_parameters_file_prefix: str = Field(default="client_fitres_parameters", description='prefix of the files of the weights each client sent back')
 
     model_config = ConfigDict(extra="forbid")
 

@@ -29,11 +29,11 @@ class ConfigWandbLoggerFactoryData(BaseModel):
     PYBISCUS_CONFIG: ClassVar[str] = "config"
 
     project: str = "pybiscus"
-    entity: Optional[str] = None
+    entity: Optional[str] = Field(default=None, description="W&B team or user; the account's default if unset")
     name: Optional[str] = None
-    group: Optional[str] = None
-    tags: list[str] = Field(default_factory=list)
-    mode: WandbMode = WandbMode.online
+    group: Optional[str] = Field(default=None, description='group of the run')
+    tags: list[str] = Field(default_factory=list, description='tags of the run')
+    mode: WandbMode = Field(default=WandbMode.online, description='online, offline (no network needed) or disabled')
     # never the key itself: the configuration is saved with the experiment and shown in the forms
     api_key_env_var: str = "WANDB_API_KEY"
 

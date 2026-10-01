@@ -34,7 +34,7 @@ class ConfigSslServer(BaseModel):
 
 class ConfigSaveWeights(BaseModel):
 
-    filename: str = "final_checkpoint.pt"
+    filename: str = Field(default="final_checkpoint.pt", description='file of the final weights, in the reporting directory')
 
     model_config = ConfigDict(extra="forbid")
 
@@ -46,19 +46,19 @@ class AxeKind(str, Enum):
 class OnnxAxe(BaseModel):
 
     name: str = ""
-    kind: AxeKind = AxeKind.input.value
-    dynamic: bool = True
+    kind: AxeKind = Field(default=AxeKind.input.value, description='whether the axis belongs to an input or an output of the model')
+    dynamic: bool = Field(default=True, description='the size of this axis may change (the batch size, for instance)')
 
     model_config = ConfigDict(extra="forbid")
 
 class ConfigServerOnnxExport(BaseModel):
 
-    filename: str = "model.onnx"
-    axes: List[OnnxAxe] = []
+    filename: str = Field(default="model.onnx", description='file of the exported model, in the reporting directory')
+    axes: List[OnnxAxe] = Field(default=[], description='names and dynamic axes of the inputs and outputs; deduced from the model and the data if empty')
     # >= 18 requis avec l'exporteur torch dynamo (produit de l'opset 18 ; la reconversion
     # vers un opset inférieur, ex. 13, échoue)
-    opset: int = 18
-    post_validation: bool = False
+    opset: int = Field(default=18, description='ONNX operator set: 18 or more with the dynamo exporter')
+    post_validation: bool = Field(default=False, description='check the exported model against the original: not implemented yet, no effect')
 
     model_config = ConfigDict(extra="forbid")
 
@@ -67,13 +67,13 @@ class ConfigServerReporting(BaseModel):
 
     PYBISCUS_CONFIG: ClassVar[str] = "reporting"
 
-    basedir: str = "${root_dir}/experiments"
-    add_timestamp_in_path: bool = True
+    basedir: str = Field(default="${root_dir}/experiments", description="directory of the session's reports (logs, metrics, saved weights)")
+    add_timestamp_in_path: bool = Field(default=True, description='one subdirectory per session, named after its start time (basedir/current links to the last one)')
 
-    server_config_filename : str = "config_server.yml"
+    server_config_filename : str = Field(default="config_server.yml", description="file the server's configuration is saved to, in the reporting directory")
 
-    save_on_train_end: Optional[ConfigSaveWeights] = None
-    onnx_export:       Optional[ConfigServerOnnxExport] = None
+    save_on_train_end: Optional[ConfigSaveWeights] = Field(default=None, description='save the final weights of the global model')
+    onnx_export:       Optional[ConfigServerOnnxExport] = Field(default=None, description='export the final global model to ONNX')
 
     model_config = ConfigDict(extra="forbid")
 
@@ -98,10 +98,10 @@ class ConfigServerRun(BaseModel):
     # 0 rounds silently trained nothing
     num_rounds:        int = Field(default=10, ge=1)
     clients_fit_local_epochs: int = Field(default=1, ge=1)
-    client_configs:    list[str] = []
+    client_configs:    list[str] = Field(default=[], description='configuration files of the clients, saved with the reports (command line sessions)')
     seed:              Optional[int] = None
-    loggers:           list[LoggerConfig()] # pyright: ignore[reportInvalidTypeForm]
-    reporting:         ConfigServerReporting
+    loggers:           list[LoggerConfig()] = Field(description="where the server's log lines go (console, the session manager's webhook...)")# pyright: ignore[reportInvalidTypeForm]
+    reporting:         ConfigServerReporting= Field(description='where and what the server saves')
     model_config = ConfigDict(extra="forbid")
 
 
@@ -118,7 +118,7 @@ class ConfigFlowerServer(BaseModel):
 
     PYBISCUS_CONFIG: ClassVar[str] = "flower_server"
 
-    listen_address:     str = '[::]:3333'
+    listen_address:     str = Field(default='[::]:3333', description='address and port the Flower server listens on: [::1] the machine only, [::] every network')
     ssl:               Optional[ConfigSslServer] = None
     # one_tera: str = "1 Tb = 1073741824 b"
     # grpc_max_message_length : Optional[int] = None
@@ -173,8 +173,8 @@ class ConfigServerStrategy(BaseModel):
 
     PYBISCUS_CONFIG: ClassVar[str] = "server_strategy"
 
-    pipeline: list[StrategyDecoratorConfig()] # pyright: ignore[reportInvalidTypeForm]
-    strategy: StrategyConfig() # pyright: ignore[reportInvalidTypeForm]
+    pipeline: list[StrategyDecoratorConfig()] = Field(description='decorators around the strategy (metrics, saving, robustness...), the first one closest to the strategy')# pyright: ignore[reportInvalidTypeForm]
+    strategy: StrategyConfig() = Field(description="how the clients' updates are aggregated")# pyright: ignore[reportInvalidTypeForm]
     robustness: Robustness = Field(default=Robustness.none, description=
         "defense against malicious clients, added to the pipeline (docs/robust-aggregation.md)")
 
@@ -241,10 +241,10 @@ class ConfigServer(BaseModel):
     PYBISCUS_ALIAS: ClassVar[str] = "Pybiscus server configuration"
 
     root_dir:               str = "${oc.env:PWD}"
-    flower_server:          ConfigFlowerServer
-    server_run:             ConfigServerRun
-    server_compute_context: ConfigServerComputeContext
-    server_strategy:        ConfigServerStrategy
+    flower_server:          ConfigFlowerServer= Field(description='where the Flower server listens')
+    server_run:             ConfigServerRun= Field(description='rounds, logs and reports of the session')
+    server_compute_context: ConfigServerComputeContext= Field(description='hardware and metrics loggers of the server')
+    server_strategy:        ConfigServerStrategy= Field(description='aggregation strategy, its decorators and the robustness profile')
     data:                   DataConfig() # pyright: ignore[reportInvalidTypeForm]
     model:                  ModelConfig() # pyright: ignore[reportInvalidTypeForm]
 

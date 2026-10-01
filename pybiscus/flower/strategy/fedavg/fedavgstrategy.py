@@ -18,7 +18,7 @@ from flwr.server.client_proxy import ClientProxy
 from flwr.server.strategy.aggregate import aggregate, weighted_loss_avg
 from lightning.fabric import Fabric
 from lightning.pytorch import LightningModule
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 import pybiscus.core.gui_events as gui_events
 import pybiscus.core.pybiscus_logger as logm
@@ -42,7 +42,7 @@ class ConfigFabricFedAvgStrategyData(BaseModel):
     # min_evaluate_clients: int = 2,
     # min_available_clients: int = 2,
 
-    min_fit_clients: int = 2
+    min_fit_clients: int = Field(default=2, description='fewest clients that train in a round (set by the manager in a session)')
 
     model_config = ConfigDict(extra="forbid")
 

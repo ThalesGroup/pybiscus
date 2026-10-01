@@ -6,7 +6,7 @@ from flwr.server.strategy import Strategy
 from flwr.server.client_manager import ClientManager
 from flwr.server.client_proxy import ClientProxy
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 from pybiscus.interfaces.flower.strategydecorator import StrategyDecorator
 from pybiscus.plugin.registries.resultmodifier_registry import ResultModifierConfig, resultmodifier_registry
@@ -18,11 +18,11 @@ class ConfigPersonalizeClientsFitInParamsStrategyDecoratorData(BaseModel):
     
     PYBISCUS_CONFIG: ClassVar[str] = "config"
 
-    result_modifier: ResultModifierConfig() # pyright: ignore[reportInvalidTypeForm]
+    result_modifier: ResultModifierConfig() = Field(description='how the global model is changed for each client before it is sent')# pyright: ignore[reportInvalidTypeForm]
 
-    protect_model_weights: bool = True
-    memo_clients_fit_res_in_context: bool = True
-    debug: bool = False
+    protect_model_weights: bool = Field(default=True, description="restore the server's model after each client's modification, which may change it in place")
+    memo_clients_fit_res_in_context: bool = Field(default=True, description="keep the clients' trained weights of the round in the shared context (for other plugins)")
+    debug: bool = Field(default=False, description='log the weights before and after each modification')
 
     model_config = ConfigDict(extra="forbid")
 

@@ -8,9 +8,11 @@ def get_basemodel_attribute_description(basemodel: BaseModel, attribute_name: st
     """the field's Field(description=...), else its "name ... = description" line of the class
     docstring with the more indented lines that continue it; None without either"""
 
-    field = getattr(basemodel, "model_fields", {}).get(attribute_name)
-    if field is not None and field.description:
-        return field.description
+    # a subclass that redefines a field (another default) loses its parent's description
+    for cls in getattr(basemodel, "__mro__", ()):
+        field = getattr(cls, "model_fields", {}).get(attribute_name)
+        if field is not None and field.description:
+            return field.description
 
     # the class's own docstring: an undocumented subclass would show its parent's
     docstring = basemodel.__dict__.get("__doc__")

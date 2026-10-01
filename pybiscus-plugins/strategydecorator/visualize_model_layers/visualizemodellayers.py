@@ -4,7 +4,7 @@ import flwr as fl
 from flwr.server.strategy import Strategy
 
 import numpy as np
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 import matplotlib.pyplot as plt
 import seaborn as sns
 
@@ -19,17 +19,17 @@ class ConfigModelWeightVignetteDecoratorData(BaseModel):
     
     PYBISCUS_CONFIG: ClassVar[str] = "config"
 
-    reporting_sub_dir: str = "rounds"
-    layers_sub_dir: str = "layers"
-    layer_prefix: str = "layer"
+    reporting_sub_dir: str = Field(default="rounds", description='subdirectory of the reporting directory, one round_<n> directory per round inside')
+    layers_sub_dir: str = Field(default="layers", description="subdirectory of each round's directory holding the images")
+    layer_prefix: str = Field(default="layer", description='prefix of the image files')
     
-    mode_bias_values: bool = True
-    mode_layers_values: bool = True
-    max_filters: int = 8
+    mode_bias_values: bool = Field(default=True, description="biases drawn as values; as differences to the server's otherwise")
+    mode_layers_values: bool = Field(default=True, description="weights drawn as values; as differences to the server's otherwise")
+    max_filters: int = Field(default=8, description='convolution filters drawn per layer, at most')
 
-    webhook_url: str = "http://localhost:5555/webhook/vignettes"
+    webhook_url: str = Field(default="http://localhost:5555/webhook/vignettes", description="URL the images are posted to (the session manager's /webhook/vignettes)")
 
-    debug: bool = False
+    debug: bool = Field(default=False, description='log every step of the drawing')
 
     model_config = ConfigDict(extra="forbid")
 

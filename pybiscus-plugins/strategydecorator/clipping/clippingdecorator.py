@@ -31,9 +31,9 @@ class ConfigClippingDecoratorData(BaseModel):
     PYBISCUS_CONFIG: ClassVar[str] = "config"
 
     mode: ClippingMode = ClippingMode.median
-    median_factor: float = Field(default=1.5, gt=0)
-    clipping_norm: float = Field(default=2.0, gt=0)
-    reject_factor: Optional[float] = Field(default=None, gt=1)
+    median_factor: float = Field(default=1.5, gt=0, description="mode median: updates are clipped to this many times the round's median update norm")
+    clipping_norm: float = Field(default=2.0, gt=0, description='mode fixed: updates are clipped to this norm')
+    reject_factor: Optional[float] = Field(default=None, gt=1, description='clients whose update norm exceeds this many times the median are left out of the round; none if unset')
     log_directions: bool = Field(default=False, description=
         "logs each client's cosine similarity to the coordinate-wise median update and to its closest other client "
         "(clip_cos_median_<cid>, clip_cos_closest_<cid>); costs a copy of every update")

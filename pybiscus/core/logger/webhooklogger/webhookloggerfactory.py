@@ -1,6 +1,6 @@
 
 from typing import ClassVar, Literal
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 from pybiscus.interfaces.core.logger import LoggerFactory
 from pybiscus.core.logger.webhooklogger.webhooklogger import WebHookLogger
@@ -9,8 +9,8 @@ class ConfigWebHookLoggerFactoryData(BaseModel):
 
     PYBISCUS_CONFIG: ClassVar[str] = "config"
 
-    webhook_url: str = "http://localhost:5555/webhook/logs"
-    logger_id: str   = "🖧"
+    webhook_url: str = Field(default="http://localhost:5555/webhook/logs", description="URL the log lines are posted to (the session manager's /webhook/logs)")
+    logger_id: str   = Field(default="🖧", description='source tag of the posted lines')
 
     model_config = ConfigDict(extra="forbid")
 

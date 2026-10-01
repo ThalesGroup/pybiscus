@@ -1,7 +1,7 @@
 from typing import Literal, ClassVar, Optional
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-from pybiscus.ml.datasplit import ConfigPartition, PartitionScheme, reject_former_fields
+from pybiscus.ml.datasplit import SET_FIELDS, ConfigPartition, PartitionScheme, reject_former_fields
 
 
 class RandomVectorTrainSet(BaseModel):
@@ -10,13 +10,13 @@ class RandomVectorTrainSet(BaseModel):
 
     PYBISCUS_CONFIG: ClassVar[str] = "train"
 
-    num_samples: int = Field(default=100, ge=1)
-    batch_size:  int = Field(default=32, ge=1)
-    shuffle:     bool = True
-    drop_last:   bool = False
-    seed:        Optional[int] = None
-    partition:   Optional[ConfigPartition] = None
-    max_samples: Optional[int] = Field(default=None, ge=1)
+    num_samples: int = Field(default=100, ge=1, description='generated training examples')
+    batch_size:  int = Field(default=32, ge=1, description=SET_FIELDS["batch_size"])
+    shuffle:     bool = Field(default=True, description=SET_FIELDS["shuffle"])
+    drop_last:   bool = Field(default=False, description=SET_FIELDS["drop_last"])
+    seed:        Optional[int] = Field(default=None, description=SET_FIELDS["train_seed"])
+    partition:   Optional[ConfigPartition] = Field(default=None, description=SET_FIELDS["partition"])
+    max_samples: Optional[int] = Field(default=None, ge=1, description=SET_FIELDS["max_samples"])
 
     model_config = ConfigDict(extra="forbid")
 
@@ -31,11 +31,11 @@ class RandomVectorTrainSet(BaseModel):
 class RandomVectorEvalSet(BaseModel):
     """num_samples: generated examples; max_samples: at most this many"""
 
-    num_samples: int = Field(default=50, ge=1)
-    batch_size:  int = Field(default=32, ge=1)
-    shuffle:     bool = False
-    drop_last:   bool = False
-    max_samples: Optional[int] = Field(default=None, ge=1)
+    num_samples: int = Field(default=50, ge=1, description='generated examples')
+    batch_size:  int = Field(default=32, ge=1, description=SET_FIELDS["batch_size"])
+    shuffle:     bool = Field(default=False, description=SET_FIELDS["shuffle"])
+    drop_last:   bool = Field(default=False, description=SET_FIELDS["drop_last"])
+    max_samples: Optional[int] = Field(default=None, ge=1, description=SET_FIELDS["max_samples"])
 
     model_config = ConfigDict(extra="forbid")
 
@@ -69,11 +69,11 @@ class ConfigRandomVector(BaseModel):
 
     PYBISCUS_CONFIG: ClassVar[str] = "config"
 
-    feature_dim: int = Field(default=1, ge=1)
-    seed:        int = 42
-    train:       RandomVectorTrainSet = RandomVectorTrainSet()
-    val:         RandomVectorValSet = RandomVectorValSet()
-    test:        RandomVectorTestSet = RandomVectorTestSet()
+    feature_dim: int = Field(default=1, ge=1, description='features per example (input dimension)')
+    seed:        int = Field(default=42, description='seed of the generated values (train, val and test get seed, seed + 1, seed + 2)')
+    train:       RandomVectorTrainSet = Field(default=RandomVectorTrainSet(), description='the generated training examples')
+    val:         RandomVectorValSet = Field(default=RandomVectorValSet(), description='the generated validation examples')
+    test:        RandomVectorTestSet = Field(default=RandomVectorTestSet(), description='the generated test examples')
 
     model_config = ConfigDict(extra="forbid")
 

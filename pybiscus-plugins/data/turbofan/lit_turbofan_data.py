@@ -7,7 +7,7 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 from torch.utils.data import DataLoader
 
 import pybiscus.core.pybiscus_logger as logm
-from pybiscus.ml.datasplit import ConfigPartition, PartitionScheme, limit, make_loader, reject_former_fields
+from pybiscus.ml.datasplit import SET_FIELDS, ConfigPartition, PartitionScheme, limit, make_loader, reject_former_fields
 from turbofan.turbofan_data import TurbofanWindows, check_engines, normalization, read_engines
 
 
@@ -17,13 +17,13 @@ class TurbofanTrainSet(BaseModel):
 
     PYBISCUS_CONFIG: ClassVar[str] = "train"
 
-    engines: list[int] = Field(default_factory=lambda: [52, 62, 2])
-    batch_size: int = Field(default=8, ge=1)
-    shuffle: bool = True
-    drop_last: bool = False
-    seed: Optional[int] = None
-    partition: Optional[ConfigPartition] = None
-    max_samples: Optional[int] = Field(default=None, ge=1)
+    engines: list[int] = Field(default_factory=lambda: [52, 62, 2], description='the engines whose cycles train the model; also set the normalization statistics')
+    batch_size: int = Field(default=8, ge=1, description=SET_FIELDS["batch_size"])
+    shuffle: bool = Field(default=True, description=SET_FIELDS["shuffle"])
+    drop_last: bool = Field(default=False, description=SET_FIELDS["drop_last"])
+    seed: Optional[int] = Field(default=None, description=SET_FIELDS["train_seed"])
+    partition: Optional[ConfigPartition] = Field(default=None, description=SET_FIELDS["partition"])
+    max_samples: Optional[int] = Field(default=None, ge=1, description=SET_FIELDS["max_samples"])
 
     model_config = ConfigDict(extra="forbid")
 
@@ -41,11 +41,11 @@ class TurbofanTrainSet(BaseModel):
 class TurbofanValSet(BaseModel):
     PYBISCUS_CONFIG: ClassVar[str] = "val"
 
-    engines: list[int] = Field(default_factory=lambda: [64])
-    batch_size: int = Field(default=8, ge=1)
-    shuffle: bool = False
-    drop_last: bool = False
-    max_samples: Optional[int] = Field(default=None, ge=1)
+    engines: list[int] = Field(default_factory=lambda: [64], description='the engines whose cycles validate the model')
+    batch_size: int = Field(default=8, ge=1, description=SET_FIELDS["batch_size"])
+    shuffle: bool = Field(default=False, description=SET_FIELDS["shuffle"])
+    drop_last: bool = Field(default=False, description=SET_FIELDS["drop_last"])
+    max_samples: Optional[int] = Field(default=None, ge=1, description=SET_FIELDS["max_samples"])
 
     model_config = ConfigDict(extra="forbid")
 
@@ -77,14 +77,14 @@ class ConfigTurbofanData(BaseModel):
     PYBISCUS_SERVER_SECTIONS: ClassVar[tuple] = ("train", "test")
 
     # the file shipped with the plugin; a "${root_dir}" default would not be interpolated
-    file: str = str(Path(__file__).parent / "turbofan.txt")
-    window: int = Field(default=20, ge=1)
-    normalize: bool = True
-    rul_clip: Optional[int] = Field(default=None, ge=1)
-    train: TurbofanTrainSet = TurbofanTrainSet()
-    val: TurbofanValSet = TurbofanValSet()
-    test: TurbofanTestSet = TurbofanTestSet()
-    num_workers: int = 0
+    file: str = Field(default=str(Path(__file__).parent / "turbofan.txt"), description="the engines' cycles (CSV)")
+    window: int = Field(default=20, ge=1, description='cycles fed to the model, never across two engines')
+    normalize: bool = Field(default=True, description="each feature standardized with the statistics of the train section's engines")
+    rul_clip: Optional[int] = Field(default=None, ge=1, description='cap on the remaining useful life to predict; none if unset')
+    train: TurbofanTrainSet = Field(default=TurbofanTrainSet(), description='the engines the client trains on')
+    val: TurbofanValSet = Field(default=TurbofanValSet(), description='the engines the client validates on')
+    test: TurbofanTestSet = Field(default=TurbofanTestSet(), description="the engines of the final evaluation (the server's)")
+    num_workers: int = Field(default=0, description='processes loading the batches; 0: the main process')
 
     model_config = ConfigDict(extra="forbid")
 

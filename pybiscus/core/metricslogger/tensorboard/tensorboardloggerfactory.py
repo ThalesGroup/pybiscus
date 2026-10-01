@@ -1,6 +1,6 @@
 
 from typing import ClassVar, Literal
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 from pybiscus.core.metricslogger.tensorboard.filteredtensorboardlogger import create_filtered_tensorboard_logger
 from pybiscus.interfaces.core.metricsloggerfactory import MetricsLoggerFactory
 from lightning.fabric.loggers import TensorBoardLogger
@@ -13,7 +13,7 @@ whose default is $(root_dir)/experiments/date-hour/"""
 
     PYBISCUS_CONFIG: ClassVar[str] = "config"
 
-    subdir: str = "tensorboard"
+    subdir: str = Field(default="tensorboard", description="subdirectory of the reporting directory holding the TensorBoard logs")
 
     model_config = ConfigDict(extra="forbid")
 

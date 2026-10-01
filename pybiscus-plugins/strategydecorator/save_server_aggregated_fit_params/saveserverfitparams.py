@@ -7,7 +7,7 @@ from flwr.server.client_manager import ClientManager
 from flwr.server.client_proxy import ClientProxy
 
 import numpy as np
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 from pybiscus.core.ensure_filesystem import ensure_file_dir_exists, ensure_dir_exists
 from pybiscus.interfaces.flower.strategydecorator import StrategyDecorator
@@ -18,8 +18,8 @@ class ConfigSaveServerFitParamsDecoratorData(BaseModel):
     
     PYBISCUS_CONFIG: ClassVar[str] = "config"
 
-    reporting_sub_dir: str = "rounds"
-    server_aggregated_fit_parameters_file_name: str = "server_aggregated_fit_parameters.npz"
+    reporting_sub_dir: str = Field(default="rounds", description='subdirectory of the reporting directory, one round_<n> directory per round inside')
+    server_aggregated_fit_parameters_file_name: str = Field(default="server_aggregated_fit_parameters.npz", description='file of the aggregated weights of the round')
 
     model_config = ConfigDict(extra="forbid")
 

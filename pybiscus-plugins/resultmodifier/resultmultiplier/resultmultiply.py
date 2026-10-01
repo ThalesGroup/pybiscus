@@ -1,7 +1,7 @@
 from typing import ClassVar, List, Literal
 
 import numpy as np
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 import pybiscus.core.pybiscus_logger as logm
 
 from pybiscus.interfaces.flower.resultmodifier import ResultModifier
@@ -10,7 +10,7 @@ from pybiscus.interfaces.flower.resultmodifier import ResultModifier
 
 class ConfigResultMultiplyData(BaseModel):
     PYBISCUS_CONFIG: ClassVar[str] = "config"
-    factor: float = 1.0
+    factor: float = Field(default=1.0, description='every weight sent to the client is multiplied by it')
     model_config = ConfigDict(extra="forbid")
 
 class ConfigResultMultiply(BaseModel):

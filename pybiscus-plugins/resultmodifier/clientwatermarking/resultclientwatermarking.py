@@ -1,7 +1,7 @@
 from typing import ClassVar, List, Literal
 
 import numpy as np
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 import torch
 import torch.nn
 from pybiscus.core.ensure_filesystem import ensure_file_dir_exists
@@ -16,15 +16,15 @@ from pybiscus.core.ensure_filesystem import ensure_file_dir_exists, ensure_dir_e
 class ConfigResultClientWatermarkingData(BaseModel):
     PYBISCUS_CONFIG: ClassVar[str] = "config"
 
-    nb_clients: int = 5
-    key_size_layer: int = 2112
-    key_size_fingerprint: int = 256
+    nb_clients: int = Field(default=5, description='clients to give a fingerprint')
+    key_size_layer: int = Field(default=2112, description='weights of the layer that carries the watermark')
+    key_size_fingerprint: int = Field(default=256, description="bits of each client's fingerprint")
 
-    save_as_cp: bool = True
-    reporting_sub_dir: str = "rounds"
-    client_watermaked_model_prefix: str = "client_watermarked_model"
+    save_as_cp: bool = Field(default=True, description='save each watermarked model as a checkpoint')
+    reporting_sub_dir: str = Field(default="rounds", description='subdirectory of the reporting directory, one round_<n> directory per round inside')
+    client_watermaked_model_prefix: str = Field(default="client_watermarked_model", description="prefix of the watermarked models' files")
 
-    client_watermaking_traces_path: str = "client_watermarking_traces.txt"
+    client_watermaking_traces_path: str = Field(default="client_watermarking_traces.txt", description='file of the watermarking traces (WSR of every client)')
 
     model_config = ConfigDict(extra="forbid")
 
