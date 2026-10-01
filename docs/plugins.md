@@ -9,7 +9,7 @@ For detailed instructions on creating custom models and data providers, refer to
 This document covers plugin directory structure and registration mechanisms...
 
 
-![Overall Pybiscus plugin architecture](images/pybiscus_architecture.jpeg)
+![Pybiscus architecture](images/pybiscus_architecture.svg)
 
 Their source code can be located in several locations according to their type: 
 - in a specific package pybiscus source tree (for those of general interest)
@@ -37,7 +37,39 @@ Abbreviated packages representation used in the following array :
 |🌺.🔌.🌼.strategydecorator.StrategyDecorator|🌺.🌼.strategydecorator|strategydecorator|
 |🌺.🔌.🌼.clientfactory.ClientFactory|🌺.flower_fabric.client|client|
 |🌺.🔌.🌼.flowerfitresultsaggregator.FlowerFitResultsAggregator|🌺.🌼.flowerfitresultsaggregator|flowerfitresultsaggregator|
-|🌺.🔌.🌼.resultmodifier.ResultModifier|🌺.🌼.resultModifier|resultmodifier|
+|🌺.🔌.🌼.resultmodifier.ResultModifier|🌺.🌼.resultmodifier|resultmodifier|
+
+## Loading: what stops Pybiscus, what does not
+
+At start-up, every module of the manifest is imported and its `get_modules_and_configs()` called.
+
+- A plugin whose **third-party dependency is missing** is skipped with a warning
+  (`⚠️ 🧩 Plugin '…' skipped: missing dependency '…'`): the other plugins keep working, and a
+  configuration that names the skipped one is refused with the list of skipped plugins.
+  `PYBISCUS_PLUGINS_STRICT=1` turns this into an error.
+- Everything else is an error that stops the command (exit code 78) with its cause: a manifest
+  that cannot be read, a path that does not exist, a plugin not found or failing to import, a
+  plugin **shadowed** by another module of the same name (plugins are top-level modules: name
+  yours so that no installed package has that name), a registry key that differs from its
+  configuration's `name` `Literal`, two plugins registering the same key.
+- `PYBISCUS_PLUGINS_VERBOSE=1` prints the details of the loading.
+
+## Metadata a plugin's configuration may declare
+
+Class attributes (`ClassVar`) of the configuration classes, read by the forms and the validation:
+
+| attribute | on | effect |
+|---|---|---|
+| `PYBISCUS_ALIAS` | the `name`/`config` class | label shown in the forms instead of the class name |
+| `PYBISCUS_GROUP` | the `name`/`config` class | family the option is grouped under in long lists (strategies: Averaging, Server optimizers, Robust aggregation...; decorators: Metrics, Saving, Robustness...) |
+| `PYBISCUS_CONFIG` | a nested configuration class | name of its section in the forms (`config`, `train`, `server_run`...) |
+| `PYBISCUS_DESCRIPTIONS` | an `Enum` (set after the class) | description of each value, shown on hover |
+| `PYBISCUS_INCOMPATIBLE_WITH` | a strategy decorator | decorators it cannot be combined with in a pipeline: refused at `check` |
+| `PYBISCUS_AFTER` | a strategy decorator | decorators that must come before it in the pipeline: refused at `check` otherwise |
+| `PYBISCUS_SERVER_SECTIONS` | a data plugin's configuration | sections the server reads (`test` and `privacy` by default): the server warns when another one differs from its defaults |
+
+Describe every field with `Field(description=...)`: it is shown on hover in the forms (see the
+[integration guide](pybiscus_model_guide.md)).
 
 # Multi projects mode : developping plugins in separated projects
 

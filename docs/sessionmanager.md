@@ -1,24 +1,107 @@
 
 # Session using the manager
 
-## Install Pybiscus
-After cloning the repo and installing (via uv) all dependencies, you have to extend your PATH with the command:
-```bash
-source ./extend_path.sh
-```
+Install Pybiscus first ([Getting started](getting_started.md#installation)).
 
-The session manager ensures consistency across federation participants, handles registration, synchronization, and shared settings.
+The session manager registers the agents of a session (one per site, see [Agent](agent.md)), sets
+the parameters they share (model, data, how the data is shared, minimum number of clients,
+robustness...) in their forms, locked, and follows the session: topology, charts, logs and metrics
+of every participant in one page.
 
-### Init of the session
+## Walkthrough
 
-launch the session manager :
+### 1. Start the manager
 
 ```bash
 ./launch/session/run_manager.sh
 ```
 
-open the URL the manager prints when it starts: http://127.0.0.1:5555/pybiscus-session/manage,
-with its access token (`…?token=…`) when it requires one (see [Access tokens](#access-tokens) below)
+Open the URL it prints, `http://127.0.0.1:5555/pybiscus-session/manage` (with `?token=…` when it
+requires one, see [Access tokens](#access-tokens)). The page is empty until agents register.
+
+![Session manager, empty](images/session_manager_init.png "Session manager, empty")
+
+### 2. Start the agents
+
+One agent per site: the server's, then the clients'.
+
+```bash
+./launch/agent/cli/5000.sh
+./launch/agent/cli/5001.sh
+./launch/agent/cli/5002.sh
+```
+
+Each agent reports to the manager when it starts (agents log, bottom left).
+
+![Agents started](images/session_manager_agents_started.png "Agents started")
+
+### 3. Register the agents
+
+Open the registration page each agent prints, `http://127.0.0.1:500x/session/agent/registration`:
+the manager's URL, the **session token** (proposed when the agent runs from the manager's
+directory, otherwise copied from the manager's 🔑 *Session token* button), the agent's name,
+its group (*bouquet*), location and role (*Server* for the agent 5000, *Client* for the others).
+*Register agent* sends it to the manager; the agent then waits for the session to start.
+
+![Agent registration](images/session_server_registration.png "Agent registration")
+
+![Agent waiting for the session](images/session_server_waiting.png "Agent waiting for the session")
+
+The registered agents appear in the manager's topology and on its map.
+
+### 4. Configure and run the session
+
+Once the server agent is registered, the manager opens the session configuration (⚙ *Config*
+button to reopen it). Its header gives the number of clients registered. Choose the model and the
+data, and the optional session settings (described in [Session parameters](#session-parameters)):
+how the training data is shared between the clients (`data_partition`), a validation set held out
+of each share (`data_holdout`), `min_clients`, `robustness`, `share_cpu_threads`.
+
+![Session configuration](images/session_manager_config.png "Session configuration")
+
+![Session configuration, data partition and holdout](images/session_manager_config2.png "Session configuration, data partition and holdout")
+
+*Run session* sends these values to every agent: their forms open with them set and locked (🔒
+on the field name).
+
+### 5. Launch the server
+
+The server's form opens with the session values locked: the strategy's `min_*_clients`, the
+robustness decorator, the data and model choices and the partition fields. Its loggers and metrics
+loggers default to the manager's webhook, so its logs and metrics appear in the manager. Set the
+other values (number of rounds, strategy, pipeline...), then *Check Config* and *Execute Config*.
+
+![Server form in a session](images/session_server_config.png "Server form in a session")
+
+![Server loggers: webhook to the manager](images/session_server_loggers.png "Server loggers: webhook to the manager")
+
+### 6. Launch the clients
+
+Each client's waiting page opens its form once the server runs, with the server's address and the
+session values set: its own share of the data (`partition_id`, `num_partitions`, its `cid`), the
+holdout, its number of CPU threads. *Check Config* and *Execute Config*.
+
+![Client form in a session](images/session_client1.png "Client form in a session")
+
+Every agent's page then switches to its run monitor (state, live log, stop button).
+
+![Run monitor](images/agent_run_monitor.png "Run monitor")
+
+### 7. Follow the session
+
+The manager shows, live:
+- the topology (each agent's state, a 🏁 once its run has finished) and the map of the sites;
+- the accuracy per round (clients' training, server's test, clients' evaluation) and the loss;
+- the vignettes of the model's layers per round (from the `VisualizeModelLayers` decorator of the
+  server's pipeline);
+- the agents' and the server's logs, and the metrics.
+
+![Finished session](images/session_manager_run.png "Finished session")
+
+*Drop session* ends the session and empties the page, for a new one with the same agents (which
+register again).
+
+## Session parameters
 
 The session configuration (server agent) has an optional `data_partition` block: when set, the
 manager shares the training data between the clients registered when the session is launched, each
@@ -58,12 +141,14 @@ time as the clients; with several sessions on one machine, set `server_compute_c
 by hand (see [CPU threads](configuration.md#cpu-threads)). Without it, every PyTorch client takes all the cores: three
 cifar10 clients on a 14-core machine took 233 s per round instead of 20 s.
 
+## Access
+
 The manager listens on 127.0.0.1 by default. When agents run on other hosts (they send it their
 registration and logs), start it with `--host 0.0.0.0` (or a given address), e.g.
 `launch/session/run_manager.sh --host 0.0.0.0`. For a session spread over several machines, see
 [multi-machine.md](multi-machine.md).
 
-#### Access tokens
+### Access tokens
 
 A component listening beyond the loopback (`--host 0.0.0.0` or an address) requires tokens:
 whoever reaches a port opened to the network must not drive the session nor launch runs. On
@@ -103,7 +188,7 @@ A scripted call presents the token as `Authorization: Bearer <token>` (see below
 
 Without TLS, the tokens travel in clear between machines: see [multi-machine.md](multi-machine.md).
 
-#### Requests from other sites
+### Requests from other sites
 
 A page of another site open in the operator's browser must not drive the agents or the manager.
 Every request that changes something (POST, PUT, PATCH, DELETE) must therefore carry the header
@@ -126,101 +211,3 @@ launch/session/run_manager.sh --host 0.0.0.0 --allow-origin http://site-a.exampl
 ```
 
 The header protects against other sites; the tokens (above) against whoever reaches the ports.
-
-![Session Manager init](images/session_manager_init.png "Session Manager init")
-
-### Init of the agents
-
-launch the server agent :
-
-```bash
- ./launch/agent/cli/5000.sh
-```
-
-launch the client1 agent :
-
-```bash
- ./launch/agent/cli/5001.sh
-```
-
-launch the client2 agent :
-
-```bash
- ./launch/agent/cli/5002.sh
-```
-
-![Session Manager agents started](images/session_manager_agents_started.png "Session Manager agents started")
-
-### Init of the session : server side
-
-open the URL the agent prints when it starts: http://127.0.0.1:5000/session/agent/registration
-(with `?token=…` when it requires one)
-
-![Server registration](images/session_server_registration.png "Server registration")
-
-sets the parameters and register agent, it now waits for the session start
-
-![Server waiting](images/session_server_waiting.png "Server waiting")
-
-![Session configuration](images/session_manager_config.png "Session configuration")
-
-### Init of the session : client 1 side
-
-
-open the URL the agent 5001 prints when it starts
-
-![Client1 registration](images/session_client1_registration.png "Client1 registration")
-
-and the client 1 registers to the session
-
-### Init of the session : client 2 side
-
-
-open the URL the agent 5002 prints when it starts
-
-![Client2 registration](images/session_client2_registration.png "Client2 registration")
-
-and the client 2 registers to the session
-
-### Session shared parameters setting
- 
-As soon as the server is registered,
-the manager connect to it in order to set the session common parameters
-(flower server access, used data and model)
-
-![Session configuration 2](images/session_manager_config2.png "Session configuration 2")
-
-Proceed to the session common parameters definition, 
-the server and clients will pass to the configuration phasis with the session common parameters set and locked (lock image in the field name)
-
-For instance, configurate its metrics logging feature and logging feature to use a webhook :
-
-![Server webhook 1](images/session_server_webhook1.png "Server webhook 1")
-
-![Server webhook 2](images/session_server_webhook2.png "Server webhook 2")
-
-Check and Execute the server configuration.
-
-### Session run : client 1 side
-
-Check and Execute the client1 configuration.
-
-![Session Run Client1](images/session_client1.png "Session Run Client1")
-
-### Session run : client 2 side
-
-Check and Execute the client2 configuration.
-
-![Session Run Client2](images/session_client2.png "Session Run Client2")
-
-You can see directly the logs and metrics in the session manager, instead of having to look in each agent terminal (as we configurate them to the web-hook option).
-
-### Session monitoring 
-
-running session
-
-![Session Run Information 1](images/session_manager_runinfo1.png "Session Run Information 1")
-
-finished session
-
-![Session Run Information 2](images/session_manager_runinfo2.png "Session Run Information 2")

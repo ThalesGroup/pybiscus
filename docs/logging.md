@@ -1,15 +1,45 @@
 # Logging and Tensorboard
 
+## What a session leaves
+
+Each server run reports into `server_run.reporting.basedir` (`${root_dir}/experiments` by
+default), in a sub-directory named after its start time (`add_timestamp_in_path`); `current`
+links to the last one:
+
+- `server_logs.txt`: the server's log lines;
+- `metrics.txt`: every metric the server logged, round by round (the clients' fit and evaluation
+  metrics, `fit_<metric>_<cid>`, `val_<metric>_<cid>`, and its own evaluation, `val_<metric>_glob`);
+- the configuration it ran with (`server_config_filename`), the final weights
+  (`save_on_train_end`), the ONNX export, and what the decorators save (`rounds/`).
+
+These two files are always written. The server's `server_run.loggers` (where its log lines go)
+and `server_compute_context.metrics_loggers` (where its metrics go) add other destinations.
+
 ## Tensorboard
 
-The Pybiscus implementation of the FabricStrategy allows for a simple logging of the losses and metrics of all Clients, and the loss and the metrics of the evaluation of the Server on the (global) test dataset, if provided. The Fabric instance on the Server side has a Tensorboard logger, and everything is then simply handled.
+The `tensorboard` metrics logger writes the same metrics for TensorBoard, under
+`<reporting directory>/<subdir>/lightning_logs/` (`subdir: tensorboard` by default):
 
-The Tensorboard is located by default in `conf["root_dir"] + conf["logger"]["subdir"]` directory, and Fabric handles automatically the versionning of the FL session. You can then have a look at the Tensorboards by launching a tensorboard session by running, in your virtual environnment,
-```bash
-(.venv) tensorboard --logdir path-to-experiments --bind_all --port your-port
+```yaml
+server_compute_context:
+  metrics_loggers:
+  - name: tensorboard
+    config:
+      subdir: tensorboard
 ```
 
-where `path-to-experiments` is `conf["root_dir"]` and `your-port` is the port of your choice for the Tensorboard server.
+```bash
+uv run tensorboard --logdir experiments/current/tensorboard/lightning_logs --bind_all --port 6006
+```
+
+(`bin/show_tensorboard_server.sh` does the same from inside a reporting directory.)
+
+## Webhooks: the session manager
+
+The `webhook` logger (`server_run.loggers`) and the `webhook` metrics logger
+(`server_compute_context.metrics_loggers`) post the log lines and the metrics to the session
+manager, which shows them live (`/webhook/logs`, `/webhook/metrics`). The agents' server form has
+both by default.
 
 ## Weights & Biases
 
@@ -38,8 +68,8 @@ server_compute_context:
   and `wandb sync <that directory>` sends it later, from a machine that has access.
 - The run's files always go to the experiment directory, not to a `./wandb` of the current one.
 
-## Logging
+## Console
 
-Pybiscus uses also Rich and its nice Console to log info during the FL session, visible in the terminal. This is a nice way to check on the good processing and see if there are errors popping up.
-Typer uses Rich too, especially to print nicely errors.
-Flower logs some information too, dedicated in particular to the gRPC communications and the good process of the communications between Server and Clients.
+The `rich` logger prints the log lines in the terminal with Rich's console; Typer uses Rich too, to
+print errors. Flower logs its own lines, about the gRPC communications between the server and the
+clients.

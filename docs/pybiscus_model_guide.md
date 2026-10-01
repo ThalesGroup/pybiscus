@@ -21,25 +21,13 @@ class ConfigYourModel(BaseModel):
     # REQUIRED: Marks this class for GUI generation
     PYBISCUS_CONFIG: ClassVar[str] = "config"
     
-    # Define your model parameters - you can use either Field() or simple defaults
-    
-    # Full Field() definition with validation and description
-    learning_rate: float = Field(
-        default=0.001, 
-        description="Learning rate for optimizer",
-        ge=0.0001,  # GUI will enforce minimum value
-        le=0.1      # GUI will enforce maximum value
-    )
-    
-    # Abbreviated syntax - just type and default value
-    hidden_size: int = 128
-    dropout_rate: float = 0.2
-    batch_size: int = 32
-    
-    # Mix of both approaches as needed
-    epochs: int = Field(default=100, description="Number of training epochs", ge=1, le=1000)
-    use_batch_norm: bool = True  # Simple boolean with default
-    
+    # every field with Field(): its description is the form's tooltip, its constraints are
+    # checked by `pybiscus check` and the forms
+    learning_rate: float = Field(default=0.001, ge=0.0001, le=0.1, description="learning rate of the optimizer")
+    hidden_size: int = Field(default=128, ge=1, description="units of the hidden layers")
+    dropout_rate: float = Field(default=0.2, ge=0, lt=1, description="probability of dropping a unit while training")
+    use_batch_norm: bool = Field(default=True, description="normalize the activations of each batch")
+
     # Prevent extra fields
     model_config = ConfigDict(extra="forbid")
 ```
@@ -330,149 +318,45 @@ model:
 
 ## Configuration Field Syntax
 
-PyBiscus supports two approaches for defining configuration fields, but **field descriptions are extracted from the class docstring**, not from `Field()` descriptions.
-
-### Simple Default Values (Recommended for Most Cases)
+Declare each field with `Field()`: its `description` is shown on hover in the forms, and its
+constraints are checked by `pybiscus check` and the forms.
 
 ```python
+from enum import Enum
+
+class Activation(str, Enum):
+    relu = "relu"
+    tanh = "tanh"
+
+Activation.PYBISCUS_DESCRIPTIONS = {"relu": "max(0, x)", "tanh": "hyperbolic tangent"}
+
 class ConfigYourModel(BaseModel):
-    """Configuration for your custom model.
-    
-    Attributes
-    ----------
-    learning_rate = Learning rate for the optimizer
-    hidden_size = Size of hidden layers
-    dropout_rate = Dropout probability for regularization
-    batch_size = Number of samples per batch
-    use_batch_norm = Apply batch normalization layers
-    """
-    
+    """your model's parameters"""
+
     PYBISCUS_CONFIG: ClassVar[str] = "config"
-    
-    # Simple type and default value - descriptions from docstring
-    learning_rate: float = 0.001
-    hidden_size: int = 128
-    dropout_rate: float = 0.2
-    batch_size: int = 32
-    use_batch_norm: bool = True
-    
+
+    learning_rate: float = Field(default=0.001, gt=0, le=0.1, description="learning rate of the optimizer")
+    hidden_size: int = Field(default=128, ge=1, description="units of the hidden layers")
+    dropout_rate: float = Field(default=0.2, ge=0, lt=1, description="probability of dropping a unit while training")
+    use_batch_norm: bool = Field(default=True, description="normalize the activations of each batch")
+    activation: Activation = Field(default=Activation.relu, description="activation of the hidden layers")
+
     model_config = ConfigDict(extra="forbid")
 ```
 
-**Benefits:**
-- **Concise**: Minimal boilerplate
-- **Readable**: Clean and simple syntax
-- **Documented**: Descriptions in docstring are easily maintainable
-- **Typed**: Maintains type hints for validation
+How the forms render the types: `int` and `float` as numbers, `str` as text, `bool` as a
+checkbox, an `Enum` as one choice per value (with `PYBISCUS_DESCRIPTIONS` on hover), `Optional[X]`
+as a section to tick, a `Union` of configurations as tabs, a `list` as items to add and remove.
 
-### Field() Definition (Only When Validation Needed)
-
-```python
-# Use Field() only for validation constraints
-max_epochs: int = Field(default=100, ge=1, le=1000)
-learning_rate: float = Field(default=0.001, ge=1e-6, le=0.1)
-```
-
-**When to use Field():**
-- Need validation constraints (ge, le, gt, lt)
-- Complex validation requirements
-- Custom validators
-
-**Note**: The `description` parameter in `Field()` is **ignored** by PyBiscus - descriptions must be in the docstring.
-
-## GUI Generation Requirements
-
-### Field Types and Constraints
-
-PyBiscus GUI generator supports these Pydantic field types. **Remember that field descriptions are extracted from the class docstring**, not from `Field()` descriptions:
-
-```python
-class ConfigExample(BaseModel):
-    """Example configuration showing different field types.
-    
-    Attributes
-    ----------
-    int_param = Integer parameter with default
-    float_param = Float parameter with default  
-    string_param = String parameter with default
-    bool_param = Boolean parameter (rendered as checkbox)
-    enum_param = Enum parameter (rendered as dropdown)
-    validated_param = Integer with validation constraints
-    """
-    
-    PYBISCUS_CONFIG: ClassVar[str] = "config"
-    
-    # Simple fields with defaults
-    int_param: int = 10
-    float_param: float = 0.5
-    string_param: str = "default"
-    bool_param: bool = True
-    
-    # Enum fields (rendered as dropdowns)
-    from enum import Enum
-    class ActivationFunction(str, Enum):
-        RELU = "relu"
-        TANH = "tanh"
-        SIGMOID = "sigmoid"
-    
-    enum_param: ActivationFunction = ActivationFunction.RELU
-    
-    # Use Field() only when validation is needed
-    validated_param: int = Field(default=10, ge=1, le=100)
-```
-
-### Field Descriptions
-
-PyBiscus extracts field descriptions from the **class docstring**, not from `Field()` descriptions. This means you can use simple default values for most fields and document them in the docstring.
-
-**How it works:**
-- PyBiscus uses a regex pattern to extract descriptions from the class docstring
-- The pattern matches: `attribute_name = description text`
-- If no match is found, it falls back to a default format
-
-**Example:**
-```python
-class ConfigYourModel(BaseModel):
-    """Configuration for your custom model.
-    
-    Attributes
-    ----------
-    learning_rate = Learning rate for the optimizer
-    hidden_size = Number of neurons in hidden layers  
-    dropout_rate = Dropout probability for regularization
-    batch_size = Number of samples per training batch
-    epochs = Maximum number of training epochs
-    use_batch_norm = Whether to apply batch normalization
-    """
-    
-    PYBISCUS_CONFIG: ClassVar[str] = "config"
-    
-    # Simple fields with defaults - descriptions come from docstring
-    learning_rate: float = 0.001
-    hidden_size: int = 128
-    dropout_rate: float = 0.2
-    batch_size: int = 32
-    epochs: int = 100
-    use_batch_norm: bool = True
-    
-    # Use Field() only when you need validation constraints
-    max_epochs: int = Field(default=100, ge=1, le=1000)
-    
-    model_config = ConfigDict(extra="forbid")
-```
-
-**Best practices for docstring descriptions:**
-- Use the format: `attribute_name = description text`
-- Keep descriptions concise and user-friendly
-- Avoid technical jargon when possible
-- Document the purpose and expected range/format
+When a field has no `description`, the form falls back to the class docstring: a line
+`field_name = description`, or numpy's `field_name:` with the description on the following lines.
+A field described nowhere has no tooltip.
 
 ### Validation Constraints
 
 - Use `ge=` (greater or equal) and `le=` (less or equal) for numeric ranges
 - These constraints will be enforced in the GUI form validation
 - Invalid values will be highlighted before YAML generation
-- Abbreviated syntax won't have constraints - use `Field()` when validation is needed
 
 ## Best Practices
 
@@ -484,9 +368,9 @@ class ConfigYourModel(BaseModel):
 6. **Test your signature**: Ensure training/validation steps return the expected dictionary structure
 7. **Choose meaningful aliases**: `PYBISCUS_ALIAS` should be descriptive and user-friendly
 8. **Unique discriminators**: Ensure your `name` Literal value is unique across all models
-9. **Use docstring for descriptions**: Document fields in the class docstring using the format `field_name = description`
-10. **Field() only for validation**: Use `Field()` only when you need constraints - simple defaults are sufficient otherwise
-10. **Logical grouping**: Group related parameters together in the class definition
+9. **Describe every field**: `Field(description=...)`, shown on hover in the forms
+10. **Constrain the values**: `ge`, `gt`, `le`, `lt` in `Field()`, so that a wrong value is refused at `check`
+11. **Logical grouping**: Group related parameters together in the class definition
 
 ## Model Registration and Integration
 
@@ -591,273 +475,139 @@ For detailed plugin development and registration procedures, consult the **plugi
 
 ### Step-by-Step Guide to Writing a Data Provider for PyBiscus
 
+A data plugin describes its data in **sections**: `train` (what a client trains on), `val` (what it
+validates on), `test` (the final evaluation, the server's), and optionally `privacy` (the examples
+a privacy evaluation attacks). `pybiscus.ml.datasplit` provides the sections, the loaders and the
+sharing of the training examples between the clients (`train.partition`), the held-out validation
+(`val.source: holdout`), `max_samples`, and their descriptions: a plugin built on them gets all of
+these with its datasets only to write. `pybiscus-plugins/data/mnist` is the reference below.
+
 ### Step 1: Create the Data Configuration Model
 
-Start by defining your data provider's configuration using Pydantic BaseModel with the required PyBiscus metadata:
+Derive each section from `datasplit`'s to give it your defaults (a field redefined keeps its
+description):
 
 ```python
 from typing import ClassVar, Literal, Optional
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
+
+from pybiscus.ml.datasplit import (
+    ConfigPrivacySet, ConfigTestSet, ConfigTrainSet, ConfigValSet,
+    downloaded, limit, make_loader, privacy_loader, privacy_set, reject_former_fields, train_and_val_sets,
+)
+
+class YourTrainSet(ConfigTrainSet):
+    dir: str = "${root_dir}/datasets/your_data/train/"
+    batch_size: int = Field(default=64, ge=1)
+
+class YourValSet(ConfigValSet):
+    dir: str = "${root_dir}/datasets/your_data/val/"
+
+class YourTestSet(ConfigTestSet):
+    dir: str = "${root_dir}/datasets/your_data/test/"
 
 class ConfigYourData(BaseModel):
-    """Configuration for your custom data provider.
-    
-    This will be used to generate the GUI form fields for data parameters.
-    """
-    
-    # REQUIRED: Marks this class for GUI generation
+    """your dataset, in train / val / test sections"""
+
     PYBISCUS_CONFIG: ClassVar[str] = "config"
-    
-    # Define your data parameters - you can use either Field() or simple defaults
-    
-    # Directory paths with validation and descriptions
-    dir_train: Optional[str] = Field(
-        default="${root_dir}/datasets/train/",
-        description="Training data directory path"
-    )
-    
-    dir_val: Optional[str] = Field(
-        default="${root_dir}/datasets/val/",
-        description="Validation data directory path"
-    )
-    
-    dir_test: Optional[str] = Field(
-        default="${root_dir}/datasets/test/",
-        description="Test data directory path"
-    )
-    
-    # Abbreviated syntax for simple parameters
-    batch_size: int = 32
-    num_workers: int = 0
-    
-    # Advanced parameters with validation
-    image_size: int = Field(default=224, ge=32, le=1024, description="Input image size")
-    data_augmentation: bool = True
-    normalize: bool = Field(default=True, description="Apply normalization transforms")
-    
-    # Prevent extra fields
+
+    train: YourTrainSet = Field(default=YourTrainSet(), description="the examples a client trains on")
+    val: YourValSet = Field(default=YourValSet(), description="the examples a client validates on")
+    test: YourTestSet = Field(default=YourTestSet(), description="the examples of the final evaluation (the server's)")
+    privacy: Optional[ConfigPrivacySet] = Field(default=None, description="the examples a privacy evaluation attacks")
+    num_workers: int = Field(default=0, ge=0, description="processes loading the batches; 0: the main process")
+    image_size: int = Field(default=224, ge=32, le=1024, description="input image size")
+
     model_config = ConfigDict(extra="forbid")
+
+    # former flat fields (dir_train, batch_size...) refused with where they went
+    @model_validator(mode="before")
+    @classmethod
+    def _former_fields(cls, data):
+        return reject_former_fields(data)
 ```
+
+What each section offers (see [Config files](configuration.md#data) for the YAML side):
+
+| section | fields |
+|---|---|
+| `train` | `dir`, `batch_size`, `shuffle`, `drop_last`, `seed` (batch order), `indices` (a file of indices) or `partition` (this client's share: `iid`, `dirichlet`, `shards`), `max_samples` |
+| `val` | `source`: `official` (the official test split), `holdout` (`fraction` of the client's own share, drawn with `seed`) or `indices`; `dir`, loader options, `max_samples` |
+| `test` | `dir`, loader options, `max_samples` |
+| `privacy` | `dir`, `batch_size`, `max_samples` (the examples keep their original indices) |
+
+A dataset that does not fit these sections (sequences, engines...) defines its own, and takes
+the descriptions of the common fields from `SET_FIELDS` (`hdfs`, `turbofan` and `randomvector` do).
 
 ### Step 2: Create the Data Provider Variant Class
 
-Define the discriminated union variant that links your config to the data provider:
-
 ```python
 class ConfigData_YourData(BaseModel):
-    """Variant class for GUI dropdown selection."""
-    
-    # REQUIRED: Display name in GUI dropdown
-    PYBISCUS_ALIAS: ClassVar[str] = "Your Dataset Name"
-    
-    # REQUIRED: Discriminator field for union types
-    name: Literal["your_data"]  # Must be unique across all data providers
-    
-    # REQUIRED: Link to your configuration
+
+    PYBISCUS_ALIAS: ClassVar[str] = "Your Dataset Name"   # label in the forms
+
+    name: Literal["your_data"]    # must equal the registry key, unique across data plugins
     config: ConfigYourData
-    
+
     model_config = ConfigDict(extra="forbid")
 ```
 
 ### Step 3: Implement the Lightning DataModule
 
-Create your PyTorch Lightning DataModule following PyBiscus conventions:
+The DataModule receives the sections as dictionaries (`config.model_dump()`), validates them, and
+builds its datasets with the helpers:
 
 ```python
-from typing import override, Optional
 import lightning.pytorch as pl
 import torchvision.transforms as transforms
-from torch.utils.data import DataLoader
-from torchvision.datasets import ImageFolder
-import pybiscus.core.pybiscus_logger as logm
+from torchvision.datasets import MNIST   # your dataset class
 
 class YourLightningDataModule(pl.LightningDataModule):
-    """
-    A LightningDataModule is an abstract class provided by PyTorch Lightning 
-    that simplifies data management in machine learning workflows. 
-    It helps structure code by separating data preparation logic from the model training logic, 
-    making the code more modular and reusable.
 
-    Role:
-        1) Data Encapsulation: Centralizes data loading and preparation logic
-        2) Reusability: Facilitates reuse across different projects
-        3) Integration: Seamlessly integrates with PyTorch Lightning components
-
-    Key Methods:
-        - __init__: Initialize with parameters
-        - prepare_data: Download data if necessary (called once per node)
-        - setup: Prepare datasets for different stages
-        - train_dataloader/val_dataloader/test_dataloader: Return DataLoaders
-        - teardown: Clean up resources
-    """
-
-    @override
-    def __init__(
-        self,
-        dir_train: Optional[str],
-        dir_val: Optional[str], 
-        dir_test: Optional[str],
-        batch_size: int,
-        num_workers: int = 0,
-        image_size: int = 224,
-        data_augmentation: bool = True,
-        normalize: bool = True,
-    ):
+    def __init__(self, train=None, val=None, test=None, privacy=None, num_workers: int = 0,
+                 image_size: int = 224):
         super().__init__()
-
-        # Store configuration parameters
-        self.data_dir_train = dir_train
-        self.data_dir_val = dir_val
-        self.data_dir_test = dir_test
-        self.batch_size = batch_size
+        self.train = YourTrainSet.model_validate(train or {})
+        self.val = YourValSet.model_validate(val or {})
+        self.test = YourTestSet.model_validate(test or {})
+        self.privacy = None if privacy is None else ConfigPrivacySet.model_validate(privacy)
+        self.data_privacy = None
         self.num_workers = num_workers
-        self.image_size = image_size
-        self.data_augmentation = data_augmentation
-        self.normalize = normalize
+        self.transform = transforms.Compose([transforms.ToTensor()])
 
-        # Initialize transforms
-        self._setup_transforms()
+    def train_source(self, dir=None):
+        """the whole official train split, in which partitions, holdouts and indices files pick
+        their examples (also used by `pybiscus data partition`)"""
+        # downloaded(): one download at a time per directory, for clients starting together
+        return downloaded(MNIST, dir or self.train.dir, train=True, transform=self.transform)
 
-        # Initialize datasets (will be populated in setup())
-        self.data_train = None
-        self.data_val = None
-        self.data_test = None
+    def setup(self, stage=None):
+        if stage in ("fit", None):
+            official_val = lambda: downloaded(MNIST, self.val.dir, train=False, transform=self.transform)
+            # partition, holdout or indices applied as the sections say
+            self.data_train, self.data_val = train_and_val_sets(self.train_source(), official_val, self.train, self.val)
+        if stage in ("test", None):
+            self.data_test = limit(downloaded(MNIST, self.test.dir, train=False, transform=self.transform),
+                                   self.test.max_samples)
+            if self.privacy is not None:
+                self.data_privacy = privacy_set(self.train_source(self.privacy.dir), self.privacy)
 
-    def _setup_transforms(self):
-        """Setup data transforms based on configuration."""
-        transform_list = []
-        
-        # Resize to target size
-        transform_list.append(transforms.Resize((self.image_size, self.image_size)))
-        
-        # Data augmentation for training
-        if self.data_augmentation:
-            self.train_transform = transforms.Compose([
-                transforms.Resize((self.image_size, self.image_size)),
-                transforms.RandomHorizontalFlip(p=0.5),
-                transforms.RandomRotation(degrees=10),
-                transforms.ColorJitter(brightness=0.2, contrast=0.2),
-                transforms.ToTensor(),
-                transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)) if self.normalize else transforms.Lambda(lambda x: x)
-            ])
-        else:
-            self.train_transform = transforms.Compose([
-                transforms.Resize((self.image_size, self.image_size)),
-                transforms.ToTensor(),
-                transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)) if self.normalize else transforms.Lambda(lambda x: x)
-            ])
+    def train_dataloader(self):
+        return make_loader(self.data_train, self.train, self.num_workers, order_seed=self.train.seed)
 
-        # Standard transform for validation/test
-        self.eval_transform = transforms.Compose([
-            transforms.Resize((self.image_size, self.image_size)),
-            transforms.ToTensor(),
-            transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)) if self.normalize else transforms.Lambda(lambda x: x)
-        ])
+    def val_dataloader(self):
+        return make_loader(self.data_val, self.val, self.num_workers)
 
-    @override
-    def prepare_data(self):
-        """Download or prepare data if necessary.
-        
-        This method is called only once per node and is useful for:
-        - Downloading datasets
-        - Preprocessing that should happen once
-        """
-        # Add any data download/preparation logic here
-        logm.console.log(f"Preparing data from directories:")
-        logm.console.log(f"  Train: {self.data_dir_train}")
-        logm.console.log(f"  Val: {self.data_dir_val}")
-        logm.console.log(f"  Test: {self.data_dir_test}")
+    def test_dataloader(self):
+        return make_loader(self.data_test, self.test, self.num_workers)
 
-    @override
-    def setup(self, stage: Optional[str] = None):
-        """
-        Setup datasets according to stage:
-
-                   | Train | Val | Test |
-            -----------------------------
-            "fit"  |   X   |  X  |  _   |
-            -----------------------------
-            "test" |   _   |  _  |  X   |
-            -----------------------------
-            None   |   X   |  X  |  X   |
-            -----------------------------
-        """
-        
-        if stage == "fit" or stage is None:
-            if self.data_dir_train:
-                self.data_train = ImageFolder(
-                    root=self.data_dir_train,
-                    transform=self.train_transform
-                )
-                logm.console.log(f"Training dataset size: {len(self.data_train)}")
-                logm.console.log(f"Number of classes: {len(self.data_train.classes)}")
-                
-            if self.data_dir_val:
-                self.data_val = ImageFolder(
-                    root=self.data_dir_val,
-                    transform=self.eval_transform
-                )
-                logm.console.log(f"Validation dataset size: {len(self.data_val)}")
-
-        if stage == "test" or stage is None:
-            if self.data_dir_test:
-                self.data_test = ImageFolder(
-                    root=self.data_dir_test,
-                    transform=self.eval_transform
-                )
-                logm.console.log(f"Test dataset size: {len(self.data_test)}")
-
-    @override
-    def train_dataloader(self) -> DataLoader:
-        """Return DataLoader for training dataset."""
-        if self.data_train is None:
-            raise ValueError("Train dataset undefined: bad setup or missing data directory")
-        
-        return DataLoader(
-            self.data_train,
-            batch_size=self.batch_size,
-            num_workers=self.num_workers,
-            shuffle=True,
-            drop_last=True,
-            pin_memory=True  # Speeds up GPU transfer
-        )
-
-    @override
-    def val_dataloader(self) -> DataLoader:
-        """Return DataLoader for validation dataset."""
-        if self.data_val is None:
-            raise ValueError("Validation dataset undefined: bad setup or missing data directory")
-        
-        return DataLoader(
-            self.data_val,
-            batch_size=self.batch_size,
-            num_workers=self.num_workers,
-            shuffle=False,
-            drop_last=False,
-            pin_memory=True
-        )
-
-    @override
-    def test_dataloader(self) -> DataLoader:
-        """Return DataLoader for test dataset."""
-        if self.data_test is None:
-            raise ValueError("Test dataset undefined: bad setup or missing data directory")
-        
-        return DataLoader(
-            self.data_test,
-            batch_size=self.batch_size,
-            num_workers=self.num_workers,
-            shuffle=False,
-            drop_last=False,
-            pin_memory=True
-        )
-
-    @override
-    def teardown(self, stage: Optional[str] = None):
-        """Clean up resources after training/testing."""
-        # Add cleanup logic if needed
-        pass
+    def privacy_dataloader(self):
+        """None without a privacy section"""
+        return None if self.data_privacy is None else privacy_loader(self.data_privacy, self.privacy, self.num_workers)
 ```
+
+The batches are `(inputs, labels)` pairs: the training loop takes each batch's size from the
+inputs' first dimension to average the metrics over the examples.
 
 ## Understanding PyTorch Lightning DataModule
 
@@ -946,46 +696,34 @@ def get_modules_and_configs():
 
 ### Directory Path Configuration
 
-Data providers typically use configurable directory paths with PyBiscus variable substitution:
+Directories go in the sections (`train.dir`, `val.dir`, `test.dir`); `${root_dir}` in a default is
+resolved at validation:
 
 ```python
-# Use PyBiscus variables for flexible path configuration
-dir_train: Optional[str] = "${root_dir}/datasets/train/"
-dir_val: Optional[str] = "${root_dir}/datasets/val/"
-dir_test: Optional[str] = "${root_dir}/datasets/test/"
-
-# Or with Field() for better documentation
-data_root: str = Field(
-    default="${root_dir}/datasets/",
-    description="Root directory for all dataset files"
-)
+class YourTrainSet(ConfigTrainSet):
+    dir: str = "${root_dir}/datasets/your_data/train/"
 ```
+
+A dataset shipped with the plugin can default to the plugin's own directory instead
+(`str(Path(__file__).parent / "train.csv")`, as hdfs and turbofan do).
 
 ### Transform Configuration
 
-Expose data augmentation and preprocessing options:
+Expose data augmentation and preprocessing options next to the sections:
 
 ```python
-# Image processing parameters
-image_size: int = Field(default=224, ge=32, le=1024)
-normalize: bool = True
-data_augmentation: bool = True
-
-# Advanced augmentation parameters
-rotation_degrees: float = Field(default=10.0, ge=0.0, le=45.0)
-brightness_factor: float = Field(default=0.2, ge=0.0, le=1.0)
-horizontal_flip_prob: float = Field(default=0.5, ge=0.0, le=1.0)
+image_size: int = Field(default=224, ge=32, le=1024, description="input image size")
+rotation_degrees: float = Field(default=10.0, ge=0.0, le=45.0, description="random rotation of the training images")
+horizontal_flip_prob: float = Field(default=0.5, ge=0.0, le=1.0, description="probability of flipping a training image")
 ```
 
 ### Performance Configuration
 
-Include performance-related parameters:
+`batch_size`, `shuffle` and `drop_last` belong to each section (the loaders differ: shuffled
+training, every example evaluated); `num_workers` is shared:
 
 ```python
-batch_size: int = Field(default=32, ge=1, le=512)
-num_workers: int = Field(default=0, ge=0, le=16, description="Number of data loading workers")
-pin_memory: bool = Field(default=True, description="Pin memory for faster GPU transfer")
-prefetch_factor: int = Field(default=2, ge=1, le=10)
+num_workers: int = Field(default=0, ge=0, le=16, description="processes loading the batches; 0: the main process")
 ```
 
 ## Data Provider Best Practices

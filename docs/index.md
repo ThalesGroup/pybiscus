@@ -1,4 +1,4 @@
-![Pybiscus logo](/pybiscus/assets/images/logo_pybiscus.png)
+![Pybiscus logo](../pybiscus/assets/images/logo_pybiscus.png)
 
 # Welcome to Pybiscus!
 
@@ -30,24 +30,35 @@ You can find here a short documentation on how to use and adapt Pybiscus. The to
 * [Robust aggregation against malicious clients](robust-aggregation.md)
 * [Privacy evaluation: FedMIA](privacy-evaluation.md)
 
-![Overall Pybiscus plugin architecture](images/pybiscus_architecture.jpeg)
+![Overall Pybiscus plugin architecture](images/pybiscus_architecture.svg)
 
 ## Project layout
 
 Here are the main directories of the Pybiscus project:
 
-* the **pybiscus** directory - the sources of the Pybiscus project :
-    * **pybiscus/flower** contains new implementation of Client, Server and Strategies provided by Flower, using Fabric in order to be agnostic to hardware, precision and the like.
-    * **pybiscus/ml** may host data and models, but the recommanded way is in **pybiscus-plugins** (see how-to for plugin development).
-    * **pybiscus/commands** the source of the CLI pybiscus-core.
-    * **pybiscus/session/agent** the sources of pybiscus-agent lightweight client.
-    * **pybiscus/session/manager** the sources of pybiscus-agent lightweight client.
-* the **pybiscus-plugins** directory and its associated **pybiscus-plugins-conf.yml** configuration file : examples of Pybiscus extensions.
-* **configs** contains only YAML configuration files. In order to change the behaviour of your client, model etc, do not change the code - change the config!
+* the **pybiscus** directory - the core of Pybiscus:
+    * **pybiscus/commands** the commands of the `pybiscus` CLI (`server`, `client`, `local`, `data`).
+    * **pybiscus/flower**, **pybiscus/flower_fabric** the server and client sides on Flower, using
+      Fabric to be agnostic to hardware: the core `fedavg` strategy and the base of the Flower
+      strategies (`flowerstrategy.py`), the client, the strategy decorators' interfaces.
+    * **pybiscus/flower_config** the Pydantic models of the server and client configurations.
+    * **pybiscus/ml** the training and evaluation loops, and the data sections shared by the data
+      plugins (`datasplit.py`); data and models themselves are plugins.
+    * **pybiscus/plugin** the plugin manager and the registries.
+    * **pybiscus/pydantic2xxx** the generation of the agents' forms (and texts) from the configuration
+      models.
+    * **pybiscus/session/agent** the sources of the agent (`pybiscus_agent`).
+    * **pybiscus/session/manager** the sources of the session manager (`session_manager`).
+* the **pybiscus-plugins** directory and its manifest **pybiscus-plugins-conf.yml**: the bundled
+  plugins (data, models, strategies, decorators...).
+* **configs** YAML configuration files. To change the behaviour of your client, model etc, do not
+  change the code - change the config!
 * **container** everything related to the build of docker/podman images.
-* **launch** scripts to launch session, either inline with uv or using containers, with variations on the used models, network configuration, ssl optional usage ...
-* **pybiscus/main.py** the entrypoint of Pybiscus. Gather all three main commands: server, client and local-train.
-* **docs** last but not least, the present documentation
+* **launch** scripts to launch sessions, inline with uv or in containers, the agents and the
+  session manager; **launch/campaign** the campaign tool (see [Campaigns](campaigns.md)).
+* **certificates** the scripts generating the SSL certificates.
+* **pybiscus/main.py** the entrypoint of the `pybiscus` command.
+* **docs** last but not least, the present documentation.
 
 We strongly suggest to create some other directories:
 

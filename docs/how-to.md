@@ -10,30 +10,40 @@ This chapter covers the specific implementation details for model registration..
 
 ## Pybiscus plugins
 
-At launch, pybiscus looks for the file (or comma-separated list of files and directories)
-defined in environment variable PYBISCUS_PLUGIN_CONF_PATH (may be defined in a file named pybiscus.env),
-or by default at pybiscus-plugins-conf.yml .
+At launch, Pybiscus reads the plugin manifest named by the environment variable
+`PYBISCUS_PLUGIN_CONF_PATH` (which may be set in a `pybiscus.env` file), by default
+`pybiscus-plugins-conf.yml`. Several manifests can be merged, separated by `:`
+(`pybiscus-plugins-conf.yml:../my-project/my-plugins-conf.yml`); the paths in a manifest are
+relative to it. An excerpt of the bundled one:
 
-It contains the definition of plugins that will be loaded :
-
+```yaml
 data:
   - path: "./pybiscus-plugins/data"
     modules:
       - cifar10
-      - randomvector
+      - mnist
       - turbofan
 model:
   - path: "./pybiscus-plugins/model"
     modules:
       - cnn
-      - linearregression
+      - mnistcnn
       - lstm
 strategy:
   - path: "./pybiscus-plugins/strategy"
     modules:
-      - fedavg
+      - flowergeneric
+      - fedavgwithaggregator
+strategydecorator:
+  - path: "./pybiscus-plugins/strategydecorator"
+    modules:
+      - clipping
+      - serverdp
+```
 
-The python path will be dynamically extended at run-time to include this directories.
+Each `path` is added to the Python path at run time, and each listed module is imported. The
+core's own modules (such as the `fedavg` strategy) are found without being listed. See
+[Plugins](plugins.md) for the categories and what happens when a plugin fails to load.
 
 ## How to add models in Pybiscus
 
@@ -95,6 +105,9 @@ To add a new dataset, follow the few points below:
 2. create two files `my_data.py` and `lit_my_data.py`:
     - the first one contains the usual PyTorch Dataset that defines your dataset.
     - the second one contains the LightningDataModule based on the classical torch.dataset.
+    - its configuration describes the data in `train` / `val` / `test` sections built on
+      `pybiscus.ml.datasplit`, which brings the sharing between clients, the held-out validation
+      and `max_samples`: see the [integration guide](pybiscus_model_guide.md#data-provider-integration).
 3. if needed, add another directory `$ROOT/my-data/all-things-needed/` which would contain all things necessary for your dataset to work properly, in particular preprocessing.
 4. create the file `$ROOT/my-data/__init__.py`:
     - write a function `get_modules_and_configs()` 

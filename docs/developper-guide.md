@@ -19,33 +19,24 @@ uv sync
 ```
 
 and you are good to go !
-This all-in-one command creates a virtual environment, downloads and installs the dependant packages, and creates an uv.lock file.
+This all-in-one command installs Python 3.12 if needed, creates a virtual environment (`.venv`) and installs the dependencies at their locked versions (`uv.lock`).
 
-### Pre-commit
+## Conventions
 
-**Note: deprecated* as we switched to uv*
+### Configuration models
 
+Every configuration is a Pydantic model, validated before anything runs (`pybiscus server|client
+check`) and turned into the agents' forms:
 
-~~**Pre-commit** allows for ensuring that formatting and linting rules are conformed at each new commit, merge and the like. No need then to call Ruff or Black yourself, just let pre-commit do that for you! You can find more informations here~~ https://pre-commit.com
+- `model_config = ConfigDict(extra="forbid")`: a misspelt key is refused, not ignored;
+- every field with `Field(description=..., ...)`: the description is the form's tooltip, the
+  constraints (`ge`, `gt`, `le`, `lt`) are checked at `check`;
+- a plugin's configuration is a `name: Literal[...]` / `config:` pair whose `name` equals its
+  registry key (checked at start-up); see [Plugins](plugins.md) for the metadata it may declare.
 
-~~Once installed, do~~
-~~poetry run pre-commit install~~
+### Logging, not print
 
-### Linters
-
-**Black**, **Ruff** are formatting and linting tools
-
-## Others
-
-We suggest to create a directory `experiments` to hold checkpoints and other artefacts and a directory `datasets` to hold the data.
-
-### Pydantic Validation
-
-[TODO]
-
-### Print statements
-
-Please use `logm.console.log` instead of print !
+Use the configurable logger instead of `print`:
 
 ```python
 import pybiscus.core.pybiscus_logger as logm
@@ -53,6 +44,21 @@ import pybiscus.core.pybiscus_logger as logm
 logm.console.log(config)
 ```
 
-It will use a configurable logger. By default, the Rich Console which is really far better at this in CLI mode.
-However, it can be configured to support multiplexing, notably enabling output to be sent to a supervision webhook for GUI mode
+By default it is Rich's console; it can be multiplexed, notably to the session manager's webhook.
 
+### Comments
+
+Names describe what the code does; a comment says why a decision is not obvious (a trap avoided, a
+hidden constraint, a surprising behaviour), never what the next lines do.
+
+### Validating a change
+
+There is no unit test suite: behaviour depends on the plugins and the configurations, across
+several processes. Validate a change by `check` on the configurations it touches and by real runs:
+the `launch/uv/` scripts, a session with the agents, or a campaign
+([Campaigns](campaigns.md)) when results must be compared.
+
+## Others
+
+We suggest to create a directory `experiments` to hold checkpoints and other artefacts and a
+directory `datasets` to hold the data (both are ignored by git).

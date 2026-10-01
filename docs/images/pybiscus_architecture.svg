@@ -1,0 +1,185 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 1010" width="1200" height="1010" font-family="Segoe UI, Helvetica, Arial, sans-serif">
+  <title>Pybiscus architecture</title>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#4a5568"/>
+    </marker>
+    <style>
+      .band { fill: #f7f8fa; stroke: #c9ced6; stroke-width: 1.5; }
+      .title { font-size: 26px; font-weight: 700; fill: #1f2937; }
+      .band-label { font-size: 15px; font-weight: 700; fill: #4b5563; letter-spacing: 0.08em; }
+      .box-title { font-size: 15px; font-weight: 700; fill: #111827; }
+      .text { font-size: 13px; fill: #1f2937; }
+      .small { font-size: 12px; fill: #374151; }
+      .mono { font-family: Consolas, Menlo, monospace; font-size: 12px; fill: #1f2937; }
+      .edge { stroke: #4a5568; stroke-width: 1.6; fill: none; }
+      .edge-dash { stroke: #4a5568; stroke-width: 1.6; fill: none; stroke-dasharray: 6 4; }
+      .edge-label { font-size: 12px; fill: #374151; font-style: italic; }
+      .session { fill: #ede9fe; stroke: #7c3aed; stroke-width: 1.5; }
+      .server { fill: #dbeafe; stroke: #2563eb; stroke-width: 1.5; }
+      .client { fill: #dcfce7; stroke: #16a34a; stroke-width: 1.5; }
+      .inner { fill: #ffffff; stroke: #9ca3af; stroke-width: 1.2; }
+      .plugin { fill: #fef3c7; stroke: #d97706; stroke-width: 1.2; }
+      .config { fill: #f3f4f6; stroke: #6b7280; stroke-width: 1.5; }
+    </style>
+  </defs>
+
+  <rect width="1200" height="1010" fill="#ffffff"/>
+  <text x="600" y="38" text-anchor="middle" class="title">Pybiscus architecture</text>
+  <text x="600" y="60" text-anchor="middle" class="small">Federated learning on Flower (server and clients as separate processes) and Lightning/Fabric, configured by YAML, extended by plugins</text>
+
+  <!-- ===================== session layer ===================== -->
+  <rect x="20" y="78" width="1160" height="178" rx="10" class="band"/>
+  <text x="36" y="100" class="band-label">SESSION LAYER — OPTIONAL (web applications)</text>
+
+  <rect x="40" y="112" width="300" height="128" rx="8" class="session"/>
+  <text x="190" y="135" text-anchor="middle" class="box-title">Pybiscus agent (server site)</text>
+  <text x="56" y="158" class="text">• server form generated from the</text>
+  <text x="68" y="175" class="text">Pydantic configuration models</text>
+  <text x="56" y="194" class="text">• check, then launch the server</text>
+  <text x="56" y="213" class="text">• its own access token</text>
+  <text x="56" y="232" class="mono">pybiscus_agent --port 5000</text>
+
+  <rect x="450" y="104" width="300" height="144" rx="8" class="session"/>
+  <text x="600" y="127" text-anchor="middle" class="box-title">Session manager</text>
+  <text x="466" y="150" class="text">• agents' registration, session form</text>
+  <text x="466" y="169" class="text">• presets set and locked in every form:</text>
+  <text x="478" y="186" class="small">model, data, partition, holdout, min_clients,</text>
+  <text x="478" y="201" class="small">robustness, CPU threads, client ids</text>
+  <text x="466" y="220" class="text">• logs, metrics, charts, vignettes</text>
+  <text x="466" y="239" class="mono">session_manager --port 5555</text>
+
+  <rect x="860" y="112" width="300" height="128" rx="8" class="session"/>
+  <text x="1010" y="135" text-anchor="middle" class="box-title">Pybiscus agents (client sites)</text>
+  <text x="876" y="158" class="text">• client form, values set and locked</text>
+  <text x="888" y="175" class="text">by the session (cid, partition...)</text>
+  <text x="876" y="194" class="text">• check, then launch the client</text>
+  <text x="876" y="213" class="text">• one agent per client site</text>
+  <text x="876" y="232" class="mono">pybiscus_agent --port 5001...</text>
+
+  <path d="M340,160 L448,160" class="edge" marker-start="url(#arrow)" marker-end="url(#arrow)"/>
+  <text x="394" y="152" text-anchor="middle" class="edge-label">registration</text>
+  <text x="394" y="176" text-anchor="middle" class="edge-label">presets</text>
+  <path d="M752,160 L858,160" class="edge" marker-start="url(#arrow)" marker-end="url(#arrow)"/>
+  <text x="805" y="152" text-anchor="middle" class="edge-label">registration</text>
+  <text x="805" y="176" text-anchor="middle" class="edge-label">presets</text>
+
+  <!-- agents launch the processes -->
+  <path d="M190,240 L190,288" class="edge" marker-end="url(#arrow)"/>
+  <text x="200" y="270" class="edge-label">YAML, launch</text>
+  <path d="M1010,240 L1010,288" class="edge" marker-end="url(#arrow)"/>
+  <text x="1020" y="270" class="edge-label">YAML, launch</text>
+  <!-- webhooks back to the manager -->
+  <path d="M560,290 L592,250" class="edge-dash" marker-end="url(#arrow)"/>
+  <path d="M760,290 L680,250" class="edge-dash" marker-end="url(#arrow)"/>
+  <text x="660" y="279" text-anchor="middle" class="edge-label">logs, metrics (webhooks)</text>
+
+  <!-- ===================== server process ===================== -->
+  <rect x="20" y="290" width="600" height="448" rx="10" class="server"/>
+  <text x="36" y="314" class="box-title">Server process</text>
+  <text x="604" y="314" text-anchor="end" class="mono">pybiscus server launch server.yml</text>
+
+  <rect x="40" y="326" width="560" height="40" rx="6" class="inner"/>
+  <text x="320" y="351" text-anchor="middle" class="text">Flower server — <tspan class="mono">start_server</tspan>, gRPC, TLS optional (<tspan class="mono">flower_server.ssl</tspan>)</text>
+
+  <rect x="40" y="378" width="560" height="168" rx="6" class="plugin"/>
+  <text x="56" y="400" class="box-title">Strategy decorator pipeline <tspan class="small">(plugins, <tspan class="mono">server_strategy.pipeline</tspan>)</tspan></text>
+  <text x="56" y="422" class="text">• robustness: <tspan class="mono">clipping</tspan> (norm clipping, rejection) — <tspan class="mono">robustness: safeguard</tspan></text>
+  <text x="56" y="441" class="text">• server-side differential privacy (fixed / adaptive clipping)</text>
+  <text x="56" y="460" class="text">• metric and time differences, saved parameters, layer vignettes</text>
+  <text x="56" y="479" class="text">• personalization of what each client is sent (result modifiers)</text>
+  <text x="56" y="498" class="text">• privacy evaluation (FedMIA)</text>
+
+  <rect x="72" y="508" width="496" height="30" rx="5" class="inner"/>
+  <text x="320" y="528" text-anchor="middle" class="text"><tspan font-weight="700">Strategy</tspan> — aggregation of the clients' updates</text>
+
+  <rect x="40" y="556" width="560" height="62" rx="6" class="inner"/>
+  <text x="56" y="577" class="text"><tspan font-weight="700">Strategies</tspan>: <tspan class="mono">fedavg</tspan> (core) · <tspan class="mono">flowergeneric</tspan>: FedAvgM, FedProx, FedAdam,</text>
+  <text x="56" y="596" class="text">FedYogi, FedAdagrad, FedMedian, FedTrimmedAvg, Krum, Bulyan, QFedAvg...</text>
+  <text x="56" y="612" class="text"><tspan class="mono">fedavgwithaggregator</tspan> + a fit results aggregator plugin</text>
+
+  <rect x="40" y="628" width="272" height="96" rx="6" class="inner"/>
+  <text x="56" y="649" class="box-title">Global evaluation</text>
+  <text x="56" y="669" class="text">model plugin on Fabric,</text>
+  <text x="56" y="687" class="text">data plugin's <tspan class="mono">test</tspan> section</text>
+  <text x="56" y="705" class="text">(and <tspan class="mono">privacy</tspan> for FedMIA)</text>
+
+  <rect x="328" y="628" width="272" height="96" rx="6" class="inner"/>
+  <text x="344" y="649" class="box-title">Logs and reports</text>
+  <text x="344" y="669" class="text">loggers: console, webhook</text>
+  <text x="344" y="687" class="text">metrics: TensorBoard, webhook, W&amp;B</text>
+  <text x="344" y="705" class="small">experiments/&lt;date&gt;: logs, metrics,</text>
+  <text x="344" y="719" class="small">final weights, ONNX export</text>
+
+  <!-- ===================== client processes ===================== -->
+  <rect x="716" y="300" width="464" height="438" rx="10" class="client" opacity="0.55"/>
+  <rect x="708" y="295" width="464" height="438" rx="10" class="client" opacity="0.75"/>
+  <rect x="700" y="290" width="464" height="438" rx="10" class="client"/>
+  <text x="716" y="314" class="box-title">Client processes (1 .. N)</text>
+  <text x="1148" y="314" text-anchor="end" class="mono">pybiscus client launch client.yml</text>
+
+  <rect x="720" y="326" width="424" height="40" rx="6" class="inner"/>
+  <text x="932" y="351" text-anchor="middle" class="text">Flower client — <tspan class="mono">start_client</tspan>, gRPC, TLS optional</text>
+
+  <rect x="720" y="378" width="424" height="62" rx="6" class="plugin"/>
+  <text x="736" y="400" class="box-title">Client <tspan class="small">(plugin)</tspan></text>
+  <text x="736" y="420" class="text">Fabric client, or an alternate one: relay (replays</text>
+  <text x="736" y="436" class="text">results from files), byzantine (test attacks)</text>
+
+  <rect x="720" y="452" width="424" height="62" rx="6" class="inner"/>
+  <text x="736" y="474" class="box-title">Training and evaluation loops on Fabric</text>
+  <text x="736" y="494" class="text">CPU / GPU, local epochs, optimizer state, schedulers,</text>
+  <text x="736" y="510" class="text">FedProx term; metrics averaged over the examples</text>
+
+  <rect x="720" y="526" width="204" height="110" rx="6" class="plugin"/>
+  <text x="736" y="548" class="box-title">Model <tspan class="small">(plugin)</tspan></text>
+  <text x="736" y="568" class="text">LightningModule:</text>
+  <text x="736" y="586" class="text">cifar CNN, mnist_cnn,</text>
+  <text x="736" y="604" class="text">LSTM, Deeplog,</text>
+  <text x="736" y="622" class="text">FasterRCNN...</text>
+
+  <rect x="940" y="526" width="204" height="110" rx="6" class="plugin"/>
+  <text x="956" y="548" class="box-title">Data <tspan class="small">(plugin)</tspan></text>
+  <text x="956" y="568" class="text">LightningDataModule,</text>
+  <text x="956" y="586" class="text"><tspan class="mono">train</tspan> / <tspan class="mono">val</tspan> / <tspan class="mono">test</tspan> sections:</text>
+  <text x="956" y="604" class="text">partition, holdout,</text>
+  <text x="956" y="622" class="text">local data only</text>
+
+  <rect x="720" y="648" width="424" height="62" rx="6" class="inner"/>
+  <text x="736" y="670" class="box-title">Logs</text>
+  <text x="736" y="690" class="text">console, or webhook to the session manager</text>
+
+  <!-- Flower exchanges -->
+  <path d="M602,404 L698,404" class="edge" marker-end="url(#arrow)"/>
+  <text x="650" y="384" text-anchor="middle" class="edge-label">global</text>
+  <text x="650" y="398" text-anchor="middle" class="edge-label">weights</text>
+  <path d="M698,470 L602,470" class="edge" marker-end="url(#arrow)"/>
+  <text x="650" y="490" text-anchor="middle" class="edge-label">updates,</text>
+  <text x="650" y="504" text-anchor="middle" class="edge-label">metrics</text>
+
+  <!-- ===================== configuration and plugins ===================== -->
+  <rect x="20" y="760" width="1160" height="236" rx="10" class="band"/>
+  <text x="36" y="782" class="band-label">CONFIGURATION AND PLUGINS</text>
+
+  <rect x="40" y="796" width="530" height="186" rx="8" class="config"/>
+  <text x="56" y="819" class="box-title">Configuration: YAML validated by Pydantic</text>
+  <text x="56" y="842" class="text">• one file per process: <tspan class="mono">server.yml</tspan>, <tspan class="mono">client_N.yml</tspan>, or</text>
+  <text x="68" y="859" class="text">generated by the agents' forms</text>
+  <text x="56" y="880" class="text">• the <tspan class="mono">name:</tspan> of a block picks the plugin, its <tspan class="mono">config:</tspan> is</text>
+  <text x="68" y="897" class="text">validated by that plugin's model (discriminated unions)</text>
+  <text x="56" y="918" class="text">• <tspan class="mono">pybiscus server|client check</tspan> validates without running</text>
+  <text x="56" y="939" class="text">• <tspan class="mono">pybiscus local train-config</tspan>: same model and data,</text>
+  <text x="68" y="956" class="text">no federation (a baseline)</text>
+  <text x="56" y="974" class="text">• <tspan class="mono">pybiscus data partition</tspan>: the clients' shares</text>
+
+  <rect x="590" y="796" width="570" height="186" rx="8" class="plugin"/>
+  <text x="606" y="819" class="box-title">Plugins: discovered and registered at start-up</text>
+  <text x="606" y="842" class="text">• manifest <tspan class="mono">pybiscus-plugins-conf.yml</tspan> (<tspan class="mono">PYBISCUS_PLUGIN_CONF_PATH</tspan>,</text>
+  <text x="618" y="859" class="text">several manifests merged with <tspan class="mono">:</tspan>), external projects too</text>
+  <text x="606" y="880" class="text">• each module exports <tspan class="mono">get_modules_and_configs()</tspan>: its classes</text>
+  <text x="618" y="897" class="text">and their Pydantic configurations, core ones included</text>
+  <text x="606" y="918" class="text">• categories: data · model · strategy · strategydecorator ·</text>
+  <text x="618" y="935" class="text">client · logger · metricslogger · resultmodifier ·</text>
+  <text x="618" y="952" class="text">flowerfitresultsaggregator</text>
+  <text x="606" y="973" class="small">core: pybiscus/ · bundled plugins: pybiscus-plugins/</text>
+</svg>

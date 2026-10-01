@@ -25,9 +25,16 @@ Behind the curtain, Pybiscus uses OmegaConf to deal with loading and saving conf
 
 ### Fabric / GPU / hardware description
 
-The keyword `hardware` holds keywords to use by the Fabric instance. It is used by both Server and Clients. The keywords and their types are simply the one provided by the Fabric API, available [here](https://lightning.ai/docs/fabric/stable/api/generated/lightning.fabric.fabric.Fabric.html#lightning.fabric.fabric.Fabric).
+The keyword `hardware` holds the arguments given to the Fabric instance, on the server and on the
+clients. Two of the [Fabric API](https://lightning.ai/docs/fabric/stable/api/generated/lightning.fabric.fabric.Fabric.html#lightning.fabric.fabric.Fabric)'s
+arguments are exposed:
 
-The keyword `devices` is waiting for either a list of integers (the id of the devices themselves) or an integer (for the number of devices wanted) or the string "auto".
+- `accelerator`: `cpu`, `gpu` or `auto` (a GPU when there is one);
+- `devices`: an integer (the number of devices), or a string: `auto`, or the ids of the devices as
+  Fabric reads them (`"0"`, `"0,1"`).
+
+The precision stays Fabric's default (32 bits). On a GPU, convolutions use TF32 by default, which
+moves the outputs by about 1e-4: compare models on CPU when the last digits matter.
 
 Here is an example from a server configuration:
 
