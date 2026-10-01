@@ -86,7 +86,7 @@ between clients — and the sessions become reliable and reproducible.
 * Vulnerable dependencies bumped (GitPython, aiohttp, Pillow, onnx...), lightning 2.6.6, torch
   2.13. `cryptography` stays below 47, pinned by flwr.
 
-## [Version 0.7.0] — 2026-03-20 (`dem_bx_0326`)
+## [Version 0.7.0]
 
 The architecture introduced in 0.6.0 matures; the use of Flower stays the same (FedAvg); the web
 applications grow into a session manager driving its agents.
@@ -129,7 +129,7 @@ applications grow into a session manager driving its agents.
   `pybiscus/plugin/registries/`.
 * Documentation: plugins developed in separate projects (multi-project mode), session management.
 
-## [Version 0.6.0] — 2025-07-01 (`dem_vn_0525`)
+## [Version 0.6.0]
 
 The architecture becomes plugin-based, and the first web applications (the Pybiscus agent and
 the session manager) appear.
