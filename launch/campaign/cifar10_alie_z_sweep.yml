@@ -6,7 +6,8 @@
 # Attackers: the byzantine client plugin (test manifest only), clients 0 and 1.
 # Each client trains on its whole share (about 7 100 images), 3 local epochs: with 3000 images
 # and 1 epoch, FedAvg without attacker stayed at chance (0.107 after 5 rounds) and no strategy
-# could be told apart. About 16 minutes; do not run it next to a live session.
+# could be told apart. 3 seeds (single runs differed by up to 1.5 points, as much as the effects
+# measured): 45 runs, about an hour; do not run it next to a live session.
 
 server_config: configs/cifar10_cnn/distributed/without_ssl/server.yml
 client_config: configs/cifar10_cnn/distributed/without_ssl/client_1.yml
@@ -19,6 +20,7 @@ local_epochs: 3
 port: 3399                 # the Flower server of each run: must be free
 threads_per_client: auto   # physical cores / clients
 timeout: 1800              # seconds per run
+seeds: [1, 2, 3]           # every variant once per seed, then mean ± std
 
 client_data:
   train:
@@ -35,6 +37,13 @@ server_data:
     max_samples: 2000
 
 variants:
+  - label: FedAvg, no attacker
+    strategy: {name: fedavggeneric, config: {}}
+  - label: FedAvg + clipping x1.5 reject x3, no attacker
+    strategy: {name: fedavggeneric, config: {}}
+    pipeline: [{name: clipping, config: {mode: median, median_factor: 1.5, reject_factor: 3.0}}]
+  - label: Bulyan f 1, no attacker
+    strategy: {name: bulyan, config: {num_malicious_clients: 1}}
   - label: FedAvg, ALIE z 1.0
     strategy: {name: fedavggeneric, config: {}}
     client_overrides:

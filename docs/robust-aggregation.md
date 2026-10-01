@@ -31,6 +31,12 @@ variant (`client_overrides`, by client number):
 uv run python launch/campaign/strategy_campaign.py launch/campaign/cifar10_robust.yml
 ```
 
+A single run per cell cannot tell apart differences of a few points: two runs of the same
+configuration gave 0.391 and 0.377. With `seeds: [1, 2, 3]` in the campaign file, every variant
+runs once per seed (the server's and the clients' `seed`, the byzantine clients' noise) and a
+second table gives the mean ± standard deviation over the seeds. The data shares stay those of the
+partition's own seed, unless `seed_partitions: true` draws them again with each seed.
+
 ## Results (cifar10, 7 clients, iid shares, 3 local epochs, 5 rounds)
 
 Test accuracy at round 5; attackers flip the sign of their update and scale it by 10.
@@ -164,8 +170,9 @@ Dirichlet shares, same attackers:
   pass under any such threshold; clipping still bounds them (next section).
 
 **Choosing**: FedAvg + `clipping` (median x 1.5, reject x 3) resisted best here, at no cost without
-attacker, and names the suspects; Bulyan remains the choice against attackers that stay discreet
-(not tested yet), at the price of accuracy on heterogeneous data.
+attacker, and names the suspects. Against attackers that stay discreet (ALIE, below), it loses up
+to 10 points, but Bulyan does not do better: it costs 8 points on heterogeneous data before any
+attack.
 
 ## A discreet, colluding attack: ALIE
 
@@ -196,21 +203,32 @@ send mean - z x deviation; z comes from the number of clients and of colluders
 ### Sweeping z
 
 The larger z, the further the colluders' common update from the honest mean: more harm, more
-visible (`launch/campaign/cifar10_alie_z_sweep.yml`, 2 ALIE attackers of 7, dirichlet shares):
+visible (`launch/campaign/cifar10_alie_z_sweep.yml`, 2 ALIE attackers of 7, dirichlet shares).
+Test accuracy at round 5, mean ± standard deviation over 3 seeds:
 
 | defense | no attacker | z 1 | z 2 | z 4 | z 8 |
 |---|---|---|---|---|---|
-| FedAvg | 0.398 | 0.374 | 0.379 | 0.310 | 0.135 |
-| clipping x 1.5, reject x 3 | 0.395 | 0.374 | 0.358 | 0.342 | 0.347 |
-| Bulyan, f 1 | 0.333 | 0.350 | 0.294 | 0.274 | 0.308 |
+| FedAvg | 0.402 ± 0.017 | 0.378 ± 0.015 | 0.348 ± 0.023 | 0.273 ± 0.028 | 0.146 ± 0.031 |
+| clipping x 1.5, reject x 3 | 0.401 ± 0.019 | 0.378 ± 0.018 | 0.349 ± 0.023 | 0.296 ± 0.027 | 0.339 ± 0.018 |
+| Bulyan, f 1 | 0.317 ± 0.040 | 0.303 ± 0.028 | 0.283 ± 0.049 | 0.292 ± 0.060 | 0.281 ± 0.055 |
+
+The standard deviations mostly come from the seed itself (initial weights, batch order), shared by
+every variant: the loss against the same seed without attacker is far steadier. For the clipping
+defense: −2.3 points at z 1 (−2.0 to −2.5 over the seeds), −5.2 at z 2 (−4.8 to −5.8), −10.4 at
+z 4 (−8.3 to −11.9), −6.2 at z 8 (−5.4 to −7.1).
 
 Attackers' norm / median ratio under the clipping defense: about 1.0 (z 1), 1.2 (z 2, neither
 clipped nor rejected), 1.8 (z 4, clipped every round), 4 (z 8, rejected every round).
 
-- Undefended FedAvg loses 9 points at z 4 and collapses at z 8.
-- The clipping defense stays the most accurate at every z. Its blind spot is around z 2: a ratio of
-  1.2 is below the clipping threshold, and the bias passes whole (about 4 points, single run: at
-  the edge of the run-to-run noise). Beyond, the attack is clipped, then rejected.
-- Lowering `median_factor` to catch it would clip honest clients too (their ratio reaches 1.5 on
-  these shares): the defense trades accuracy without attack against this margin.
-- Bulyan loses 4 to 6 points at z 2 to 4, from a lower start.
+- Undefended FedAvg loses 13 points at z 4 and collapses at z 8.
+- Up to z 2 the clipping defense does nothing (same accuracy as FedAvg): the attack stays below
+  its threshold and its bias passes whole, 2 to 5 points.
+- Its worst case is z 4, not z 2: clipping bounds the attackers' norm but keeps their direction,
+  and a ratio of 1.8 stays below the rejection threshold (3). At z 8 they are rejected: what is
+  lost is then their share of the data (2 clients of 7).
+- The clipping defense is still the most accurate, or level with Bulyan, at every z.
+- Closing the gap means rejecting from a ratio of about 1.7, close to the honest clients' own
+  ratios (up to 1.5 on these shares): the defense trades accuracy without attack against this
+  margin.
+- Bulyan loses 1 to 4 points at every z, from a start 8 points lower and with the largest
+  run-to-run spread.
