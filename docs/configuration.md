@@ -280,6 +280,15 @@ optimizer (and schedulers) again at every round, as in standard FedAvg; with `ke
 state (SGD momentum, Adam moments, scheduler progress) from the previous rounds, although those
 were computed on the weights the global model has since replaced.
 
+### Reproducible runs
+
+`server_run.seed` and `client_run.seed` (unset by default: random) seed every random generator of
+the process (Python, NumPy, PyTorch) before the model and the data are built: the server's initial
+weights and its sampling of the clients, each client's batch order (unless `train.seed` sets it),
+dropout and augmentations. Give each client its own seed, or they all draw their batches in the
+same order. Two runs with the same seeds agree to the floating point rounding: the aggregation sums
+the updates in their order of arrival, and several CPU threads sum in no fixed order.
+
 ### Reported metrics
 
 The training and evaluation metrics are means over the examples: each batch weighs its size. The

@@ -175,3 +175,11 @@ def apply_num_threads(num_threads: Optional[int]) -> None:
         import torch
         torch.set_num_threads(num_threads)
         logm.console.log(f"🧵 PyTorch limited to {num_threads} CPU threads")
+
+
+def apply_seed(seed: Optional[int]) -> None:
+    if seed is not None:
+        from lightning.fabric.utilities.seed import seed_everything
+        # verbose=False: Lightning's own message bypasses the logger multiplexed to the GUI
+        seed_everything(seed, verbose=False)
+        logm.console.log(f"🎲 random generators seeded with {seed}")

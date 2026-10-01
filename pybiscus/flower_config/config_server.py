@@ -85,6 +85,8 @@ class ConfigServerRun(BaseModel):
                          reported as <metric>_epoch_<i>
     clients_configs    = list of paths to the configuration files used by all clients.
     save_on_train_end  = end of FL session model weights save flag
+    seed               = seeds the server's random generators (initial weights, sampling of the
+                         clients) for a reproducible session; random if unset
     """
 
     PYBISCUS_CONFIG: ClassVar[str] = "server_run"
@@ -94,6 +96,7 @@ class ConfigServerRun(BaseModel):
     num_rounds:        int = Field(default=10, ge=1)
     clients_fit_local_epochs: int = Field(default=1, ge=1)
     client_configs:    list[str] = []
+    seed:              Optional[int] = None
     loggers:           list[LoggerConfig()] # pyright: ignore[reportInvalidTypeForm]
     reporting:         ConfigServerReporting
     model_config = ConfigDict(extra="forbid")

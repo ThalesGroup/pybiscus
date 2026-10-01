@@ -18,7 +18,7 @@ from pybiscus.core.logger.multiplelogger.multipleloggerfactory import MultipleLo
 from pybiscus.core.metricslogger.multiplemetricslogger.multiplemetricsloggerfactory import MultipleMetricsLoggerFactory
 from pybiscus.flower_config.config_server import ConfigServer
 from pybiscus.commands.onnx_mngt import to_onnx_with_datamodule
-from pybiscus.commands.apps_common import apply_num_threads, exit_on_invalid_config, load_config, resolve_defaults
+from pybiscus.commands.apps_common import apply_num_threads, apply_seed, exit_on_invalid_config, load_config, resolve_defaults
 from pybiscus.plugin.registries.data_registry import datamodule_registry
 from pybiscus.plugin.registries.logger_registry import logger_registry
 from pybiscus.plugin.registries.metriclogger_registry import metricslogger_registry
@@ -271,6 +271,8 @@ def launch_config(
 
     fabric = Fabric(**conf.server_compute_context.hardware.model_dump(), loggers=[_metricslogger])
     fabric.launch()
+
+    apply_seed(conf.server_run.seed)
 
     # load the model
     model_class = model_registry()[conf.model.name]

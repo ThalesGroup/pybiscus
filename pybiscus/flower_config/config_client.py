@@ -51,6 +51,8 @@ class ConfigClientRun(BaseModel):
     cid: int = client identifier
     optimizer_state: reset | keep = whether the optimizer starts afresh at every round (default) or
         keeps its state (momentum, Adam moments) from the previous rounds, computed on other weights
+    seed: int = seeds the client's random generators (order of the batches unless train.seed is set,
+        dropout, augmentations) for a reproducible session; random if unset
     """
 
     PYBISCUS_CONFIG: ClassVar[str] = "client_run"
@@ -58,6 +60,7 @@ class ConfigClientRun(BaseModel):
     cid: int            = 1
     pre_train_val: bool = False
     optimizer_state: OptimizerState = OptimizerState.reset
+    seed: Optional[int] = None
 
     model_config = ConfigDict(extra="forbid")
 

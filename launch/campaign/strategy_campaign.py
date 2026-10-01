@@ -7,6 +7,10 @@ For every variant of the campaign file, the base server and client configuration
 the variant's strategy, the clients get their share of the training data (train.partition), their
 CPU threads (cores / clients) and the campaign's data overrides, then a server and its clients run
 on the campaign's port. Configurations, logs and the table go to the output directory.
+
+With seeds: [s1, s2, ...], every variant runs once per seed (server_run.seed, each client's
+client_run.seed, the byzantine clients' seed, and with seed_partitions: true the data partition)
+and a second table gives the mean ± standard deviation of the seeds.
 """
 
 import argparse
@@ -15,6 +19,7 @@ import os
 import re
 import signal
 import socket
+import statistics
 import subprocess
 import sys
 import time
@@ -82,9 +87,9 @@ def stop(process: subprocess.Popen) -> None:
             os.killpg(process.pid, signal.SIGKILL)
 
 
-def run_variant(campaign: dict, variant: dict, out: Path) -> dict:
+def run_variant(campaign: dict, variant: dict, out: Path, seed: int = None) -> dict:
     clients, port = campaign["clients"], campaign["port"]
-    label = variant["label"]
+    label = variant["label"] if seed is None else f"{variant['label']} (seed {seed})"
     slug = re.sub(r"[^A-Za-z0-9]+", "_", label).strip("_")
     work = out / slug
     work.mkdir(parents=True, exist_ok=True)
@@ -95,6 +100,8 @@ def run_variant(campaign: dict, variant: dict, out: Path) -> dict:
     if "local_epochs" in campaign:
         server["server_run"]["clients_fit_local_epochs"] = campaign["local_epochs"]
     server["server_run"]["reporting"]["basedir"] = str(work / "experiments")
+    if seed is not None:
+        server["server_run"]["seed"] = seed
     strategy = copy.deepcopy(variant["strategy"])
     strategy_config = strategy.setdefault("config", {}) or {}
     strategy["config"] = strategy_config
@@ -122,10 +129,18 @@ def run_variant(campaign: dict, variant: dict, out: Path) -> dict:
         partition = data.get("train", {}).get("partition")
         if partition is not None:
             partition.update({"num_partitions": clients, "partition_id": i})
+            if seed is not None and campaign.get("seed_partitions"):
+                partition["seed"] = seed
         client["data"]["config"] = data
         # merged last: a variant may change one client only (a malicious one, for instance)
         overrides = {int(k): with_work(v, work.resolve()) for k, v in (variant.get("client_overrides") or {}).items()}
         client = deep_merge(client, overrides.get(i))
+        if seed is not None:
+            # one seed per client: the same one would give every client the same batch order
+            client["client_run"]["seed"] = seed * 1000 + i
+            alternate = client["flower_client"].get("alternate_client_class") or {}
+            if alternate.get("name") == "byzantine":
+                alternate.setdefault("config", {}).setdefault("seed", seed)
         OmegaConf.save(OmegaConf.create(client), work / f"client_{i}.yml")
 
     command = [sys.executable, "pybiscus/main.py"]
@@ -159,7 +174,7 @@ def run_variant(campaign: dict, variant: dict, out: Path) -> dict:
     tracebacks = sum((work / name).read_text(errors="replace").count("Traceback") for name in ["server.log"] + [f"client_{i}.log" for i in range(clients)])
     if tracebacks and status == "ok":
         status = f"{tracebacks} traceback(s)"
-    return {"label": label, "metric": metric, "values": values, "round_time": round_times[-1] if round_times else None,
+    return {"label": label, "variant": variant["label"], "seed": seed, "metric": metric, "values": values, "round_time": round_times[-1] if round_times else None,
             "elapsed": elapsed, "status": status}
 
 
@@ -171,6 +186,29 @@ def table(results: list, rounds: int) -> str:
         cells = [f"{r['values'][n]:.4f}" if n in r["values"] else "—" for n in range(rounds + 1)]
         round_time = f"{r['round_time']:.1f}" if r["round_time"] is not None else "—"
         lines.append(f"| {r['label']} | " + " | ".join(cells) + f" | {round_time} | {r['status']} |")
+    return "\n".join(lines)
+
+
+def summary(results: list, rounds: int) -> str:
+    """mean ± sample standard deviation of each variant's seeds, round by round"""
+    metric = next((r["metric"] for r in results if r["metric"]), "metric")
+    by_variant = {}
+    for r in results:
+        by_variant.setdefault(r["variant"], []).append(r)
+    header = "| variant | " + " | ".join(f"round {r}" for r in range(rounds + 1)) + " | seeds | status |"
+    lines = [f"test {metric} per round, mean ± std over the seeds", "", header, "|" + "---|" * (rounds + 4)]
+    for variant, runs in by_variant.items():
+        cells = []
+        for n in range(rounds + 1):
+            values = [r["values"][n] for r in runs if n in r["values"]]
+            if not values:
+                cells.append("—")
+            elif len(values) == 1:
+                cells.append(f"{values[0]:.4f}")
+            else:
+                cells.append(f"{statistics.mean(values):.4f} ± {statistics.stdev(values):.4f}")
+        failed = [f"seed {r['seed']}: {r['status']}" for r in runs if r["status"] != "ok"]
+        lines.append(f"| {variant} | " + " | ".join(cells) + f" | {len(runs)} | {'; '.join(failed) or 'ok'} |")
     return "\n".join(lines)
 
 
@@ -187,13 +225,17 @@ def main() -> None:
         sys.exit(f"port {campaign['port']} is in use: choose a free one (the campaign starts its own server)")
 
     variants = [v for v in campaign["variants"] if not args.only or v["label"].startswith(args.only)]
+    seeds = campaign.get("seeds") or [None]
+    runs = [(variant, seed) for variant in variants for seed in seeds]
     results = []
-    for number, variant in enumerate(variants, 1):
-        print(f"[{number}/{len(variants)}] {variant['label']}", flush=True)
-        results.append(run_variant(campaign, variant, out))
+    for number, (variant, seed) in enumerate(runs, 1):
+        print(f"[{number}/{len(runs)}] {variant['label']}" + ("" if seed is None else f" (seed {seed})"), flush=True)
+        results.append(run_variant(campaign, variant, out, seed))
         print(table(results[-1:], campaign["rounds"]).splitlines()[-1], flush=True)
 
     report = table(results, campaign["rounds"])
+    if seeds != [None]:
+        report += "\n\n" + summary(results, campaign["rounds"])
     (out / "results.md").write_text(report + "\n", encoding="utf-8")
     print("\n" + report + f"\n\nconfigurations, logs and table in {out}")
 
