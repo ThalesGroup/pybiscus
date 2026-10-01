@@ -1,5 +1,6 @@
+from collections.abc import Mapping
 from enum import Enum
-from typing import List, Optional, ClassVar
+from typing import List, Optional, ClassVar, get_args
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
@@ -9,6 +10,8 @@ from pybiscus.plugin.registries.model_registry import ModelConfig
 from pybiscus.plugin.registries.data_registry import DataConfig
 from pybiscus.plugin.registries.strategy_registry import StrategyConfig
 from pybiscus.plugin.registries.strategydecorator_registry import StrategyDecoratorConfig
+from pybiscus.plugin.registryloader import get_name_value_if_literal
+import pybiscus.core.pybiscus_logger as logm
 
 class ConfigSslServer(BaseModel):
     """A Pydantic Model to validate the ssl configuration given by the user.
@@ -124,14 +127,84 @@ class ConfigFlowerServer(BaseModel):
 
 # -----------------------------------------------
 
+class Robustness(str, Enum):
+    # an Enum and not a Literal: the agent's form offers an Enum's values, a Literal's first only
+    none = "none"
+    safeguard = "safeguard"
+
+
+Robustness.PYBISCUS_DESCRIPTIONS = {
+    "none": "no defense against malicious clients",
+    "safeguard": "updates clipped to 1.5 x the round's median norm, those above 1.7 x left out of the round: "
+                 "stops attackers whose updates stand out, not those that stay within the honest clients' range",
+}
+
+# measured on cifar10, iid and dirichlet shares (docs/robust-aggregation.md): no cost without
+# attacker, the conspicuous attackers rejected every round, honest clients at most 1.5 x the median
+SAFEGUARD_DECORATOR = {"name": "clipping", "config": {"mode": "median", "median_factor": 1.5, "reject_factor": 1.7}}
+
+
+def decorator_config_class(name: str):
+    union_type = get_args(StrategyDecoratorConfig())[0]
+    # a union of a single config collapses to that config
+    for conf in get_args(union_type) or (union_type,):
+        if get_name_value_if_literal(conf) == name:
+            return conf
+    return None
+
+
+def same_value(found, expected) -> bool:
+    # the forms send numbers as strings ("1.5"), a validated config holds enums
+    return str(getattr(found, "value", found)) == str(expected)
+
+
+def item_name(item):
+    return item.get("name") if isinstance(item, Mapping) else getattr(item, "name", None)
+
+
+def item_config(item):
+    config = item.get("config") if isinstance(item, Mapping) else getattr(item, "config", None)
+    if config is None or isinstance(config, Mapping):
+        return config or {}
+    return config.model_dump()
+
+
 class ConfigServerStrategy(BaseModel):
 
     PYBISCUS_CONFIG: ClassVar[str] = "server_strategy"
 
     pipeline: list[StrategyDecoratorConfig()] # pyright: ignore[reportInvalidTypeForm]
     strategy: StrategyConfig() # pyright: ignore[reportInvalidTypeForm]
+    robustness: Robustness = Field(default=Robustness.none, description=
+        "defense against malicious clients, added to the pipeline (docs/robust-aggregation.md)")
 
     model_config = ConfigDict(extra="forbid")
+
+    # a profile and not the decorator itself: a session preset can set a field, not add an item to
+    # the pipeline, and a command line user writes one line
+    @model_validator(mode="before")
+    @classmethod
+    def expand_robustness(cls, data):
+        if not isinstance(data, Mapping) or not same_value(data.get("robustness"), Robustness.safeguard.value):
+            return data
+        pipeline = list(data.get("pipeline") or [])
+        wanted = SAFEGUARD_DECORATOR["config"]
+        present = [item for item in pipeline if item_name(item) == SAFEGUARD_DECORATOR["name"]]
+        if present:
+            # a configuration saved after the expansion holds it already
+            config = item_config(present[0])
+            if all(same_value(config.get(key), value) for key, value in wanted.items()):
+                return data
+            raise ValueError("robustness: safeguard sets the clipping decorator itself (median x 1.5, reject x 1.7): "
+                             "remove the clipping of the pipeline, or keep it with robustness: none")
+        clipping = decorator_config_class(SAFEGUARD_DECORATOR["name"])
+        if clipping is None:
+            raise ValueError("robustness: safeguard needs the clipping strategy decorator plugin, which is not loaded")
+        # right after the decorators it must follow, else first (closest to the strategy)
+        after = [index for index, item in enumerate(pipeline) if item_name(item) in getattr(clipping, "PYBISCUS_AFTER", ())]
+        pipeline.insert(max(after) + 1 if after else 0, {"name": SAFEGUARD_DECORATOR["name"], "config": dict(wanted)})
+        logm.console.log("🛡️ robustness safeguard: clipping decorator (median x 1.5, reject x 1.7) added to the pipeline")
+        return {**data, "pipeline": pipeline}
 
     # a decorator config declares the decorators it cannot be combined with
     # (PYBISCUS_INCOMPATIBLE_WITH): refused at check rather than wrong results at run time

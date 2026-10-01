@@ -165,6 +165,7 @@ def pybiscus_manager_get_session_params():
     data_holdout = custom_presets.pop("data_holdout", None)
     share_cpu_threads = custom_presets.pop("share_cpu_threads", False)
     min_clients = custom_presets.pop("min_clients", None) or len(session.session_clients)
+    robustness = custom_presets.pop("robustness", None)
 
     # each call used to take a new cid: the server's page and every reload consumed one, and the
     # cids of the clients were neither consecutive nor stable. Pages name their agent now.
@@ -188,6 +189,9 @@ def pybiscus_manager_get_session_params():
         for name in ("min_fit_clients", "min_evaluate_clients", "min_available_clients"):
             custom_presets["values_set"][f"server_strategy.strategy.config.{name}"] = min_clients
             custom_presets["values_lock"].append(f"server_strategy.strategy.config.{name}")
+    if agent in session.registered_servers and robustness:
+        custom_presets["values_set"]["server_strategy.robustness"] = robustness
+        custom_presets["values_lock"].append("server_strategy.robustness")
 
     if cid is not None:
         custom_presets["values_set"]["client_run.cid"] = cid

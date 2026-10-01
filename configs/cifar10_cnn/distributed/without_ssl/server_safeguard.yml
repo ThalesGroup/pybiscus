@@ -1,0 +1,64 @@
+root_dir: ${oc.env:PWD}
+flower_server:
+  listen_address: '[::1]:3333'
+server_run:
+  num_rounds: '10'
+  clients_fit_local_epochs: '1'
+  loggers:
+  - name: rich
+    config:
+      empty_configuration: true
+  reporting:
+    basedir: ${root_dir}/experiments
+    add_timestamp_in_path: true
+    server_config_filename: config_server.yml
+    save_on_train_end:
+      filename: final_checkpoint.pt
+server_compute_context:
+  hardware:
+    accelerator: auto
+    devices: auto
+  metrics_loggers:
+  - name: tensorboard
+    config:
+      subdir: tensorboard
+server_strategy:
+  # adds the clipping decorator (median x 1.5, reject x 1.7) in front of the pipeline at validation:
+  # updates far from the honest ones are clipped or left out of the round (docs/robust-aggregation.md)
+  robustness: safeguard
+  pipeline:
+  - name: metricdiffcompute
+    config:
+      empty_configuration: true
+  - name: timediffcompute
+    config:
+      empty_configuration: true
+  - name: saveserverfitparams
+    config:
+      reporting_sub_dir: rounds
+      server_aggregated_fit_parameters_file_name: server_aggregated_fit_parameters.npz
+  strategy:
+    name: fedavgextended
+    config:
+      fraction_fit: '1'
+      fraction_evaluate: '1'
+      min_fit_clients: '2'
+      min_evaluate_clients: '2'
+      min_available_clients: '2'
+      accept_failures: true
+      inplace: true
+data:
+  name: cifar
+  config:
+    # the server only evaluates, on the whole official test split
+    test:
+      dir: ${root_dir}/datasets/test/
+      batch_size: 32
+    num_workers: 0
+model:
+  name: cifar
+  config:
+    input_shape: '3'
+    mid_shape: '6'
+    n_classes: '10'
+    lr: '0.001'

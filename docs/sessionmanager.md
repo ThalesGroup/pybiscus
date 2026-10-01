@@ -43,6 +43,10 @@ registered:
 - more: the first round waits for the missing clients, and clients registered after the launch get
   no share of the data partition.
 
+Its `robustness` choice (`none` by default, or `safeguard`) is set and locked in the server's form:
+`safeguard` adds a defense against malicious clients to the server's pipeline (see
+[Robust aggregation](robust-aggregation.md#the-robustness-setting)).
+
 These session values are set in every option of the forms that has the field, not only in the
 selected one: switching the strategy or the data plugin afterwards keeps them.
 

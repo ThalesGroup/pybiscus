@@ -6,6 +6,32 @@ The strategies of the `flowergeneric` plugin include aggregations meant to resis
 (`num_malicious_clients` f; needs at least 4f + 3 clients, which `server check` enforces on
 `min_fit_clients`: below, Flower fails in the middle of the aggregation).
 
+## The `robustness` setting
+
+The short answer to "how do I protect a session": one line of the server configuration, or the
+`robustness` choice of the session form (the manager then sets and locks it in the server's form):
+
+```yaml
+server_strategy:
+  robustness: safeguard     # none (default) | safeguard
+```
+
+`safeguard` adds the `clipping` decorator in front of the pipeline when the configuration is
+validated (`server check` and the server log say so): each update is clipped to 1.5 x the round's
+median update norm, and those above 1.7 x are left out of the round. Measured below on cifar10, 7
+clients, 3 seeds, iid and dirichlet shares:
+- no cost without attacker (honest clients stayed below 1.5 x the median);
+- attackers whose updates stand out (sign flip, scaling, ALIE from z 4) are rejected every round;
+  what is lost is then their share of the data (nothing on iid shares, 6.5 points on dirichlet);
+- **not stopped**: attackers that stay within the honest clients' range (ALIE at z 2: −5 points).
+  No norm threshold separates them.
+
+A pipeline that already has a `clipping` decorator with other settings is refused with
+`safeguard` (keep yours with `robustness: none`), as are the server-side DP decorators, which clip
+already. Reference configuration: `configs/cifar10_cnn/distributed/without_ssl/server_safeguard.yml`.
+The thresholds suit clients with comparable amounts of data and local steps: with a client far
+larger than the others, check its `clip_ratio_<cid>` on a run without attacker first.
+
 ## Testing them: the `byzantine` client
 
 `pybiscus-plugins/client/byzantine` is a client that trains honestly, then alters its update
