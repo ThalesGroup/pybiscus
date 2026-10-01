@@ -207,6 +207,32 @@ every client counting the same). The other Flower strategies come from the `flow
 (see [Robust aggregation](robust-aggregation.md)). The former `fedavgextended` and `fedavggeneric`
 are refused with a message: write `fedavg`; `fedavgextended3` became `fedavgwithaggregator`.
 
+#### FedProx
+
+`fedprox` (plugin `flowergeneric`) sends `proximal_mu` to the clients, which add
+`mu/2 * ||w - w_global||^2` to their training: each client is held near the global model during
+its local epochs. The term goes straight into the gradients, at no measurable cost; the reported
+loss stays the data one. Each client also reports its `weight_drift`, `||w - w_global||` after
+training (with `proximal_mu: 0`, the training is FedAvg's and the drift gives the reference).
+
+Measured on cifar10 where FedProx is meant to help (`launch/campaign/cifar10_fedprox_hetero.yml`:
+6 clients on dirichlet 0.1 shares, 5 local epochs, 3 clients drawn per round, 20 rounds, 3
+seeds), against FedAvg seed by seed:
+
+| mu | mean of the last 5 rounds | worst of the last 10 | spread of the last 10 (std) |
+|---|---|---|---|
+| FedAvg | 0.418 | 0.264 | 6.3 points |
+| 0.001 | −1.3 points (−5.0 to +1.6) | +2.4 (−1.9 to +8.4) | 5.2 |
+| **0.01** | **+0.4 (−1.1 to +2.1)** | **+4.1 (+1.3 to +7.3)** | **4.1** |
+| 0.1 | −2.5 (−4.3 to −0.6) | +4.0 (−0.6 to +7.5) | 3.6 |
+
+With such shares and partial participation, FedAvg's accuracy swings from round to round (down
+to 0.18 after 0.40). `proximal_mu: 0.01` damps the swings by a third and raises the worst rounds,
+in every seed, at no cost in accuracy; it does not raise the accuracy itself. 0.1 damps them a
+little more but costs 2.5 points; 0.001 does nothing measurable. On mildly heterogeneous shares
+with every client in every round (`cifar10_fedprox.yml`), no mu up to 0.01 differed from FedAvg,
+and 1 nearly stopped the learning.
+
 #### Server-side differential privacy
 
 The `serverdpfixed` and `serverdpadaptive` decorators (plugin `strategydecorator/serverdp`, over

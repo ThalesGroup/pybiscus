@@ -121,8 +121,8 @@ and how long it takes.
 | `cifar10_directions_alie.yml` | the updates' directions under ALIE (`log_directions`) | [robust-aggregation.md](robust-aggregation.md#discreet-attackers-what-the-norm-cannot-see) |
 | `cifar10_serverdp.yml` | server-side differential privacy against FedAvg | [configuration.md](configuration.md#server-side-differential-privacy) |
 | `cifar10_fedmia.yml` | FedMIA membership inference (then the analyser) | [privacy-evaluation.md](privacy-evaluation.md) |
-| `cifar10_fedprox.yml` | FedProx's mu against FedAvg, 3 clients, short | DEVLOG |
-| `cifar10_fedprox_hetero.yml` | FedProx where it is meant to help: dirichlet 0.1, 5 local epochs, 3 of 6 clients per round, 20 rounds, 3 seeds | DEVLOG |
+| `cifar10_fedprox.yml` | FedProx's mu against FedAvg, 3 clients, short | [configuration.md](configuration.md#fedprox) |
+| `cifar10_fedprox_hetero.yml` | FedProx where it is meant to help: dirichlet 0.1, 5 local epochs, 3 of 6 clients per round, 20 rounds, 3 seeds | [configuration.md](configuration.md#fedprox) |
 | `turbofan_lstm.yml` | the LSTM regression on the turbofan engines (test MSE: lower is better) | [configuration.md](configuration.md#data) |
 
 `test-plugins-conf.yml` is not a campaign: it declares the test-only plugins (the `byzantine`

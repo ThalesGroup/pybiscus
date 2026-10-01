@@ -1,0 +1,47 @@
+# Campaign of launch/campaign/strategy_campaign.py: FedProx where it is meant to help, which
+# cifar10_fedprox.yml (3 clients, alpha 0.3, 3 epochs, 5 rounds, single runs) could not tell apart
+# from FedAvg: very heterogeneous shares (dirichlet 0.1), 5 local epochs that let the clients
+# drift, partial participation (3 of 6 clients per round), 20 rounds. Each FedProx is compared to
+# FedAvg seed by seed (same initial weights, batch orders and sampled clients).
+#   uv run python launch/campaign/strategy_campaign.py launch/campaign/cifar10_fedprox_hetero.yml
+# 12 runs, about 45 minutes; do not run it next to a live session.
+
+server_config: configs/cifar10_cnn/distributed/without_ssl/server.yml
+client_config: configs/cifar10_cnn/distributed/without_ssl/client_1.yml
+output: experiments/campaigns
+
+clients: 6
+rounds: 20
+local_epochs: 5
+port: 3399                 # the Flower server of each run: must be free
+threads_per_client: auto   # physical cores / clients
+timeout: 2400              # seconds per run
+seeds: [1, 2, 3]           # every variant once per seed, then mean ± std
+
+client_data:
+  train:
+    partition:
+      scheme: dirichlet
+      alpha: 0.1
+      seed: 42
+  val:
+    source: holdout
+    fraction: 0.1
+
+server_data:
+  test:
+    max_samples: 2000
+
+# 3 of the 6 clients train in each round, drawn by the server (seeded); all 6 must be connected
+variants:
+  - label: FedAvg
+    strategy: {name: fedavg, config: {fraction_fit: 0.5, min_fit_clients: 3, min_evaluate_clients: 3, fraction_evaluate: 0.5, min_available_clients: 6}}
+  - label: FedProx mu 0.001
+    reference: FedAvg
+    strategy: {name: fedprox, config: {proximal_mu: 0.001, fraction_fit: 0.5, min_fit_clients: 3, min_evaluate_clients: 3, fraction_evaluate: 0.5, min_available_clients: 6}}
+  - label: FedProx mu 0.01
+    reference: FedAvg
+    strategy: {name: fedprox, config: {proximal_mu: 0.01, fraction_fit: 0.5, min_fit_clients: 3, min_evaluate_clients: 3, fraction_evaluate: 0.5, min_available_clients: 6}}
+  - label: FedProx mu 0.1
+    reference: FedAvg
+    strategy: {name: fedprox, config: {proximal_mu: 0.1, fraction_fit: 0.5, min_fit_clients: 3, min_evaluate_clients: 3, fraction_evaluate: 0.5, min_available_clients: 6}}
