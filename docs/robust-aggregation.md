@@ -50,8 +50,8 @@ default manifest, so that it does not appear in a real session's forms. A client
 `flower_client.alternate_client_class: {name: byzantine, config: {...}}`, with the test manifest
 added: `PYBISCUS_PLUGIN_CONF_PATH=pybiscus-plugins-conf.yml:launch/campaign/test-plugins-conf.yml`.
 
-The campaign tool takes the extra manifests (`plugin_manifests`) and per-client settings for a
-variant (`client_overrides`, by client number):
+The campaign tool ([Campaigns](campaigns.md)) takes the extra manifests (`plugin_manifests`) and
+per-client settings for a variant (`client_overrides`, by client number):
 
 ```bash
 uv run python launch/campaign/strategy_campaign.py launch/campaign/cifar10_robust.yml

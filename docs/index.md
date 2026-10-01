@@ -26,6 +26,7 @@ You can find here a short documentation on how to use and adapt Pybiscus. The to
 
 ### Federated learning topics
 
+* [Campaigns: comparing strategies on short federated runs](campaigns.md)
 * [Robust aggregation against malicious clients](robust-aggregation.md)
 * [Privacy evaluation: FedMIA](privacy-evaluation.md)
 
