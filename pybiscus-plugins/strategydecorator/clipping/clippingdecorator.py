@@ -34,6 +34,9 @@ class ConfigClippingDecoratorData(BaseModel):
     median_factor: float = Field(default=1.5, gt=0)
     clipping_norm: float = Field(default=2.0, gt=0)
     reject_factor: Optional[float] = Field(default=None, gt=1)
+    log_directions: bool = Field(default=False, description=
+        "logs each client's cosine similarity to the coordinate-wise median update and to its closest other client "
+        "(clip_cos_median_<cid>, clip_cos_closest_<cid>); costs a copy of every update")
 
     model_config = ConfigDict(extra="forbid")
 
@@ -76,6 +79,24 @@ def update_norm(params, reference) -> float:
                              for w, w0 in zip(params, reference) if np.issubdtype(w.dtype, np.floating))))
 
 
+def flat_update(params, reference) -> np.ndarray:
+    return np.concatenate([(w - w0).astype(np.float32).ravel()
+                           for w, w0 in zip(params, reference) if np.issubdtype(w.dtype, np.floating)])
+
+
+def direction_similarities(updates: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+    """each update's cosine similarity to the coordinate-wise median update, and to the closest
+    other update"""
+    norms = np.linalg.norm(updates, axis=1)
+    norms[norms == 0] = 1.0
+    unit = updates / norms[:, None]
+    median = np.median(updates, axis=0)
+    to_median = unit @ (median / (np.linalg.norm(median) or 1.0))
+    pairs = unit @ unit.T
+    np.fill_diagonal(pairs, -np.inf)
+    return to_median, pairs.max(axis=1)
+
+
 def clipped_params(params, reference, scale: float) -> list:
     return [w0 + ((w - w0) * scale).astype(w.dtype) if np.issubdtype(w.dtype, np.floating) else w
             for w, w0 in zip(params, reference)]
@@ -115,6 +136,15 @@ class ClippingStrategyDecorator(StrategyDecorator):
                          else self.config.median_factor * median)
         # a client far above the median round after round is a suspect
         ratios = {cid: norm / median if median > 0 else 0.0 for cid, _, _, _, _, norm in entries}
+        if self.config.log_directions and len(entries) > 1:
+            to_median, closest = direction_similarities(np.stack([flat_update(params, reference) for _, _, _, reference, params, _ in entries]))
+            logm.console.log(f"🧭 Round {server_round} directions " + " ".join(
+                f"{cid}:median={m:.3f},closest={c:.3f}{',byzantine' if res.metrics.get('byzantine') else ''}"
+                for (cid, _, res, _, _, _), m, c in zip(entries, to_median, closest)))
+            if self.fabric is not None:
+                for (cid, *_), m, c in zip(entries, to_median, closest):
+                    self.fabric.log(f"clip_cos_median_{cid}", float(m), step=server_round)
+                    self.fabric.log(f"clip_cos_closest_{cid}", float(c), step=server_round)
 
         rejected = set()
         if self.config.reject_factor is not None:
