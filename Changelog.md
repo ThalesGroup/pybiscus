@@ -79,6 +79,8 @@ between clients — and the sessions become reliable and reproducible.
   the two container images and the same run in containers.
 * The container build scripts work from the repository root (they only worked from
   `container/`); the agent starts in its container.
+* The container images are tagged with the project's version (`pybiscus:0.8.0`,
+  `pybiscus-agent:0.8.0`; they were `uv-v0.2`).
 * The container launch scripts reserve the first GPU (`--gpus device=0`; they asked for the
   second one).
 

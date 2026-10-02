@@ -12,7 +12,8 @@ Two images, built from the repository root (each is heavy: PyTorch with CUDA):
 ./container/build_node_container.sh       # the agent (pybiscus_agent), for sessions
 ```
 
-The image names come from `bin/pybiscus_image` and `bin/pybiscus_node_image` (override them
+The image names come from `bin/pybiscus_image` and `bin/pybiscus_node_image`: `pybiscus:<version>`
+and `pybiscus-agent:<version>`, the version being the one of `pyproject.toml` (override a name
 with `PYBISCUS_IMAGE`).
 
 ## A federated session in containers

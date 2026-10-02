@@ -1,6 +1,10 @@
 #!/usr/bin/bash
 
-DEFAULT_PYBISCUS_IMAGE="pybiscus:uv-v0.2"
+# the image is tagged with the project's version, so that a release never reuses an older image
+REPO="$(cd "$(dirname "$(realpath "${BASH_SOURCE[0]}")")/.." && pwd)"
+VERSION="$(sed -n 's/^version = "\(.*\)"/\1/p' "$REPO/pyproject.toml" | head -1)"
+
+DEFAULT_PYBISCUS_IMAGE="pybiscus:${VERSION}"
 
 if [ -z "${PYBISCUS_IMAGE}" ]; then
 
