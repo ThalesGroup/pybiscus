@@ -37,8 +37,8 @@ between clients — and the sessions become reliable and reproducible.
   measured on iid and heterogeneous shares; `log_directions` for diagnosis.
 * Server-side differential privacy decorators (fixed and adaptive clipping; Flower's adaptive
   clipping corrected).
-* FedMIA privacy evaluation decorator and its analyser, iSAID data and FasterRCNN model plugins
-  (from PR #44).
+* FedMIA privacy evaluation decorator and its analyser (under development), iSAID data and
+  FasterRCNN model plugins (from PR #44).
 * Test-only `byzantine` client (sign flip, scaling, noise, colluding ALIE) for the campaigns.
 * `docs/robust-aggregation.md`: what each defense stops, and what it does not (attackers that
   stay within the honest clients' range).
@@ -55,6 +55,8 @@ between clients — and the sessions become reliable and reproducible.
 * Agent forms: chips and radial menu for long option lists, compact list view, vertical tabs for
   unions, display settings panel, lists with default items; session manager reshaped, agents
   running page, hardened agent/manager protocol, session relaunch, charts of any metric.
+* `3frames.html` shows the server agent and 1 to 9 client agents in one page (grid, focus and
+  single layouts), for sessions tested on one machine.
 
 ### Data, models and runs
 
@@ -69,6 +71,16 @@ between clients — and the sessions become reliable and reproducible.
 * The W&B metrics logger rewritten so that it runs.
 * Campaign tool (`launch/campaign/strategy_campaign.py`): variants, seeds, paired differences;
   documented in `docs/campaigns.md`.
+
+### Verification and containers
+
+* `launch/ci/smoke.sh` replays the basic validation and exits non-zero on failure: `check` on every
+  server and client configuration of `configs/`, a short federated run (mnist, CPU), the build of
+  the two container images and the same run in containers.
+* The container build scripts work from the repository root (they only worked from
+  `container/`); the agent starts in its container.
+* The container launch scripts reserve the first GPU (`--gpus device=0`; they asked for the
+  second one).
 
 ### Fixes
 
@@ -85,6 +97,11 @@ between clients — and the sessions become reliable and reproducible.
 
 * Vulnerable dependencies bumped (GitPython, aiohttp, Pillow, onnx...), lightning 2.6.6, torch
   2.13. `cryptography` stays below 47, pinned by flwr.
+
+### Known limits
+
+* iSAID and FasterRCNN were not run on real data for this release; FedMIA is under development.
+* GPU access from the containers was not tested (the images were, on CPU).
 
 ## [Version 0.7.0]
 
