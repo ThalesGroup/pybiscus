@@ -19,7 +19,7 @@ $CONTAINER_ENGINE run \
     --rm \
     --name "pybiscus-client-1"               \
     --network=host \
-    --gpus device=1                          \
+    --gpus device=0                          \
     -v ${PWD}/datasets/:/app/datasets/       \
     -v ${PWD}/experiments:/app/experiments   \
     -v ${PWD}/configs:/app/configs           \

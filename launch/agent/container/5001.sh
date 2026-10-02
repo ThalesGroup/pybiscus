@@ -28,7 +28,7 @@ $CONTAINER_ENGINE run \
     -t \
     --rm \
     --name "pybiscus-agent-$PUBLIC_REST_PORT" \
-    --gpus device=1                          \
+    --gpus device=0                          \
     -e SERVICE="$DOCKER_SERVER_INTERFACE"    \
     -e no_proxy=$no_proxy                    \
     -e NO_PROXY=$NO_PROXY                    \

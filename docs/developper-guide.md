@@ -58,6 +58,22 @@ several processes. Validate a change by `check` on the configurations it touches
 the `launch/uv/` scripts, a session with the agents, or a campaign
 ([Campaigns](campaigns.md)) when results must be compared.
 
+`launch/ci/smoke.sh` replays the basic ones and fails with a non-zero exit code, for a check before
+a release or in a pipeline:
+
+```bash
+./launch/ci/smoke.sh                       # check + run
+./launch/ci/smoke.sh build container-run   # the container images, then the same run in containers
+```
+
+- `check`: every server and client configuration of `configs/` passes `check`;
+- `run`: the mnist demo, server and two clients on CPU, 2 rounds on 2000 examples, on a free port;
+- `build`: the two container images ([Containers](containers.md));
+- `container-run`: the same run in containers of the pybiscus image.
+
+Each run works in a directory of its own (printed at the end, with the logs), not in the
+repository's `experiments/`.
+
 ## Others
 
 We suggest to create a directory `experiments` to hold checkpoints and other artefacts and a

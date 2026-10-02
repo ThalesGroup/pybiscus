@@ -31,7 +31,7 @@ with `PYBISCUS_IMAGE`).
   and its port 3333 is published on the host.
 - The clients run on the host network and reach the server at `SERVER_ADDRESS` (`localhost:3333`
   by default; give the server's name when it runs on another machine).
-- The scripts reserve the GPU with `--gpus device=1`: change it to the device of your machine (or
+- The scripts reserve the GPU with `--gpus device=0`: change it to the device of your machine (or
   remove it to run on CPU).
 
 `launch/agent/container/500{0,1,2}.sh` start the agents in containers, for a session driven by
