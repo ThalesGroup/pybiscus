@@ -1,8 +1,8 @@
 # Changelog
 
-## [Unreleased] (future 0.8.0)
+## [Version 0.8.0]
 
-From `dem_bx_0326` (2026-03-20) to the `rolling` branch: Pybiscus' functional scope grows — every
+Since `dem_bx_0326` (2026-03-20): Pybiscus' functional scope grows — every
 Flower server strategy, defenses against malicious clients, privacy evaluation, data shared
 between clients — and the sessions become reliable and reproducible.
 
