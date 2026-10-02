@@ -28,7 +28,7 @@ You can find here a short documentation on how to use and adapt Pybiscus. The to
 
 * [Campaigns: comparing strategies on short federated runs](campaigns.md)
 * [Robust aggregation against malicious clients](robust-aggregation.md)
-* [Privacy evaluation: FedMIA](privacy-evaluation.md)
+* [Privacy evaluation: FedMIA](privacy-evaluation.md) (under development)
 
 ![Overall Pybiscus plugin architecture](images/pybiscus_architecture.svg)
 

@@ -42,6 +42,7 @@ the manager's URL, the **session token** (proposed when the agent runs from the 
 directory, otherwise copied from the manager's 🔑 *Session token* button), the agent's name,
 its group (*bouquet*), location and role (*Server* for the agent 5000, *Client* for the others).
 *Register agent* sends it to the manager; the agent then waits for the session to start.
+(On one machine, [`3frames.html`](#all-the-agents-in-one-page) shows all the agents in one page.)
 
 ![Agent registration](images/session_server_registration.png "Agent registration")
 
@@ -100,6 +101,17 @@ The manager shows, live:
 
 *Drop session* ends the session and empties the page, for a new one with the same agents (which
 register again).
+
+### All the agents in one page
+
+When testing a session on one machine, `3frames.html` (at the root of the repository, to open as a
+file in the browser) shows the server agent and 1 to 9 client agents in one page, each on its
+registration page: often handier than one tab per agent. Three layouts: grid (all side by side),
+focus (one agent large, the others as live miniatures) and single. It expects the agents on
+`localhost`, the server on port 5000 and the clients from 5001; its ⚙ panel or URL parameters
+(`3frames.html?clients=3&mode=focus`) change that. Its labels are in French.
+
+![3frames.html, focus layout during a run](images/3frames_focus.png "3frames.html, focus layout during a run")
 
 ## Session parameters
 

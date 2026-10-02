@@ -44,7 +44,7 @@ downloaded into `datasets/` on first use.
 * **Strategies**: Flower's FedAvg in the core, and Flower's other server strategies (FedProx,
   FedAdam, Krum, Bulyan...) as plugins; defenses against malicious clients
   ([Robust aggregation](robust-aggregation.md)), server-side differential privacy, privacy
-  evaluation ([FedMIA](privacy-evaluation.md)).
+  evaluation ([FedMIA](privacy-evaluation.md), under development).
 * **Data shared between the clients** by configuration (iid, dirichlet, shards), validation sets
   held out of each client's share, reproducible runs (seeds).
 * **Logging**: the server logs every client's metrics and its own evaluation, to files, TensorBoard,

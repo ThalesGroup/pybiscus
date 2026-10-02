@@ -1,5 +1,8 @@
 # Privacy evaluation: FedMIA
 
+> **Under development.** This feature is still being developed: its configuration, the files it
+> writes and the analyser may change, and its results should be read as preliminary.
+
 The `fedmiaprivacyevaluation` strategy decorator (plugin
 `pybiscus-plugins/strategydecorator/clientprivacyevaluation`, contributed in PR #44) runs a
 membership inference attack from the server: every round, for each example of a *privacy set* and
