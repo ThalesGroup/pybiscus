@@ -1,4 +1,4 @@
- #!/usr/bin/bash 
+#!/usr/bin/bash 
 
 # the agents require the X-Pybiscus header on the requests that change something (CSRF), and
 # their access token when they require one: kept where the agent was started (the repository root

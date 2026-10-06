@@ -1,4 +1,4 @@
- #!/usr/bin/bash 
+#!/usr/bin/bash 
 
 # Resolve the directory of the current script (even if symlinked)
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
