@@ -3,6 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <title>Pybiscus · participants</title>
+  <!-- the manager's colour computation, so that a bouquet gets the same colour in both pages
+       (path relative to the repository root, where this page lives) -->
+  <script src="pybiscus/session/manager/static/pybiscus/js/bouquet_color.js"></script>
   <style>
     :root {
       --bar-bg: #f3f4f6;
@@ -52,6 +55,10 @@
       z-index: 20;
     }
     #bar .title { font-weight: 600; white-space: nowrap; }
+    #bar.marked { border-top: 3px solid var(--session-color); }
+    .bouquet-pill { font-size: 11px; padding: 1px 9px; border-radius: 999px; white-space: nowrap;
+      color: color-mix(in srgb, var(--session-color) 65%, var(--bar-fg)); border: 1px solid var(--session-color);
+      background: color-mix(in srgb, var(--session-color) 14%, transparent); }
     #bar .sep { width: 1px; align-self: stretch; margin: 7px 0; background: var(--line); }
     #bar .push { flex: 1; }
 
@@ -187,6 +194,7 @@
 <body>
   <div id="bar">
     <span class="title">Pybiscus</span>
+    <span class="bouquet-pill" id="bouquet-pill" hidden></span>
     <div id="chips"></div>
     <span class="sep"></span>
     <div class="segmented" id="modes">
@@ -226,27 +234,53 @@
     // between registration and the waiting page made the latter fail (KeyError, error 500)
     const PROBE_PATH = "/run/status";
     const PROBE_PERIOD_MS = 4000;
-    const STORE_KEY = "pybiscus-participants-v1";
+    // one memory per session's server: with a single key, the pages of two sessions open side by
+    // side (core and edge of a hierarchical session) kept overwriting each other's settings
+    const storeKey = (host, serverPort) => `pybiscus-participants-v2:${host}:${serverPort}`;
 
     const DEFAULTS = { clients: 2, host: "localhost", serverPort: 5000, clientPort: 5001, mode: "grid", focus: 0, sideRatio: 0.24 };
 
     function loadState() {
-      let stored = {};
-      try { stored = JSON.parse(localStorage.getItem(STORE_KEY)) || {}; } catch (e) { /* defaults */ }
-      const state = { ...DEFAULTS, ...stored };
       const q = new URLSearchParams(location.search);
       const int = (key, fallback) => (q.has(key) && !isNaN(parseInt(q.get(key), 10)) ? parseInt(q.get(key), 10) : fallback);
+      const host = q.get("host") || DEFAULTS.host;
+      const serverPort = int("server", DEFAULTS.serverPort);
+      let stored = {};
+      try { stored = JSON.parse(localStorage.getItem(storeKey(host, serverPort))) || {}; } catch (e) { /* defaults */ }
+      const state = { ...DEFAULTS, ...stored, host, serverPort };
       state.clients = Math.min(MAX_CLIENTS, Math.max(1, int("clients", state.clients)));
-      state.host = q.get("host") || state.host;
-      state.serverPort = int("server", state.serverPort);
       state.clientPort = int("client", state.clientPort);
       if (["grid", "focus", "solo"].includes(q.get("mode"))) state.mode = q.get("mode");
       state.focus = Math.min(state.clients, Math.max(0, int("focus", state.focus)));
+      // the session's bouquet and, when its manager was given --color, the same colour
+      if (q.has("bouquet")) state.bouquet = q.get("bouquet");
+      if (q.has("color")) state.color = q.get("color");
       return state;
     }
     const state = loadState();
+
+    function applySessionColor() {
+      const known = typeof bouquetColor === "function";   // page opened away from the repository
+      const color = state.color || (state.bouquet && known ? bouquetColor(state.bouquet) : null);
+      if (state.bouquet) {
+        document.title = `${state.bouquet} · Pybiscus · participants`;
+        const pill = document.getElementById("bouquet-pill");
+        pill.textContent = "💐 " + state.bouquet;
+        pill.hidden = false;
+      }
+      if (!color) return;
+      document.documentElement.style.setProperty("--session-color", color);
+      document.getElementById("bar").classList.add("marked");
+      // a square, where the manager's page has a dot: same colour, the two tabs still told apart
+      const icon = document.createElement("link");
+      icon.rel = "icon";
+      icon.href = "data:image/svg+xml," + encodeURIComponent(
+        `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><rect x="1" y="1" width="14" height="14" rx="2" fill="${color}"/></svg>`);
+      document.head.appendChild(icon);
+    }
+    applySessionColor();
     function saveState() {
-      try { localStorage.setItem(STORE_KEY, JSON.stringify(state)); } catch (e) { /* not remembered */ }
+      try { localStorage.setItem(storeKey(state.host, state.serverPort), JSON.stringify(state)); } catch (e) { /* not remembered */ }
     }
 
     const stage = document.getElementById("stage");
