@@ -18,6 +18,11 @@ of every participant in one page.
 
 Open the URL it prints, `http://127.0.0.1:5555/pybiscus-session/manage` (with `?token=…` when it
 requires one, see [Access tokens](#access-tokens)). The page is empty until agents register.
+The script names the session's bouquet (`--bouquet cortaixlabs-core`), shown on the page's map;
+without the option, the page shows the bouquets the agents declare at their registration. The
+bouquet also titles the browser tab and gives the page a colour (band, pill and tab icon), derived
+from its name, or given with `--color` (any CSS colour, e.g. `--color "#ff8800"`): the pages of
+two managers open side by side are told apart at a glance.
 
 ![Session manager, empty](images/session_manager_init.png "Session manager, empty")
 
@@ -111,7 +116,46 @@ focus (one agent large, the others as live miniatures) and single. It expects th
 `localhost`, the server on port 5000 and the clients from 5001; its ⚙ panel or URL parameters
 (`3frames.html?clients=3&mode=focus`) change that. Its labels are in French.
 
+The URL picks the session, and each session's page keeps its own settings (layout, number of
+clients), so that two sessions can be followed side by side:
+
+| session | manager | page |
+|---|---|---|
+| `cortaixlabs-core` | `launch/session/run_manager.sh` (5555) | `3frames.html?server=5000&client=5001&clients=8&bouquet=cortaixlabs-core` |
+| `cortaixlabs-edge1` | `launch/session/run_lower_level_manager.sh` (5556) | `3frames.html?server=5100&client=5101&clients=8&bouquet=cortaixlabs-edge1` |
+
+With `bouquet`, the page takes the colour of its manager's page (tab icon, band, pill); add
+`&color=…` when the manager was given `--color`.
+
 ![3frames.html, focus layout during a run](images/3frames_focus.png "3frames.html, focus layout during a run")
+
+## Bouquets of a hierarchical session
+
+*Under development: the managers are linked and the topology shown; the federated learning across
+the levels is not there yet.*
+
+A manager started with `--upper-url` (and `--bouquet`) reports its bouquet to the upper-level
+manager: its agents, their roles, states and locations, and the lower levels reporting to it in
+turn. `launch/session/run_lower_level_manager.sh` starts `cortaixlabs-edge1` this way, reporting to
+the manager of `run_manager.sh` (`PYBISCUS_UPPER_MANAGER_URL` for another one).
+
+The upper-level page then shows the tree of the bouquets in its topology (each lower level indented
+under its parent, with a link to its manager's page), and the lower levels' agents on its map, in
+their bouquet's colour. The managers are drawn too, as diamonds: a dashed line joins each lower
+level's manager to its parent's (supervision; the federated learning links are the solid stars
+between a server and its clients). A manager is placed with `--geo LAT,LON` (and named with
+`--location`), else next to its session's server; the scripts place both at Palaiseau. The
+lower-level page shows its upper level at the top of its topology and of its map.
+
+On the map of any manager's page, a node (or its label) can be moved with the mouse to pull apart
+the agents registered at the same place; a double click puts it back, *⟲ layout* puts them all
+back. The registered coordinates do not change: only this page's drawing, kept by the browser.
+
+The whole topology is sent when it changes; between two changes, the lower level only sends a
+heartbeat every 10 s. Silent for 30 s, it is shown as unreachable; an upper-level manager restarted
+gets the topology again at the next heartbeat. When the upper-level manager requires tokens, give
+its session token with `--upper-token` (or `PYBISCUS_UPPER_TOKEN`); a manager started from the same
+directory on the same machine finds it on its own.
 
 ## Session parameters
 

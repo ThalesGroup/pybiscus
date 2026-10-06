@@ -250,11 +250,43 @@ def pybiscus_manager_delete_session():
 
 @pybiscus_manager_app.route("/pybiscus-session/agents", methods=["GET"])
 def pybiscus_manager_list_clients():
+    from pybiscus.session.manager.upper_level import lower_levels, manager_place, upper_level
     return jsonify({
         "clients": pybiscus.session.manager.session_manager.registered_clients,
         "servers": pybiscus.session.manager.session_manager.registered_servers,
         "meta":    pybiscus.session.manager.session_manager.registered_agents_meta,
+        "lower_levels": lower_levels(),
+        "upper_level": upper_level(),
+        "manager": manager_place(),
     })
+
+# **************************
+
+# a lower-level manager (started with --upper-url) reports its bouquet's topology here
+@pybiscus_manager_app.route("/pybiscus-session/lower-level", methods=["POST"])
+@session_access
+def pybiscus_manager_receive_lower_level():
+    from pybiscus.session.manager.upper_level import record_lower_level
+    topology = request.get_json(silent=True)
+    if not isinstance(topology, dict) or not isinstance(topology.get("bouquet"), str) or not topology["bouquet"] \
+            or not isinstance(topology.get("agents"), list):
+        return jsonify({"status": "error", "message": "expected a bouquet name and a list of agents"}), 400
+    record_lower_level(topology)
+    # the lower level shows which upper level it reports to, in its colour
+    return jsonify({"status": "ok", "bouquet": pybiscus.session.manager.session_manager.bouquet,
+                    "color": pybiscus.session.manager.session_manager.bouquet_color})
+
+# between two changes of its topology, a lower-level manager only says it is alive
+@pybiscus_manager_app.route("/pybiscus-session/lower-level/heartbeat", methods=["POST"])
+@session_access
+def pybiscus_manager_lower_level_heartbeat():
+    from pybiscus.session.manager.upper_level import lower_level_alive
+    bouquet = (request.get_json(silent=True) or {}).get("bouquet")
+    if not isinstance(bouquet, str) or not bouquet:
+        return jsonify({"status": "error", "message": "expected a bouquet name"}), 400
+    return jsonify({"status": "ok", "known": lower_level_alive(bouquet),
+                    "bouquet": pybiscus.session.manager.session_manager.bouquet,
+                    "color": pybiscus.session.manager.session_manager.bouquet_color})
 
 # **************************
 
@@ -268,6 +300,8 @@ def pybiscus_manager_manage():
     from pybiscus.session.agent.agent_weblog import agent_state_protocol
     return render_template("pybiscus/manager.html", manager_port=pybiscus.session.manager.session_manager.manager_port,
                            session_token=pybiscus.session.manager.session_manager.session_token,
+                           bouquet=pybiscus.session.manager.session_manager.bouquet,
+                           bouquet_color=pybiscus.session.manager.session_manager.bouquet_color,
                            gui_log_patterns=gui_log_patterns(), agent_state_protocol=agent_state_protocol())
 
 # **************************
@@ -303,6 +337,10 @@ def pybiscus_manager_receive_agents():
     # private section
     with agent_lock:
         agent_messages.append({'source': source, 'message': message, 'state': state})
+
+    # the source is "<bouquet>:<agent name>", as the page reads it (checkAgentLogs)
+    if state and ":" in source:
+        pybiscus.session.manager.session_manager.agent_states[source.split(":", 1)[1]] = state
 
     return jsonify({"status": "success"}), 200
 
@@ -397,8 +435,13 @@ def pybiscus_manager_get_metrics():
 new_vignettes = []
 vignettes_lock = Lock()  # lock used to prevent logs concurrent access
 
-# cache d'affichage du manager ; les vignettes de référence sont dans experiments/<session>
-VIGNETTES_DIR = "pybiscus/session/manager/static/pybiscus/vignettes"
+# cache d'affichage du manager ; les vignettes de référence sont dans experiments/<session>.
+# Un dossier par port, sous le dossier static du paquet (et non relatif au répertoire courant) :
+# deux managers lancés depuis le même dépôt (niveaux supérieur et inférieur d'une session
+# hiérarchique) écrasaient les vignettes l'un de l'autre, et le ménage de l'un vidait l'autre.
+def vignettes_dir():
+    return os.path.join(pybiscus_manager_app.static_folder, "pybiscus", "vignettes",
+                        str(pybiscus.session.manager.session_manager.manager_port))
 
 @pybiscus_manager_app.route('/webhook/vignettes', methods=['POST'])
 @session_access
@@ -423,8 +466,8 @@ def pybiscus_manager_post_vignette():
         metadata = None
 
     # save file
-    save_path = os.path.join(VIGNETTES_DIR, f"grid_{col_row}.png")
-    os.makedirs(VIGNETTES_DIR, exist_ok=True)
+    save_path = os.path.join(vignettes_dir(), f"grid_{col_row}.png")
+    os.makedirs(vignettes_dir(), exist_ok=True)
     file.save(save_path)
 
     # memo file
@@ -474,7 +517,7 @@ def clear_message_buffers():
         # les png du run précédent sont un cache d'affichage : l'original est archivé
         # dans experiments/<session>. Sans ce ménage ils survivent jusqu'à être écrasés,
         # et une session plus courte laisserait voir les vignettes de la précédente.
-        for vignette in glob.glob(os.path.join(VIGNETTES_DIR, "grid_*.png")):
+        for vignette in glob.glob(os.path.join(vignettes_dir(), "grid_*.png")):
             try:
                 os.remove(vignette)
             except OSError as e:

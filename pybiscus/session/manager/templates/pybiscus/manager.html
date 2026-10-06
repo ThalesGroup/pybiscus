@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Pybiscus — Session Monitor</title>
+<title>{% if bouquet %}{{ bouquet }} · Pybiscus{% else %}Pybiscus — Session Monitor{% endif %}</title>
 <style>
   :root{
     --bg:#0e1116; --panel:#151a21; --panel-2:#1b222b; --border:#232c37;
@@ -26,6 +26,12 @@
     border-radius:var(--r); background:linear-gradient(180deg,var(--panel-2),var(--panel))}
   .brand{display:flex; align-items:center; gap:9px; font-weight:600; letter-spacing:.18em; text-transform:uppercase; font-size:12px}
   .brand .mark{color:var(--accent); font-size:15px}
+  /* the session's colour (--bouquet / --color): a band and a pill only, the page's own palette is
+     tuned for the charts on the dark background */
+  .topbar.marked{border-top:3px solid var(--session-color)}
+  .bouquet-pill{font-size:11px; letter-spacing:.06em; padding:2px 10px; border-radius:999px; white-space:nowrap;
+    color:color-mix(in srgb, var(--session-color) 65%, white); border:1px solid var(--session-color);
+    background:color-mix(in srgb, var(--session-color) 14%, transparent)}
   .live{display:flex; align-items:center; gap:7px; color:var(--test); font-size:11px; letter-spacing:.16em; text-transform:uppercase}
   .live .dot{width:8px;height:8px;border-radius:50%;background:var(--test);animation:pulse 1.8s ease-out infinite}
   @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(78,205,196,.55)}70%{box-shadow:0 0 0 7px rgba(78,205,196,0)}100%{box-shadow:0 0 0 0 rgba(78,205,196,0)}}
@@ -67,7 +73,11 @@
   .tool:hover{color:var(--text)}
 
   /* topology + geo */
-  .nodes{display:flex; flex-direction:column; gap:8px}
+  .nodes{display:flex; flex-direction:column; gap:8px; overflow-y:auto; min-height:0}
+  /* hierarchical session: this session, then each lower level, indented under its parent */
+  .tier{display:flex; flex-direction:column; gap:6px; padding-left:9px; border-left:2px solid var(--tier-color)}
+  .tier.stale{opacity:.5}
+  .tier-head{display:flex; align-items:center; gap:8px} .tier-head a.tool{text-decoration:none}
   .node{display:flex; align-items:center; gap:9px; padding:7px 9px; border:1px solid var(--border); border-radius:8px; background:var(--panel-2)}
   .node .st{width:9px;height:9px;border-radius:50%;flex:0 0 auto;background:var(--down)}
   .node.up .st{background:var(--ok); box-shadow:0 0 8px rgba(78,205,196,.5)}
@@ -82,6 +92,9 @@
   .geolabels{position:absolute; inset:0; pointer-events:none}
   .geolabels .lbl{position:absolute; transform:translate(7px,-50%); font-size:10px; color:var(--text);
     white-space:nowrap; text-shadow:0 1px 3px #000,0 0 2px #000; pointer-events:auto; cursor:default}
+  .geolabels .lbl.left{transform:translate(calc(-100% - 7px),-50%)}
+  #geo g[data-key], .geolabels .lbl[data-key]{cursor:grab}
+  body.dragging-node, body.dragging-node *{cursor:grabbing !important; user-select:none}
   .cluster-tag{position:absolute; top:7px; left:8px; font-size:10px; color:#cdd6e0; letter-spacing:.04em;
     background:rgba(10,14,20,.55); border:1px solid var(--border); border-radius:999px; padding:2px 9px}
 
@@ -133,12 +146,14 @@
 
 <script>const AGENT_STATE_PROTOCOL = {{ agent_state_protocol | tojson }};</script>
 <script src="{{ url_for('static', filename='pybiscus/js/session_utils.js') }}"></script>
+<script src="{{ url_for('static', filename='pybiscus/js/bouquet_color.js') }}"></script>
 
 <div class="app">
 
   <!-- top bar -->
   <div class="topbar">
     <div class="brand"><span class="mark">✳</span> Pybiscus · Session</div>
+    <span class="bouquet-pill" id="bouquet-pill" hidden></span>
     <div class="live"><span class="dot"></span> live</div>
     <div class="sep"></div>
     <div class="server-url">server <b id="server-url-display">—</b></div>
@@ -162,7 +177,8 @@
         <div class="body"><div class="nodes" id="nodes"><div class="empty">no agents yet</div></div></div>
       </section>
       <section class="panel">
-        <header><span class="eyebrow">Registration · geo</span></header>
+        <header><span class="eyebrow">Registration · geo</span>
+          <button class="tool" id="layout-reset" title="Back to the registered positions (a double click resets one node)">⟲ layout</button></header>
         <div class="body"><div class="geo">
           <div class="geomap">
             <svg id="geo" viewBox="0 0 100 62" preserveAspectRatio="none"></svg>
@@ -252,6 +268,24 @@
   const AGENTS_URL='/pybiscus-session/agents_logs', LOGS_URL='/pybiscus-session/logs', METRICS_URL='/pybiscus-session/metrics';
   // opens the server agent's session form, and is given to the agents at their registration
   const SESSION_TOKEN = {{ session_token | tojson }};
+  const MANAGER_BOUQUET = {{ bouquet | tojson }};
+  const SESSION_COLOR = {{ bouquet_color | tojson }} || (MANAGER_BOUQUET ? bouquetColor(MANAGER_BOUQUET) : null);
+  if (SESSION_COLOR) {
+    document.documentElement.style.setProperty('--session-color', SESSION_COLOR);
+    document.querySelector('.topbar').classList.add('marked');
+    if (MANAGER_BOUQUET) {
+      const pill = document.getElementById('bouquet-pill');
+      pill.textContent = '💐 ' + MANAGER_BOUQUET;
+      pill.hidden = false;
+    }
+    // a dot of the same colour as the tab's icon: still visible when the title is cut
+    const icon = document.createElement('link');
+    icon.rel = 'icon';
+    icon.href = 'data:image/svg+xml,' + encodeURIComponent(
+      `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><circle cx="8" cy="8" r="7" fill="${SESSION_COLOR}"/></svg>`);
+    document.head.appendChild(icon);
+  }
+  const VIGNETTES_URL = {{ url_for('static', filename='pybiscus/vignettes/' ~ manager_port) | tojson }};
   const sessionConfigUrl = serverUrl => `${serverUrl}/session/config?token=${encodeURIComponent(SESSION_TOKEN)}`;
 
   // ============ feeds ============
@@ -381,29 +415,111 @@
   AGENT_STATE_PROTOCOL.states.filter(st => !(st in STATE_ICON && st in STATE_CLASS))
     .forEach(st => console.warn(`agent state "${st}" has no icon or class in manager.html`));
   const esc = s => String(s).replace(/[<>&"]/g, c=>({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c]));
-  function renderTopology(servers, clients, meta){
+  // ============ map layout: nodes moved with the mouse ============
+  // the registered coordinates stay as they are: only where this page draws a node changes, to pull
+  // apart the nodes that overlap; one layout per manager page (host:port), kept by the browser
+  const LAYOUT_KEY = `pybiscus-manager-layout:${location.host}`;
+  let manualLayout = {};
+  try { manualLayout = JSON.parse(localStorage.getItem(LAYOUT_KEY)) || {}; } catch(e) { /* registered positions */ }
+  const saveLayout = () => { try { localStorage.setItem(LAYOUT_KEY, JSON.stringify(manualLayout)); } catch(e) { /* not kept */ } };
+  let lastTopology = null, draggedNode = null, redrawPending = false;
+  function redrawTopology(){
+    if(redrawPending || !lastTopology) return;
+    redrawPending = true;
+    requestAnimationFrame(()=>{ redrawPending = false; renderTopology(...lastTopology); });
+  }
+  function mapPoint(ev){
+    const r = document.getElementById('geo').getBoundingClientRect();
+    return { x: Math.min(98, Math.max(2, (ev.clientX-r.left)/r.width*100)),
+             y: Math.min(60, Math.max(2, (ev.clientY-r.top)/r.height*62)) };
+  }
+  const geomap = document.querySelector('.geomap');
+  geomap.addEventListener('pointerdown', ev=>{
+    const el = ev.target.closest('[data-key]'); if(!el) return;
+    draggedNode = el.dataset.key; document.body.classList.add('dragging-node'); ev.preventDefault();
+  });
+  // on the document: the map is redrawn under the pointer while it moves
+  document.addEventListener('pointermove', ev=>{ if(!draggedNode) return; manualLayout[draggedNode] = mapPoint(ev); redrawTopology(); });
+  document.addEventListener('pointerup', ()=>{
+    if(!draggedNode) return;
+    draggedNode = null; document.body.classList.remove('dragging-node'); saveLayout();
+  });
+  geomap.addEventListener('dblclick', ev=>{
+    const el = ev.target.closest('[data-key]'); if(!el) return;
+    delete manualLayout[el.dataset.key]; saveLayout(); redrawTopology();
+  });
+  document.getElementById('layout-reset').addEventListener('click', ()=>{ manualLayout = {}; saveLayout(); redrawTopology(); });
+
+  // the lower levels' agents, reported by their managers (--upper-url), recursively: one group per
+  // bouquet, in tree order; nodes are keyed by bouquet, two sites may reuse an agent name
+  function flattenLowerLevels(levels, parent, depth, groups){
+    (levels||[]).forEach(lv=>{
+      const group = {bouquet:lv.bouquet, color:lv.color || bouquetColor(lv.bouquet), stale:!!lv.stale,
+                     url:lv.manager_url, manager:lv.manager || {}, parent, depth, nodes:[]};
+      (lv.agents||[]).forEach(a=>group.nodes.push({key:`${lv.bouquet}/${a.name}`, name:a.name, role:a.role,
+        state:a.state || 'declared', geo:a.geo_location, bouquet:lv.bouquet, loc:a.location, org:a.organisation, group}));
+      groups.push(group);
+      flattenLowerLevels(lv.lower_levels, group, depth+1, groups);
+    });
+    return groups;
+  }
+  function renderTopology(servers, clients, meta, lowerLevels, upperLevel, manager){
+    lastTopology = [servers, clients, meta, lowerLevels, upperLevel, manager];
     meta = meta || {};
     const nodes=[];
-    Object.keys(servers).forEach(n=>nodes.push({name:n, role:'server', state:session.getAgentState(n)}));
-    Object.keys(clients).forEach(n=>nodes.push({name:n, role:'client', state:session.getAgentState(n)}));
+    Object.keys(servers).forEach(n=>nodes.push({key:n, name:n, role:'server', state:session.getAgentState(n)}));
+    Object.keys(clients).forEach(n=>nodes.push({key:n, name:n, role:'client', state:session.getAgentState(n)}));
     nodes.forEach(nd=>{ const m=meta[nd.name]||{}; nd.geo=m.geo_location; nd.bouquet=m.bouquet; nd.loc=m.location; nd.org=m.organisation; });
-    setTxt('agents-count', nodes.length+' agents');
+    const groups = flattenLowerLevels(lowerLevels, null, 1, []);
+    const lowerNodes = groups.flatMap(gr=>gr.nodes), allNodes = nodes.concat(lowerNodes);
+    setTxt('agents-count', nodes.length+' agents' + (lowerNodes.length ? ` + ${lowerNodes.length} lower` : ''));
     const tip = nd => [nd.name, nd.role, nd.state, nd.bouquet&&('💐 '+nd.bouquet), nd.org, nd.loc,
       (typeof nd.geo==='string')?nd.geo:null,
       (nd.geo&&typeof nd.geo.latitude==='number')?`${nd.geo.latitude.toFixed(3)}, ${nd.geo.longitude.toFixed(3)}`:null].filter(Boolean).join(' · ');
-    document.getElementById('nodes').innerHTML = nodes.length ? nodes.map(nd=>
+    const row = nd =>
       `<div class="node ${stateClass(nd.state)}" title="${esc(tip(nd))}">`+
         `<span class="st"></span><span class="ico">${ROLE_ICON[nd.role]||'❔'}</span>`+
-        `<span class="name">${esc(nd.name)}</span><span class="kpi">${STATE_ICON[nd.state]||'⚪'}</span></div>`).join('')
-      : '<div class="empty">no agents yet</div>';
+        `<span class="name">${esc(nd.name)}</span><span class="kpi">${STATE_ICON[nd.state]||'⚪'}</span></div>`;
+    const tierHead = (name, color, count, url, stale) =>
+      `<div class="tier-head"><span class="bouquet-pill" style="--session-color:${esc(color)}">💐 ${esc(name)}</span>`+
+      `<span class="chip">${count} agent${count===1?'':'s'}</span>`+
+      (stale ? '<span class="chip" title="its manager has stopped reporting">unreachable</span>' : '')+
+      (url ? `<a class="tool" href="${esc(url)}/pybiscus-session/manage" target="_blank" title="open its manager">↗</a>` : '')+`</div>`;
+    let list = nodes.map(row).join('');
+    // the upper level this manager reports to (--upper-url): its bouquet, and whether it is reached
+    const upper = upperLevel ? {...upperLevel, name: upperLevel.bouquet || upperLevel.url,
+      // literal colours: also used in SVG attributes, where var(--…) does not resolve
+      colour: upperLevel.reached === false ? '#5a6470' : (upperLevel.color || (upperLevel.bouquet ? bouquetColor(upperLevel.bouquet) : '#7d8794'))} : null;
+    const upperHead = upper ? `<div class="tier-head"><span class="bouquet-pill" style="--session-color:${esc(upper.colour)}">↑ 💐 ${esc(upper.name)}</span>`+
+      `<span class="chip" title="${esc(upper.problem || '')}">${upper.reached ? 'connected' : upper.reached === false ? 'not reached' : 'connecting…'}</span>`+
+      `<a class="tool" href="${esc(upper.url)}/pybiscus-session/manage" target="_blank" title="open the upper-level manager">↗</a></div>` : '';
+    if(groups.length || upper){
+      // the tree: this session, then each lower level indented under its parent
+      list = upperHead + `<div class="tier" style="--tier-color:${esc(SESSION_COLOR || 'var(--border)')}">`+
+               tierHead(MANAGER_BOUQUET || 'this session', SESSION_COLOR || 'var(--muted)', nodes.length, null, false)+list+`</div>`+
+             groups.map(gr=>`<div class="tier${gr.stale?' stale':''}" style="--tier-color:${esc(gr.color)}; margin-left:${gr.depth*14}px">`+
+               tierHead('↳ '+gr.bouquet, gr.color, gr.nodes.length, gr.url, gr.stale)+gr.nodes.map(row).join('')+`</div>`).join('');
+    }
+    document.getElementById('nodes').innerHTML = allNodes.length ? list : '<div class="empty">no agents yet</div>';
     // positions : par lat/lon si dispo (ajustées à la bbox des agents + décalage anti-superposition),
-    // sinon disposition schématique (serveur au centre, clients en cercle)
+    // sinon disposition schématique (serveur au centre, clients en cercle, niveaux inférieurs autour)
     const geo=document.getElementById('geo');
     const W=100,H=62, cx=50, cy=31;
     const server = nodes.find(n=>n.role==='server');
     const clientNodes = nodes.filter(n=>n.role==='client');
+    // the managers of a hierarchical session: supervision, not federated learning, hence a shape of
+    // their own; where they say they are (--geo), else next to their session's server
+    const managerNodes = [];
+    const ownManager = {key:'^manager', bouquet:MANAGER_BOUQUET, loc:(manager||{}).location, geo:(manager||{}).geo_location,
+                        colour:SESSION_COLOR || '#cdd6e0', serverKey:server && server.key};
+    if(groups.length || upper) managerNodes.push(ownManager);
+    groups.forEach(gr=>{ const lowerServer = gr.nodes.find(n=>n.role==='server');
+      gr.managerNode = {key:`${gr.bouquet}/^manager`, bouquet:gr.bouquet, loc:gr.manager.location, geo:gr.manager.geo_location,
+                        colour:gr.color, group:gr, serverKey:lowerServer && lowerServer.key};
+      managerNodes.push(gr.managerNode); });
     const hasGeo = nd => nd.geo && typeof nd.geo.latitude==='number' && typeof nd.geo.longitude==='number';
-    const geoNodes = nodes.filter(hasGeo);
+    const placedNodes = allNodes.concat(managerNodes.filter(hasGeo));
+    const geoNodes = placedNodes.filter(hasGeo);
     const pos={};
     if(geoNodes.length){
       const lats=geoNodes.map(n=>n.geo.latitude), lons=geoNodes.map(n=>n.geo.longitude);
@@ -411,41 +527,86 @@
       const spanLa=(maxLa-minLa)||1, spanLo=(maxLo-minLo)||1, padX=10, padY=9;
       const project=(la,lo)=>({ x:padX+(W-2*padX)*((lo-minLo)/spanLo), y:padY+(H-2*padY)*(1-(la-minLa)/spanLa) });
       // regroupe les nœuds partageant la même position projetée
-      const groups={};
-      nodes.forEach(nd=>{ const b = hasGeo(nd) ? project(nd.geo.latitude, nd.geo.longitude) : {x:cx,y:cy};
+      const posGroups={};
+      placedNodes.forEach(nd=>{ const b = hasGeo(nd) ? project(nd.geo.latitude, nd.geo.longitude) : {x:cx,y:cy};
         const key=`${b.x.toFixed(1)},${b.y.toFixed(1)}`;
-        (groups[key]=groups[key]||{b, m:[]}).m.push(nd); });
+        (posGroups[key]=posGroups[key]||{b, m:[]}).m.push(nd); });
       // répartition régulière sur un cercle centré sur la position commune (rayon croissant avec le nb de nœuds)
-      Object.values(groups).forEach(gr=>{
-        if(gr.m.length===1){ pos[gr.m[0].name]=gr.b; return; }
+      Object.values(posGroups).forEach(gr=>{
+        if(gr.m.length===1){ pos[gr.m[0].key]=gr.b; return; }
         const R=Math.min(4 + gr.m.length*0.9, 14);
         gr.m.forEach((nd,j)=>{ const a=-Math.PI/2 + j*2*Math.PI/gr.m.length;
-          pos[nd.name]={x:gr.b.x+R*Math.cos(a), y:gr.b.y+R*Math.sin(a)}; });
+          pos[nd.key]={x:gr.b.x+R*Math.cos(a), y:gr.b.y+R*Math.sin(a)}; });
       });
     } else {
-      const R=26, Ry=20; if(server) pos[server.name]={x:cx,y:cy};
-      clientNodes.forEach((c,i)=>{ const a=-Math.PI/2 + i*2*Math.PI/Math.max(clientNodes.length,1); pos[c.name]={x:cx+R*Math.cos(a), y:cy+Ry*Math.sin(a)}; });
+      const R=groups.length?18:26, Ry=groups.length?13:20; if(server) pos[server.key]={x:cx,y:cy};
+      clientNodes.forEach((c,i)=>{ const a=-Math.PI/2 + i*2*Math.PI/Math.max(clientNodes.length,1); pos[c.key]={x:cx+R*Math.cos(a), y:cy+Ry*Math.sin(a)}; });
+      groups.forEach((gr,i)=>{ const a=-Math.PI/2 + (i+0.5)*2*Math.PI/groups.length, c={x:cx+38*Math.cos(a), y:cy+24*Math.sin(a)};
+        gr.nodes.forEach((nd,j)=>{ const b=j*2*Math.PI/gr.nodes.length;
+          pos[nd.key] = gr.nodes.length===1 ? c : {x:c.x+5*Math.cos(b), y:c.y+4*Math.sin(b)}; }); });
     }
+    managerNodes.forEach(m=>{ if(pos[m.key]) return;
+      const s = m.serverKey && (manualLayout[m.serverKey] || pos[m.serverKey]);
+      pos[m.key] = s ? {x:s.x-6, y:s.y-5} : {x:8, y:8}; });
+    // kept inside the map: the circle spreading the nodes of one place went past its edges
+    const inMap = q => ({x:Math.min(98, Math.max(2, q.x)), y:Math.min(60, Math.max(2, q.y))});
+    const at = nd => manualLayout[nd.key] || inMap(pos[nd.key] || {x:cx,y:cy});
     let g='';
     for(let i=1;i<10;i++) g+=`<line x1="${i*10}" y1="0" x2="${i*10}" y2="62" stroke="#18222c" stroke-width=".3"/>`;
     for(let i=1;i<6;i++)  g+=`<line x1="0" y1="${i*10}" x2="100" y2="${i*10}" stroke="#18222c" stroke-width=".3"/>`;
+    // each lower level: its own star in its colour (federated learning), and a dashed link from its
+    // manager to its parent's (supervision: the servers of two levels are not linked)
+    groups.forEach(gr=>{
+      const lowerServer = gr.nodes.find(n=>n.role==='server');
+      const parentManager = gr.parent ? gr.parent.managerNode : ownManager;
+      const op = gr.stale ? .25 : .55;
+      if(lowerServer) gr.nodes.filter(n=>n.role==='client').forEach(c=>{ const s=at(lowerServer), p=at(c);
+        g+=`<line x1="${s.x}" y1="${s.y}" x2="${p.x}" y2="${p.y}" stroke="${esc(gr.color)}" stroke-width=".35" opacity="${op}"/>`; });
+      const s=at(parentManager), p=at(gr.managerNode);
+      g+=`<line x1="${s.x}" y1="${s.y}" x2="${p.x}" y2="${p.y}" stroke="${esc(gr.color)}" stroke-width=".45" stroke-dasharray="1.4 .9" opacity="${op+.2}"/>`;
+    });
+    // the upper level, off the map's geography: a mark at the top, dashed to this session's manager
+    if(upper){ const u = manualLayout['^upper'] || {x:50, y:4}, s = at(ownManager);
+      g+=`<line x1="${u.x}" y1="${u.y}" x2="${s.x}" y2="${s.y}" stroke="${esc(upper.colour)}" stroke-width=".45" stroke-dasharray="1.4 .9" opacity="${upper.reached ? .75 : .4}"/>`;
+      g+=`<g data-key="^upper"><title>${esc(upper.name + ' · ' + upper.url)}</title>`+
+         `<rect x="${u.x-1.1}" y="${u.y-1.1}" width="2.2" height="2.2" rx=".4" fill="${esc(upper.colour)}"/></g>`; }
     // losange de pixels : centre + 4 pointes (N/S/E/O) + 4 milieux d'arêtes
     const diamond=[[0,0],[0,-1.3],[0,1.3],[-1.3,0],[1.3,0],[-0.65,-0.65],[0.65,-0.65],[-0.65,0.65],[0.65,0.65]];
-    if(server) clientNodes.forEach((c,i)=>{ const s=pos[server.name], p=pos[c.name];
-      g+=`<line x1="${s.x}" y1="${s.y}" x2="${p.x}" y2="${p.y}" stroke="#2b3947" stroke-width=".5"/>`;
+    // this session's nodes in its bouquet's colour, as the lower levels' are in theirs; without a
+    // bouquet, the former colours (server, client up or waiting)
+    const localColour = nd => SESSION_COLOR ? esc(SESSION_COLOR) : (nd.role==='server'?'#ff5d73':(stateClass(nd.state)==='up'?'#4ecdc4':'#ffb454'));
+    if(server) clientNodes.forEach((c,i)=>{ const s=at(server), p=at(c);
+      g+= SESSION_COLOR ? `<line x1="${s.x}" y1="${s.y}" x2="${p.x}" y2="${p.y}" stroke="${esc(SESSION_COLOR)}" stroke-width=".45" opacity=".55"/>`
+                        : `<line x1="${s.x}" y1="${s.y}" x2="${p.x}" y2="${p.y}" stroke="#2b3947" stroke-width=".5"/>`;
       if(c.state==='terminated' || c.state==='stopped') return;   // client terminé (🏁) ou arrêté (⏹️) : on garde le lien mais plus d'étincelles
       const cloud=diamond.map((d,k)=>`<rect x="${(d[0]-0.3).toFixed(2)}" y="${(d[1]-0.3).toFixed(2)}" width="0.6" height="0.6" fill="#ff5d73"><animate attributeName="opacity" values="0.12;1;0.12" dur="${(0.45+0.11*k).toFixed(2)}s" repeatCount="indefinite"/></rect>`).join('');
       g+=`<g><animateMotion dur="${(2.8+0.35*i).toFixed(2)}s" repeatCount="indefinite" keyPoints="0;1;0" keyTimes="0;0.5;1" calcMode="linear" path="M ${s.x} ${s.y} L ${p.x} ${p.y}"/>${cloud}</g>`;});
-    nodes.forEach(nd=>{ const p=pos[nd.name]||{x:cx,y:cy}; const c=nd.role==='server'?'#ff5d73':(stateClass(nd.state)==='up'?'#4ecdc4':'#ffb454');
-      g+=`<g><title>${esc(tip(nd))}</title>`+
-         `<circle cx="${p.x}" cy="${p.y}" r="3.2" fill="${c}" opacity=".16"/><circle cx="${p.x}" cy="${p.y}" r="1.5" fill="${c}"/></g>`;});
+    nodes.forEach(nd=>{ const p=at(nd), c=localColour(nd), r = SESSION_COLOR && nd.role!=='server' ? 1.2 : 1.6;
+      g+=`<g data-key="${esc(nd.key)}"><title>${esc(tip(nd))}</title>`+
+         `<circle cx="${p.x}" cy="${p.y}" r="${r*2}" fill="${c}" opacity=".16"/><circle cx="${p.x}" cy="${p.y}" r="${r}" fill="${c}"/></g>`;});
+    // the lower levels' nodes in their bouquet's colour, a server larger than its clients
+    lowerNodes.forEach(nd=>{ const p=at(nd), c=esc(nd.group.color), op=nd.group.stale ? .35 : 1, r=nd.role==='server' ? 1.4 : 1;
+      g+=`<g data-key="${esc(nd.key)}" opacity="${op}"><title>${esc(tip(nd))}</title>`+
+         `<circle cx="${p.x}" cy="${p.y}" r="${r*2}" fill="${c}" opacity=".16"/><circle cx="${p.x}" cy="${p.y}" r="${r}" fill="${c}"/></g>`;});
+    managerNodes.forEach(m=>{ const p=at(m), c=esc(m.colour), op = m.group && m.group.stale ? .35 : 1, d=1.9;
+      g+=`<g data-key="${esc(m.key)}" opacity="${op}"><title>${esc(['manager', m.bouquet && ('💐 '+m.bouquet), m.loc].filter(Boolean).join(' · '))}</title>`+
+         `<polygon points="${p.x},${p.y-d} ${p.x+d},${p.y} ${p.x},${p.y+d} ${p.x-d},${p.y}" fill="${c}" stroke="#0e1116" stroke-width=".3"/></g>`; });
     geo.innerHTML=g;
     // libellés en overlay HTML (nets) + tooltip (autres infos de registration à brancher côté back)
-    document.getElementById('geolabels').innerHTML = nodes.map(nd=>{ const p=pos[nd.name]||{x:cx,y:cy};
-      return `<span class="lbl" style="left:${p.x}%; top:${(p.y/62*100).toFixed(1)}%" title="${esc(tip(nd))}">${ROLE_ICON[nd.role]||''} ${esc(nd.name)}</span>`;}).join('');
-    // tag cluster : vrai(s) bouquet(s) remontés par la registration
-    const bouquets=[...new Set(nodes.map(n=>n.bouquet).filter(Boolean))];
-    setTxt('cluster-tag', '💐 '+(bouquets.length? bouquets.join(' · ') : 'cluster')+(nodes.length? ` · ${nodes.length} nodes`:''));
+    const upperLabel = upper ? (u => `<span class="lbl" data-key="^upper" style="left:${u.x}%; top:${(u.y/62*100).toFixed(1)}%; color:${esc(upper.colour)}"`+
+      ` title="${esc(upper.url)}">↑ ${esc(upper.name)}${upper.reached === false ? ' (not reached)' : ''}</span>`)(manualLayout['^upper'] || {x:50, y:4}) : '';
+    const managerLabels = managerNodes.map(m=>{ const p=at(m);
+      return `<span class="lbl${p.x > 72 ? ' left' : ''}" data-key="${esc(m.key)}" style="left:${p.x}%; top:${(p.y/62*100).toFixed(1)}%; color:${esc(m.colour)}">`+
+             `◆ ${esc(m.bouquet || '')} manager</span>`; }).join('');
+    document.getElementById('geolabels').innerHTML = upperLabel + managerLabels + allNodes.map(nd=>{ const p=at(nd);
+      const colour = nd.group ? `; color:${esc(nd.group.color)}` : (SESSION_COLOR ? `; color:${esc(SESSION_COLOR)}` : '');
+      // near the right edge, the label goes to the node's left: the map would cut it
+      return `<span class="lbl${p.x > 72 ? ' left' : ''}" data-key="${esc(nd.key)}" style="left:${p.x}%; top:${(p.y/62*100).toFixed(1)}%${colour}" title="${esc(tip(nd))}">${ROLE_ICON[nd.role]||''} ${esc(nd.name)}</span>`;}).join('');
+    // tag cluster : le bouquet du manager (--bouquet), sinon ceux déclarés par les agents à leur registration
+    const bouquets = MANAGER_BOUQUET ? [MANAGER_BOUQUET] : [...new Set(nodes.map(n=>n.bouquet).filter(Boolean))];
+    setTxt('cluster-tag', '💐 '+(bouquets.length? bouquets.join(' · ') : 'cluster')+(nodes.length? ` · ${nodes.length} nodes`:'')
+      +(groups.length ? ' · ↳ '+groups.map(gr=>gr.bouquet).join(' · ') : '')
+      +(upper ? ' · ↑ '+upper.name : ''));
   }
 
   // ============ session update loop (préservé + rendu) ============
@@ -455,7 +616,7 @@
       // le rendu (topology/geo/charts) ne doit jamais bloquer la logique de popup ci-dessous
       registeredClients = Object.keys(data.clients || {}).length;
       setTxt('cfg-clients', `${registeredClients} client${registeredClients === 1 ? '' : 's'} registered = default min_clients`);
-      try { renderTopology(servers, data.clients || {}, data.meta || {}); renderCharts(); }
+      try { renderTopology(servers, data.clients || {}, data.meta || {}, data.lower_levels || [], data.upper_level || null, data.manager || null); renderCharts(); }
       catch(e){ console.error('[manager] render error:', e); }
       if(serverUrl==="" && Object.keys(servers).length>0){
         serverUrl = Object.values(servers)[0];
@@ -541,7 +702,7 @@
       for(let c=0;c<cols;c++){
         const id=`${c}_${r}`;
         h+= vign.seen.has(id)
-          ? `<img class="vm-cell" src="/static/pybiscus/vignettes/grid_${id}.png" data-id="${id}" title="round ${c+1} · layer ${r}">`
+          ? `<img class="vm-cell" src="${VIGNETTES_URL}/grid_${id}.png" data-id="${id}" title="round ${c+1} · layer ${r}">`
           : `<div class="vm-cell empty-cell"></div>`;
       }
     }

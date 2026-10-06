@@ -1,5 +1,7 @@
 import argparse
 import os
+import socket
+from threading import Lock
 from flask import Flask
 from flask_cors import CORS
 
@@ -35,6 +37,23 @@ registered_clients = {}
 registered_servers = {}
 registered_agents_meta = {}   # name -> {geo_location, bouquet, location, organisation, role, agent_url}
 manager_port = None
+# the bouquet this manager's session belongs to (--bouquet): the one its page shows, whatever the
+# agents declare at their registration; None keeps showing theirs
+bouquet = None
+bouquet_color = None   # --color: a CSS colour; None derives one from the bouquet's name
+manager_url = None     # how the other managers reach this one's page
+# where this manager is (--location, --geo), drawn on the maps of a hierarchical session
+manager_location = None
+manager_geo = None     # {"type": "coordinates", "latitude", "longitude"}
+# last state each agent declared (AgentState): the page keeps its own from the agents' log, this one
+# is what the upper-level manager is told
+agent_states = {}
+# bouquet -> {"topology": what its manager reported, "last_seen": time}, for the lower levels whose
+# manager was started with --upper-url pointing to this one
+lower_levels = {}
+lower_levels_lock = Lock()
+# with --upper-url: {"url", "bouquet", "color", "reached", "problem", "last_contact"}, shown in the page
+upper_link = None
 session_is_running = False
 agent_gui_json_presets = None
 session_client_id_counter = -1
@@ -66,6 +85,8 @@ def clear_session():
     late_client_cids = {}
     global registered_clients_cpu
     registered_clients_cpu = {}
+    global agent_states
+    agent_states = {}
 
 def client_threads(name):
     """the physical cores of the client's machine shared between the session's clients on it, or
@@ -84,6 +105,16 @@ def generate_new_cid():
     return str(session_client_id_counter)
 
 # **************************
+
+def geo_coordinates(text: str) -> dict:
+    """"LAT,LON" as an agent's registration gives its coordinates"""
+    try:
+        latitude, longitude = (float(part) for part in text.split(","))
+    except ValueError:
+        raise argparse.ArgumentTypeError(f"expected LAT,LON in degrees, e.g. 48.714,2.203: {text!r}")
+    if not (-90 <= latitude <= 90 and -180 <= longitude <= 180):
+        raise argparse.ArgumentTypeError(f"latitude in [-90, 90], longitude in [-180, 180]: {text!r}")
+    return {"type": "coordinates", "latitude": latitude, "longitude": longitude}
 
 def main():
 
@@ -106,23 +137,47 @@ def main():
                         help="token of the manager's pages (default: $PYBISCUS_MANAGER_TOKEN, else the one of the previous start, else a new one)")
     parser.add_argument("--session-token", default=os.environ.get(SESSION_TOKEN_ENV),
                         help=f"token given to the agents (default: ${SESSION_TOKEN_ENV}, else the one of the previous start, else a new one)")
+    parser.add_argument("--bouquet", default=None,
+                        help="bouquet of this manager's session, shown in its page (default: the bouquets the agents declare)")
+    parser.add_argument("--color", default=None,
+                        help="CSS colour of this manager's page (default: derived from --bouquet, the same for the same name)")
+    parser.add_argument("--location", default=None, help="where this manager is, e.g. palaiseau-dc (shown on the maps)")
+    parser.add_argument("--geo", type=geo_coordinates, default=None,
+                        help="this manager's coordinates, LAT,LON (default on the maps: next to its session's server)")
+    parser.add_argument("--upper-url", default=None,
+                        help="URL of the upper-level manager of a hierarchical session, e.g. http://localhost:5555: "
+                             "this manager reports its bouquet's topology to it (requires --bouquet)")
+    parser.add_argument("--upper-token", default=None,
+                        help="session token of the upper-level manager (default: $PYBISCUS_UPPER_TOKEN, else its token file "
+                             "when it runs on this machine, started from the same directory)")
     parser.add_argument("--require-token", action="store_true",
                         help="require the tokens on the loopback too (always required when listening beyond it)")
     args = parser.parse_args()
+    if args.upper_url and not args.bouquet:
+        parser.error("--upper-url requires --bouquet: the upper-level manager tells its lower levels apart by their bouquet")
 
     CORS(pybiscus_manager_app, origins=[LOCAL_ORIGINS, *args.allow_origin], allow_headers=["Content-Type", "Authorization", HEADER])
 
-    global manager_port, admin_token, session_token, tokens_are_required
+    global manager_port, admin_token, session_token, tokens_are_required, bouquet, bouquet_color, manager_url, manager_location, manager_geo
     manager_port=args.port
+    manager_location, manager_geo = args.location, args.geo
+    bouquet = args.bouquet
+    bouquet_color = args.color
     tokens_are_required = tokens_required(args.host, args.require_token)
     admin_name, session_name = manager_token_names(manager_port)
     admin_token = component_token(admin_name, args.admin_token) if tokens_are_required else None
     session_token = component_token(session_name, args.session_token)
 
-    print(f"🚀 Manager starting on port {manager_port}")
+    print(f"🚀 Manager starting on port {manager_port}" + (f", bouquet {bouquet}" if bouquet else ""))
     browsed_host = "127.0.0.1" if args.host in ("0.0.0.0", "::") else args.host
+    # listening on every interface, the other managers are elsewhere: they need the machine's name
+    linked_host = socket.getfqdn() if args.host in ("0.0.0.0", "::") else browsed_host
+    manager_url = f"http://{linked_host}:{manager_port}"
     print_access("manager", f"http://{browsed_host}:{manager_port}/pybiscus-session/manage", admin_token)
     print(f"🔑 session token, for the agents (shown in the manager page too): {session_token}", flush=True)
+    if args.upper_url:
+        from pybiscus.session.manager.upper_level import report_to_upper_level
+        report_to_upper_level(args.upper_url, args.upper_token)
     pybiscus_manager_app.run(host=args.host, port=manager_port)
 
 # **************************

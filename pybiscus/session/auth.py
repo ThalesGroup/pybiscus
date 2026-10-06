@@ -71,6 +71,12 @@ def session_token_for(url: Optional[str]) -> Optional[str]:
     token = os.environ.get(SESSION_TOKEN_ENV)
     if token or not url:
         return token
+    return local_manager_session_token(url)
+
+
+def local_manager_session_token(url: str) -> Optional[str]:
+    """the token file of the manager at this URL when it runs on this machine, started from the
+    same directory"""
     parsed = urllib.parse.urlsplit(url)
     if parsed.hostname not in LOCAL_HOSTS or parsed.port is None:
         return None
