@@ -33,12 +33,17 @@ def pybiscus_manager_run_session():
     }
     """
      
-    from pybiscus.session.manager.upper_level import apply_upper_constraints, record_session_constraints, upper_constraints
+    from pybiscus.session.manager.upper_level import apply_upper_constraints, missing_relays, record_session_constraints, upper_constraints
 
     # a lower level of a hierarchical session follows its upper level's session
     if pybiscus.session.manager.session_manager.upper_link is not None and upper_constraints() is None:
         return jsonify({"status": "error",
                         "message": "the upper-level session is not configured yet: its model and data come first"}), 409
+    # an upper level: every lower level reaches it through one of its clients
+    missing = missing_relays()
+    if missing:
+        return jsonify({"status": "error",
+                        "message": "designate a relay client for every lower level (Topology): " + ", ".join(missing)}), 409
 
     presets_raw = request.args.get("presets")
     
@@ -64,8 +69,11 @@ def pybiscus_manager_run_session():
     else:
         print("/pybiscus-session/run with no param")
 
-    # the clients taking part: their order gives their cid and their share of the data
-    pybiscus.session.manager.session_manager.session_clients = list(pybiscus.session.manager.session_manager.registered_clients)
+    # the clients taking part: their order gives their cid and their share of the data; the relays
+    # take part without data, their cids after the others'
+    session = pybiscus.session.manager.session_manager
+    session.session_relays = [client for client in session.registered_clients if client in session.relays.values()]
+    session.session_clients = [client for client in session.registered_clients if client not in session.session_relays]
 
     # set the session running flag
     pybiscus.session.manager.session_manager.session_is_running = True
@@ -176,7 +184,8 @@ def pybiscus_manager_get_session_params():
     data_partition = custom_presets.pop("data_partition", None)
     data_holdout = custom_presets.pop("data_holdout", None)
     share_cpu_threads = custom_presets.pop("share_cpu_threads", False)
-    min_clients = custom_presets.pop("min_clients", None) or len(session.session_clients)
+    # the relays are Flower clients too: every round waits for them
+    min_clients = custom_presets.pop("min_clients", None) or len(session.session_clients) + len(session.session_relays)
     robustness = custom_presets.pop("robustness", None)
 
     # each call used to take a new cid: the server's page and every reload consumed one, and the
@@ -190,6 +199,14 @@ def pybiscus_manager_get_session_params():
     elif agent in session.session_clients:
         index = session.session_clients.index(agent)
         cid = str(index)
+    elif agent in session.session_relays:
+        # no share of the data, no holdout, no CPU threads (index stays None): it computes nothing
+        cid = str(len(session.session_clients) + session.session_relays.index(agent))
+        relayed = next(bouquet for bouquet, relay in session.relays.items() if relay == agent)
+        # " " selects Some for an Optional[T] (see set_option)
+        custom_presets["options_set"]["flower_client.alternate_client_class"] = " "
+        custom_presets["options_lock"].append("flower_client.alternate_client_class")
+        logm.console.log(f"🔁 {agent} relays the lower level {relayed}")
     else:
         cid = session.late_client_cids.setdefault(agent, str(len(session.session_clients) + len(session.late_client_cids)))
         if data_partition:
@@ -227,7 +244,7 @@ def pybiscus_manager_get_session_params():
             custom_presets["values_lock"].append(f"{prefix}.{name}")
 
     # every client, late ones included: the holdout draws from the client's own share, whatever it is
-    if data_holdout and cid is not None:
+    if data_holdout and cid is not None and agent not in session.session_relays:
         prefix = "data.config.val"
         values = {"source": "holdout", **data_holdout}
         for name, value in values.items():
@@ -270,7 +287,29 @@ def pybiscus_manager_list_clients():
         "lower_levels": lower_levels(),
         "upper_level": upper_level(),
         "manager": manager_place(),
+        "relays": pybiscus.session.manager.session_manager.relays,
+        "session_running": pybiscus.session.manager.session_manager.session_is_running,
     })
+
+# **************************
+
+# the operator designates, for a lower level, the client of this session that relays it
+@pybiscus_manager_app.route("/pybiscus-session/relays", methods=["POST"])
+def pybiscus_manager_designate_relay():
+    from pybiscus.session.manager.upper_level import designate_relay
+    session = pybiscus.session.manager.session_manager
+    data = request.get_json(silent=True) or {}
+    bouquet, client = data.get("bouquet"), data.get("client") or None
+    if session.session_is_running:
+        return jsonify({"status": "error", "message": "the session is running: drop it to change its relays"}), 409
+    with session.lower_levels_lock:
+        known = bouquet in session.lower_levels
+    if not known:
+        return jsonify({"status": "error", "message": f"no lower level named {bouquet!r}"}), 400
+    if client is not None and client not in session.registered_clients:
+        return jsonify({"status": "error", "message": f"no client named {client!r} in this session"}), 400
+    designate_relay(bouquet, client)
+    return jsonify({"status": "ok", "relays": session.relays})
 
 # **************************
 
@@ -287,7 +326,7 @@ def pybiscus_manager_receive_lower_level():
     # the lower level shows which upper level it reports to, in its colour
     from pybiscus.session.manager.upper_level import session_for_lower_levels
     return jsonify({"status": "ok", "bouquet": pybiscus.session.manager.session_manager.bouquet,
-                    "color": pybiscus.session.manager.session_manager.bouquet_color, "session": session_for_lower_levels()})
+                    "color": pybiscus.session.manager.session_manager.bouquet_color, "session": session_for_lower_levels(topology["bouquet"])})
 
 # between two changes of its topology, a lower-level manager only says it is alive
 @pybiscus_manager_app.route("/pybiscus-session/lower-level/heartbeat", methods=["POST"])
@@ -300,7 +339,7 @@ def pybiscus_manager_lower_level_heartbeat():
     from pybiscus.session.manager.upper_level import session_for_lower_levels
     return jsonify({"status": "ok", "known": lower_level_alive(bouquet),
                     "bouquet": pybiscus.session.manager.session_manager.bouquet,
-                    "color": pybiscus.session.manager.session_manager.bouquet_color, "session": session_for_lower_levels()})
+                    "color": pybiscus.session.manager.session_manager.bouquet_color, "session": session_for_lower_levels(bouquet)})
 
 # **************************
 

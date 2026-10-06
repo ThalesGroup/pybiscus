@@ -57,8 +57,9 @@ The registered agents appear in the manager's topology and on its map.
 
 ### 4. Configure and run the session
 
-Once the server agent is registered, the manager opens the session configuration (⚙ *Config*
-button to reopen it). Its header gives the number of clients registered. Choose the model and the
+The ⚙ *Config* button opens the session configuration. It is greyed out until the server agent
+is registered (and, in a hierarchical session, until every lower level has its relay and the
+upper-level session is configured: its tooltip says what is missing). Its header gives the number of clients registered. Choose the model and the
 data, and the optional session settings (described in [Session parameters](#session-parameters)):
 how the training data is shared between the clients (`data_partition`), a validation set held out
 of each share (`data_holdout`), `min_clients`, `robustness`, `share_cpu_threads`.
@@ -146,8 +147,9 @@ turn. `launch/session/run_lower_level_manager.sh` starts `cortaixlabs-edge1` thi
 the manager of `run_manager.sh` (`PYBISCUS_UPPER_MANAGER_URL` for another one).
 
 The upper-level page then shows the tree of the bouquets in its topology (each lower level indented
-under its parent, with a link to its manager's page), and the lower levels' agents on its map, in
-their bouquet's colour. The managers are drawn too, as diamonds: a dashed line joins each lower
+under its parent, its manager's address in the tooltip of its bouquet), and the lower levels' agents on its map, in
+their bouquet's colour. The managers are drawn too, as diamonds, each dotted to its session's
+server; a dashed line joins each lower
 level's manager to its parent's (supervision; the federated learning links are the solid stars
 between a server and its clients). A manager is placed with `--geo LAT,LON` (and named with
 `--location`), else next to its session's server; the scripts place both at Palaiseau. The
@@ -158,12 +160,21 @@ the agents registered at the same place; a double click puts it back, *⟲ layou
 back. The registered coordinates do not change: only this page's drawing, kept by the browser.
 
 The session is configured from the top: a lower level's session waits for its upper level's.
-Until the upper-level session is launched, the lower-level manager shows a waiting message instead
-of its session form, and refuses to launch. Then its form opens with the upper level's **model and
+Until the upper-level session is launched, the lower-level manager keeps its ⚙ *Config* button
+greyed out, and refuses to launch. Then its form opens with the upper level's **model and
 data** set and locked (models exchanged between the levels must be the same), the rest of the
 session (data partition, holdout, `min_clients`, robustness...) being its own; the manager also
 imposes them whatever the form sends, and they reach the forms of its agents. A level in the middle
 passes them on to its own lower levels.
+
+Each lower level reaches the upper-level session through a **relay**: a client of the upper
+session that computes nothing and stands for the lower session. The upper-level manager designates
+it in its topology, for each lower level, among all its registered clients (agents register as
+ordinary clients). It refuses to launch the session until every lower level has one, and no longer
+changes them once the session runs. A relay gets no share of the data, no holdout and no CPU
+threads, but counts in the minimum number of clients (the Flower server waits for it); its form
+opens with the relay client set and locked. The lower-level manager shows which client relays it,
+and the upper-level map draws the link between a relay and the server of its lower level.
 
 The whole topology is sent when it changes; between two changes, the lower level only sends a
 heartbeat every 10 s. Silent for 30 s, it is shown as unreachable; an upper-level manager restarted

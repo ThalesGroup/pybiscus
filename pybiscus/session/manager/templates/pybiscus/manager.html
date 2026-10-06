@@ -44,6 +44,7 @@
     font-family:var(--mono); font-size:11px; letter-spacing:.12em; text-transform:uppercase; background:var(--panel-2)}
   .btn:hover{border-color:var(--accent); color:var(--accent)}
   .btn.danger:hover{border-color:#d9534f; color:#ff6b66}
+  .btn:disabled{opacity:.4; cursor:not-allowed} .btn:disabled:hover{border-color:var(--border); color:var(--text)}
 
   /* grid : ligne haute (1fr), splitter (8px), feeds (hauteur ajustable) */
   /* colonnes : c1 | vsplit | c2(accuracy) | vsplit | c3(vignettes). 1fr chacune = tiers égaux
@@ -77,7 +78,7 @@
   /* hierarchical session: this session, then each lower level, indented under its parent */
   .tier{display:flex; flex-direction:column; gap:6px; padding-left:9px; border-left:2px solid var(--tier-color)}
   .tier.stale{opacity:.5}
-  .tier-head{display:flex; align-items:center; gap:8px} .tier-head a.tool{text-decoration:none}
+  .tier-head{display:flex; align-items:center; gap:8px}
   .node{display:flex; align-items:center; gap:9px; padding:7px 9px; border:1px solid var(--border); border-radius:8px; background:var(--panel-2)}
   .node .st{width:9px;height:9px;border-radius:50%;flex:0 0 auto;background:var(--down)}
   .node.up .st{background:var(--ok); box-shadow:0 0 8px rgba(78,205,196,.5)}
@@ -133,8 +134,6 @@
   /* session config modal */
   .overlay{position:fixed; inset:0; background:rgba(6,9,13,.72); backdrop-filter:blur(3px); display:none; align-items:center; justify-content:center; z-index:60}
   .overlay.open{display:flex}
-  .cfg-waiting{width:min(900px,94vw); padding:48px 32px; text-align:center; color:var(--muted); line-height:1.8}
-  .cfg-waiting b{color:var(--text)}
   .modal{width:min(900px,94vw); max-height:88vh; overflow:hidden; border:1px solid var(--border); border-radius:12px;
     background:var(--panel); box-shadow:0 20px 60px #000a; display:flex; flex-direction:column}
   .modal header{display:flex; align-items:center; padding:12px 15px; border-bottom:1px solid var(--border); background:var(--panel-2)}
@@ -165,7 +164,7 @@
       <span class="eyebrow">Δ round</span><span class="num" id="dround-val">—</span>
       <svg id="droundSpark" width="76" height="22"></svg>
       <button class="btn" id="token-btn" title="Copy the session token: the agents give it at registration">🔑 session token</button>
-      <button class="btn" id="cfg-btn">⚙ config</button>
+      <button class="btn" id="cfg-btn" disabled title="the session can be configured once its server agent is registered">⚙ config</button>
       <button class="btn danger" id="revokeBtn">Drop session</button>
     </div>
   </div>
@@ -290,6 +289,7 @@
   const VIGNETTES_URL = {{ url_for('static', filename='pybiscus/vignettes/' ~ manager_port) | tojson }};
   // a lower level of a hierarchical session: its upper level's link, whose session comes first
   let upperState = null;
+  let sessionRunning = false;   // once launched, its relays no longer change
   const upperConstraints = () => (upperState && upperState.session && upperState.session.running) ? upperState.session.constraints : null;
   const waitsForUpperSession = () => !!upperState && !upperConstraints();
   // the model and the data of the upper level's session, set and locked in this session's form
@@ -459,6 +459,14 @@
     const el = ev.target.closest('[data-key]'); if(!el) return;
     delete manualLayout[el.dataset.key]; saveLayout(); redrawTopology();
   });
+  // the relays designated in the topology: kept by the manager, which refuses a change once the session runs
+  document.getElementById('nodes').addEventListener('change', ev=>{
+    if(!ev.target.classList.contains('relay-select')) return;
+    fetch('/pybiscus-session/relays', {method:'POST', headers:{'Content-Type':'application/json', 'X-Pybiscus':'1'},
+                                       body: JSON.stringify({bouquet: ev.target.dataset.bouquet, client: ev.target.value})})
+      .then(r=>r.json().then(answer=>{ if(!r.ok) alert(answer.message); }))
+      .finally(()=>{ ev.target.blur(); updateGraph(); });
+  });
   document.getElementById('layout-reset').addEventListener('click', ()=>{ manualLayout = {}; saveLayout(); redrawTopology(); });
 
   // the lower levels' agents, reported by their managers (--upper-url), recursively: one group per
@@ -466,7 +474,7 @@
   function flattenLowerLevels(levels, parent, depth, groups){
     (levels||[]).forEach(lv=>{
       const group = {bouquet:lv.bouquet, color:lv.color || bouquetColor(lv.bouquet), stale:!!lv.stale,
-                     url:lv.manager_url, manager:lv.manager || {}, parent, depth, nodes:[]};
+                     url:lv.manager_url, manager:lv.manager || {}, relays:lv.relays || {}, parent, depth, nodes:[]};
       (lv.agents||[]).forEach(a=>group.nodes.push({key:`${lv.bouquet}/${a.name}`, name:a.name, role:a.role,
         state:a.state || 'declared', geo:a.geo_location, bouquet:lv.bouquet, loc:a.location, org:a.organisation, group}));
       groups.push(group);
@@ -474,8 +482,9 @@
     });
     return groups;
   }
-  function renderTopology(servers, clients, meta, lowerLevels, upperLevel, manager){
-    lastTopology = [servers, clients, meta, lowerLevels, upperLevel, manager];
+  function renderTopology(servers, clients, meta, lowerLevels, upperLevel, manager, relays){
+    lastTopology = [servers, clients, meta, lowerLevels, upperLevel, manager, relays];
+    relays = relays || {};
     meta = meta || {};
     const nodes=[];
     Object.keys(servers).forEach(n=>nodes.push({key:n, name:n, role:'server', state:session.getAgentState(n)}));
@@ -484,35 +493,60 @@
     const groups = flattenLowerLevels(lowerLevels, null, 1, []);
     const lowerNodes = groups.flatMap(gr=>gr.nodes), allNodes = nodes.concat(lowerNodes);
     setTxt('agents-count', nodes.length+' agents' + (lowerNodes.length ? ` + ${lowerNodes.length} lower` : ''));
-    const tip = nd => [nd.name, nd.role, nd.state, nd.bouquet&&('💐 '+nd.bouquet), nd.org, nd.loc,
+    const tip = nd => [nd.name, nd.relays ? 'relay → '+nd.relays : nd.role, nd.state, nd.bouquet&&('💐 '+nd.bouquet), nd.org, nd.loc,
       (typeof nd.geo==='string')?nd.geo:null,
       (nd.geo&&typeof nd.geo.latitude==='number')?`${nd.geo.latitude.toFixed(3)}, ${nd.geo.longitude.toFixed(3)}`:null].filter(Boolean).join(' · ');
+    // the relays: clients of a session standing for one of its lower levels (designated by its manager)
+    const relayedBy = rels => Object.fromEntries(Object.entries(rels || {}).map(([bouquet, client]) => [client, bouquet]));
+    const ownRelayed = relayedBy(relays);
+    groups.forEach(gr=>{ const relayed = relayedBy(gr.relays); gr.nodes.forEach(nd=>{ nd.relays = relayed[nd.name]; }); });
+    nodes.forEach(nd=>{ nd.relays = ownRelayed[nd.name]; });
+    const colourOf = bouquet => (groups.find(gr=>gr.bouquet===bouquet) || {}).color || '#7d8794';
     const row = nd =>
       `<div class="node ${stateClass(nd.state)}" title="${esc(tip(nd))}">`+
-        `<span class="st"></span><span class="ico">${ROLE_ICON[nd.role]||'❔'}</span>`+
-        `<span class="name">${esc(nd.name)}</span><span class="kpi">${STATE_ICON[nd.state]||'⚪'}</span></div>`;
-    const tierHead = (name, color, count, url, stale) =>
-      `<div class="tier-head"><span class="bouquet-pill" style="--session-color:${esc(color)}">💐 ${esc(name)}</span>`+
-      `<span class="chip">${count} agent${count===1?'':'s'}</span>`+
-      (stale ? '<span class="chip" title="its manager has stopped reporting">unreachable</span>' : '')+
-      (url ? `<a class="tool" href="${esc(url)}/pybiscus-session/manage" target="_blank" title="open its manager">↗</a>` : '')+`</div>`;
+        `<span class="st"></span><span class="ico">${nd.relays ? '🔁' : (ROLE_ICON[nd.role]||'❔')}</span>`+
+        `<span class="name">${esc(nd.name)}`+
+        (nd.relays ? ` <span class="bouquet-pill" style="--session-color:${esc(colourOf(nd.relays))}" title="relays this lower level">→ ${esc(nd.relays)}</span>` : '')+
+        `</span><span class="kpi">${STATE_ICON[nd.state]||'⚪'}</span></div>`;
+    // a direct lower level: its relay chosen among this session's clients; deeper: shown only
+    const relayPicker = gr => {
+      if(gr.depth === 1){
+        const chosen = relays[gr.bouquet];
+        return `<select class="relay-select tool" data-bouquet="${esc(gr.bouquet)}"${sessionRunning ? ' disabled' : ''}`+
+          ` title="${sessionRunning ? 'the session is running: its relays no longer change' : 'the client of this session that relays ' + esc(gr.bouquet)}">`+
+          `<option value="">relay: —</option>`+
+          nodes.filter(n=>n.role==='client').map(c=>`<option value="${esc(c.name)}"${c.name===chosen?' selected':''}>relay: ${esc(c.name)}</option>`).join('')+`</select>`+
+          (chosen && chosen in clients ? '' : '<span class="chip" title="a session with lower levels launches once each has a relay">no relay</span>');
+      }
+      const relay = (gr.parent.relays || {})[gr.bouquet];
+      return `<span class="chip">relay: ${esc(relay || '—')}</span>`;
+    };
+    // a manager's address as information only: each site is followed in its own manager's page,
+    // often out of reach of the other levels' operators (loopback, administration token)
+    const tierHead = (name, color, count, url, stale, extra) =>
+      `<div class="tier-head"><span class="bouquet-pill" style="--session-color:${esc(color)}"${url ? ` title="manager: ${esc(url)}"` : ''}>💐 ${esc(name)}</span>`+
+      `<span class="chip">${count} agent${count===1?'':'s'}</span>`+ (extra || '') +
+      (stale ? '<span class="chip" title="its manager has stopped reporting">unreachable</span>' : '')+`</div>`;
     let list = nodes.map(row).join('');
     // the upper level this manager reports to (--upper-url): its bouquet, and whether it is reached
     const upper = upperLevel ? {...upperLevel, name: upperLevel.bouquet || upperLevel.url,
       // literal colours: also used in SVG attributes, where var(--…) does not resolve
       colour: upperLevel.reached === false ? '#5a6470' : (upperLevel.color || (upperLevel.bouquet ? bouquetColor(upperLevel.bouquet) : '#7d8794'))} : null;
-    const upperHead = upper ? `<div class="tier-head"><span class="bouquet-pill" style="--session-color:${esc(upper.colour)}">↑ 💐 ${esc(upper.name)}</span>`+
+    const upperHead = upper ? `<div class="tier-head"><span class="bouquet-pill" style="--session-color:${esc(upper.colour)}" title="manager: ${esc(upper.url)}">↑ 💐 ${esc(upper.name)}</span>`+
       `<span class="chip" title="${esc(upper.problem || '')}">${upper.reached ? 'connected' : upper.reached === false ? 'not reached' : 'connecting…'}</span>`+
       `<span class="chip" title="this session's model and data follow the upper level's session">${upper.session && upper.session.running ? 'session configured' : 'session not configured'}</span>`+
-      `<a class="tool" href="${esc(upper.url)}/pybiscus-session/manage" target="_blank" title="open the upper-level manager">↗</a></div>` : '';
+      `<span class="chip" title="the client of the upper-level session that relays this one">relay: ${esc((upper.session && upper.session.relay) || '—')}</span></div>` : '';
     if(groups.length || upper){
       // the tree: this session, then each lower level indented under its parent
       list = upperHead + `<div class="tier" style="--tier-color:${esc(SESSION_COLOR || 'var(--border)')}">`+
                tierHead(MANAGER_BOUQUET || 'this session', SESSION_COLOR || 'var(--muted)', nodes.length, null, false)+list+`</div>`+
              groups.map(gr=>`<div class="tier${gr.stale?' stale':''}" style="--tier-color:${esc(gr.color)}; margin-left:${gr.depth*14}px">`+
-               tierHead('↳ '+gr.bouquet, gr.color, gr.nodes.length, gr.url, gr.stale)+gr.nodes.map(row).join('')+`</div>`).join('');
+               tierHead('↳ '+gr.bouquet, gr.color, gr.nodes.length, gr.url, gr.stale, relayPicker(gr))+gr.nodes.map(row).join('')+`</div>`).join('');
     }
-    document.getElementById('nodes').innerHTML = allNodes.length ? list : '<div class="empty">no agents yet</div>';
+    // not while a relay is being chosen: the periodic redraw would close the list under the pointer
+    if(!document.activeElement || !document.activeElement.classList.contains('relay-select'))
+      // the link to the upper level shows before the first agent registers
+      document.getElementById('nodes').innerHTML = allNodes.length ? list : upperHead + '<div class="empty">no agents yet</div>';
     // positions : par lat/lon si dispo (ajustées à la bbox des agents + décalage anti-superposition),
     // sinon disposition schématique (serveur au centre, clients en cercle, niveaux inférieurs autour)
     const geo=document.getElementById('geo');
@@ -577,6 +611,14 @@
       const s=at(parentManager), p=at(gr.managerNode);
       g+=`<line x1="${s.x}" y1="${s.y}" x2="${p.x}" y2="${p.y}" stroke="${esc(gr.color)}" stroke-width=".45" stroke-dasharray="1.4 .9" opacity="${op+.2}"/>`;
     });
+    // the federated link between two levels: a relay (client of the upper session) and the server
+    // of the lower session it stands for
+    groups.forEach(gr=>{
+      const pool = gr.parent ? gr.parent.nodes : nodes;
+      const relay = pool.find(nd=>nd.relays===gr.bouquet), lowerServer = gr.nodes.find(n=>n.role==='server');
+      if(relay && lowerServer){ const a=at(relay), b=at(lowerServer);
+        g+=`<line x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}" stroke="${esc(gr.color)}" stroke-width=".7" opacity="${gr.stale ? .3 : .85}"/>`; }
+    });
     // the upper level, off the map's geography: a mark at the top, dashed to this session's manager
     if(upper){ const u = manualLayout['^upper'] || {x:50, y:4}, s = at(ownManager);
       g+=`<line x1="${u.x}" y1="${u.y}" x2="${s.x}" y2="${s.y}" stroke="${esc(upper.colour)}" stroke-width=".45" stroke-dasharray="1.4 .9" opacity="${upper.reached ? .75 : .4}"/>`;
@@ -600,6 +642,12 @@
     lowerNodes.forEach(nd=>{ const p=at(nd), c=esc(nd.group.color), op=nd.group.stale ? .35 : 1, r=nd.role==='server' ? 1.4 : 1;
       g+=`<g data-key="${esc(nd.key)}" opacity="${op}"><title>${esc(tip(nd))}</title>`+
          `<circle cx="${p.x}" cy="${p.y}" r="${r*2}" fill="${c}" opacity=".16"/><circle cx="${p.x}" cy="${p.y}" r="${r}" fill="${c}"/></g>`;});
+    // each manager attached to its session's server: fine dots, apart from the dashes between
+    // managers (supervision) and the solid lines of the federated learning
+    managerNodes.forEach(m=>{ if(!m.serverKey) return;
+      const serverNode = (m.group ? m.group.nodes : nodes).find(n=>n.key===m.serverKey); if(!serverNode) return;
+      const a=at(m), b=at(serverNode);
+      g+=`<line x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}" stroke="${esc(m.colour)}" stroke-width=".35" stroke-dasharray=".25 .7" stroke-linecap="round" opacity="${m.group && m.group.stale ? .3 : .8}"/>`; });
     managerNodes.forEach(m=>{ const p=at(m), c=esc(m.colour), op = m.group && m.group.stale ? .35 : 1, d=1.9;
       g+=`<g data-key="${esc(m.key)}" opacity="${op}"><title>${esc(['manager', m.bouquet && ('💐 '+m.bouquet), m.loc].filter(Boolean).join(' · '))}</title>`+
          `<polygon points="${p.x},${p.y-d} ${p.x+d},${p.y} ${p.x},${p.y+d} ${p.x-d},${p.y}" fill="${c}" stroke="#0e1116" stroke-width=".3"/></g>`; });
@@ -613,7 +661,7 @@
     document.getElementById('geolabels').innerHTML = upperLabel + managerLabels + allNodes.map(nd=>{ const p=at(nd);
       const colour = nd.group ? `; color:${esc(nd.group.color)}` : (SESSION_COLOR ? `; color:${esc(SESSION_COLOR)}` : '');
       // near the right edge, the label goes to the node's left: the map would cut it
-      return `<span class="lbl${p.x > 72 ? ' left' : ''}" data-key="${esc(nd.key)}" style="left:${p.x}%; top:${(p.y/62*100).toFixed(1)}%${colour}" title="${esc(tip(nd))}">${ROLE_ICON[nd.role]||''} ${esc(nd.name)}</span>`;}).join('');
+      return `<span class="lbl${p.x > 72 ? ' left' : ''}" data-key="${esc(nd.key)}" style="left:${p.x}%; top:${(p.y/62*100).toFixed(1)}%${colour}" title="${esc(tip(nd))}">${nd.relays ? '🔁' : (ROLE_ICON[nd.role]||'')} ${esc(nd.name)}</span>`;}).join('');
     // tag cluster : le bouquet du manager (--bouquet), sinon ceux déclarés par les agents à leur registration
     const bouquets = MANAGER_BOUQUET ? [MANAGER_BOUQUET] : [...new Set(nodes.map(n=>n.bouquet).filter(Boolean))];
     setTxt('cluster-tag', '💐 '+(bouquets.length? bouquets.join(' · ') : 'cluster')+(nodes.length? ` · ${nodes.length} nodes`:'')
@@ -628,18 +676,25 @@
       // le rendu (topology/geo/charts) ne doit jamais bloquer la logique de popup ci-dessous
       registeredClients = Object.keys(data.clients || {}).length;
       setTxt('cfg-clients', `${registeredClients} client${registeredClients === 1 ? '' : 's'} registered = default min_clients`);
-      const wasWaiting = waitsForUpperSession();
       upperState = data.upper_level || null;
-      try { renderTopology(servers, data.clients || {}, data.meta || {}, data.lower_levels || [], data.upper_level || null, data.manager || null); renderCharts(); }
+      sessionRunning = !!data.session_running;
+      try { renderTopology(servers, data.clients || {}, data.meta || {}, data.lower_levels || [], data.upper_level || null, data.manager || null, data.relays || {}); renderCharts(); }
       catch(e){ console.error('[manager] render error:', e); }
       if(serverUrl==="" && Object.keys(servers).length>0){
         serverUrl = Object.values(servers)[0];
         setTxt('server-url-display', serverUrl);
-        openSessionConfig(sessionConfigUrl(serverUrl));   // ouvre la modale de config
-      } else if(serverUrl!=="" && wasWaiting && !waitsForUpperSession()){
-        // the upper level's session has just been configured: the waiting message makes way for the form
-        openSessionConfig(sessionConfigUrl(serverUrl));
       }
+      // the session window no longer opens on its own (it hid the topology where the relays are
+      // chosen): the config button opens it, once nothing is missing
+      const lowerBouquets = (data.lower_levels || []).map(level => level.bouquet);
+      const withoutRelay = lowerBouquets.filter(bouquet => !((data.relays || {})[bouquet] in (data.clients || {})));
+      const missing = [];
+      if(serverUrl === "") missing.push('its server agent registered');
+      if(withoutRelay.length) missing.push('a relay for ' + withoutRelay.join(', ') + ' (Topology)');
+      if(waitsForUpperSession()) missing.push(`the upper-level session ${upperState.bouquet || upperState.url} configured`);
+      const cfgBtn = document.getElementById('cfg-btn');
+      cfgBtn.disabled = missing.length > 0;
+      cfgBtn.title = missing.length ? 'the session can be configured once it has ' + missing.join(', and ') : 'configure and launch the session';
     }).catch(console.error);
   }
 
@@ -655,15 +710,6 @@
   }
   function openSessionConfig(url){
     const body=document.getElementById('cfg-body');
-    if(url && waitsForUpperSession()){
-      // nothing to configure before the upper level: its model and data are this session's
-      const upperName = esc(upperState.bouquet || upperState.url);
-      body.innerHTML = `<div class="cfg-waiting">⏳ Waiting for the upper-level session <b>${upperName}</b> to be configured.<br>`+
-        `Its model and data will be this session's; the form opens then, with them set and locked.</div>`;
-      document.getElementById('cfg-modal').classList.add('open');
-      return;
-    }
-    body.querySelector('.cfg-waiting')?.remove();
     if(url && !body.querySelector('iframe')){
       const f=document.createElement('iframe'); f.src=url;
       f.style.cssText='width:min(900px,94vw);height:78vh;border:none;background:#0e1116;display:block';
@@ -678,7 +724,7 @@
     try{ await navigator.clipboard.writeText(SESSION_TOKEN); e.target.textContent='🔑 copied'; setTimeout(()=>e.target.textContent='🔑 session token', 1500); }
     catch{ prompt('Session token, to give to the agents:', SESSION_TOKEN); }
   };
-  document.getElementById('cfg-btn').onclick = ()=>{ if(serverUrl) openSessionConfig(sessionConfigUrl(serverUrl)); else openSessionConfig(null); };
+  document.getElementById('cfg-btn').onclick = ()=>{ if(serverUrl) openSessionConfig(sessionConfigUrl(serverUrl)); };
   addEventListener('keydown', e=>{ if(e.key==='Escape') closeSessionConfig(); });
 
   // config iframe → run session

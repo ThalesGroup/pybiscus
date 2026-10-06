@@ -57,6 +57,10 @@ lower_levels_lock = Lock()
 upper_link = None
 # the choices of the running session that its lower levels must keep: {"model": label, "data": label}
 session_constraints = None
+# lower-level bouquet -> the client of this session that relays it, designated in this manager's page
+relays = {}
+# the relays when the session was launched: Flower clients, but without data nor computation
+session_relays = []
 session_is_running = False
 agent_gui_json_presets = None
 session_client_id_counter = -1
@@ -92,6 +96,10 @@ def clear_session():
     agent_states = {}
     global session_constraints
     session_constraints = None
+    global relays
+    relays = {}
+    global session_relays
+    session_relays = []
 
 def client_threads(name):
     """the physical cores of the client's machine shared between the session's clients on it, or

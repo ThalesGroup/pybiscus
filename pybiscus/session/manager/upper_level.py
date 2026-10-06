@@ -29,7 +29,7 @@ def bouquet_topology() -> dict:
               for role, registered in (("server", sm.registered_servers), ("client", sm.registered_clients))
               for name in registered]
     return {"bouquet": sm.bouquet, "color": sm.bouquet_color, "manager_url": sm.manager_url,
-            "manager": manager_place(), "agents": agents, "lower_levels": lower_levels()}
+            "manager": manager_place(), "agents": agents, "relays": dict(sm.relays), "lower_levels": lower_levels()}
 
 
 def manager_place() -> dict:
@@ -52,10 +52,28 @@ def upper_level():
     return link
 
 
-def session_for_lower_levels() -> dict:
-    """the session the lower levels must follow, sent in every answer to them"""
+def session_for_lower_levels(bouquet: str) -> dict:
+    """the session the lower levels must follow, and the client relaying this one, sent in every
+    answer to them"""
     running = sm.session_is_running
-    return {"running": running, "constraints": sm.session_constraints if running else None}
+    return {"running": running, "constraints": sm.session_constraints if running else None,
+            "relay": sm.relays.get(bouquet)}
+
+
+def missing_relays() -> list:
+    """the lower levels without a relay, or with a relay no longer registered"""
+    with sm.lower_levels_lock:
+        bouquets = list(sm.lower_levels)
+    return [b for b in bouquets if sm.relays.get(b) not in sm.registered_clients]
+
+
+def designate_relay(bouquet: str, client) -> None:
+    """a client relays at most one lower level: designated for another, it leaves the first"""
+    for other, relay in list(sm.relays.items()):
+        if relay == client or other == bouquet:
+            del sm.relays[other]
+    if client:
+        sm.relays[bouquet] = client
 
 
 def upper_constraints():
