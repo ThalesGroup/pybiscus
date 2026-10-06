@@ -2,7 +2,7 @@
 manager_url: "http://localhost:5555"
 agent_name: "relay-centredetransfert-hq"
 agent_url: "http://localhost:5008"
-bouquet: "paris-cluster"
+bouquet: "cortaixlabs-core"
 location: "compiègne-dc"
 
 geo_location:

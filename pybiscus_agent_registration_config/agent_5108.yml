@@ -1,0 +1,16 @@
+# Agent registration configuration
+manager_url: "http://localhost:5556"
+agent_name: "cortaixlabs-edge1-08"
+agent_url: "http://localhost:5108"
+bouquet: "cortaixlabs-edge1"
+location: "compiègne-dc"
+
+geo_location:
+  type: "coordinates"  # "text" or "coordinates"
+  text: "Compiègne, France"
+  latitude: 49.40082
+  longitude: 2.79522
+
+organisation: "HQ"
+role: "client"  # "client" or "server"
+

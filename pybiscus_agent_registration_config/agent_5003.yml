@@ -2,7 +2,7 @@
 manager_url: "http://localhost:5555"
 agent_name: "centre-transfert-00"
 agent_url: "http://localhost:5003"
-bouquet: "UTC-cluster"
+bouquet: "cortaixlabs-core"
 location: "compiègne-dc"
 
 geo_location:

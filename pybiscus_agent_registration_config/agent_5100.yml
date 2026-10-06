@@ -1,0 +1,15 @@
+# Agent registration configuration
+manager_url: "http://localhost:5556"
+agent_name: "cortaixlabs-edge1-00"
+agent_url: "http://localhost:5100"
+bouquet: "cortaixlabs-edge1"
+location: "palaiseau-dc"
+
+geo_location:
+  type: "coordinates"  # "text" or "coordinates"
+  text: "Palaiseau, France"
+  latitude: 48.71439
+  longitude: 2.20278
+
+organisation: "CortaiX Labs"
+role: "server"  # "client" or "server"

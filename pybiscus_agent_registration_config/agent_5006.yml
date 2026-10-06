@@ -2,7 +2,7 @@
 manager_url: "http://localhost:5555"
 agent_name: "server-HQ"
 agent_url: "http://localhost:5006"
-bouquet: "paris-cluster"
+bouquet: "cortaixlabs-core"
 location: "paris-city"
 
 geo_location:
