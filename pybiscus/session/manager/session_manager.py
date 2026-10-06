@@ -52,8 +52,11 @@ agent_states = {}
 # manager was started with --upper-url pointing to this one
 lower_levels = {}
 lower_levels_lock = Lock()
-# with --upper-url: {"url", "bouquet", "color", "reached", "problem", "last_contact"}, shown in the page
+# with --upper-url: {"url", "bouquet", "color", "reached", "problem", "last_contact", "session"}, shown
+# in the page; "session" is the upper level's: {"running", "constraints"}
 upper_link = None
+# the choices of the running session that its lower levels must keep: {"model": label, "data": label}
+session_constraints = None
 session_is_running = False
 agent_gui_json_presets = None
 session_client_id_counter = -1
@@ -87,6 +90,8 @@ def clear_session():
     registered_clients_cpu = {}
     global agent_states
     agent_states = {}
+    global session_constraints
+    session_constraints = None
 
 def client_threads(name):
     """the physical cores of the client's machine shared between the session's clients on it, or

@@ -151,6 +151,14 @@ On the map of any manager's page, a node (or its label) can be moved with the mo
 the agents registered at the same place; a double click puts it back, *⟲ layout* puts them all
 back. The registered coordinates do not change: only this page's drawing, kept by the browser.
 
+The session is configured from the top: a lower level's session waits for its upper level's.
+Until the upper-level session is launched, the lower-level manager shows a waiting message instead
+of its session form, and refuses to launch. Then its form opens with the upper level's **model and
+data** set and locked (models exchanged between the levels must be the same), the rest of the
+session (data partition, holdout, `min_clients`, robustness...) being its own; the manager also
+imposes them whatever the form sends, and they reach the forms of its agents. A level in the middle
+passes them on to its own lower levels.
+
 The whole topology is sent when it changes; between two changes, the lower level only sends a
 heartbeat every 10 s. Silent for 30 s, it is shown as unreachable; an upper-level manager restarted
 gets the topology again at the next heartbeat. When the upper-level manager requires tokens, give

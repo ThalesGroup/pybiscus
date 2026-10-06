@@ -204,7 +204,12 @@ def sessionConfigDownload():
 
     config_session = make_session_model(models_names, ModelConfig(), data_names, DataConfig() )
 
-    return generate_model_page(config_session,'pybiscus.session.agent.front_end','agent.html','launch_session_button')
+    # the session of a lower level: the model and the data set and locked to the upper level's
+    presets_raw = request.args.get("presets")
+    from pybiscus.session.agent.pybiscus_agent import PRESETS
+    presets_js = PRESETS(generate_param_js(json.loads(urllib.parse.unquote(presets_raw)))) if presets_raw else ""
+
+    return generate_model_page(config_session,'pybiscus.session.agent.front_end','agent.html','launch_session_button', presets_js)
 
 # ..........................................................
 # ... POST /session/log/client/<client_name>/runconfig .....

@@ -33,6 +33,13 @@ def pybiscus_manager_run_session():
     }
     """
      
+    from pybiscus.session.manager.upper_level import apply_upper_constraints, record_session_constraints, upper_constraints
+
+    # a lower level of a hierarchical session follows its upper level's session
+    if pybiscus.session.manager.session_manager.upper_link is not None and upper_constraints() is None:
+        return jsonify({"status": "error",
+                        "message": "the upper-level session is not configured yet: its model and data come first"}), 409
+
     presets_raw = request.args.get("presets")
     
     if presets_raw:
@@ -40,8 +47,13 @@ def pybiscus_manager_run_session():
             # decode and parse JSON param
             decoded = urllib.parse.unquote(presets_raw)
 
+            presets = json.loads(decoded)
+            if pybiscus.session.manager.session_manager.upper_link is not None:
+                apply_upper_constraints(presets)
+            record_session_constraints(presets)
+
             # store them into context
-            pybiscus.session.manager.session_manager.agent_gui_json_presets = json.loads(decoded)
+            pybiscus.session.manager.session_manager.agent_gui_json_presets = presets
 
             print("session back-end received session json presets: ", pybiscus.session.manager.session_manager.agent_gui_json_presets)
 
@@ -273,8 +285,9 @@ def pybiscus_manager_receive_lower_level():
         return jsonify({"status": "error", "message": "expected a bouquet name and a list of agents"}), 400
     record_lower_level(topology)
     # the lower level shows which upper level it reports to, in its colour
+    from pybiscus.session.manager.upper_level import session_for_lower_levels
     return jsonify({"status": "ok", "bouquet": pybiscus.session.manager.session_manager.bouquet,
-                    "color": pybiscus.session.manager.session_manager.bouquet_color})
+                    "color": pybiscus.session.manager.session_manager.bouquet_color, "session": session_for_lower_levels()})
 
 # between two changes of its topology, a lower-level manager only says it is alive
 @pybiscus_manager_app.route("/pybiscus-session/lower-level/heartbeat", methods=["POST"])
@@ -284,9 +297,10 @@ def pybiscus_manager_lower_level_heartbeat():
     bouquet = (request.get_json(silent=True) or {}).get("bouquet")
     if not isinstance(bouquet, str) or not bouquet:
         return jsonify({"status": "error", "message": "expected a bouquet name"}), 400
+    from pybiscus.session.manager.upper_level import session_for_lower_levels
     return jsonify({"status": "ok", "known": lower_level_alive(bouquet),
                     "bouquet": pybiscus.session.manager.session_manager.bouquet,
-                    "color": pybiscus.session.manager.session_manager.bouquet_color})
+                    "color": pybiscus.session.manager.session_manager.bouquet_color, "session": session_for_lower_levels()})
 
 # **************************
 

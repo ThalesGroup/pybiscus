@@ -133,6 +133,8 @@
   /* session config modal */
   .overlay{position:fixed; inset:0; background:rgba(6,9,13,.72); backdrop-filter:blur(3px); display:none; align-items:center; justify-content:center; z-index:60}
   .overlay.open{display:flex}
+  .cfg-waiting{width:min(900px,94vw); padding:48px 32px; text-align:center; color:var(--muted); line-height:1.8}
+  .cfg-waiting b{color:var(--text)}
   .modal{width:min(900px,94vw); max-height:88vh; overflow:hidden; border:1px solid var(--border); border-radius:12px;
     background:var(--panel); box-shadow:0 20px 60px #000a; display:flex; flex-direction:column}
   .modal header{display:flex; align-items:center; padding:12px 15px; border-bottom:1px solid var(--border); background:var(--panel-2)}
@@ -286,7 +288,16 @@
     document.head.appendChild(icon);
   }
   const VIGNETTES_URL = {{ url_for('static', filename='pybiscus/vignettes/' ~ manager_port) | tojson }};
-  const sessionConfigUrl = serverUrl => `${serverUrl}/session/config?token=${encodeURIComponent(SESSION_TOKEN)}`;
+  // a lower level of a hierarchical session: its upper level's link, whose session comes first
+  let upperState = null;
+  const upperConstraints = () => (upperState && upperState.session && upperState.session.running) ? upperState.session.constraints : null;
+  const waitsForUpperSession = () => !!upperState && !upperConstraints();
+  // the model and the data of the upper level's session, set and locked in this session's form
+  const sessionConfigUrl = serverUrl => {
+    const url = `${serverUrl}/session/config?token=${encodeURIComponent(SESSION_TOKEN)}`;
+    const imposed = upperConstraints();
+    return imposed ? url + '&presets=' + encodeURIComponent(JSON.stringify({values_set: imposed, values_lock: Object.keys(imposed)})) : url;
+  };
 
   // ============ feeds ============
   const agentsList=document.getElementById('agents-list'), logList=document.getElementById('log-list'), metricsList=document.getElementById('metrics-list');
@@ -492,6 +503,7 @@
       colour: upperLevel.reached === false ? '#5a6470' : (upperLevel.color || (upperLevel.bouquet ? bouquetColor(upperLevel.bouquet) : '#7d8794'))} : null;
     const upperHead = upper ? `<div class="tier-head"><span class="bouquet-pill" style="--session-color:${esc(upper.colour)}">↑ 💐 ${esc(upper.name)}</span>`+
       `<span class="chip" title="${esc(upper.problem || '')}">${upper.reached ? 'connected' : upper.reached === false ? 'not reached' : 'connecting…'}</span>`+
+      `<span class="chip" title="this session's model and data follow the upper level's session">${upper.session && upper.session.running ? 'session configured' : 'session not configured'}</span>`+
       `<a class="tool" href="${esc(upper.url)}/pybiscus-session/manage" target="_blank" title="open the upper-level manager">↗</a></div>` : '';
     if(groups.length || upper){
       // the tree: this session, then each lower level indented under its parent
@@ -616,12 +628,17 @@
       // le rendu (topology/geo/charts) ne doit jamais bloquer la logique de popup ci-dessous
       registeredClients = Object.keys(data.clients || {}).length;
       setTxt('cfg-clients', `${registeredClients} client${registeredClients === 1 ? '' : 's'} registered = default min_clients`);
+      const wasWaiting = waitsForUpperSession();
+      upperState = data.upper_level || null;
       try { renderTopology(servers, data.clients || {}, data.meta || {}, data.lower_levels || [], data.upper_level || null, data.manager || null); renderCharts(); }
       catch(e){ console.error('[manager] render error:', e); }
       if(serverUrl==="" && Object.keys(servers).length>0){
         serverUrl = Object.values(servers)[0];
         setTxt('server-url-display', serverUrl);
         openSessionConfig(sessionConfigUrl(serverUrl));   // ouvre la modale de config
+      } else if(serverUrl!=="" && wasWaiting && !waitsForUpperSession()){
+        // the upper level's session has just been configured: the waiting message makes way for the form
+        openSessionConfig(sessionConfigUrl(serverUrl));
       }
     }).catch(console.error);
   }
@@ -638,6 +655,15 @@
   }
   function openSessionConfig(url){
     const body=document.getElementById('cfg-body');
+    if(url && waitsForUpperSession()){
+      // nothing to configure before the upper level: its model and data are this session's
+      const upperName = esc(upperState.bouquet || upperState.url);
+      body.innerHTML = `<div class="cfg-waiting">⏳ Waiting for the upper-level session <b>${upperName}</b> to be configured.<br>`+
+        `Its model and data will be this session's; the form opens then, with them set and locked.</div>`;
+      document.getElementById('cfg-modal').classList.add('open');
+      return;
+    }
+    body.querySelector('.cfg-waiting')?.remove();
     if(url && !body.querySelector('iframe')){
       const f=document.createElement('iframe'); f.src=url;
       f.style.cssText='width:min(900px,94vw);height:78vh;border:none;background:#0e1116;display:block';
@@ -666,7 +692,9 @@
       closeSessionConfig();
       session.sessionState = "paramsDefined";
       const presets = encodeURIComponent(JSON.stringify(event.data?.value));
-      fetch(`/pybiscus-session/run?presets=${presets}`, {method:'POST', headers:{'X-Pybiscus':'1'}}).catch(err=>console.error('Error running pybiscus session:', err));
+      fetch(`/pybiscus-session/run?presets=${presets}`, {method:'POST', headers:{'X-Pybiscus':'1'}})
+        .then(r=>{ if(r.status===409) r.json().then(answer=>alert(answer.message)); })
+        .catch(err=>console.error('Error running pybiscus session:', err));
     }
   });
 

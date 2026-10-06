@@ -15,6 +15,9 @@ CHECK_PERIOD_S = 2
 # without a change, only a heartbeat (the bouquet's name) tells the upper level this one is alive
 HEARTBEAT_PERIOD_S = 10
 STALE_AFTER_S = 3 * HEARTBEAT_PERIOD_S
+# the choices a lower level's session must keep: model and data, so that models of every level
+# can be exchanged
+CONSTRAINED = ("model", "data")
 
 
 def bouquet_topology() -> dict:
@@ -49,6 +52,33 @@ def upper_level():
     return link
 
 
+def session_for_lower_levels() -> dict:
+    """the session the lower levels must follow, sent in every answer to them"""
+    running = sm.session_is_running
+    return {"running": running, "constraints": sm.session_constraints if running else None}
+
+
+def upper_constraints():
+    """the upper level's model and data once its session runs; None while it is not configured"""
+    session = (sm.upper_link or {}).get("session") or {}
+    return session.get("constraints") if session.get("running") else None
+
+
+def apply_upper_constraints(presets: dict) -> None:
+    """set and lock the upper level's choices, whatever the session form sent"""
+    options_set = presets.setdefault("options_set", {})
+    options_lock = presets.setdefault("options_lock", [])
+    for key, value in upper_constraints().items():
+        options_set[key] = value
+        if key not in options_lock:
+            options_lock.append(key)
+
+
+def record_session_constraints(presets: dict) -> None:
+    options_set = (presets or {}).get("options_set", {})
+    sm.session_constraints = {key: options_set[key] for key in CONSTRAINED if key in options_set} or None
+
+
 def record_lower_level(topology: dict) -> None:
     with sm.lower_levels_lock:
         sm.lower_levels[topology["bouquet"]] = {"topology": topology, "last_seen": time.time()}
@@ -80,13 +110,13 @@ def report_to_upper_level(upper_url: str, token) -> None:
 
     base = upper_url.rstrip("/") + "/pybiscus-session/lower-level"
     sm.upper_link = {"url": upper_url.rstrip("/"), "bouquet": None, "color": None, "reached": None,
-                     "problem": None, "last_contact": None}
+                     "problem": None, "last_contact": None, "session": None}
 
     def note_contact(response, problem):
         if problem is None:
             answer = response.json()
             sm.upper_link.update(bouquet=answer.get("bouquet"), color=answer.get("color"), reached=True,
-                                 problem=None, last_contact=time.time())
+                                 problem=None, last_contact=time.time(), session=answer.get("session"))
         else:
             sm.upper_link.update(reached=False, problem=problem)
 
@@ -107,7 +137,8 @@ def report_to_upper_level(upper_url: str, token) -> None:
                 note_contact(response, problem)
                 if problem is None:
                     sent, last_contact = topology, time.time()
-            elif time.time() - last_contact >= HEARTBEAT_PERIOD_S:
+            # while waiting for the upper level's session, often: its configuration unlocks this one's
+            elif time.time() - last_contact >= (CHECK_PERIOD_S if upper_constraints() is None else HEARTBEAT_PERIOD_S):
                 response, problem = post(base + "/heartbeat", {"bouquet": sm.bouquet})
                 note_contact(response, problem)
                 if problem is None:
