@@ -49,8 +49,9 @@ Here are the main directories of the Pybiscus project:
       models.
     * **pybiscus/session/agent** the sources of the agent (`pybiscus_agent`).
     * **pybiscus/session/manager** the sources of the session manager (`session_manager`).
-* the **pybiscus-plugins** directory and its manifest **pybiscus-plugins-conf.yml**: the bundled
-  plugins (data, models, strategies, decorators...).
+* the **pybiscus-plugins** directory and its manifest **plugins-conf.yml**: the bundled
+  plugins (data, models, strategies, decorators...); **pybiscus-plugins-hierarchical**, with its
+  own manifest, those of the hierarchical sessions only.
 * **configs** YAML configuration files. To change the behaviour of your client, model etc, do not
   change the code - change the config!
 * **container** everything related to the build of docker/podman images.

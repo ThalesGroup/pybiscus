@@ -134,6 +134,12 @@ With `bouquet`, the page takes the colour of its manager's page (tab icon, band,
 *Under development: the managers are linked and the topology shown; the federated learning across
 the levels is not there yet.*
 
+The plugins of these sessions (the relay client, the link decorator) are kept apart, in
+`pybiscus-plugins-hierarchical/`, so that they do not appear in a simple session's forms. The agents
+with a hierarchical role add its manifest (`launch/agent/cli/5007.sh`, `5008.sh` for the relays,
+`5100.sh` for a lower-level server):
+`PYBISCUS_PLUGIN_CONF_PATH=pybiscus-plugins/plugins-conf.yml:pybiscus-plugins-hierarchical/plugins-conf.yml`.
+
 A manager started with `--upper-url` (and `--bouquet`) reports its bouquet to the upper-level
 manager: its agents, their roles, states and locations, and the lower levels reporting to it in
 turn. `launch/session/run_lower_level_manager.sh` starts `cortaixlabs-edge1` this way, reporting to

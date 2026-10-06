@@ -94,7 +94,6 @@ prepare_run_dir() {
     local dir="$1"
     mkdir -p "$dir/configs" "$dir/experiments" "$REPO/datasets"
     ln -sfn "$REPO/pybiscus-plugins" "$dir/pybiscus-plugins"
-    ln -sfn "$REPO/pybiscus-plugins-conf.yml" "$dir/pybiscus-plugins-conf.yml"
     ln -sfn "$REPO/datasets" "$dir/datasets"
     $PYTHON "$REPO/launch/ci/smoke_configs.py" "$REPO/$DEMO" "$dir/configs" "$MAX_SAMPLES" "$THREADS"
 }

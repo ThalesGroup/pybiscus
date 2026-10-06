@@ -44,7 +44,7 @@ WORKDIR /app
 RUN mkdir datasets
 COPY pybiscus                  ./pybiscus
 COPY pybiscus-plugins          ./pybiscus-plugins
-COPY pybiscus-plugins-conf.yml ./pybiscus-plugins-conf.yml
+COPY pybiscus-plugins-hierarchical ./pybiscus-plugins-hierarchical
 COPY bin                       ./bin
 COPY certificates/             ./certificates
 COPY configs/                  ./configs

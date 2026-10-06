@@ -1,5 +1,27 @@
 # Changelog
 
+## [Unreleased]
+
+### Breaking changes
+
+* **Plugin manifests**: the bundled plugins' manifest moves from the repository root
+  (`pybiscus-plugins-conf.yml`) to `pybiscus-plugins/plugins-conf.yml`, each plugin directory
+  carrying its own (paths relative to it). A `PYBISCUS_PLUGIN_CONF_PATH` naming the former file
+  must be updated; without the variable, a file left at the former place is still read, with a
+  warning, when the new one is missing.
+* The relay client and the file writing decorator move to `pybiscus-plugins-hierarchical/`, with
+  its own manifest, added only for the hierarchical sessions: they no longer appear in a simple
+  session's forms.
+
+### Hierarchical sessions (under development)
+
+* A second, lower-level session manager (`launch/session/run_lower_level_manager.sh`); `--bouquet`
+  and `--color` name and colour a manager's session; `--upper-url` links a manager to its upper
+  level, which shows the tree of the bouquets and the lower levels' agents and managers on its map.
+* The session is configured from the top: a lower-level session waits for its upper level's, whose
+  model and data it keeps.
+* Map nodes moved with the mouse; `3frames.html` follows a session's bouquet.
+
 ## [Version 0.8.0]
 
 Since `dem_bx_0326` (2026-03-20): Pybiscus' functional scope grows — every

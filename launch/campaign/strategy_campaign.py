@@ -75,7 +75,8 @@ def plugin_env(campaign: dict) -> dict:
     env = dict(os.environ)
     extra = campaign.get("plugin_manifests") or []
     if extra:
-        base = env.get("PYBISCUS_PLUGIN_CONF_PATH", "pybiscus-plugins-conf.yml")
+        from pybiscus.plugins_of_app.pybiscusplugins import DEFAULT_PLUGIN_MANIFEST
+        base = env.get("PYBISCUS_PLUGIN_CONF_PATH", DEFAULT_PLUGIN_MANIFEST)
         env["PYBISCUS_PLUGIN_CONF_PATH"] = ":".join([base, *extra])
     return env
 

@@ -48,7 +48,7 @@ delta = w_trained − w_global before sending it:
 It is a test tool: it is declared in `launch/campaign/test-plugins-conf.yml` only, never in the
 default manifest, so that it does not appear in a real session's forms. A client uses it through
 `flower_client.alternate_client_class: {name: byzantine, config: {...}}`, with the test manifest
-added: `PYBISCUS_PLUGIN_CONF_PATH=pybiscus-plugins-conf.yml:launch/campaign/test-plugins-conf.yml`.
+added: `PYBISCUS_PLUGIN_CONF_PATH=pybiscus-plugins/plugins-conf.yml:launch/campaign/test-plugins-conf.yml`.
 
 The campaign tool ([Campaigns](campaigns.md)) takes the extra manifests (`plugin_manifests`) and
 per-client settings for a variant (`client_overrides`, by client number):

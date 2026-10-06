@@ -168,7 +168,7 @@ uv sync
 
 ## Plugin configuration
 
-To specify the definition of the plugins used, you can configure the plugin configuration file (default file: **pybiscus-plugins-conf.yml**, but configurable via the **PYBISCUS_PLUGIN_CONF_PATH** environment variable) by overriding this variable in the **pybiscus.env** file with these 2 possibilities:
+To specify the definition of the plugins used, you can configure the plugin configuration file (default file: **pybiscus-plugins/plugins-conf.yml**, but configurable via the **PYBISCUS_PLUGIN_CONF_PATH** environment variable) by overriding this variable in the **pybiscus.env** file with these 2 possibilities:
 
 - override the plugin configuration file in order to use only the project plugins :
 
@@ -178,7 +178,7 @@ PYBISCUS_PLUGIN_CONF_PATH="./cypia-plugins-conf.yml"
 - merge several plugin configuration files in order to use both the project plugins and the pybiscus ones :
 
 ```
-PYBISCUS_PLUGIN_CONF_PATH="../pybiscus/pybiscus-plugins-conf.yml:./cypia-plugins-conf.yml"
+PYBISCUS_PLUGIN_CONF_PATH="../pybiscus/pybiscus-plugins/plugins-conf.yml:./cypia-plugins-conf.yml"
 ```
 
 ## How to develop / execute

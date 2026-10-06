@@ -1,0 +1,13 @@
+# Plugins of the hierarchical sessions only (a session reporting to an upper level, or having lower
+# levels), added to the bundled plugins' manifest:
+#   PYBISCUS_PLUGIN_CONF_PATH=pybiscus-plugins/plugins-conf.yml:pybiscus-plugins-hierarchical/plugins-conf.yml
+# Kept apart so that they do not appear in the forms of a simple session. Paths are relative to
+# this file.
+client:
+  - path: "./client"
+    modules:
+      - relayclient
+strategydecorator:
+  - path: "./strategydecorator"
+    modules:
+      - filewritingdecorator

@@ -12,9 +12,14 @@ This chapter covers the specific implementation details for model registration..
 
 At launch, Pybiscus reads the plugin manifest named by the environment variable
 `PYBISCUS_PLUGIN_CONF_PATH` (which may be set in a `pybiscus.env` file), by default
-`pybiscus-plugins-conf.yml`. Several manifests can be merged, separated by `:`
-(`pybiscus-plugins-conf.yml:../my-project/my-plugins-conf.yml`); the paths in a manifest are
-relative to it. An excerpt of the bundled one:
+`pybiscus-plugins/plugins-conf.yml`, the manifest of the bundled plugins. Several manifests can be
+merged, separated by `:` (`pybiscus-plugins/plugins-conf.yml:../my-project/my-plugins-conf.yml`);
+the paths in a manifest are relative to it. Each plugin directory carries its own: the plugins of
+the hierarchical sessions are in `pybiscus-plugins-hierarchical/`, with
+`pybiscus-plugins-hierarchical/plugins-conf.yml`, added only for those sessions. (The manifest was
+at the repository root, `pybiscus-plugins-conf.yml`, until 0.8.0: a file left there is still read,
+with a warning, when `PYBISCUS_PLUGIN_CONF_PATH` is not set and the new one is missing.) An excerpt
+of the bundled one:
 
 ```yaml
 data:

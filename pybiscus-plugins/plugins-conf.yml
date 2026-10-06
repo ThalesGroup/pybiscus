@@ -1,9 +1,9 @@
 metricslogger:
-  - path: "./pybiscus-plugins/metricslogger"
+  - path: "./metricslogger"
     modules:
       - wandb_
 data:
-  - path: "./pybiscus-plugins/data"
+  - path: "./data"
     modules:
       - cifar10
       - randomvector
@@ -13,7 +13,7 @@ data:
       - hdfs
       - iSAID
 model:
-  - path: "./pybiscus-plugins/model"
+  - path: "./model"
     modules:
       - cnn
       - mnistcnn
@@ -23,15 +23,14 @@ model:
       - deeplog
       - fasterrcnn
 strategy:
-  - path: "./pybiscus-plugins/strategy"
+  - path: "./strategy"
     modules:
       - flowergeneric
       - fedavgwithaggregator
 strategydecorator:
-  - path: "./pybiscus-plugins/strategydecorator"
+  - path: "./strategydecorator"
     modules:
       - basicstrategydecorator
-      # - filewritingdecorator
       - visualize_model_layers
       - save_server_aggregated_fit_params
       - save_clients_fit_in_params
@@ -40,12 +39,8 @@ strategydecorator:
       - serverdp
       - clipping
       - clientprivacyevaluation
-client:
-  - path: "./pybiscus-plugins/client"
-    modules:
-      - relayclient
 resultmodifier:
-  - path: "./pybiscus-plugins/resultmodifier"
+  - path: "./resultmodifier"
     modules:
       - resultmultiplier
       - clientwatermarking
