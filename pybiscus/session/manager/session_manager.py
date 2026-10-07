@@ -112,6 +112,12 @@ def client_threads(name):
     on_machine = [c for c in session_clients if (registered_clients_cpu.get(c) or {}).get("machine") == machine]
     return max(1, cores // max(1, len(on_machine)))
 
+def proposed_flower_port():
+    """the Flower server port proposed in the session form, one per manager port (5555 -> 3333,
+    5556 -> 3334): two sessions on one machine left at 3333 shared their clients"""
+    port = 3333 + (manager_port - 5555)
+    return port if 1024 <= port <= 65535 else 3333
+
 def generate_new_cid():
     global session_client_id_counter
     session_client_id_counter += 1

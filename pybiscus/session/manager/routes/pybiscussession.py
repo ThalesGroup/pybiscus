@@ -364,6 +364,7 @@ def pybiscus_manager_manage():
                            session_token=pybiscus.session.manager.session_manager.session_token,
                            bouquet=pybiscus.session.manager.session_manager.bouquet,
                            bouquet_color=pybiscus.session.manager.session_manager.bouquet_color,
+                           flower_port=pybiscus.session.manager.session_manager.proposed_flower_port(),
                            gui_log_patterns=gui_log_patterns(), agent_state_protocol=agent_state_protocol())
 
 # **************************

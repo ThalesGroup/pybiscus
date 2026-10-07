@@ -19,8 +19,32 @@ def client_configs_dir() -> Path:
 # the agent tells an invalid config from a crash by this exit code, not by parsing the output
 # (65 = EX_DATAERR ; typer already uses 2 for usage errors)
 CONFIG_VALIDATION_EXIT_CODE = 65
+# the Flower server's port already listened to (69 = EX_UNAVAILABLE)
+PORT_IN_USE_EXIT_CODE = 69
 # plugin manifest or plugin import failure (78 = EX_CONFIG)
 PLUGIN_ERROR_EXIT_CODE = 78
+
+
+def exit_if_port_in_use(listen_address: str) -> None:
+    """a second Flower server on a port in use does not fail: gRPC listens with SO_REUSEPORT, and
+    the kernel then shared the clients of two sessions between their servers"""
+    import errno
+    import socket
+
+    host, _, port = listen_address.rpartition(":")
+    host = host.strip("[]") or "::"
+    family = socket.AF_INET6 if ":" in host else socket.AF_INET
+    with socket.socket(family, socket.SOCK_STREAM) as probe:
+        # a previous run's connections in TIME_WAIT do not count; a listening server does
+        probe.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        try:
+            probe.bind((host, int(port)))
+        except OSError as e:
+            if e.errno != errno.EADDRINUSE:
+                return   # anything else (a host name to resolve...) is for Flower to report
+            logm.console.log(f"❌ port {port} is already used by another server ({listen_address}): its clients would "
+                             f"be shared with this one. Give this session's Flower server another port.")
+            raise typer.Exit(code=PORT_IN_USE_EXIT_CODE)
 
 
 def exit_on_invalid_config(error: ValidationError) -> NoReturn:

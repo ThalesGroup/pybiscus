@@ -177,6 +177,11 @@ threads, but counts in the minimum number of clients (the Flower server waits fo
 opens with the relay client set and locked. The lower-level manager shows which client relays it,
 and the upper-level map draws the link between a relay and the server of its lower level.
 
+Several sessions on one machine need one Flower server port each: the session form proposes one
+per manager (port 3333 for the manager on 5555, 3334 for the one on 5556...), and a Flower server
+refuses to start on a port another server already listens to (left at the same port, two
+sessions' servers would silently share their clients).
+
 Several sessions can run from one directory on one machine: each agent keeps its uploaded
 configuration (`configs/uploaded/<port>/`), its pinned server configuration
 (`.pybiscus-cache/html-config/server-pin-<port>.json`) and the client run configurations a server

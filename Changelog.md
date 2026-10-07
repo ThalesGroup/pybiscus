@@ -28,6 +28,9 @@
 * Sessions sharing a directory no longer collide: a server agent's pinned configuration and the
   client run configurations it collects are kept per agent port, and the manager proposes a reports
   directory per bouquet.
+* A Flower server refuses to start on a port already listened to (exit code 69): gRPC let a
+  second server share it silently, and the clients of two sessions were mixed. The session form
+  proposes a Flower port per manager (3333 + manager port - 5555).
 
 ## [Version 0.8.0]
 
