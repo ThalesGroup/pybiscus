@@ -27,7 +27,7 @@ class ConfigModelWeightVignetteDecoratorData(BaseModel):
     mode_layers_values: bool = Field(default=True, description="weights drawn as values; as differences to the server's otherwise")
     max_filters: int = Field(default=8, description='convolution filters drawn per layer, at most')
 
-    webhook_url: str = Field(default="http://localhost:5555/webhook/vignettes", description="URL the images are posted to (the session manager's /webhook/vignettes)")
+    webhook_url: str = Field(default="${manager_url}/webhook/vignettes", description="URL the images are posted to (the session manager's /webhook/vignettes)")
 
     debug: bool = Field(default=False, description='log every step of the drawing')
 

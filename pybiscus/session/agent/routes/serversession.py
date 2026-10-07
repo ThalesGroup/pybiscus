@@ -19,8 +19,22 @@ from pybiscus.session.auth import session_access
 import pybiscus.session.agent.pybiscus_agent as pybagent
 
 # the form's state (options, list items, values), replayed on a freshly generated page: the
-# former HTML snapshot froze the interface injected by the scripts, which then got it twice
-server_pin_path = ".pybiscus-cache/html-config/server-pin.json"
+# former HTML snapshot froze the interface injected by the scripts, which then got it twice.
+# One per agent port: two server agents started from one directory replaced each other's pin
+PIN_DIR = ".pybiscus-cache/html-config"
+FORMER_PIN = os.path.join(PIN_DIR, "server-pin.json")
+
+
+def server_pin_path() -> str:
+    return os.path.join(PIN_DIR, f"server-pin-{pybagent.agent_port}.json")
+
+
+def pin_to_read():
+    """this agent's pin, else the former shared one, read until this agent pins its own"""
+    for path in (server_pin_path(), FORMER_PIN):
+        if os.path.isfile(path):
+            return path
+    return None
 
 # ..........................................................
 # .... HEAD /server/config/pin .............................
@@ -32,7 +46,7 @@ server_pin_path = ".pybiscus-cache/html-config/server-pin.json"
 @rest_server.route('/server/config/pin', methods=['HEAD', 'GET'])
 def check_pinned_config():
 
-    if os.path.isfile(server_pin_path):
+    if pin_to_read():
 
         return Response(status=200)
     else:
@@ -50,8 +64,8 @@ def pinConfig():
     if not isinstance(state, dict):
         return {"status": "error", "message": "a 'state' object is required"}, 400
 
-    os.makedirs(os.path.dirname(server_pin_path), exist_ok=True)
-    with open(server_pin_path, "w", encoding="utf-8") as f:
+    os.makedirs(PIN_DIR, exist_ok=True)
+    with open(server_pin_path(), "w", encoding="utf-8") as f:
         json.dump(state, f)
     return {"status": "ok"}
 
@@ -65,7 +79,7 @@ def pinConfig():
 def deletePinnedConfig():
 
     try:
-        os.remove(server_pin_path)
+        os.remove(server_pin_path())
         return {"status": "deleted"}, 200
     except FileNotFoundError:
         return {"status": "not found"}, 404
@@ -76,11 +90,12 @@ def deletePinnedConfig():
 
 def pinned_config_js() -> str:
 
-    if not os.path.exists(server_pin_path):
+    path = pin_to_read()
+    if path is None:
         return ""
 
     try:
-        with open(server_pin_path, encoding="utf-8") as f:
+        with open(path, encoding="utf-8") as f:
             state = json.load(f)
     except (OSError, ValueError) as e:
         logm.console.log(f"server: pinned configuration ignored, unreadable: {e}")
@@ -176,7 +191,8 @@ def server():
     try:
         # supress storage path as it can be an old one
         import shutil
-        shutil.rmtree("./experiments/config_clients", ignore_errors=True)
+        from pybiscus.commands.apps_common import client_configs_dir
+        shutil.rmtree(client_configs_dir(), ignore_errors=True)
 
         return interpretConfigurationFile( "server", pybagent.uploaded_file_path )
     
@@ -234,7 +250,8 @@ def log_client_runconfig(client_name: str):
         return jsonify({"error": "Bad file format: yaml file required"}), 400
 
     # define storage path
-    file_path = Path(f"experiments/config_clients/{client_name}.yml")
+    from pybiscus.commands.apps_common import client_configs_dir
+    file_path = client_configs_dir() / f"{client_name}.yml"
 
     # create the directory
     ensure_file_dir_exists(file_path)

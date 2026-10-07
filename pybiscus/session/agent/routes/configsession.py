@@ -175,6 +175,11 @@ def session_registration_parameters():
         reset_registration()
         pybagent.registration_parameters = the_json
         set_session_token(the_json.get('session_token'))
+        # the agent's states go to the manager it registers with: the one of its --config file,
+        # read at start, kept them otherwise, and an agent started without one sent them nowhere
+        if the_json.get('manager_url'):
+            from pybiscus.session.agent.agent_weblog import initAgentLogger
+            initAgentLogger(f"{the_json['manager_url'].rstrip('/')}/webhook/agents", the_json.get('bouquet'), the_json.get('name'))
 
         return jsonify({"status": "ok"})
     

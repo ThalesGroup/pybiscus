@@ -75,7 +75,8 @@ on the field name).
 
 The server's form opens with the session values locked: the strategy's `min_*_clients`, the
 robustness decorator, the data and model choices and the partition fields. Its loggers and metrics
-loggers default to the manager's webhook, so its logs and metrics appear in the manager. Set the
+loggers default to the manager's webhook (`manager_url`, set and locked to this manager's
+address), so its logs and metrics appear in the manager. Set the
 other values (number of rounds, strategy, pipeline...), then *Check Config* and *Execute Config*.
 
 ![Server form in a session](images/session_server_config.png "Server form in a session")
@@ -175,6 +176,13 @@ changes them once the session runs. A relay gets no share of the data, no holdou
 threads, but counts in the minimum number of clients (the Flower server waits for it); its form
 opens with the relay client set and locked. The lower-level manager shows which client relays it,
 and the upper-level map draws the link between a relay and the server of its lower level.
+
+Several sessions can run from one directory on one machine: each agent keeps its uploaded
+configuration (`configs/uploaded/<port>/`), its pinned server configuration
+(`.pybiscus-cache/html-config/server-pin-<port>.json`) and the client run configurations a server
+agent collects (`experiments/config_clients/<port>/`) apart, and the manager proposes, without
+locking it, a reports directory per bouquet to its server (`${root_dir}/experiments/<bouquet>`, hence
+one `current` link per session).
 
 The whole topology is sent when it changes; between two changes, the lower level only sends a
 heartbeat every 10 s. Silent for 30 s, it is shown as unreachable; an upper-level manager restarted

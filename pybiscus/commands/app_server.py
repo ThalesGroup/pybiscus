@@ -394,11 +394,13 @@ def launch_config(
     # into reporting_path
     # from pathlib import Path
 
-    clients_config_dir = Path("./experiments/config_clients")
+    from pybiscus.commands.apps_common import client_configs_dir
+    clients_config_dir = client_configs_dir()
 
     if clients_config_dir.exists() and clients_config_dir.is_dir():
         logm.console.log(f"[pybiscus] save clients config 💾🖥️⚙️ as : {reporting_path / "config_clients"}")
-        shutil.move(clients_config_dir, reporting_path)
+        # named explicitly: moved into the directory, a per-agent one would keep its port as name
+        shutil.move(clients_config_dir, reporting_path / "config_clients")
 
 if __name__ == "__main__":
     app()

@@ -425,6 +425,9 @@ def main():
 
     global agent_port, agent_token, tokens_are_required
     agent_port  = args.port
+    # inherited by the server runs this agent launches
+    from pybiscus.commands.apps_common import CLIENT_CONFIGS_ENV
+    os.environ[CLIENT_CONFIGS_ENV] = os.path.join("experiments", "config_clients", str(args.port))
     tokens_are_required = tokens_required(args.host, args.require_token)
     agent_token = component_token(agent_token_name(args.port), args.token) if tokens_are_required else None
 

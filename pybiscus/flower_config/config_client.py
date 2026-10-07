@@ -104,6 +104,9 @@ class ConfigClient(BaseModel):
     PYBISCUS_ALIAS: ClassVar[str] = "Pybiscus client configuration"
 
     root_dir: str           = "${oc.env:PWD}"
+    # the webhooks' default address (logs, metrics, vignettes); in a session, set and locked by its manager
+    manager_url:            str = Field(default="${oc.env:PYBISCUS_MANAGER_URL,http://localhost:5555}",
+                                        description="address of the session manager, that the webhooks (logs, metrics, vignettes) default to")
     flower_client:          ConfigFlowerClient= Field(description='how the client reaches the Flower server')
     client_run:             ConfigClientRun= Field(description='identity and behaviour of the client during the session')
     client_compute_context: ConfigClientComputeContext= Field(description='hardware the client trains on')

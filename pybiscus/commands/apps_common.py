@@ -7,6 +7,15 @@ from typing import NoReturn, Optional, Union
 from dotenv import load_dotenv
 from pydantic import ValidationError
 
+# where a server run finds the client run configurations its agent collected: the agent sets it to
+# a directory of its own (two server agents started from one directory shared, emptied and moved
+# each other's), a server launched by hand keeps the former place
+CLIENT_CONFIGS_ENV = "PYBISCUS_CLIENT_CONFIGS_DIR"
+
+
+def client_configs_dir() -> Path:
+    return Path(os.environ.get(CLIENT_CONFIGS_ENV, "experiments/config_clients"))
+
 # the agent tells an invalid config from a crash by this exit code, not by parsing the output
 # (65 = EX_DATAERR ; typer already uses 2 for usage errors)
 CONFIG_VALIDATION_EXIT_CODE = 65

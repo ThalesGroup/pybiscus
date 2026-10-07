@@ -21,6 +21,13 @@ Pybiscus uses Pydantic as a validation process for configuration given by the us
 
 Behind the curtain, Pybiscus uses OmegaConf to deal with loading and saving configuration files. OmegaConf comes with a solver, which in particular allows for value in configuration files like `${oc.env:PWD}`, which allows for more flexibility (avoiding, in the case of key root_dir, to put personal, hard path).
 
+The same goes for `manager_url`, next to `root_dir` in the server and client configurations: the
+address of the session manager, by default `${oc.env:PYBISCUS_MANAGER_URL,http://localhost:5555}`.
+The webhooks (logger, metrics logger, model vignettes) default to it (`${manager_url}/webhook/logs`
+…): set it once, or export `PYBISCUS_MANAGER_URL`, to send them to another manager. In a session,
+the manager sets and locks it in its agents' forms, so that each manager of a hierarchical session
+gets the logs and metrics of its own session; a `webhook_url` given explicitly still prevails.
+
 ## Description of parts of config files
 
 ### Fabric / GPU / hardware description

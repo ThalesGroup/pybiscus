@@ -21,6 +21,13 @@
 * The session is configured from the top: a lower-level session waits for its upper level's, whose
   model and data it keeps.
 * Map nodes moved with the mouse; `3frames.html` follows a session's bouquet.
+* `manager_url` in the server and client configurations: the webhooks' default address
+  (`PYBISCUS_MANAGER_URL`, else `http://localhost:5555`), set and locked by the session manager, so
+  that a lower-level session's logs and metrics reach its own manager; an agent's states go to the
+  manager given at its registration.
+* Sessions sharing a directory no longer collide: a server agent's pinned configuration and the
+  client run configurations it collects are kept per agent port, and the manager proposes a reports
+  directory per bouquet.
 
 ## [Version 0.8.0]
 

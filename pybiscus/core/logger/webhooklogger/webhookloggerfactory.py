@@ -9,7 +9,7 @@ class ConfigWebHookLoggerFactoryData(BaseModel):
 
     PYBISCUS_CONFIG: ClassVar[str] = "config"
 
-    webhook_url: str = Field(default="http://localhost:5555/webhook/logs", description="URL the log lines are posted to (the session manager's /webhook/logs)")
+    webhook_url: str = Field(default="${manager_url}/webhook/logs", description="URL the log lines are posted to (the session manager's /webhook/logs)")
     logger_id: str   = Field(default="🖧", description='source tag of the posted lines')
 
     model_config = ConfigDict(extra="forbid")

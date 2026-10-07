@@ -222,6 +222,15 @@ def pybiscus_manager_get_session_params():
         custom_presets["values_set"]["server_strategy.robustness"] = robustness
         custom_presets["values_lock"].append("server_strategy.robustness")
 
+    # the webhooks of the agents' runs reach this manager, at the address the agent reached it by
+    custom_presets["values_set"]["manager_url"] = request.host_url.rstrip("/")
+    custom_presets["values_lock"].append("manager_url")
+
+    # proposed, not locked: a session's reports in a directory of its bouquet, so that two
+    # sessions on one machine do not share experiments/current
+    if agent in session.registered_servers and session.bouquet:
+        custom_presets["values_set"]["server_run.reporting.basedir"] = "${root_dir}/experiments/" + session.bouquet
+
     if cid is not None:
         custom_presets["values_set"]["client_run.cid"] = cid
         custom_presets["values_lock"].append("client_run.cid")
