@@ -62,7 +62,7 @@ is registered (and, in a hierarchical session, until every lower level has its r
 upper-level session is configured: its tooltip says what is missing). Its header gives the number of clients registered. Choose the model and the
 data, and the optional session settings (described in [Session parameters](#session-parameters)):
 how the training data is shared between the clients (`data_partition`), a validation set held out
-of each share (`data_holdout`), `min_clients`, `robustness`, `share_cpu_threads`.
+of each share (`data_holdout`), `num_rounds`, `min_clients`, `robustness`, `share_cpu_threads`.
 
 ![Session configuration](images/session_manager_config.png "Session configuration")
 
@@ -162,8 +162,9 @@ back. The registered coordinates do not change: only this page's drawing, kept b
 
 The session is configured from the top: a lower level's session waits for its upper level's.
 Until the upper-level session is launched, the lower-level manager keeps its ⚙ *Config* button
-greyed out, and refuses to launch. Then its form opens with the upper level's **model and
-data** set and locked (models exchanged between the levels must be the same), the rest of the
+greyed out, and refuses to launch. Then its form opens with the upper level's **model, data
+and number of rounds** set and locked (models exchanged between the levels must be the same, and
+each lower round answers one upper round), the rest of the
 session (data partition, holdout, `min_clients`, robustness...) being its own; the manager also
 imposes them whatever the form sends, and they reach the forms of its agents. A level in the middle
 passes them on to its own lower levels.
@@ -219,6 +220,10 @@ registered:
   and a robust aggregation sizes its defense on fewer clients; in exchange, the others may leave;
 - more: the first round waits for the missing clients, and clients registered after the launch get
   no share of the data partition.
+
+Its optional `num_rounds` is set and locked in the server's form; unset, the server's form decides.
+A session with lower levels must set it (the manager refuses to launch otherwise): they follow it
+round for round.
 
 Its `robustness` choice (`none` by default, or `safeguard`) is set and locked in the server's form:
 `safeguard` adds a defense against malicious clients to the server's pipeline (see

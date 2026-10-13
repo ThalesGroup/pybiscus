@@ -75,6 +75,9 @@ def make_session_model(models: list[str], models_confs, data: list[str], data_co
             "every client validates on a part of its own training share, whatever its form says")
         share_cpu_threads: bool = Field(default=True, description=
             "each client gets the cores of its machine divided by the clients on it: every PyTorch process takes all the cores otherwise")
+        num_rounds: Optional[int] = Field(default=None, ge=1, description=
+            "rounds of the session, set and locked in the server's form; unset: the server's form decides. "
+            "Required with lower levels, which follow it round for round")
         min_clients: Optional[int] = Field(default=None, ge=1, description=
             "clients every round waits for; unset: the clients registered at launch (a confirmation states the risk of another number)")
         robustness: Robustness = Field(default=Robustness.none, description=

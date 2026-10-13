@@ -16,8 +16,10 @@ CHECK_PERIOD_S = 2
 HEARTBEAT_PERIOD_S = 10
 STALE_AFTER_S = 3 * HEARTBEAT_PERIOD_S
 # the choices a lower level's session must keep: model and data, so that models of every level
-# can be exchanged
-CONSTRAINED = ("model", "data")
+# can be exchanged, and the number of rounds, each lower round answering one upper round
+CONSTRAINED = ("model", "data", "num_rounds")
+# a setting of the manager's, not an option selected in every form
+NOT_AN_OPTION = ("num_rounds",)
 
 
 def bouquet_topology() -> dict:
@@ -87,14 +89,18 @@ def apply_upper_constraints(presets: dict) -> None:
     options_set = presets.setdefault("options_set", {})
     options_lock = presets.setdefault("options_lock", [])
     for key, value in upper_constraints().items():
+        if key in NOT_AN_OPTION:
+            presets[key] = value
+            continue
         options_set[key] = value
         if key not in options_lock:
             options_lock.append(key)
 
 
 def record_session_constraints(presets: dict) -> None:
-    options_set = (presets or {}).get("options_set", {})
-    sm.session_constraints = {key: options_set[key] for key in CONSTRAINED if key in options_set} or None
+    presets = presets or {}
+    chosen = {**presets.get("options_set", {}), **{key: presets.get(key) for key in NOT_AN_OPTION}}
+    sm.session_constraints = {key: chosen[key] for key in CONSTRAINED if chosen.get(key) is not None} or None
 
 
 def record_lower_level(topology: dict) -> None:

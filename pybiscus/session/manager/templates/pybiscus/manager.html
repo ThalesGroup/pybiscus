@@ -297,13 +297,16 @@
   let sessionRunning = false;   // once launched, its relays no longer change
   const upperConstraints = () => (upperState && upperState.session && upperState.session.running) ? upperState.session.constraints : null;
   const waitsForUpperSession = () => !!upperState && !upperConstraints();
-  // the session form: the model and the data of the upper level's session set and locked; a Flower
+  // the session form: the model, the data and the rounds of the upper level's session set and locked; a Flower
   // port of this manager's proposed, not locked (two sessions on one machine left at 3333 shared their clients)
   const FLOWER_PORT = {{ flower_port | tojson }};
   const sessionConfigUrl = serverUrl => {
     const url = `${serverUrl}/session/config?token=${encodeURIComponent(SESSION_TOKEN)}`;
     const imposed = upperConstraints() || {};
-    const presets = {values_set: {...imposed, 'flower_server.server_port': FLOWER_PORT}, values_lock: Object.keys(imposed)};
+    // an Optional field: its value is set once its "Some" tab (' ') is selected
+    const optional = Object.keys(imposed).filter(key => key === 'num_rounds');
+    const presets = {options_set: Object.fromEntries(optional.map(key => [key, ' '])), options_lock: optional,
+                     values_set: {...imposed, 'flower_server.server_port': FLOWER_PORT}, values_lock: Object.keys(imposed)};
     return url + '&presets=' + encodeURIComponent(JSON.stringify(presets));
   };
 
@@ -542,7 +545,7 @@
       colour: upperLevel.reached === false ? '#5a6470' : (upperLevel.color || (upperLevel.bouquet ? bouquetColor(upperLevel.bouquet) : '#7d8794'))} : null;
     const upperHead = upper ? `<div class="tier-head"><span class="bouquet-pill" style="--session-color:${esc(upper.colour)}" title="manager: ${esc(upper.url)}">↑ 💐 ${esc(upper.name)}</span>`+
       `<span class="chip" title="${esc(upper.problem || '')}">${upper.reached ? 'connected' : upper.reached === false ? 'not reached' : 'connecting…'}</span>`+
-      `<span class="chip" title="this session's model and data follow the upper level's session">${upper.session && upper.session.running ? 'session configured' : 'session not configured'}</span>`+
+      `<span class="chip" title="this session's model, data and number of rounds follow the upper level's session">${upper.session && upper.session.running ? 'session configured' : 'session not configured'}</span>`+
       `<span class="chip" title="the client of the upper-level session that relays this one">relay: ${esc((upper.session && upper.session.relay) || '—')}</span></div>` : '';
     if(groups.length || upper){
       // the tree: this session, then each lower level indented under its parent
