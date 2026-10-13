@@ -208,6 +208,15 @@ Files are `.npz` + JSON, written atomically and read once; the relay empties its
 The relay loads no data (its machine may not hold the training set): the `data` section of its
 configuration, still required, is not read.
 
+**Cycles.** In a hierarchical session, the *Loss · metric diff* panel gets a *cycles* tab: one row
+per level, this session first, then its lower levels indented (all the depths), one bar per round
+(the last 20, of equal width). This session's bar is its whole round; a lower level's is the share
+of that round it worked on it, from the upper model's arrival to its aggregate's departure, in red
+when it failed; the tooltip gives the seconds and the examples. It shows which site holds the upper
+rounds back. Each manager reads these times from its own server's log lines as they arrive, and
+sends only durations up with its topology (at the end of each round): the sites' clocks need not
+agree.
+
 Several sessions on one machine need one Flower server port each: the session form proposes one
 per manager (port 3333 for the manager on 5555, 3334 for the one on 5556...), and a Flower server
 refuses to start on a port another server already listens to (left at the same port, two

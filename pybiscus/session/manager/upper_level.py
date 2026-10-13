@@ -39,8 +39,10 @@ def bouquet_topology() -> dict:
                **{key: value for key, value in sm.registered_agents_meta.get(name, {}).items() if key != "role"}}
               for role, registered in (("server", sm.registered_servers), ("client", sm.registered_clients))
               for name in registered]
+    from pybiscus.session.manager.cycles import session_cycles
     return {"bouquet": sm.bouquet, "color": sm.bouquet_color, "manager_url": sm.manager_url,
-            "manager": manager_place(), "agents": agents, "relays": dict(sm.relays), "lower_levels": lower_levels()}
+            "manager": manager_place(), "agents": agents, "relays": dict(sm.relays), "lower_levels": lower_levels(),
+            "cycles": session_cycles()}
 
 
 def manager_place() -> dict:

@@ -76,6 +76,7 @@
   .relay-select{color-scheme:dark} .relay-select option{background:var(--panel-2); color:var(--text)}
   .tool{cursor:pointer; color:var(--muted); border:1px solid var(--border); border-radius:6px; padding:2px 8px; font-size:10.5px; background:transparent; font-family:var(--mono)}
   .tool:hover{color:var(--text)}
+  .tool.active{color:var(--text); border-color:var(--accent)}
 
   /* topology + geo */
   .nodes{display:flex; flex-direction:column; gap:8px; overflow-y:auto; min-height:0}
@@ -109,6 +110,7 @@
   .acc-legend .it{display:flex; align-items:center; gap:6px; font-size:11.5px}
   .acc-legend .sw{width:9px;height:9px;border-radius:2px} .acc-legend .v{color:var(--text); font-weight:600}
   .chart{width:100%; flex:1; min-height:0; display:block}
+  .chart[hidden], .acc-legend[hidden]{display:none}
   .chart .grid-l{stroke:var(--border); stroke-width:1}
   .chart .round-l{stroke:#2a3644; stroke-width:1; stroke-dasharray:2 4}   /* marque verticale par round */
   .chart text.axis{fill:var(--muted); font-size:9px; letter-spacing:.1em}
@@ -210,10 +212,12 @@
         <div class="body"><svg class="chart" id="accChart" viewBox="0 0 600 200" preserveAspectRatio="none"></svg></div>
       </section>
       <section class="panel">
-        <header><span class="eyebrow">Loss · metric diff</span>
-          <span class="acc-legend"><span class="it"><span class="sw" style="background:var(--loss)"></span><span class="v num" id="loss-val">—</span></span></span>
+        <header><span class="eyebrow" id="mid-title">Loss · metric diff</span>
+          <span id="mid-tabs" hidden><button class="tool active" data-tab="loss">loss</button> <button class="tool" data-tab="cycles" title="where each level of the hierarchical session spends its rounds">cycles</button></span>
+          <span class="acc-legend" id="loss-legend"><span class="it"><span class="sw" style="background:var(--loss)"></span><span class="v num" id="loss-val">—</span></span></span>
         </header>
-        <div class="body"><svg class="chart" id="lossChart" viewBox="0 0 600 140" preserveAspectRatio="none"></svg></div>
+        <div class="body"><svg class="chart" id="lossChart" viewBox="0 0 600 140" preserveAspectRatio="none"></svg>
+          <svg class="chart" id="cyclesChart" viewBox="0 0 600 140" preserveAspectRatio="none" hidden></svg></div>
       </section>
     </div>
 
@@ -428,7 +432,55 @@
     const w=76,h=22,mx=Math.max(...arr)||1,bw=w/Math.max(arr.length,1);
     el.innerHTML=arr.map((v,i)=>{const bh=(h-2)*v/mx; return `<rect x="${i*bw+0.5}" y="${h-bh}" width="${Math.max(1,bw-1.5)}" height="${bh}" fill="${i===arr.length-1?'#ff5d73':'#39424e'}"/>`;}).join('');
   }
-  function renderCharts(){ renderAccuracy(); renderLoss(); renderDround(); setTxt('round-num', session.roundNumber); }
+  // ============ cycles of a hierarchical session ============
+  // one row per level, this session first, then each lower one indented: a bar per round, the
+  // share of this session's round the level spent on it (equal rounds: a first round lengthened by
+  // the agents' launch flattened all the others). A lower level's bar starts with this session's
+  // round, when its relay sends the model down: only durations come up, the clocks of the sites
+  // are never compared
+  let cyclesTab = false, lastCycles = null;
+  document.querySelectorAll('#mid-tabs .tool').forEach(b => b.onclick = () => { cyclesTab = b.dataset.tab === 'cycles'; showMidTab(); });
+  function showMidTab(){
+    document.querySelectorAll('#mid-tabs .tool').forEach(b => b.classList.toggle('active', (b.dataset.tab === 'cycles') === cyclesTab));
+    document.getElementById('lossChart').toggleAttribute('hidden', cyclesTab);
+    document.getElementById('cyclesChart').toggleAttribute('hidden', !cyclesTab);
+    document.getElementById('loss-legend').toggleAttribute('hidden', cyclesTab);
+    setTxt('mid-title', cyclesTab ? 'Cycles · per level' : 'Loss · metric diff');
+    renderCycles();
+  }
+  function renderCycles(){
+    const svg = document.getElementById('cyclesChart');
+    if(!cyclesTab || !lastCycles) return;
+    const rows = [{label: MANAGER_BOUQUET || 'this session', color: SESSION_COLOR || '#7d8794', depth: 0, cycles: lastCycles.own}]
+      .concat(lastCycles.groups.map(gr => ({label: gr.bouquet, color: gr.color, depth: gr.depth, cycles: gr.cycles, stale: gr.stale})));
+    // this session's round: the whole round; a lower level's: its work, from the model's arrival
+    const seconds = (row, c) => row.depth ? (c.work_s ?? c.round_s) : c.round_s;
+    const rounds = [...new Set(rows.flatMap(r => r.cycles.map(c => c.round)))].sort((a, b) => a - b).slice(-20);
+    if(!rounds.length){ svg.innerHTML = '<text class="axis" x="10" y="20">no round yet</text>'; return; }
+    // a round's slot: its length in this session, else the longest any level spent on it
+    const slot = Object.fromEntries(rounds.map(n => {
+      const own = rows[0].cycles.find(c => c.round === n);
+      return [n, (own && own.round_s) || Math.max(0.001, ...rows.map(r => { const c = r.cycles.find(c => c.round === n); return c ? (seconds(r, c) || 0) : 0; }))];
+    }));
+    const W=600, H=140, padL=112, padR=6, padT=6, padB=14, rowH=(H-padT-padB)/rows.length, slotW=(W-padL-padR)/rounds.length;
+    let s = ''; const start = {};
+    rounds.forEach((n, i) => { const x = padL + i*slotW; start[n] = x; s += `<line class="round-l" x1="${x}" y1="${padT}" x2="${x}" y2="${H-padB}"/><text class="axis" x="${x+2}" y="${H-3}">r${n}</text>`; });
+    rows.forEach((row, i) => {
+      const y = padT + i*rowH;
+      s += `<text class="axis" x="${3+row.depth*8}" y="${y+rowH*0.62}" style="fill:${esc(row.color)}">${row.depth ? '↳ ' : ''}${esc(row.label)}</text>`;
+      row.cycles.forEach(c => {
+        const sec = seconds(row, c);
+        if(!(c.round in start) || (sec == null && !c.failed)) return;
+        const w = Math.max(1.5, (slotW - 2) * Math.min(1, (sec || 0) / slot[c.round]));
+        const tip = `${row.label} · round ${c.round}: ` + (c.failed ? 'failed' :
+          `${sec.toFixed(1)} s${row.depth ? ' of work' : ''}${c.examples ? `, ${c.examples} examples` : ''}`);
+        // literal colours: var(--…) does not resolve in SVG attributes
+        s += `<rect x="${start[c.round]}" y="${y+rowH*0.2}" width="${w}" height="${rowH*0.6}" rx="1" fill="${c.failed ? '#ff5d73' : esc(row.color)}" opacity="${row.stale ? .4 : .85}"><title>${esc(tip)}</title></rect>`;
+      });
+    });
+    svg.innerHTML = s;
+  }
+  function renderCharts(){ renderAccuracy(); renderLoss(); renderDround(); renderCycles(); setTxt('round-num', session.roundNumber); }
 
   // ============ topology + geo ============
   const ROLE_ICON  = { server:'🧠', client:'💻' };
@@ -488,7 +540,7 @@
   function flattenLowerLevels(levels, parent, depth, groups){
     (levels||[]).forEach(lv=>{
       const group = {bouquet:lv.bouquet, color:lv.color || bouquetColor(lv.bouquet), stale:!!lv.stale,
-                     url:lv.manager_url, manager:lv.manager || {}, relays:lv.relays || {}, parent, depth, nodes:[]};
+                     url:lv.manager_url, manager:lv.manager || {}, relays:lv.relays || {}, cycles:lv.cycles || [], parent, depth, nodes:[]};
       (lv.agents||[]).forEach(a=>group.nodes.push({key:`${lv.bouquet}/${a.name}`, name:a.name, role:a.role,
         state:a.state || 'declared', geo:a.geo_location, bouquet:lv.bouquet, loc:a.location, org:a.organisation, group}));
       groups.push(group);
@@ -693,6 +745,8 @@
       setTxt('cfg-clients', `${registeredClients} client${registeredClients === 1 ? '' : 's'} registered = default min_clients`);
       upperState = data.upper_level || null;
       sessionRunning = !!data.session_running;
+      lastCycles = {own: data.cycles || [], groups: flattenLowerLevels(data.lower_levels || [], null, 1, [])};
+      document.getElementById('mid-tabs').hidden = !lastCycles.groups.length && !data.upper_level;
       try { renderTopology(servers, data.clients || {}, data.meta || {}, data.lower_levels || [], data.upper_level || null, data.manager || null, data.relays || {}); renderCharts(); }
       catch(e){ console.error('[manager] render error:', e); }
       if(serverUrl==="" && Object.keys(servers).length>0){

@@ -57,6 +57,13 @@ def log_round_metric(phase: str, metrics: Mapping[str, object], server_round: Op
     logm.console.log(f"📈 gui phase={phase} round={round_text} metric={name} value={value:.6g}")
 
 
+def log_link_event(event: str, server_round: int, examples: Optional[int] = None) -> None:
+    """a lower level's round as its link to the upper level sees it: model_received (its clients
+    start), aggregate (sent up, with its examples) or failed"""
+    tail = "" if examples is None else f" examples={examples}"
+    logm.console.log(f"🔗 gui link={event} round={server_round}{tail}")
+
+
 def gui_log_patterns() -> dict[str, str]:
     # JavaScript RegExp sources, compiled as is by the manager page (also valid Python)
     return {
@@ -68,4 +75,6 @@ def gui_log_patterns() -> dict[str, str]:
         "duration": r"time diff is (\d+(?:\.\d+)?)s",
         # variation of the aggregated evaluation loss (metricdiffcompute decorator)
         "metric_diff": r"metric diff is (\d+(?:\.\d+)?)\s*$",
+        # a lower level's link (log_link_event): groups event, round, examples
+        "link": r"🔗 gui link=(model_received|aggregate|failed) round=(\d+)(?: examples=(\d+))?",
     }

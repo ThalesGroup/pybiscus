@@ -12,6 +12,7 @@ from pybiscus.session.manager.session_manager import generate_new_cid, pybiscus_
 import pybiscus.core.pybiscus_logger as logm
 from pybiscus.session.auth import session_access
 from pybiscus.session.csrf import HEADER
+from pybiscus.session.manager import cycles
 
 # **************************
 
@@ -85,6 +86,7 @@ def pybiscus_manager_run_session():
     session.session_clients = [client for client in session.registered_clients if client not in session.session_relays]
     session.session_links = links_for_lower_levels()
     session.upper_session_link = upper_level_session_link()
+    cycles.reset()
     if session.upper_link is not None:
         session.upper_link["dropped"] = None
 
@@ -323,6 +325,7 @@ def stop_agent_runs():
 
 def drop_session():
     stop_agent_runs()
+    cycles.reset()
     pybiscus.session.manager.session_manager.clear_session()
 
     # les buffers sont drainés par leurs GET respectifs, mais un drop pendant un run laisse
@@ -344,6 +347,7 @@ def pybiscus_manager_list_clients():
         "manager": manager_place(),
         "relays": pybiscus.session.manager.session_manager.relays,
         "session_running": pybiscus.session.manager.session_manager.session_is_running,
+        "cycles": cycles.session_cycles(),
     })
 
 # **************************
@@ -485,6 +489,7 @@ def pybiscus_manager_receive_log():
     # private section
     with log_lock:
         log_messages.append({'source': source, 'message': message})
+    cycles.note_server_line(message)
 
     return jsonify({"status": "success"}), 200
 

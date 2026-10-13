@@ -3,7 +3,7 @@ from typing import ClassVar, Literal
 from flwr.common import ndarrays_to_parameters, parameters_to_ndarrays
 from pydantic import BaseModel, ConfigDict
 
-import pybiscus.core.pybiscus_logger as logm
+import pybiscus.core.gui_events as gui_events
 from pybiscus.flower.sessionlink import ConfigSessionLink, DirectoryLink, scalar_metrics
 from pybiscus.interfaces.flower.strategydecorator import StrategyDecorator
 
@@ -46,6 +46,7 @@ class UpperLevelLinkDecorator(StrategyDecorator):
         else:
             upper_model = ndarrays_to_parameters(self.link.wait_model(server_round))
         self.first_model = None
+        gui_events.log_link_event("model_received", server_round)
         return self.base_strategy.configure_fit(server_round, upper_model, client_manager)
 
     def aggregate_fit(self, server_round, results, failures):
@@ -53,8 +54,9 @@ class UpperLevelLinkDecorator(StrategyDecorator):
         if parameters is None:
             # said at once: the relay would wait for its whole timeout otherwise
             self.link.publish_failure(server_round, f"no aggregate ({len(results)} results, {len(failures)} failures)")
+            gui_events.log_link_event("failed", server_round)
             return parameters, metrics
         num_examples = sum(fit_res.num_examples for _, fit_res in results)
         self.link.publish_aggregate(server_round, parameters_to_ndarrays(parameters), num_examples, scalar_metrics(metrics))
-        logm.console.log(f"🔗 round {server_round}: aggregate of {num_examples} examples sent to the upper level")
+        gui_events.log_link_event("aggregate", server_round, num_examples)
         return parameters, metrics
