@@ -61,6 +61,9 @@ class RelayClient(fl.client.Client):
 
 class RelayClientFactory(ClientFactory):
 
+    # the relay's machine (the lower level's server's) may not hold the training set
+    NEEDS_DATA = False
+
     def __init__(self, config, data, model, num_examples):
         self.config = config
         self.model = model

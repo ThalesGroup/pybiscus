@@ -205,6 +205,8 @@ that of the model both levels start from. The relay answers the federated evalua
 client (it holds no data; the lower level evaluates every model on its own), and a round the lower
 level could not aggregate, or a `timeout`, as a failed fit: the upper round goes on without it.
 Files are `.npz` + JSON, written atomically and read once; the relay empties its `link_id` at start.
+The relay loads no data (its machine may not hold the training set): the `data` section of its
+configuration, still required, is not read.
 
 Several sessions on one machine need one Flower server port each: the session form proposes one
 per manager (port 3333 for the manager on 5555, 3334 for the one on 5556...), and a Flower server

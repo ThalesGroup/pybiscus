@@ -175,17 +175,27 @@ def launch_config(
     apply_num_threads(conf.client_compute_context.num_threads)
     apply_seed(conf.client_run.seed)
 
-    # load the data management module from registry
-    data_class = datamodule_registry()[conf.data.name]
-    data = data_class(**conf.data.config.model_dump())
+    if conf.flower_client.alternate_client_class is None:
+        factory_class = FlowerFabricClientFactory
+    else:
+        factory_class = client_registry()[conf.flower_client.alternate_client_class.name]
 
-    data.setup(stage="fit")
-    # counted on the raw loaders: fabric.setup_dataloaders may swap in a DistributedSampler
-    # that only sees this process' shard
-    num_examples = {
-        "trainset": count_examples(data.train_dataloader()),
-        "valset": count_examples(data.val_dataloader()),
-    }
+    # a client that trains nothing (the relay of a hierarchical session) loads no data: its
+    # machine may not hold the training set, and loading it cost a whole pass for nothing
+    if getattr(factory_class, "NEEDS_DATA", True):
+        # load the data management module from registry
+        data_class = datamodule_registry()[conf.data.name]
+        data = data_class(**conf.data.config.model_dump())
+
+        data.setup(stage="fit")
+        # counted on the raw loaders: fabric.setup_dataloaders may swap in a DistributedSampler
+        # that only sees this process' shard
+        num_examples = {
+            "trainset": count_examples(data.train_dataloader()),
+            "valset": count_examples(data.val_dataloader()),
+        }
+    else:
+        data, num_examples = None, {"trainset": 0, "valset": 0}
 
     # load the model
     model_class = model_registry()[conf.model.name]
@@ -196,10 +206,7 @@ def launch_config(
     pcpc.pybiscus_context[pcpc.MODEL] = model
 
     # load the client
-    if conf.flower_client.alternate_client_class is None:
-        client_factory = FlowerFabricClientFactory(conf,data,model,num_examples)
-    else:
-        client_factory = client_registry()[conf.flower_client.alternate_client_class.name](conf,data,model,num_examples)
+    client_factory = factory_class(conf,data,model,num_examples)
     client = client_factory.get_client()
     client.initialize()
 
