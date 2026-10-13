@@ -337,7 +337,7 @@ def drop_session():
 
 @pybiscus_manager_app.route("/pybiscus-session/agents", methods=["GET"])
 def pybiscus_manager_list_clients():
-    from pybiscus.session.manager.upper_level import lower_levels, manager_place, upper_level
+    from pybiscus.session.manager.upper_level import lower_levels, manager_place, session_state, upper_level
     return jsonify({
         "clients": pybiscus.session.manager.session_manager.registered_clients,
         "servers": pybiscus.session.manager.session_manager.registered_servers,
@@ -348,6 +348,7 @@ def pybiscus_manager_list_clients():
         "relays": pybiscus.session.manager.session_manager.relays,
         "session_running": pybiscus.session.manager.session_manager.session_is_running,
         "cycles": cycles.session_cycles(),
+        "session": session_state(),
     })
 
 # **************************

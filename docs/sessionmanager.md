@@ -218,6 +218,13 @@ rounds back. Each manager reads these times from its own server's log lines as t
 sends only durations up with its topology (at the end of each round): the sites' clocks need not
 agree.
 
+**Constraints.** A third tab, *constraints*, checks each lower level (all the depths) against its
+parent: whether its session runs (or was dropped), then for the model, its hyperparameters, the data
+plugin, the number of rounds and the link, ✓ when it applies what its parent imposes, ✗ otherwise
+(the tooltip gives both values). The managers impose these values: a ✗ means a level runs a session
+launched before its parent's, or by hand. Each manager sends the state of its session (the
+constraints it applies, its link, the links it made for its own lower levels) up with its topology.
+
 Several sessions on one machine need one Flower server port each: the session form proposes one
 per manager (port 3333 for the manager on 5555, 3334 for the one on 5556...), and a Flower server
 refuses to start on a port another server already listens to (left at the same port, two

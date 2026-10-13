@@ -42,7 +42,16 @@ def bouquet_topology() -> dict:
     from pybiscus.session.manager.cycles import session_cycles
     return {"bouquet": sm.bouquet, "color": sm.bouquet_color, "manager_url": sm.manager_url,
             "manager": manager_place(), "agents": agents, "relays": dict(sm.relays), "lower_levels": lower_levels(),
-            "cycles": session_cycles()}
+            "cycles": session_cycles(), "session": session_state()}
+
+
+def session_state() -> dict:
+    """this session as an upper level checks it: what it applies and the link it was launched
+    with, against what its parent imposes; the links it made for its own lower levels"""
+    return {"running": sm.session_is_running, "constraints": sm.session_constraints,
+            "link_id": (sm.upper_session_link or {}).get("link_id"),
+            "links": {lower: link["link_id"] for lower, link in sm.session_links.items()},
+            "dropped": (sm.upper_link or {}).get("dropped")}
 
 
 def manager_place() -> dict:

@@ -110,7 +110,12 @@
   .acc-legend .it{display:flex; align-items:center; gap:6px; font-size:11.5px}
   .acc-legend .sw{width:9px;height:9px;border-radius:2px} .acc-legend .v{color:var(--text); font-weight:600}
   .chart{width:100%; flex:1; min-height:0; display:block}
-  .chart[hidden], .acc-legend[hidden]{display:none}
+  .chart[hidden], .acc-legend[hidden], .cons[hidden]{display:none}
+  .cons{overflow:auto; flex:1; min-height:0}
+  .cons table{border-collapse:collapse; width:100%; font-size:11px}
+  .cons th{color:var(--muted); font-weight:500; text-align:left; padding:3px 5px; border-bottom:1px solid var(--border)}
+  .cons td{padding:3px 5px; border-bottom:1px solid var(--border); white-space:nowrap}
+  .cons .ok{color:var(--ok)} .cons .ko{color:var(--accent); font-weight:600} .cons .na{color:var(--dim)}
   .chart .grid-l{stroke:var(--border); stroke-width:1}
   .chart .round-l{stroke:#2a3644; stroke-width:1; stroke-dasharray:2 4}   /* marque verticale par round */
   .chart text.axis{fill:var(--muted); font-size:9px; letter-spacing:.1em}
@@ -213,11 +218,12 @@
       </section>
       <section class="panel">
         <header><span class="eyebrow" id="mid-title">Loss · metric diff</span>
-          <span id="mid-tabs" hidden><button class="tool active" data-tab="loss">loss</button> <button class="tool" data-tab="cycles" title="where each level of the hierarchical session spends its rounds">cycles</button></span>
+          <span id="mid-tabs" hidden><button class="tool active" data-tab="loss">loss</button> <button class="tool" data-tab="cycles" title="where each level of the hierarchical session spends its rounds">cycles</button> <button class="tool" data-tab="constraints" title="whether each lower level applies what its upper level imposes">constraints</button></span>
           <span class="acc-legend" id="loss-legend"><span class="it"><span class="sw" style="background:var(--loss)"></span><span class="v num" id="loss-val">—</span></span></span>
         </header>
         <div class="body"><svg class="chart" id="lossChart" viewBox="0 0 600 140" preserveAspectRatio="none"></svg>
-          <svg class="chart" id="cyclesChart" viewBox="0 0 600 140" preserveAspectRatio="none" hidden></svg></div>
+          <svg class="chart" id="cyclesChart" viewBox="0 0 600 140" preserveAspectRatio="none" hidden></svg>
+          <div class="cons" id="constraintsView" hidden></div></div>
       </section>
     </div>
 
@@ -438,19 +444,50 @@
   // the agents' launch flattened all the others). A lower level's bar starts with this session's
   // round, when its relay sends the model down: only durations come up, the clocks of the sites
   // are never compared
-  let cyclesTab = false, lastCycles = null;
-  document.querySelectorAll('#mid-tabs .tool').forEach(b => b.onclick = () => { cyclesTab = b.dataset.tab === 'cycles'; showMidTab(); });
+  let midTab = 'loss', lastCycles = null;
+  const MID_TITLES = {loss: 'Loss · metric diff', cycles: 'Cycles · per level', constraints: 'Constraints · per level'};
+  document.querySelectorAll('#mid-tabs .tool').forEach(b => b.onclick = () => { midTab = b.dataset.tab; showMidTab(); });
   function showMidTab(){
-    document.querySelectorAll('#mid-tabs .tool').forEach(b => b.classList.toggle('active', (b.dataset.tab === 'cycles') === cyclesTab));
-    document.getElementById('lossChart').toggleAttribute('hidden', cyclesTab);
-    document.getElementById('cyclesChart').toggleAttribute('hidden', !cyclesTab);
-    document.getElementById('loss-legend').toggleAttribute('hidden', cyclesTab);
-    setTxt('mid-title', cyclesTab ? 'Cycles · per level' : 'Loss · metric diff');
-    renderCycles();
+    document.querySelectorAll('#mid-tabs .tool').forEach(b => b.classList.toggle('active', b.dataset.tab === midTab));
+    document.getElementById('lossChart').toggleAttribute('hidden', midTab !== 'loss');
+    document.getElementById('loss-legend').toggleAttribute('hidden', midTab !== 'loss');
+    document.getElementById('cyclesChart').toggleAttribute('hidden', midTab !== 'cycles');
+    document.getElementById('constraintsView').toggleAttribute('hidden', midTab !== 'constraints');
+    setTxt('mid-title', MID_TITLES[midTab]);
+    renderCycles(); renderConstraints();
+  }
+  // each lower level against its parent (this session for the first depth): the managers impose
+  // the values, a ✗ says a level runs a session launched before its parent's, or by hand
+  function renderConstraints(){
+    const view = document.getElementById('constraintsView');
+    if(midTab !== 'constraints' || !lastCycles) return;
+    if(!lastCycles.groups.length){ view.innerHTML = '<p class="na">no lower level</p>'; return; }
+    const same = (a, b) => JSON.stringify(a ?? null, Object.keys(a || {}).sort()) === JSON.stringify(b ?? null, Object.keys(b || {}).sort());
+    const show = v => v == null ? '—' : (typeof v === 'object' ? Object.entries(v).map(([k, x]) => `${k.replace('model.config.', '')}=${x}`).join(', ') : String(v));
+    const cell = (running, imposed, applied) => {
+      if(!running || imposed == null) return '<td class="na">—</td>';
+      return same(imposed, applied) ? `<td class="ok" title="${esc(show(applied))}">✓</td>`
+                                    : `<td class="ko" title="${esc(`imposed: ${show(imposed)} · applied: ${show(applied)}`)}">✗</td>`;
+    };
+    // short headings: the middle column is narrow; the full names in their tooltips
+    const columns = [['model', 'model', 'model'], ['hyper', 'model_values', "the model's hyperparameters"], ['data', 'data', 'data plugin'], ['rounds', 'num_rounds', 'number of rounds']];
+    let html = '<table><tr><th>level</th><th>session</th>' + columns.map(([title, , tip]) => `<th title="${esc(tip)}">${title}</th>`).join('')
+             + '<th title="the link_id its relay and its server share">link</th></tr>';
+    lastCycles.groups.forEach(gr => {
+      const own = gr.session || {}, parent = (gr.parent ? gr.parent.session : lastCycles.ownSession) || {};
+      const running = !!own.running, imposed = parent.running ? (parent.constraints || {}) : null, applied = own.constraints || {};
+      const state = own.dropped ? `<td class="ko" title="${esc(own.dropped)}">⚠ dropped</td>`
+                  : running ? '<td class="ok">● running</td>' : '<td class="na">idle</td>';
+      html += `<tr><td style="padding-left:${6 + (gr.depth - 1) * 12}px; color:${esc(gr.color)}">${gr.depth > 1 ? '↳ ' : ''}${esc(gr.bouquet)}</td>${state}`
+            + columns.map(([, key]) => cell(running, imposed && imposed[key], applied[key])).join('')
+            // a running level whose parent made it no link runs out of step: "none" against its link
+            + cell(running, parent.running ? ((parent.links || {})[gr.bouquet] ?? 'none') : null, own.link_id) + '</tr>';
+    });
+    view.innerHTML = html + '</table>';
   }
   function renderCycles(){
     const svg = document.getElementById('cyclesChart');
-    if(!cyclesTab || !lastCycles) return;
+    if(midTab !== 'cycles' || !lastCycles) return;
     const rows = [{label: MANAGER_BOUQUET || 'this session', color: SESSION_COLOR || '#7d8794', depth: 0, cycles: lastCycles.own}]
       .concat(lastCycles.groups.map(gr => ({label: gr.bouquet, color: gr.color, depth: gr.depth, cycles: gr.cycles, stale: gr.stale})));
     // this session's round: the whole round; a lower level's: its work, from the model's arrival
@@ -480,7 +517,7 @@
     });
     svg.innerHTML = s;
   }
-  function renderCharts(){ renderAccuracy(); renderLoss(); renderDround(); renderCycles(); setTxt('round-num', session.roundNumber); }
+  function renderCharts(){ renderAccuracy(); renderLoss(); renderDround(); renderCycles(); renderConstraints(); setTxt('round-num', session.roundNumber); }
 
   // ============ topology + geo ============
   const ROLE_ICON  = { server:'🧠', client:'💻' };
@@ -540,7 +577,7 @@
   function flattenLowerLevels(levels, parent, depth, groups){
     (levels||[]).forEach(lv=>{
       const group = {bouquet:lv.bouquet, color:lv.color || bouquetColor(lv.bouquet), stale:!!lv.stale,
-                     url:lv.manager_url, manager:lv.manager || {}, relays:lv.relays || {}, cycles:lv.cycles || [], parent, depth, nodes:[]};
+                     url:lv.manager_url, manager:lv.manager || {}, relays:lv.relays || {}, cycles:lv.cycles || [], session:lv.session || null, parent, depth, nodes:[]};
       (lv.agents||[]).forEach(a=>group.nodes.push({key:`${lv.bouquet}/${a.name}`, name:a.name, role:a.role,
         state:a.state || 'declared', geo:a.geo_location, bouquet:lv.bouquet, loc:a.location, org:a.organisation, group}));
       groups.push(group);
@@ -745,7 +782,7 @@
       setTxt('cfg-clients', `${registeredClients} client${registeredClients === 1 ? '' : 's'} registered = default min_clients`);
       upperState = data.upper_level || null;
       sessionRunning = !!data.session_running;
-      lastCycles = {own: data.cycles || [], groups: flattenLowerLevels(data.lower_levels || [], null, 1, [])};
+      lastCycles = {own: data.cycles || [], ownSession: data.session || null, groups: flattenLowerLevels(data.lower_levels || [], null, 1, [])};
       document.getElementById('mid-tabs').hidden = !lastCycles.groups.length && !data.upper_level;
       try { renderTopology(servers, data.clients || {}, data.meta || {}, data.lower_levels || [], data.upper_level || null, data.manager || null, data.relays || {}); renderCharts(); }
       catch(e){ console.error('[manager] render error:', e); }
