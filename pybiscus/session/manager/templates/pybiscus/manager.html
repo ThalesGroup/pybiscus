@@ -271,6 +271,7 @@
   var session = new Session();
 
   const metricDiffs = new CircularBuffer(30);
+  let noEvaluationRound = null;
   const durations   = new CircularBuffer(6);
   const fit_accuracies      = new CircularBuffer(40);
   const test_accuracies     = new CircularBuffer(40);
@@ -384,6 +385,8 @@
       if(mDur){ durations.add(parseFloat(mDur[1])); return; }
       const mMd = item.message.match(RE.metric_diff);
       if(mMd){ metricDiffs.add(parseFloat(mMd[1])); return; }
+      const mNe = item.message.match(RE.no_evaluation);
+      if(mNe){ noEvaluationRound = parseInt(mNe[1],10); return; }
     });
   }
 
@@ -420,7 +423,11 @@
   function renderLoss(){
     const arr=metricDiffs.all, svg=document.getElementById('lossChart');
     setTxt('loss-val', arr.length ? Number(arr[arr.length-1]).toFixed(3) : '—');
-    if(arr.length<1){ svg.innerHTML=''; return; }
+    if(arr.length<1){
+      svg.innerHTML = noEvaluationRound===null ? ''
+        : `<text class="axis" x="10" y="20">no federated evaluation result (round ${noEvaluationRound}): no client evaluated the model</text>`;
+      return;
+    }
     const W=600,H=140,padL=30,padR=8,padT=10,padB=16;
     const mn=Math.min(...arr), mx=Math.max(...arr), span=(mx-mn)||1, lo=Math.max(0, mn-span*0.1), hi=mx+span*0.1;   // borne basse >= 0
     const n=arr.length, x=i=>padL+(W-padL-padR)*(n>1?i/(n-1):0), y=v=>padT+(H-padT-padB)*(1-(v-lo)/(hi-lo));

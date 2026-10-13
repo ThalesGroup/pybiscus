@@ -5,7 +5,7 @@ from flwr.server.client_proxy import ClientProxy
 from pydantic import BaseModel, ConfigDict
 
 from pybiscus.interfaces.flower.strategydecorator import StrategyDecorator
-import pybiscus.core.pybiscus_logger as logm
+import pybiscus.core.gui_events as gui_events
 
 # -----------------------------------------------
 
@@ -46,11 +46,11 @@ class MetricDiffComputeStrategyDecorator(StrategyDecorator):
         metric, metrics_dict = self.base_strategy.aggregate_evaluate(server_round, results, failures)
 
         if metric is None:
-            logm.console.log(f"📊⚖️📊 = 🧐🔢 metric is None 🈚🕳️")
+            gui_events.log_no_evaluation_metric(server_round)
             return None, metrics_dict
         
         if self.previous_metric is not None:
-            logm.console.log(f"📊⚖️📊 = 🧐🔢 metric diff is {abs(self.previous_metric - metric):.4f}")
+            gui_events.log_metric_diff(abs(self.previous_metric - metric))
 
         self.previous_metric = metric
 

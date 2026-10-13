@@ -57,6 +57,16 @@ def log_round_metric(phase: str, metrics: Mapping[str, object], server_round: Op
     logm.console.log(f"📈 gui phase={phase} round={round_text} metric={name} value={value:.6g}")
 
 
+def log_metric_diff(diff: float) -> None:
+    logm.console.log(f"📊⚖️📊 = 🧐🔢 metric diff is {diff:.4f}")
+
+
+def log_no_evaluation_metric(server_round: int) -> None:
+    # a session of relays (they hold no data) gets no federated evaluation: the page says why its
+    # panel stays empty
+    logm.console.log(f"📊⚖️📊 = 🧐🔢 metric is None 🈚🕳️ gui no_evaluation round={server_round}")
+
+
 def log_link_event(event: str, server_round: int, examples: Optional[int] = None) -> None:
     """a lower level's round as its link to the upper level sees it: model_received (its clients
     start), aggregate (sent up, with its examples) or failed"""
@@ -75,6 +85,8 @@ def gui_log_patterns() -> dict[str, str]:
         "duration": r"time diff is (\d+(?:\.\d+)?)s",
         # variation of the aggregated evaluation loss (metricdiffcompute decorator)
         "metric_diff": r"metric diff is (\d+(?:\.\d+)?)\s*$",
+        # no aggregated evaluation loss (no client evaluated): group round
+        "no_evaluation": r"gui no_evaluation round=(\d+)",
         # a lower level's link (log_link_event): groups event, round, examples
         "link": r"🔗 gui link=(model_received|aggregate|failed) round=(\d+)(?: examples=(\d+))?",
     }
