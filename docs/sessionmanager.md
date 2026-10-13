@@ -134,8 +134,8 @@ With `bouquet`, the page takes the colour of its manager's page (tab icon, band,
 
 ## Bouquets of a hierarchical session
 
-*Under development: the managers are linked and the topology shown; the federated learning across
-the levels is not there yet.*
+*Under development: the managers are linked, the topology shown, and the levels train together
+through a link configured by hand; the managers do not set the link yet.*
 
 The plugins of these sessions (the relay client, the link decorator) are kept apart, in
 `pybiscus-plugins-hierarchical/`, so that they do not appear in a simple session's forms. The agents
@@ -178,6 +178,24 @@ changes them once the session runs. A relay gets no share of the data, no holdou
 threads, but counts in the minimum number of clients (the Flower server waits for it); its form
 opens with the relay client set and locked. The lower-level manager shows which client relays it,
 and the upper-level map draws the link between a relay and the server of its lower level.
+
+**The link between the levels** (from the command line for now: the managers do not set it yet).
+The relay (`flower_client.alternate_client_class`, `name: relay`) and the lower level's server
+decorator `upperlevellink` (last of its `server_strategy.pipeline`, refused elsewhere) take the
+same `config`: a `directory` both reach (they run on the same machine), a `link_id` new for each
+run, a `timeout` (seconds). Both sessions have the same model and number of rounds; round `r`:
+
+1. the upper server sends its model to its clients, the relay among them: the relay writes it to
+   the directory and waits;
+2. the lower server, waiting for that model, trains its round `r` on it and writes its aggregate
+   with its number of examples and fit metrics;
+3. the relay returns that aggregate as its own fit result, weighted by the lower level's examples.
+
+The lower server waits for the upper model of round 1 from its start: its round 0 evaluation is
+that of the model both levels start from. The relay answers the federated evaluation as a failed
+client (it holds no data; the lower level evaluates every model on its own), and a round the lower
+level could not aggregate, or a `timeout`, as a failed fit: the upper round goes on without it.
+Files are `.npz` + JSON, written atomically and read once; the relay empties its `link_id` at start.
 
 Several sessions on one machine need one Flower server port each: the session form proposes one
 per manager (port 3333 for the manager on 5555, 3334 for the one on 5556...), and a Flower server

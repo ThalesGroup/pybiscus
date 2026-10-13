@@ -240,6 +240,9 @@ class ConfigServerStrategy(BaseModel):
             for other in getattr(type(decorator), "PYBISCUS_AFTER", ()):
                 if other in names and names.index(other) > names.index(decorator.name):
                     raise ValueError(f"pipeline: {decorator.name} must come after {other}")
+            # PYBISCUS_LAST: the outermost decorator, whose result is the pipeline's
+            if getattr(type(decorator), "PYBISCUS_LAST", False) and names.index(decorator.name) != len(names) - 1:
+                raise ValueError(f"pipeline: {decorator.name} must come last")
         return self
 
 

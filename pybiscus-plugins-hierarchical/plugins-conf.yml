@@ -10,4 +10,4 @@ client:
 strategydecorator:
   - path: "./strategydecorator"
     modules:
-      - filewritingdecorator
+      - upperlevellink
