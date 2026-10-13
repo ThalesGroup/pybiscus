@@ -65,7 +65,8 @@ class ModelWeightVignetteStrategyDecorator(StrategyDecorator):
     # -------------------------------------------------------------------------
 
     def aggregate_fit(self, rnd, results, failures):
-        aggregated, _ = super().aggregate_fit(rnd, results, failures)
+        # its metrics passed on: the decorators around it, and a hierarchical session's upper level, read them
+        aggregated, metrics = super().aggregate_fit(rnd, results, failures)
 
         if self.conf.debug:
             logm.console.log(f"Model weights Round={rnd}")
@@ -107,7 +108,7 @@ class ModelWeightVignetteStrategyDecorator(StrategyDecorator):
             url=self.conf.webhook_url
         )
 
-        return aggregated, {}
+        return aggregated, metrics
 
 def flatten_weights(weights_list):
     """flatten weights to a 1D vector"""

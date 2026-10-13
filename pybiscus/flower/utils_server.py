@@ -66,13 +66,9 @@ def get_evaluate_fn(
 def weighted_average(metrics: list[tuple[int, Metrics]], context="") -> Metrics:
     logm.console.log(f"{context} metrics (num_examples, metrics): {metrics}")
 
-    _set_common_keys = set()
-
-    for _, metric in metrics:
-        if not _set_common_keys:
-            _set_common_keys = set(metric.keys())
-        else:
-            _set_common_keys = _set_common_keys.intersection(set(metric.keys()))
+    # a client without metrics empties the intersection: taken for "not started yet", it let the
+    # next client's keys in, missing from it (KeyError)
+    _set_common_keys = set.intersection(*(set(metric.keys()) for _, metric in metrics)) if metrics else set()
         
     # print(f"@@@@ keys1: {_set_common_keys}")
     
