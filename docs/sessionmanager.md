@@ -108,7 +108,11 @@ The manager shows, live:
 ![Finished session](images/session_manager_run.png "Finished session")
 
 *Drop session* ends the session and empties the page, for a new one with the same agents (which
-register again).
+register again). The runs of its agents still going are stopped. In a hierarchical session, the
+lower levels follow: a lower-level manager drops its own session (and stops its runs) as soon as it
+learns that the upper level dropped its session or launched another one — within its 10 s
+heartbeat —, and its page says so (*⚠ session dropped*); its operator launches it again. An upper
+level out of reach changes nothing: it may come back.
 
 ### All the agents in one page
 
@@ -135,7 +139,7 @@ With `bouquet`, the page takes the colour of its manager's page (tab icon, band,
 ## Bouquets of a hierarchical session
 
 *Under development: the managers are linked, the topology shown, and the levels train together
-through a link the managers set; aborting a session is not passed down yet.*
+through a link the managers set, and dropping a session is passed down.*
 
 The plugins of these sessions (the relay client, the link decorator) are kept apart, in
 `pybiscus-plugins-hierarchical/`, so that they do not appear in a simple session's forms. The agents

@@ -4,6 +4,7 @@ import queue
 from flask import Response, jsonify, render_template
 
 from pybiscus.session.agent.pybiscus_agent import rest_server
+from pybiscus.session.auth import session_access
 from pybiscus.session.agent.run_session import run_session
 
 # sans trafic, les proxys et le navigateur peuvent couper une connexion SSE oisive :
@@ -66,7 +67,9 @@ def runEvents():
 # .... POST /run/stop ......................................
 # ..........................................................
 
+# also called by the manager when its session is dropped
 @rest_server.route("/run/stop", methods=["POST"])
+@session_access
 def runStop():
     if run_session.stop():
         return jsonify({"status": "terminating"}), 202

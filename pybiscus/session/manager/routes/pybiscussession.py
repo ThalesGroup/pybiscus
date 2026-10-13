@@ -11,6 +11,7 @@ import pybiscus.session.manager.session_manager
 from pybiscus.session.manager.session_manager import generate_new_cid, pybiscus_manager_app
 import pybiscus.core.pybiscus_logger as logm
 from pybiscus.session.auth import session_access
+from pybiscus.session.csrf import HEADER
 
 # **************************
 
@@ -84,6 +85,8 @@ def pybiscus_manager_run_session():
     session.session_clients = [client for client in session.registered_clients if client not in session.session_relays]
     session.session_links = links_for_lower_levels()
     session.upper_session_link = upper_level_session_link()
+    if session.upper_link is not None:
+        session.upper_link["dropped"] = None
 
     # set the session running flag
     pybiscus.session.manager.session_manager.session_is_running = True
@@ -297,14 +300,35 @@ def pybiscus_manager_get_session_params():
 @pybiscus_manager_app.route("/pybiscus-session/params", methods=["DELETE"])
 def pybiscus_manager_delete_session():
 
+    drop_session()
+    return jsonify({"status": "success"}), 200
+
+
+def stop_agent_runs():
+    """a dropped session's runs stop with it: they went on without a manager, and a lower level's
+    server waited for a model that no longer comes"""
+    session = pybiscus.session.manager.session_manager
+    headers = {HEADER: "1", "Authorization": f"Bearer {session.session_token}"}
+    for name, url in {**session.registered_servers, **session.registered_clients}.items():
+        try:
+            response = requests.post(f"{url.rstrip('/')}/run/stop", headers=headers, timeout=5)
+        except requests.RequestException as error:
+            logm.console.log(f"⚠️ {name}: its run could not be stopped ({type(error).__name__})")
+            continue
+        if response.status_code == 202:
+            logm.console.log(f"🛑 {name}: run stopped with the session")
+        elif response.status_code != 409:
+            logm.console.log(f"⚠️ {name}: its run could not be stopped (HTTP {response.status_code})")
+
+
+def drop_session():
+    stop_agent_runs()
     pybiscus.session.manager.session_manager.clear_session()
 
     # les buffers sont drainés par leurs GET respectifs, mais un drop pendant un run laisse
     # des messages non consommés : rechargée, la page les rejouerait et ressusciterait des
     # agents d'une session morte
     clear_message_buffers()
-
-    return jsonify({"status": "success"}), 200
 
 # **************************
 

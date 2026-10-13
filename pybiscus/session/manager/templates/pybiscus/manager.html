@@ -549,7 +549,8 @@
     const upperHead = upper ? `<div class="tier-head"><span class="bouquet-pill" style="--session-color:${esc(upper.colour)}" title="manager: ${esc(upper.url)}">↑ 💐 ${esc(upper.name)}</span>`+
       `<span class="chip" title="${esc(upper.problem || '')}">${upper.reached ? 'connected' : upper.reached === false ? 'not reached' : 'connecting…'}</span>`+
       `<span class="chip" title="this session's model (with its hyperparameters), data and number of rounds follow the upper level's session">${upper.session && upper.session.running ? 'session configured' : 'session not configured'}</span>`+
-      `<span class="chip" title="the client of the upper-level session that relays this one">relay: ${esc((upper.session && upper.session.relay) || '—')}</span></div>` : '';
+      `<span class="chip" title="the client of the upper-level session that relays this one">relay: ${esc((upper.session && upper.session.relay) || '—')}</span>`+
+      (upper.dropped ? `<span class="chip alert" title="${esc(upper.dropped)}">⚠ session dropped</span>` : '')+`</div>` : '';
     if(groups.length || upper){
       // the tree: this session, then each lower level indented under its parent
       list = upperHead + `<div class="tier" style="--tier-color:${esc(SESSION_COLOR || 'var(--border)')}">`+

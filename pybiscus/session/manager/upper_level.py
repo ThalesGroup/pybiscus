@@ -6,6 +6,7 @@ import time
 
 import requests
 
+import pybiscus.core.pybiscus_logger as logm
 import pybiscus.session.manager.session_manager as sm
 from pybiscus.flower.sessionlink import ConfigSessionLink
 from pybiscus.session.auth import local_manager_session_token
@@ -91,6 +92,22 @@ def upper_level_session_link():
     return session.get("link") if session.get("running") else None
 
 
+def follow_upper_session() -> None:
+    """a lower level's session ends with the upper level's, or when the upper level launched
+    another one (a new link this session's server would never read). An upper level out of reach
+    changes nothing: it may come back"""
+    if not sm.session_is_running or sm.upper_session_link is None:
+        return
+    current = upper_level_session_link()
+    if current is not None and current.get("link_id") == sm.upper_session_link.get("link_id"):
+        return
+    from pybiscus.session.manager.routes.pybiscussession import drop_session
+    reason = "launched another session" if current else "dropped its session"
+    logm.console.log(f"🛑 the upper level {reason}: this session is dropped, its runs stopped")
+    drop_session()
+    sm.upper_link["dropped"] = f"the upper level {reason} at {time.strftime('%H:%M:%S')}: launch this session again"
+
+
 def missing_relays() -> list:
     """the lower levels without a relay, or with a relay no longer registered"""
     with sm.lower_levels_lock:
@@ -170,13 +187,14 @@ def report_to_upper_level(upper_url: str, token) -> None:
 
     base = upper_url.rstrip("/") + "/pybiscus-session/lower-level"
     sm.upper_link = {"url": upper_url.rstrip("/"), "bouquet": None, "color": None, "reached": None,
-                     "problem": None, "last_contact": None, "session": None}
+                     "problem": None, "last_contact": None, "session": None, "dropped": None}
 
     def note_contact(response, problem):
         if problem is None:
             answer = response.json()
             sm.upper_link.update(bouquet=answer.get("bouquet"), color=answer.get("color"), reached=True,
                                  problem=None, last_contact=time.time(), session=answer.get("session"))
+            follow_upper_session()
         else:
             sm.upper_link.update(reached=False, problem=problem)
 
