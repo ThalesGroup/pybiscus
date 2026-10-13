@@ -99,7 +99,7 @@
   .geolabels{position:absolute; inset:0; pointer-events:none}
   .geolabels .lbl{position:absolute; transform:translate(7px,-50%); font-size:10px; color:var(--text);
     white-space:nowrap; text-shadow:0 1px 3px #000,0 0 2px #000; pointer-events:auto; cursor:default}
-  .geolabels .lbl.left{transform:translate(calc(-100% - 7px),-50%)}
+  .geolabels .lbl.unplaced{visibility:hidden}
   #geo g[data-key], .geolabels .lbl[data-key]{cursor:grab}
   body.dragging-node, body.dragging-node *{cursor:grabbing !important; user-select:none}
   .cluster-tag{position:absolute; top:7px; left:8px; font-size:10px; color:#cdd6e0; letter-spacing:.04em;
@@ -537,6 +537,33 @@
     .forEach(st => console.warn(`agent state "${st}" has no icon or class in manager.html`));
   const esc = s => String(s).replace(/[<>&"]/g, c=>({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c]));
   // ============ map layout: nodes moved with the mouse ============
+  // sites a few tens of km apart overlapped their labels: each label takes the first free place
+  // around its node, servers and managers first; failing that, a place over another node's dot (a
+  // crowded corner hid servers' names); failing both, it is hidden (the node's tooltip keeps its
+  // name) rather than drawn over another label
+  function placeGeoLabels(){
+    const box = document.getElementById('geolabels'), W = box.clientWidth, H = box.clientHeight;
+    if(!W || !H) return;
+    const area = box.getBoundingClientRect(), tag = document.getElementById('cluster-tag').getBoundingClientRect();
+    const taken = [{l: tag.left-area.left, t: tag.top-area.top, r: tag.right-area.left, b: tag.bottom-area.top}], dots = [];
+    const labels = [...box.querySelectorAll('.lbl')].map(el => {
+      el.classList.remove('unplaced'); el.style.transform = 'none';
+      return {el, x: parseFloat(el.style.left)/100*W, y: parseFloat(el.style.top)/100*H, w: el.offsetWidth, h: el.offsetHeight,
+              rank: parseInt(el.dataset.rank || '3', 10)};
+    });
+    labels.forEach(lb => dots.push({l: lb.x-4, t: lb.y-4, r: lb.x+4, b: lb.y+4}));   // the nodes themselves
+    const clear = (q, boxes) => boxes.every(o => q.r <= o.l || o.r <= q.l || q.b <= o.t || o.b <= q.t);
+    const inside = q => q.l >= 0 && q.t >= 0 && q.r <= W && q.b <= H;
+    labels.sort((a, b) => a.rank - b.rank).forEach(lb => {
+      const {w, h} = lb, side = [[7, -h/2], [-w-7, -h/2]];
+      const offsets = side.concat([[-w/2, -h-5], [-w/2, 5], [4, -h-2], [4, 2], [-w-4, -h-2], [-w-4, 2]],
+        ...[1, 2].map(k => side.flatMap(([dx, dy]) => [[dx, dy-k*(h+1)], [dx, dy+k*(h+1)]])));
+      const spots = offsets.map(([dx, dy]) => ({dx, dy, l: lb.x+dx, t: lb.y+dy, r: lb.x+dx+w, b: lb.y+dy+h})).filter(q => inside(q) && clear(q, taken));
+      const spot = spots.find(q => clear(q, dots)) || spots[0];
+      if(!spot){ lb.el.classList.add('unplaced'); return; }
+      taken.push(spot); lb.el.style.transform = `translate(${spot.dx}px, ${spot.dy}px)`;
+    });
+  }
   // the registered coordinates stay as they are: only where this page draws a node changes, to pull
   // apart the nodes that overlap; one layout per manager page (host:port), kept by the browser
   const LAYOUT_KEY = `pybiscus-manager-layout:${location.host}`;
@@ -681,8 +708,9 @@
     if(geoNodes.length){
       const lats=geoNodes.map(n=>n.geo.latitude), lons=geoNodes.map(n=>n.geo.longitude);
       const minLa=Math.min(...lats),maxLa=Math.max(...lats),minLo=Math.min(...lons),maxLo=Math.max(...lons);
-      const spanLa=(maxLa-minLa)||1, spanLo=(maxLo-minLo)||1, padX=10, padY=9;
-      const project=(la,lo)=>({ x:padX+(W-2*padX)*((lo-minLo)/spanLo), y:padY+(H-2*padY)*(1-(la-minLa)/spanLa) });
+      // the top band is the cluster tag's: a northernmost node drawn there was hidden under it
+      const spanLa=(maxLa-minLa)||1, spanLo=(maxLo-minLo)||1, padX=10, padTop=15, padBottom=7;
+      const project=(la,lo)=>({ x:padX+(W-2*padX)*((lo-minLo)/spanLo), y:padTop+(H-padTop-padBottom)*(1-(la-minLa)/spanLa) });
       // regroupe les nœuds partageant la même position projetée
       const posGroups={};
       placedNodes.forEach(nd=>{ const b = hasGeo(nd) ? project(nd.geo.latitude, nd.geo.longitude) : {x:cx,y:cy};
@@ -764,15 +792,15 @@
          `<polygon points="${p.x},${p.y-d} ${p.x+d},${p.y} ${p.x},${p.y+d} ${p.x-d},${p.y}" fill="${c}" stroke="#0e1116" stroke-width=".3"/></g>`; });
     geo.innerHTML=g;
     // libellés en overlay HTML (nets) + tooltip (autres infos de registration à brancher côté back)
-    const upperLabel = upper ? (u => `<span class="lbl" data-key="^upper" style="left:${u.x}%; top:${(u.y/62*100).toFixed(1)}%; color:${esc(upper.colour)}"`+
+    const upperLabel = upper ? (u => `<span class="lbl" data-rank="0" data-key="^upper" style="left:${u.x}%; top:${(u.y/62*100).toFixed(1)}%; color:${esc(upper.colour)}"`+
       ` title="${esc(upper.url)}">↑ ${esc(upper.name)}${upper.reached === false ? ' (not reached)' : ''}</span>`)(manualLayout['^upper'] || {x:50, y:4}) : '';
     const managerLabels = managerNodes.map(m=>{ const p=at(m);
-      return `<span class="lbl${p.x > 72 ? ' left' : ''}" data-key="${esc(m.key)}" style="left:${p.x}%; top:${(p.y/62*100).toFixed(1)}%; color:${esc(m.colour)}">`+
+      return `<span class="lbl" data-rank="1" data-key="${esc(m.key)}" style="left:${p.x}%; top:${(p.y/62*100).toFixed(1)}%; color:${esc(m.colour)}">`+
              `◆ ${esc(m.bouquet || '')} manager</span>`; }).join('');
     document.getElementById('geolabels').innerHTML = upperLabel + managerLabels + allNodes.map(nd=>{ const p=at(nd);
       const colour = nd.group ? `; color:${esc(nd.group.color)}` : (SESSION_COLOR ? `; color:${esc(SESSION_COLOR)}` : '');
-      // near the right edge, the label goes to the node's left: the map would cut it
-      return `<span class="lbl${p.x > 72 ? ' left' : ''}" data-key="${esc(nd.key)}" style="left:${p.x}%; top:${(p.y/62*100).toFixed(1)}%${colour}" title="${esc(tip(nd))}">${nd.relays ? '🔁' : (ROLE_ICON[nd.role]||'')} ${esc(nd.name)}</span>`;}).join('');
+      return `<span class="lbl" data-rank="${nd.role==='server' ? 0 : nd.relays ? 2 : 3}" data-key="${esc(nd.key)}" style="left:${p.x}%; top:${(p.y/62*100).toFixed(1)}%${colour}" title="${esc(tip(nd))}">${nd.relays ? '🔁' : (ROLE_ICON[nd.role]||'')} ${esc(nd.name)}</span>`;}).join('');
+    placeGeoLabels();
     // tag cluster : le bouquet du manager (--bouquet), sinon ceux déclarés par les agents à leur registration
     const bouquets = MANAGER_BOUQUET ? [MANAGER_BOUQUET] : [...new Set(nodes.map(n=>n.bouquet).filter(Boolean))];
     setTxt('cluster-tag', '💐 '+(bouquets.length? bouquets.join(' · ') : 'cluster')+(nodes.length? ` · ${nodes.length} nodes`:'')
