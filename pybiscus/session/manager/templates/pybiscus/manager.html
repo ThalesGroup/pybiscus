@@ -70,6 +70,10 @@
   .panel>header .eyebrow{flex:1}
   .panel .body{padding:12px; flex:1; min-height:0; display:flex; flex-direction:column}
   .chip{font-size:10px; padding:1px 7px; border-radius:999px; border:1px solid var(--border); color:var(--muted)}
+  .chip.alert{color:var(--warn); border-color:var(--warn); background:rgba(255,180,84,.14); font-weight:600}
+  .relay-select.missing{color:var(--warn); border-color:var(--warn)}
+  /* the open list is drawn by the browser on a light background unless told otherwise, and inherits the select's colour */
+  .relay-select{color-scheme:dark} .relay-select option{background:var(--panel-2); color:var(--text)}
   .tool{cursor:pointer; color:var(--muted); border:1px solid var(--border); border-radius:6px; padding:2px 8px; font-size:10.5px; background:transparent; font-family:var(--mono)}
   .tool:hover{color:var(--text)}
 
@@ -78,7 +82,8 @@
   /* hierarchical session: this session, then each lower level, indented under its parent */
   .tier{display:flex; flex-direction:column; gap:6px; padding-left:9px; border-left:2px solid var(--tier-color)}
   .tier.stale{opacity:.5}
-  .tier-head{display:flex; align-items:center; gap:8px}
+  /* wrapped: in a narrow topology panel the relay picker and its warning were clipped off to the right */
+  .tier-head{display:flex; align-items:center; gap:8px; flex-wrap:wrap}
   .node{display:flex; align-items:center; gap:9px; padding:7px 9px; border:1px solid var(--border); border-radius:8px; background:var(--panel-2)}
   .node .st{width:9px;height:9px;border-radius:50%;flex:0 0 auto;background:var(--down)}
   .node.up .st{background:var(--ok); box-shadow:0 0 8px rgba(78,205,196,.5)}
@@ -514,12 +519,12 @@
     // a direct lower level: its relay chosen among this session's clients; deeper: shown only
     const relayPicker = gr => {
       if(gr.depth === 1){
-        const chosen = relays[gr.bouquet];
-        return `<select class="relay-select tool" data-bouquet="${esc(gr.bouquet)}"${sessionRunning ? ' disabled' : ''}`+
+        const chosen = relays[gr.bouquet], missing = !(chosen && chosen in clients);
+        return `<select class="relay-select tool${missing ? ' missing' : ''}" data-bouquet="${esc(gr.bouquet)}"${sessionRunning ? ' disabled' : ''}`+
           ` title="${sessionRunning ? 'the session is running: its relays no longer change' : 'the client of this session that relays ' + esc(gr.bouquet)}">`+
           `<option value="">relay: —</option>`+
           nodes.filter(n=>n.role==='client').map(c=>`<option value="${esc(c.name)}"${c.name===chosen?' selected':''}>relay: ${esc(c.name)}</option>`).join('')+`</select>`+
-          (chosen && chosen in clients ? '' : '<span class="chip" title="a session with lower levels launches once each has a relay">no relay</span>');
+          (missing ? '<span class="chip alert" title="a session with lower levels launches once each has a relay">⚠ no relay</span>' : '');
       }
       const relay = (gr.parent.relays || {})[gr.bouquet];
       return `<span class="chip">relay: ${esc(relay || '—')}</span>`;
