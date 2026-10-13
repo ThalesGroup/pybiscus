@@ -434,9 +434,15 @@
             // readOnly does not apply to radio buttons: the other values are disabled
             radioGroup(input).forEach(radio => { radio.disabled = !radio.checked; });
         }
+        if (input.type === "checkbox") {
+            // nor to checkboxes, which stayed clickable; disabled, their value would still be read
+            input.addEventListener("click", event => event.preventDefault());
+        }
         input.readOnly = true;
 
-        const label = input.previousElementSibling;
+        // a radio button sits in its enum's span, which follows the field's label
+        const field = input.type === "radio" ? input.closest('.pybiscus-enum') : input;
+        const label = field && field.previousElementSibling;
         if (label && label.tagName.toLowerCase() === 'label') {
             label.classList.add('pybiscus-locked');
         }
