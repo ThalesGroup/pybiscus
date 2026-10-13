@@ -139,7 +139,8 @@ With `bouquet`, the page takes the colour of its manager's page (tab icon, band,
 ## Bouquets of a hierarchical session
 
 *Under development: the managers are linked, the topology shown, and the levels train together
-through a link the managers set, and dropping a session is passed down.*
+through a link the managers set, and dropping a session is passed down. A full experiment, with its
+deployment diagram and screenshots: [Hierarchical session: one core, two edges](hierarchical-session.md).*
 
 The plugins of these sessions (the relay client, the link decorator) are kept apart, in
 `pybiscus-plugins-hierarchical/`, so that they do not appear in a simple session's forms. The agents
