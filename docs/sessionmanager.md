@@ -59,7 +59,8 @@ The registered agents appear in the manager's topology and on its map.
 
 The ⚙ *Config* button opens the session configuration. It is greyed out until the server agent
 is registered (and, in a hierarchical session, until every lower level has its relay and the
-upper-level session is configured: its tooltip says what is missing). Its header gives the number of clients registered. Choose the model and the
+upper-level session is configured: its tooltip says what is missing). Its header gives the number of clients registered. Choose the model with its
+hyperparameters (set and locked in every agent's form; a dictionary field is left to each form) and the
 data, and the optional session settings (described in [Session parameters](#session-parameters)):
 how the training data is shared between the clients (`data_partition`), a validation set held out
 of each share (`data_holdout`), `num_rounds`, `min_clients`, `robustness`, `share_cpu_threads`.
@@ -162,8 +163,8 @@ back. The registered coordinates do not change: only this page's drawing, kept b
 
 The session is configured from the top: a lower level's session waits for its upper level's.
 Until the upper-level session is launched, the lower-level manager keeps its ⚙ *Config* button
-greyed out, and refuses to launch. Then its form opens with the upper level's **model, data
-and number of rounds** set and locked (models exchanged between the levels must be the same, and
+greyed out, and refuses to launch. Then its form opens with the upper level's **model (with
+its hyperparameters), data and number of rounds** set and locked (models exchanged between the levels must be the same, and
 each lower round answers one upper round), the rest of the
 session (data partition, holdout, `min_clients`, robustness...) being its own; the manager also
 imposes them whatever the form sends, and they reach the forms of its agents. A level in the middle

@@ -10,7 +10,7 @@ from pybiscus.flower_config.config_server import ConfigServer
 from pybiscus.pydantic2xxx.pydantic2html import generate_model_page
 from pybiscus.session.agent.pybiscus_agent import checkConfigurationFile, generate_param_js, interpretConfigurationFile, rest_server, saveConfigFromRequest
 from pybiscus.plugin.registries.data_registry import DataConfig, datamodule_registry
-from pybiscus.plugin.registries.model_registry import ModelConfig, model_registry
+from pybiscus.plugin.registries.model_registry import ModelConfig
 from pybiscus.session.agent.ConfigSession import make_session_model
 from pybiscus.session.agent.pybiscus_agent import rest_server
 from pathlib import Path
@@ -215,10 +215,9 @@ def sessionConfigDownload():
 
     # reset_session()
     
-    models_names = list(model_registry().keys())
     data_names   = list(datamodule_registry().keys())
 
-    config_session = make_session_model(models_names, ModelConfig(), data_names, DataConfig() )
+    config_session = make_session_model(ModelConfig(), data_names, DataConfig() )
 
     # the session of a lower level: the model and the data set and locked to the upper level's
     presets_raw = request.args.get("presets")

@@ -59,15 +59,15 @@ def session_choices(names: list[str], confs) -> dict[str, str]:
     return choices
 
 
-def make_session_model(models: list[str], models_confs, data: list[str], data_confs):
+def make_session_model(models_confs, data: list[str], data_confs):
 
-    enum_model = Enum("SessionModel", session_choices(models, models_confs), type=str)
     enum_data  = Enum("SessionData",  session_choices(data, data_confs),     type=str)
 
     class ConfigSession(BaseModel):
 
         flower_server: FlowerServerConfiguration = Field(description="where the clients reach the Flower server")
-        model:         enum_model = Field(default=next(iter(enum_model)), description="model trained by every participant, locked in their forms")  # pyright: ignore[reportInvalidTypeForm]
+        # the whole model and not only its plugin: models of different sizes cannot be averaged
+        model:         models_confs = Field(description="model and hyperparameters of every participant, locked in their forms")  # pyright: ignore[reportInvalidTypeForm]
         data:          enum_data  = Field(default=next(iter(enum_data)), description="data plugin of every participant, locked in their forms")   # pyright: ignore[reportInvalidTypeForm]
         data_partition: Optional[ConfigPartitionScheme] = Field(default=None, description=
             "shares the training data between the clients registered at launch: the manager gives each one its share")

@@ -37,7 +37,11 @@ launch_session_button.addEventListener('click', function() {
     // a value of the server's form, not an option to select in every form
     const robustness_row = raw_data.find(row => row[0] === 'robustness');
     const robustness = robustness_row ? robustness_row[1] : null;
-    const new_data = raw_data.filter(row => ! exclude.includes(row[0]) && ! is_partition(row) && ! is_holdout(row) && row !== share_row && row !== min_clients_row && row !== num_rounds_row && row !== robustness_row);
+    // the model: its plugin and its direct scalar fields, set and locked in every form (a dict's
+    // entries cannot be recreated in another form)
+    const is_model = row => row[0] === 'model.name' || row[0].startsWith('model.config.');
+    const model_values = raw_data.filter(row => /^model\.config\.[^.]+$/.test(row[0]) && ! Array.isArray(row[1]));
+    const new_data = raw_data.filter(row => ! exclude.includes(row[0]) && ! is_model(row) && ! is_partition(row) && ! is_holdout(row) && row !== share_row && row !== min_clients_row && row !== num_rounds_row && row !== robustness_row);
     const partition_rows = raw_data.filter(is_partition);
     const data_partition = partition_rows.length
         ? Object.fromEntries(partition_rows.map(([key, value]) => [key.slice('data_partition.'.length), value]))
@@ -77,6 +81,13 @@ launch_session_button.addEventListener('click', function() {
         
         options_set[key] = value;
         options_lock.push(key);
+    });
+
+    options_set['model'] = selected_option('model');
+    options_lock.push('model');
+    model_values.forEach(([key, value]) => {
+        values_set[key] = value;
+        values_lock.push(key);
     });
 
     // TODO: for the time being this data is common to server and client

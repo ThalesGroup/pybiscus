@@ -15,11 +15,13 @@ CHECK_PERIOD_S = 2
 # without a change, only a heartbeat (the bouquet's name) tells the upper level this one is alive
 HEARTBEAT_PERIOD_S = 10
 STALE_AFTER_S = 3 * HEARTBEAT_PERIOD_S
-# the choices a lower level's session must keep: model and data, so that models of every level
-# can be exchanged, and the number of rounds, each lower round answering one upper round
-CONSTRAINED = ("model", "data", "num_rounds")
+# the choices a lower level's session must keep: model (its hyperparameters too) and data, so that
+# models of every level can be exchanged, and the number of rounds, each lower round answering one
+# upper round
+CONSTRAINED = ("model", "model_values", "data", "num_rounds")
 # a setting of the manager's, not an option selected in every form
 NOT_AN_OPTION = ("num_rounds",)
+MODEL_VALUES = "model.config."
 
 
 def bouquet_topology() -> dict:
@@ -88,7 +90,13 @@ def apply_upper_constraints(presets: dict) -> None:
     """set and lock the upper level's choices, whatever the session form sent"""
     options_set = presets.setdefault("options_set", {})
     options_lock = presets.setdefault("options_lock", [])
+    values_set = presets.setdefault("values_set", {})
+    values_lock = presets.setdefault("values_lock", [])
     for key, value in upper_constraints().items():
+        if key == "model_values":
+            values_set.update(value)
+            values_lock.extend(path for path in value if path not in values_lock)
+            continue
         if key in NOT_AN_OPTION:
             presets[key] = value
             continue
@@ -99,8 +107,9 @@ def apply_upper_constraints(presets: dict) -> None:
 
 def record_session_constraints(presets: dict) -> None:
     presets = presets or {}
-    chosen = {**presets.get("options_set", {}), **{key: presets.get(key) for key in NOT_AN_OPTION}}
-    sm.session_constraints = {key: chosen[key] for key in CONSTRAINED if chosen.get(key) is not None} or None
+    chosen = {**presets.get("options_set", {}), **{key: presets.get(key) for key in NOT_AN_OPTION},
+              "model_values": {path: value for path, value in presets.get("values_set", {}).items() if path.startswith(MODEL_VALUES)}}
+    sm.session_constraints = {key: chosen[key] for key in CONSTRAINED if chosen.get(key)} or None
 
 
 def record_lower_level(topology: dict) -> None:
