@@ -153,9 +153,9 @@ flowchart TB
     RS["🔁 relay-south<br/>client of core"]
     SS["🧠 south-server · Flower :3375<br/>pipeline + upperlevellink"]
     SC["💻 south-client1"]
-    RP["🔁 relay-sophia<br/>client of south"]
   end
   subgraph sophia["💐 sophia · sophia-dc · manager :5598"]
+    RP["🔁 relay-sophia<br/>client of south"]
     PS["🧠 sophia-server · Flower :3376<br/>pipeline + upperlevellink"]
     PC["💻 sophia-client1"]
   end
@@ -177,8 +177,10 @@ flowchart TB
 | south | 5597 (`--upper-url http://localhost:5595`) | 5695 south-server, 5696 south-client1, 5697 relay-sophia | server + `upperlevellink`, 1 client, 1 relay |
 | sophia | 5598 (`--upper-url http://localhost:5597`) | 5698 sophia-server, 5699 sophia-client1 | server + `upperlevellink`, 1 client |
 
-`sophia`'s manager reports to `south`'s, not to the core's: each manager knows only its parent, and
-the core sees `sophia` through `south`'s topology.
+As in the first experiment, a relay runs on the site of the server it stands for (they share the
+link directory) but is registered in its upper level: `relay-sophia` is drawn in `sophia` and
+listed in `south`. `sophia`'s manager reports to `south`'s, not to the core's: each manager knows
+only its parent, and the core sees `sophia` through `south`'s topology.
 
 ### Reproduce
 
