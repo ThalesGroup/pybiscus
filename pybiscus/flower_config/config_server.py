@@ -4,6 +4,7 @@ from typing import List, Optional, ClassVar, get_args
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
+from pybiscus.flower.sessionlink import ConfigSessionLink
 from pybiscus.flower_config.config_computecontext import ConfigServerComputeContext
 from pybiscus.plugin.registries.logger_registry import LoggerConfig
 from pybiscus.plugin.registries.model_registry import ModelConfig
@@ -142,6 +143,13 @@ Robustness.PYBISCUS_DESCRIPTIONS = {
 # measured on cifar10, iid and dirichlet shares (docs/robust-aggregation.md): no cost without
 # attacker, the conspicuous attackers rejected every round, honest clients at most 1.5 x the median
 SAFEGUARD_DECORATOR = {"name": "clipping", "config": {"mode": "median", "median_factor": 1.5, "reject_factor": 1.7}}
+UPPER_LEVEL_LINK_DECORATOR = "upperlevellink"
+
+
+class ConfigUpperLevelLink(ConfigSessionLink):
+    # its own prefix in the forms (server_strategy.upper_level_link.*): the shared model's is the
+    # plugins' "config"
+    PYBISCUS_CONFIG: ClassVar[str] = "upper_level_link"
 
 
 def decorator_config_class(name: str):
@@ -185,6 +193,8 @@ class ConfigServerStrategy(BaseModel):
     strategy: StrategyConfig() = Field(description="how the clients' updates are aggregated")# pyright: ignore[reportInvalidTypeForm]
     robustness: Robustness = Field(default=Robustness.none, description=
         "defense against malicious clients, added to the pipeline (docs/robust-aggregation.md)")
+    upper_level_link: Optional[ConfigUpperLevelLink] = Field(default=None, description=
+        "the link to the upper level of a hierarchical session, set by this session's manager: adds the upperlevellink decorator last")
 
     model_config = ConfigDict(extra="forbid")
 
@@ -222,6 +232,30 @@ class ConfigServerStrategy(BaseModel):
         after = [index for index, item in enumerate(pipeline) if item_name(item) in getattr(clipping, "PYBISCUS_AFTER", ())]
         pipeline.insert(max(after) + 1 if after else 0, {"name": SAFEGUARD_DECORATOR["name"], "config": dict(wanted)})
         logm.console.log("🛡️ robustness safeguard: clipping decorator (median x 1.5, reject x 1.7) added to the pipeline")
+        return {**data, "pipeline": pipeline}
+
+    # a field and not the decorator itself, for the same reason as robustness: the manager of a
+    # lower level sets it by a preset
+    @model_validator(mode="before")
+    @classmethod
+    def expand_upper_level_link(cls, data):
+        link = data.get("upper_level_link") if isinstance(data, Mapping) else None
+        if link is None:
+            return data
+        wanted = dict(link) if isinstance(link, Mapping) else link.model_dump()
+        pipeline = list(data.get("pipeline") or [])
+        present = [item for item in pipeline if item_name(item) == UPPER_LEVEL_LINK_DECORATOR]
+        if present:
+            # a configuration saved after the expansion holds it already
+            config = item_config(present[0])
+            if all(same_value(config.get(key), value) for key, value in wanted.items()):
+                return data
+            raise ValueError("upper_level_link sets the upperlevellink decorator itself: remove it from the pipeline")
+        if decorator_config_class(UPPER_LEVEL_LINK_DECORATOR) is None:
+            raise ValueError("upper_level_link needs the hierarchical plugins (pybiscus-plugins-hierarchical/plugins-conf.yml in "
+                             "PYBISCUS_PLUGIN_CONF_PATH), which are not loaded")
+        pipeline.append({"name": UPPER_LEVEL_LINK_DECORATOR, "config": wanted})
+        logm.console.log(f"🔗 upper level link {wanted.get('link_id')}: upperlevellink decorator added last to the pipeline")
         return {**data, "pipeline": pipeline}
 
     # a decorator config declares the decorators it cannot be combined with

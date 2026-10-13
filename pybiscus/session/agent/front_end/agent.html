@@ -310,14 +310,15 @@
                 console.error('active tab content not found : ', prefix)
                 return;
             }
-            /* console.log('checkbox value :', `>${activeTabButton.textContent}< instead of >${value}<`, checkbox); */
-            if (activeTabButton.textContent !== value) {
+            // another value names an option of the union this Optional holds (same prefix): Some
+            const wanted = value === '  ' ? '  ' : ' ';
+            if (activeTabButton.textContent !== wanted) {
                 checkbox.click();
                 /* console.log("✔️ checkbox clicked"); */
             } else {
                 /* console.log("✔️ checkbox untouched"); */
             }
-            if( value === ' ') {
+            if( wanted === ' ') {
                 console.log( `set_option(Optional[T]): ${prefix} = Some(T)` );
             } else {
                 console.log( `set_option(Optional[T]): ${prefix} = None` );

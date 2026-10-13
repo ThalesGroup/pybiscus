@@ -135,7 +135,7 @@ With `bouquet`, the page takes the colour of its manager's page (tab icon, band,
 ## Bouquets of a hierarchical session
 
 *Under development: the managers are linked, the topology shown, and the levels train together
-through a link configured by hand; the managers do not set the link yet.*
+through a link the managers set; aborting a session is not passed down yet.*
 
 The plugins of these sessions (the relay client, the link decorator) are kept apart, in
 `pybiscus-plugins-hierarchical/`, so that they do not appear in a simple session's forms. The agents
@@ -179,11 +179,16 @@ threads, but counts in the minimum number of clients (the Flower server waits fo
 opens with the relay client set and locked. The lower-level manager shows which client relays it,
 and the upper-level map draws the link between a relay and the server of its lower level.
 
-**The link between the levels** (from the command line for now: the managers do not set it yet).
-The relay (`flower_client.alternate_client_class`, `name: relay`) and the lower level's server
-decorator `upperlevellink` (last of its `server_strategy.pipeline`, refused elsewhere) take the
-same `config`: a `directory` both reach (they run on the same machine), a `link_id` new for each
-run, a `timeout` (seconds). Both sessions have the same model and number of rounds; round `r`:
+**The link between the levels.** The relay (`flower_client.alternate_client_class`, `name: relay`)
+and the lower level's server decorator `upperlevellink` (last of its `server_strategy.pipeline`,
+refused elsewhere) share a link: a `directory` both reach (they run on the same machine; default
+`/tmp/pybiscus-links`), a `link_id`, a `timeout` (seconds, default 3600). The managers set it: at
+each launch the upper-level manager makes one link per lower level, with a new `link_id`
+(`<upper bouquet>-<lower bouquet>-<time>`: files of an earlier run are never taken), sets it and
+the relay plugin, locked, in the relay's form, and passes it down; the lower-level manager sets it,
+locked, in its server's form as `server_strategy.upper_level_link`, which adds the decorator last
+to the pipeline. From the command line, set the same values on both ends. Both sessions have the
+same model and number of rounds; round `r`:
 
 1. the upper server sends its model to its clients, the relay among them: the relay writes it to
    the directory and waits;

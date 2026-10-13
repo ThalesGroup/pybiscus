@@ -1,11 +1,13 @@
 import json
 import os
+import re
 import threading
 import time
 
 import requests
 
 import pybiscus.session.manager.session_manager as sm
+from pybiscus.flower.sessionlink import ConfigSessionLink
 from pybiscus.session.auth import local_manager_session_token
 from pybiscus.session.csrf import HEADER
 
@@ -22,6 +24,10 @@ CONSTRAINED = ("model", "model_values", "data", "num_rounds")
 # a setting of the manager's, not an option selected in every form
 NOT_AN_OPTION = ("num_rounds",)
 MODEL_VALUES = "model.config."
+# the relay plugin's PYBISCUS_ALIAS, the tab its preset selects: the manager loads no plugin
+RELAY_OPTION = "Relay"
+RELAY_LINK = "flower_client.alternate_client_class.config"
+SERVER_LINK = "server_strategy.upper_level_link"
 
 
 def bouquet_topology() -> dict:
@@ -61,7 +67,28 @@ def session_for_lower_levels(bouquet: str) -> dict:
     answer to them"""
     running = sm.session_is_running
     return {"running": running, "constraints": sm.session_constraints if running else None,
-            "relay": sm.relays.get(bouquet)}
+            "relay": sm.relays.get(bouquet), "link": sm.session_links.get(bouquet) if running else None}
+
+
+def links_for_lower_levels() -> dict:
+    """one link per lower level, new at each launch: a link_id used again would hand a lower level
+    the files of an earlier run"""
+    stamp = time.strftime("%Y%m%dT%H%M%S")
+    return {lower: {**ConfigSessionLink().model_dump(),
+                    "link_id": re.sub(r"[^A-Za-z0-9._-]", "_", f"{sm.bouquet or 'upper'}-{lower}-{stamp}")}
+            for lower in sm.relays}
+
+
+def link_presets(presets: dict, prefix: str, link: dict) -> None:
+    for name, value in link.items():
+        presets["values_set"][f"{prefix}.{name}"] = value
+        presets["values_lock"].append(f"{prefix}.{name}")
+
+
+def upper_level_session_link():
+    """the link the upper level's running session made for this level, None before"""
+    session = (sm.upper_link or {}).get("session") or {}
+    return session.get("link") if session.get("running") else None
 
 
 def missing_relays() -> list:

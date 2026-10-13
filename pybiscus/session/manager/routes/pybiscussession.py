@@ -33,12 +33,16 @@ def pybiscus_manager_run_session():
     }
     """
      
-    from pybiscus.session.manager.upper_level import apply_upper_constraints, missing_relays, record_session_constraints, upper_constraints
+    from pybiscus.session.manager.upper_level import (apply_upper_constraints, links_for_lower_levels, missing_relays,
+                                                      record_session_constraints, upper_constraints, upper_level_session_link)
 
     # a lower level of a hierarchical session follows its upper level's session
     if pybiscus.session.manager.session_manager.upper_link is not None and upper_constraints() is None:
         return jsonify({"status": "error",
                         "message": "the upper-level session is not configured yet: its model, data and number of rounds come first"}), 409
+    if pybiscus.session.manager.session_manager.upper_link is not None and upper_level_session_link() is None:
+        return jsonify({"status": "error",
+                        "message": "the upper-level session has no link for this level: is it relayed?"}), 409
     # an upper level: every lower level reaches it through one of its clients
     missing = missing_relays()
     if missing:
@@ -78,6 +82,8 @@ def pybiscus_manager_run_session():
     session = pybiscus.session.manager.session_manager
     session.session_relays = [client for client in session.registered_clients if client in session.relays.values()]
     session.session_clients = [client for client in session.registered_clients if client not in session.session_relays]
+    session.session_links = links_for_lower_levels()
+    session.upper_session_link = upper_level_session_link()
 
     # set the session running flag
     pybiscus.session.manager.session_manager.session_is_running = True
@@ -177,6 +183,8 @@ def pybiscus_manager_register_agent():
 @session_access
 def pybiscus_manager_get_session_params():
 
+    from pybiscus.session.manager.upper_level import RELAY_LINK, RELAY_OPTION, SERVER_LINK, link_presets
+
     if not pybiscus.session.manager.session_manager.session_is_running:
         return jsonify({"status": "error", "message": "session is not running yet"})
 
@@ -208,9 +216,10 @@ def pybiscus_manager_get_session_params():
         # no share of the data, no holdout, no CPU threads (index stays None): it computes nothing
         cid = str(len(session.session_clients) + session.session_relays.index(agent))
         relayed = next(bouquet for bouquet, relay in session.relays.items() if relay == agent)
-        # " " selects Some for an Optional[T] (see set_option)
-        custom_presets["options_set"]["flower_client.alternate_client_class"] = " "
+        # named, not only Some: another client plugin loaded (byzantine...) could be the first tab
+        custom_presets["options_set"]["flower_client.alternate_client_class"] = RELAY_OPTION
         custom_presets["options_lock"].append("flower_client.alternate_client_class")
+        link_presets(custom_presets, RELAY_LINK, session.session_links[relayed])
         logm.console.log(f"🔁 {agent} relays the lower level {relayed}")
     else:
         cid = session.late_client_cids.setdefault(agent, str(len(session.session_clients) + len(session.late_client_cids)))
@@ -226,6 +235,11 @@ def pybiscus_manager_get_session_params():
     if agent in session.registered_servers and num_rounds:
         custom_presets["values_set"]["server_run.num_rounds"] = num_rounds
         custom_presets["values_lock"].append("server_run.num_rounds")
+    if agent in session.registered_servers and session.upper_session_link:
+        # " " selects Some for an Optional[T] (see set_option)
+        custom_presets["options_set"][SERVER_LINK] = " "
+        custom_presets["options_lock"].append(SERVER_LINK)
+        link_presets(custom_presets, SERVER_LINK, session.upper_session_link)
     if agent in session.registered_servers and robustness:
         custom_presets["values_set"]["server_strategy.robustness"] = robustness
         custom_presets["values_lock"].append("server_strategy.robustness")

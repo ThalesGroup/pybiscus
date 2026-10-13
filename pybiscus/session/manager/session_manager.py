@@ -61,6 +61,10 @@ session_constraints = None
 relays = {}
 # the relays when the session was launched: Flower clients, but without data nor computation
 session_relays = []
+# lower-level bouquet -> the link its relay and its server share (ConfigSessionLink), made at launch
+session_links = {}
+# with --upper-url: the link to the upper level the session was launched with
+upper_session_link = None
 session_is_running = False
 agent_gui_json_presets = None
 session_client_id_counter = -1
@@ -100,6 +104,10 @@ def clear_session():
     relays = {}
     global session_relays
     session_relays = []
+    global session_links
+    session_links = {}
+    global upper_session_link
+    upper_session_link = None
 
 def client_threads(name):
     """the physical cores of the client's machine shared between the session's clients on it, or
