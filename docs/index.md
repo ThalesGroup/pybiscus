@@ -13,7 +13,7 @@ You can find here a short documentation on how to use and adapt Pybiscus. The to
 * [Agent: lightweight client](agent.md)
 * [Session using the manager](sessionmanager.md)
 * [Session spread over several machines](multi-machine.md)
-* [Hierarchical session: one core, two edges](hierarchical-session.md) - deployment, walkthrough and results of an experiment
+* [Hierarchical sessions: two experiments](hierarchical-session.md) - deployment, walkthrough and results: one core and two edges, then a tree of four sessions on three levels
 * [Config files](configuration.md)
 * [Containers](containers.md)
 * [Logging and Tensorboard](logging.md)
