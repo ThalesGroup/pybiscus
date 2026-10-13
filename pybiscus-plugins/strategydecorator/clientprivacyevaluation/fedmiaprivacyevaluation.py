@@ -20,7 +20,7 @@ from pybiscus.core.ensure_filesystem import ensure_file_dir_exists, ensure_dir_e
 from pybiscus.core.pybiscusexception import PybiscusValueException
 import pybiscus.core.pybiscuscontext as pcpc
 import pybiscus.core.pybiscus_logger as logm
-from pybiscus.ml.datasplit import example_indices
+from pybiscus.ml.datasplit import example_indices, worker_start
 
 
 from tqdm import tqdm
@@ -339,7 +339,8 @@ class FedMIAPrivacyEvaluationStrategyDecorator(StrategyDecorator):
         batch_size = MIADataloader.batch_size
 
         MIADataloader = self.fabric._setup_dataloader(
-            DataLoader( MIADataset,  batch_size=batch_size, num_workers=MIADataloader.num_workers, drop_last=False, shuffle=False, collate_fn=MIADataloader.collate_fn))
+            DataLoader( MIADataset,  batch_size=batch_size, num_workers=MIADataloader.num_workers, drop_last=False, shuffle=False, collate_fn=MIADataloader.collate_fn,
+                        **worker_start(MIADataloader.num_workers)))
 
         round_path = self.reporting_path / self.conf.reporting_sub_dir
         ensure_dir_exists(round_path)

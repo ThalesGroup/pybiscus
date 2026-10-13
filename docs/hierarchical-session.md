@@ -191,10 +191,10 @@ uv run session_manager --port 5598 --bouquet sophia --location sophia-dc --geo 4
 for port in $(seq 5690 5699); do uv run pybiscus_agent --port $port & done
 ```
 
-`relay-sophia` is registered in `south`, as an ordinary client of `south`. On one machine, set
-`num_workers: 0` in the clients' forms: 10 agents, 4 managers and a browser reached 15.6 GB of the
-machine's 15.8 GB during the first round; a first try with 12 agents and three manager pages open
-was stopped by the kernel's out-of-memory killer.
+`relay-sophia` is registered in `south`, as an ordinary client of `south`. On one machine, mind
+the memory: 10 agents, 4 managers and a browser reached 15.6 GB of the machine's 15.8 GB during the
+first round; a first try with 12 agents and three manager pages open was stopped by the kernel's
+out-of-memory killer.
 
 ### Walkthrough
 

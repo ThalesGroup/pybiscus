@@ -8,7 +8,7 @@ import torch
 from torch.utils.data import DataLoader, Dataset
 
 import pybiscus.core.pybiscus_logger as logm
-from pybiscus.ml.datasplit import ConfigPartition, all_partitions, holdout, limit, make_loader, reject_former_fields
+from pybiscus.ml.datasplit import ConfigPartition, all_partitions, holdout, limit, make_loader, reject_former_fields, worker_start
 
 from hdfs.hdfs_dataconfig import (
     HDFS_FORMER_FIELDS, HdfsTestFormat, HdfsTestSet, HdfsTrainSet, HdfsValSet, HdfsValSource,
@@ -127,5 +127,6 @@ class HDFSDataModule(pl.LightningDataModule):
     def test_dataloader(self) -> DataLoader:
         if self.test.format == HdfsTestFormat.sessions:
             # Deeplog's F1 is computed per batch: right only with every session in one batch
-            return DataLoader(self.data_test, batch_size=len(self.data_test), shuffle=False, num_workers=self.num_workers)
+            return DataLoader(self.data_test, batch_size=len(self.data_test), shuffle=False, num_workers=self.num_workers,
+                              **worker_start(self.num_workers))
         return make_loader(self.data_test, self.test, self.num_workers)

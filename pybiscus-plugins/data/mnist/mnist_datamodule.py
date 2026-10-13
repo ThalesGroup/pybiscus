@@ -45,7 +45,7 @@ class ConfigMnistData(BaseModel):
     privacy:
         optional, the examples a server-side privacy evaluation attacks (the train split)
     num_workers: int, optional
-        the number of workers for the DataLoaders (default to 2)
+        the number of workers for the DataLoaders (default to 0)
     """
 
     PYBISCUS_CONFIG: ClassVar[str] = "config"
@@ -54,7 +54,7 @@ class ConfigMnistData(BaseModel):
     val: MnistValSet = MnistValSet()
     test: MnistTestSet = MnistTestSet()
     privacy: Optional[MnistPrivacySet] = None
-    num_workers: int = 2
+    num_workers: int = Field(default=0, ge=0, description='processes loading the batches; 0: the main process')
 
     model_config = ConfigDict(extra="forbid")
 
@@ -75,7 +75,7 @@ class ConfigData_Mnist(BaseModel):
 
 
 class MnistLitDataModule(pl.LightningDataModule):
-    def __init__(self, train=None, val=None, test=None, privacy=None, num_workers: int = 2, **former_fields):
+    def __init__(self, train=None, val=None, test=None, privacy=None, num_workers: int = 0, **former_fields):
         super().__init__()
         # pybiscus local passes the YAML's sections unvalidated: validated here
         reject_former_fields(former_fields)

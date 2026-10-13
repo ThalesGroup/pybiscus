@@ -623,7 +623,9 @@ inputs' first dimension to average the metrics over the examples.
 - `dataset`: The dataset instance to load from
 - `batch_size`: Number of samples per batch
 - `shuffle`: Whether to shuffle data at each epoch
-- `num_workers`: Number of subprocesses for data loading
+- `num_workers`: Number of subprocesses for data loading; build the loaders with `make_loader` /
+  `privacy_loader` (`pybiscus.ml.datasplit`), or pass `**worker_start(num_workers)` to your own
+  `DataLoader`: a worker forked from a Flower client, whose gRPC threads are running, can abort
 - `drop_last`: Whether to drop incomplete final batch
 - `pin_memory`: Speeds up GPU transfer when True
 

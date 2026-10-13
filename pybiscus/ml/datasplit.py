@@ -309,6 +309,12 @@ def partition_subset(dataset: Dataset, partition: Optional[ConfigPartition]) -> 
     return Subset(dataset, all_partitions(dataset, partition)[partition.partition_id].tolist())
 
 
+def worker_start(num_workers: int) -> dict:
+    # a worker forked from a Flower client inherits gRPC's locks mid-use (its stream threads run):
+    # abseil's mutex check then aborts the worker ("DataLoader worker … killed by signal: Aborted")
+    return {"multiprocessing_context": "forkserver"} if num_workers > 0 else {}
+
+
 def make_loader(dataset: Dataset, options, num_workers: int = 0, order_seed: Optional[int] = None) -> DataLoader:
     """order_seed: reproducible order of the shuffled batches (train's seed; a val seed may mean
     something else, such as cifar's holdout draw)"""
@@ -323,6 +329,7 @@ def make_loader(dataset: Dataset, options, num_workers: int = 0, order_seed: Opt
         shuffle=options.shuffle,
         drop_last=options.drop_last,
         generator=generator,
+        **worker_start(num_workers),
     )
 
 
@@ -340,6 +347,7 @@ def privacy_loader(dataset: Dataset, privacy: ConfigPrivacySet, num_workers: int
         shuffle=False,
         drop_last=False,
         collate_fn=collate_fn,
+        **worker_start(num_workers),
     )
 
 
