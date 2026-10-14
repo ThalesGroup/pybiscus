@@ -1,0 +1,27 @@
+# Scenario of launch/doc/record_session.py: a simple mnist session, one server and two clients,
+# 5 rounds; about 2 minutes of run for a 45 s video.
+#   uv run launch/doc/record_session.py launch/doc/scenarios/mnist-session.yml
+
+output: docs/videos/mnist-session     # .mp4 and .webp are added
+formats: [mp4, webp]                  # png: the frames as well
+viewport: {width: 1440, height: 900}
+period: 0.35                          # seconds between two captures, on top of the capture itself
+
+manager: {bouquet: demo, location: paris-hq, geo: [48.8566, 2.3522]}
+agents:
+  - {name: server, role: server, location: paris-hq, geo: [48.8566, 2.3522]}
+  - {name: client-lyon, role: client, location: lyon-lab, geo: [45.7640, 4.8357]}
+  - {name: client-lille, role: client, location: lille-lab, geo: [50.6292, 3.0573]}
+
+session:                              # applied to the server's session form
+  options: {model: MNIST CNN, num_rounds: " ", data_partition: " "}
+  values: {data: Mnist, num_rounds: "5"}
+
+captions:                             # {name}, {role}, {location}; {round}, {rounds}; {accuracy}
+  empty: "1 · An empty session: the manager waits for its agents"
+  registered: "2 · Agent {name} registers ({role}, {location})"
+  configured: "3 · The server's session is configured: MNIST CNN, {rounds} rounds, data split between the clients"
+  started: "3 · The session starts: each agent receives its form, checks it and launches"
+  launched: "4 · {name}: configuration checked, run launched"
+  round: "5 · Federated training: round {round} / {rounds}"
+  finished: "6 · Session finished: test accuracy {accuracy} after {rounds} rounds"

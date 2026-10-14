@@ -17,6 +17,7 @@ You can find here a short documentation on how to use and adapt Pybiscus. The to
 * [Config files](configuration.md)
 * [Containers](containers.md)
 * [Logging and Tensorboard](logging.md)
+* [Recording a session: time-lapse videos](recording.md)
 
 ### Extending Pybiscus
 
