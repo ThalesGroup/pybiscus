@@ -1,0 +1,47 @@
+# Default cut of `shoot --attach` (a session someone runs, followed from its manager's page); the
+# video goes to <rushes>/video.mp4 unless --output is given.
+
+formats: [mp4, webp]
+
+scenes:
+  attached:
+    main: manager
+    caption: "Waiting for the agents: {count} registered"
+  joined:
+    main: manager
+    caption: "Recording joins the running session: {count} agents"
+  registered:
+    main: manager
+    caption: "Agent {name} registers ({role}, {location})"
+  started:
+    main: manager
+    caption: "The session starts"
+  validated:
+    main: manager
+    caption: "{name}: configuration checked"
+  executing:
+    main: manager
+    caption: "{name}: run launched"
+  round:
+    main: manager
+    caption: "Federated training: round {round}{of_rounds}"
+    pace: progress
+  failed:
+    main: manager
+    caption: "{name}: run {state}"
+  finished:
+    main: manager
+    caption: "Session finished: test accuracy {accuracy}"
+    pace: final
+  dropped:
+    main: manager
+    caption: "The session was dropped"
+    pace: final
+  interrupted:
+    main: manager
+    caption: "Recording stopped"
+    pace: final
+  lost:
+    main: manager
+    caption: "The session manager can no longer be reached"
+    pace: final

@@ -1,0 +1,39 @@
+# Cut of the mnist session's rushes (launch/doc/scenarios/mnist-session.yml): a directed video, a
+# main view and an inset per step. Edit again with another cut, without shooting again:
+#   uv run launch/doc/record_session.py edit <rushes> launch/doc/scenarios/mnist-session.cut.yml
+
+output: docs/videos/mnist-session         # .mp4 and .webp are added
+formats: [mp4, webp]                      # png: the composed images as well
+inset: {width: 0.42, corner: bottom-right}
+# timing: {caption: 3.5, round_frame: 0.25, last_caption: 5, blend: 0.4}
+
+# views: manager, agent:<name> (its registration, configuration form, then run monitor),
+# session-form; a panel of one: manager@geo (map), manager@nodes (agents), agent:<name>@console (run log)
+scenes:
+  empty:
+    main: manager
+    caption: "1 · An empty session: the manager waits for its agents"
+  registered:
+    main: "agent:{name}"
+    inset: "manager@geo"
+    caption: "2 · Agent {name} registers ({role}, {location})"
+  configured:
+    main: session-form
+    inset: "manager@nodes"
+    caption: "3 · The server's session is configured: MNIST CNN, {rounds} rounds, data split between the clients"
+  started:
+    main: manager
+    caption: "3 · The session starts: each agent receives its form, checks it and launches"
+  launched:
+    main: "agent:{name}"
+    inset: "manager@nodes"
+    caption: "4 · {name}: configuration checked, run launched"
+  round:
+    main: manager
+    inset: "agent:{turn}@console"       # the clients take turns, one per round
+    caption: "5 · Federated training: round {round} / {rounds}"
+    pace: progress
+  finished:
+    main: manager
+    caption: "6 · Session finished: test accuracy {accuracy} after {rounds} rounds"
+    pace: final

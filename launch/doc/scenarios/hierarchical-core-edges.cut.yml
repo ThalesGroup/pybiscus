@@ -1,0 +1,12 @@
+# Cut of the rushes of launch/doc/scenarios/hierarchical-core-edges.yml: the screenshots of the
+# walkthrough of docs/hierarchical-session.md (one core, two edges), from the rushes or the takes.
+
+shots_dir: docs/images
+shots:
+  - {file: hier_core_relays.png, view: "manager:core", at: relays}
+  - {file: hier_edge_session_form.png, take: edge1-session-form}
+  - {file: hier_edge_server_form.png, take: edge1-server-form}
+  - {file: hier_relay_form.png, take: relay-edge1-form}
+  - {file: hier_core_after.png, view: "manager:core", at: end}
+  - {file: hier_edge1_after.png, view: "manager:edge1", at: end}
+  - {file: hier_cycles.png, take: core-cycles}

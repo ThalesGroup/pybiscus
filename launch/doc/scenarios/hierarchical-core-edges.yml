@@ -1,0 +1,39 @@
+# Scenario of launch/doc/record_session.py: the hierarchical session of docs/hierarchical-session.md,
+# one core and two edges, 3 rounds; takes the screenshots of its walkthrough (about 3 minutes).
+#   uv run launch/doc/record_session.py shoot launch/doc/scenarios/hierarchical-core-edges.yml
+# Its cut writes the screenshots into docs/images: check them (git diff) before committing.
+# Memory: 3 managers, 9 agents (6 mnist runs) and the browser reach about 15.5 GB: run it alone.
+
+kind: hierarchical
+cut: launch/doc/scenarios/hierarchical-core-edges.cut.yml
+plugin_manifests: [pybiscus-plugins/plugins-conf.yml, pybiscus-plugins-hierarchical/plugins-conf.yml]
+viewport: {width: 1500, height: 1250}        # the managers' pages
+form_viewport: {width: 1500, height: 950}    # the forms, captured whole with full_page
+
+managers:
+  - {bouquet: core, location: paris-hq, geo: [48.8566, 2.3522]}
+  - {bouquet: edge1, location: palaiseau-dc, geo: [48.7144, 2.2028], upper: core}
+  - {bouquet: edge2, location: sophia-dc, geo: [43.6163, 7.0552], upper: core}
+
+agents:                                      # placed near their manager; a relay near the server it stands for
+  - {name: core-server, role: server, bouquet: core}
+  - {name: relay-edge1, role: client, bouquet: core, relay_for: edge1}
+  - {name: relay-edge2, role: client, bouquet: core, relay_for: edge2}
+  - {name: edge1-server, role: server, bouquet: edge1}
+  - {name: edge1-client1, role: client, bouquet: edge1}
+  - {name: edge1-client2, role: client, bouquet: edge1}
+  - {name: edge2-server, role: server, bouquet: edge2}
+  - {name: edge2-client1, role: client, bouquet: edge2}
+  - {name: edge2-client2, role: client, bouquet: edge2}
+
+session:                                     # the core's session form
+  options: {model: MNIST CNN, num_rounds: " "}
+  values: {data: Mnist, num_rounds: "3"}
+lower_session:                               # each edge's, on top of what the core imposes
+  options: {data_partition: " "}
+
+takes:                                       # special captures, at: session-form:<bouquet>, form:<agent>, registered, relays, end
+  - {name: edge1-session-form, at: "session-form:edge1", view: session-form, full_page: true}
+  - {name: edge1-server-form, at: "form:edge1-server", view: "agent:edge1-server", full_page: true}
+  - {name: relay-edge1-form, at: "form:relay-edge1", view: "agent:relay-edge1", full_page: true}
+  - {name: core-cycles, at: end, view: "manager:core@cyclesChart", tab: cycles}
