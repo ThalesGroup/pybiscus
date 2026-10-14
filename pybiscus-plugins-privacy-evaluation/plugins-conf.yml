@@ -1,0 +1,19 @@
+# Plugins of the privacy evaluation contributed in PR #44, not finalized yet: the FedMIA decorator and
+# its analyser, the iSAID data and FasterRCNN model it was written for. Added to the bundled
+# plugins' manifest by the sessions that use them:
+#   PYBISCUS_PLUGIN_CONF_PATH=pybiscus-plugins/plugins-conf.yml:pybiscus-plugins-privacy-evaluation/plugins-conf.yml
+# Kept apart so that a defect of theirs does not stop a simple session (a failed plugin import exits),
+# and so that the author's later changes, made on the pr-44 branch, are ported by a change of
+# prefix only. Paths are relative to this file.
+data:
+  - path: "./data"
+    modules:
+      - iSAID
+model:
+  - path: "./model"
+    modules:
+      - fasterrcnn
+strategydecorator:
+  - path: "./strategydecorator"
+    modules:
+      - clientprivacyevaluation
