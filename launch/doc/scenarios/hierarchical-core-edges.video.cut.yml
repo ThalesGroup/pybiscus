@@ -1,0 +1,37 @@
+# Video cut of the rushes of launch/doc/scenarios/hierarchical-core-edges.yml (one core, two edges):
+#   uv run launch/doc/record_session.py shoot launch/doc/scenarios/hierarchical-core-edges.yml \
+#       --cut launch/doc/scenarios/hierarchical-core-edges.video.cut.yml
+# or, on rushes already shot: record_session.py edit <rushes> <this cut>
+
+output: docs/videos/hierarchical-core-edges
+formats: [mp4, webp]
+inset: {width: 0.42, corner: bottom-right}
+
+# views: manager:<bouquet>, session-form, agent:<name>; panels: @geo, @nodes, @accChart, @cyclesChart
+scenes:
+  registered:
+    main: "manager:core"
+    caption: "1 · Three sessions: two edges report to the core, which shows the tree"
+  relays:
+    main: "manager:core"
+    caption: "2 · Each edge gets its relay among the core's clients"
+  session-form:
+    main: session-form
+    inset: "manager:{bouquet}@nodes"
+    caption: "3 · {bouquet}: session configured, the core's choices locked for the edges"
+  form:
+    main: "agent:{name}"
+    inset: "manager:core@nodes"
+    caption: "4 · {name}: configuration checked, run launched"
+  round:
+    main: "manager:core"
+    inset: "manager:{turn}@accChart"     # the edges take turns, one per round
+    caption: "5 · Round {round} / {rounds}: each edge trains the core's model ({turn} in the inset)"
+    pace: progress
+  end:
+    main: "manager:core"
+    caption: "6 · Every level has done its rounds"
+  tab:
+    main: "manager:core"
+    caption: "7 · Cycles: the share of each core round an edge worked on"
+    pace: final

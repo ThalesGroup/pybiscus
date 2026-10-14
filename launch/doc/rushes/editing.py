@@ -169,6 +169,9 @@ def edit(rushes_dir: Path, cut: dict, output=None, work=None):
                 name = f"f{n:05d}.png"; n += 1
                 composer.compose(t, main, inset, caption).save(frames / name)
                 lines += [f"file '{frames / name}'", f"duration {per:.3f}"]
+            # the fade mixes an image with the next one: the scene's last image, repeated for one frame
+            # of the video, fades into itself, and the next scene starts on a cut
+            lines += [f"file '{frames / name}'", "duration 0.040"]
         if not lines:
             raise SystemExit("no scene: none of the cut's events is in the rushes")
         final = lines[-2].split("'")[1]

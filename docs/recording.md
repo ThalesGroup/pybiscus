@@ -139,7 +139,7 @@ capture of its main view in that time:
 | `manager` (`manager:<bouquet>` in a hierarchical scenario) | a session manager's page |
 | `agent:<name>` | the agent's tab: its registration form, its waiting page, its configuration form (check, launch), then its run monitor |
 | `session-form` | the server's session form, while it is filled |
-| `<view>@<panel>` | a panel of a view: `manager@geo` (the map), `manager@nodes` (the agents and their states), `manager@cyclesChart` (the cycles), `agent:<name>@console` (the run's log) |
+| `<view>@<panel>` | a panel of a view: `manager@geo` (the map), `manager@nodes` (the agents and their states), `manager@accChart` (the accuracy curves), `manager@cyclesChart` (the cycles), `agent:<name>@console` (the run's log) |
 
 The events, and their fields:
 
@@ -147,7 +147,7 @@ The events, and their fields:
 |---|---|
 | a scenario | `empty`; `registered`, `launched` (`name`, `role`, `location`); `configured` (`rounds`); `started`; `round` (`round`, `rounds`, `turn`: the client whose turn it is in the inset, one per round); `finished` (`accuracy`, `rounds`) |
 | `--attach` | `attached` or `joined` (`count`: agents registered); `registered` (`name`, `role`, `location`); `started`; `validated`, `executing` (`name`); `round` (`round`, `rounds`, `of_rounds`: " / 5", or empty when unknown); `failed` (`name`, `state`); `finished` (`accuracy`); `dropped`; `interrupted`; `lost` (the manager no longer answers: the shooting stops, what it has is edited) |
-| a hierarchical scenario | `registered`; `relays`; `session-form` (`bouquet`); `form` (`name`); `end` |
+| a hierarchical scenario | `registered`; `relays`; `session-form` (`bouquet`); `form` (`name`); `round` (`round`, `rounds`, `turn`: the lower bouquet whose turn it is); `end`; `tab` (`tab`) |
 
 **Screenshots** (`shots`, written into `shots_dir`): `{file, take: <name>}` copies a take of the
 rushes; `{file, view, at: <kind of event>, index, panel}` extracts the view as it was just after
@@ -164,7 +164,7 @@ the `index`-th event of that kind (default 0), or one of its panels.
 | `progress_max` | longest time of a `progress` scene, however many its images: a long wait is squeezed | `8.0` |
 | `end_hold` | extra time on the last image | `2.5` |
 | `webp_width` | width of the WebP, in pixels (the MP4 keeps the captures' size) | `1080` |
-| `blend` | share of each image's time spent fading into the next one: `0` cuts from image to image; a change of main view stays a cut | `0.4` |
+| `blend` | share of each image's time spent fading into the next one: `0` cuts from image to image; images fade only within a scene, a new scene starts on a cut | `0.4` |
 
 The defaults give a 1-minute video for the bundled scenario; `timing: {caption: 2.2, round_frame: 0.12,
 last_caption: 4, blend: 0}` a brisker 40-second one.
@@ -209,7 +209,17 @@ walkthrough into `docs/images` (check them with `git diff` before committing).
 | `viewport`, `form_viewport` | the managers' pages, the forms |
 | `takes` | `name`, `at` (`registered`, `relays`, `session-form:<bouquet>`, `form:<agent>`, `end`), `view` (with `@<panel>`), `full_page`, `tab` (a tab of the manager's middle panel to open first: `cycles`, `constraints`) |
 
-The agents register by the API (no tab each, for memory) and their tab is closed once launched.
+Its other cut, `hierarchical-core-edges.video.cut.yml`, makes a video of the same rushes: the tree
+on the core's map, the relays, the session forms, the launches, then the rounds on the core's page
+with, in the inset, the accuracy curve of the edge whose turn it is, and the cycles at the end:
+
+```bash
+uv run launch/doc/record_session.py edit <rushes> launch/doc/scenarios/hierarchical-core-edges.video.cut.yml
+```
+
+Its events add `round` (`round`, `rounds`, `turn`: the edge in the inset) and `tab` (`tab`: a tab
+a take opened, the pages being captured after it). The agents register by the API (no tab each,
+for memory) and their tab is closed once launched.
 **Memory**: its 3 managers, 9 agents (6 mnist runs) and the browser reach about 15.5 GB on a 16 GB
 machine; run it alone.
 
@@ -277,6 +287,6 @@ time-lapse are then added while editing (Clipchamp, Shotcut, Kdenlive, ffmpeg).
   preview of the composed image;
 - side by side views (a mosaic), as an alternative to a main view and an inset; the inset's corner
   per scene;
-- videos of hierarchical sessions; the agents' run monitors with `--attach`;
+- the agents' run monitors with `--attach`;
 - a recording started by the session manager itself, with captions taken from its events;
 - a record button in the manager's page, recording the tab from the browser.

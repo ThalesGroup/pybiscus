@@ -51,8 +51,8 @@ DEFAULT_VIEWPORT = {"width": 1440, "height": 900}
 # the window of an agent's tab once its run is launched, narrow so that its run monitor stays readable as an inset
 INSET_VIEWPORT = {"width": 760, "height": 470}
 # the panels whose position each capture keeps, for the cut to show one of them: the map, the agents,
-# the cycles of the manager's page; the log of an agent's run monitor
-MANAGER_PANELS = ("geo", "nodes", "cyclesChart")
+# the accuracy curves, the cycles of the manager's page; the log of an agent's run monitor
+MANAGER_PANELS = ("geo", "nodes", "accChart", "cyclesChart")
 AGENT_PANELS = ("console",)
 
 CHECK_DONE_JS = """() => { const s = document.getElementById('check-success-result'), f = document.getElementById('check-failure-result');
@@ -270,7 +270,9 @@ def shoot_scenario(sc, work, rushes):
 
 def shoot_hierarchical(sc, work, rushes):
     """a tree of sessions, one manager per bouquet; events: registered, relays, session-form (bouquet),
-    form (name), end; the scenario's takes (whole pages, a panel after a click) at their steps"""
+    form (name), round (round, rounds, turn: the lower bouquet whose turn it is, one per round), end,
+    tab (tab: a tab a take opened, the pages captured after it); the scenario's takes (whole pages, a
+    panel after a click) at their steps"""
     rounds = int(sc["session"]["values"]["num_rounds"])
     takes = sc.get("takes", [])
     viewport = sc.get("viewport", {"width": 1500, "height": 1250})
@@ -316,6 +318,9 @@ def shoot_hierarchical(sc, work, rushes):
                     if take.get("tab"):
                         page.click(f"#mid-tabs .tool[data-tab={take['tab']}]"); page.wait_for_timeout(800)
                     shooting.take(take["name"], page, take.get("full_page", False), panel or None)
+                    if take.get("tab"):
+                        # the page now shows that tab: a cut can end on it
+                        shooting.event("tab", tab=take["tab"]); shooting.tick(3)
 
             for i, a in enumerate(agents):
                 b = a["bouquet"]
@@ -351,6 +356,7 @@ def shoot_hierarchical(sc, work, rushes):
 
             form = browser.new_page(viewport=form_viewport)
             shooting.add_view("session-form", form, (), lambda page: "session form")
+            shooting.set_focus(*(f"manager:{b}" for b in order), "session-form")
 
             def launch_session(b, presets, options=None, values=None):
                 form.goto(f"http://localhost:{servers[b]['port']}/session/config?presets=" + urllib.parse.quote(json.dumps(presets)))
@@ -380,6 +386,7 @@ def shoot_hierarchical(sc, work, rushes):
                            "values_lock": list(plain) + list(model_values)}
                 launch_session(b, presets, sc.get("lower_session", {}).get("options"), sc.get("lower_session", {}).get("values"))
             shooting.remove_view("session-form"); form.close()
+            shooting.set_focus(*(f"manager:{b}" for b in order))
 
             # servers from the top down, then the clients, then the relays: a relay's level waits for its lower one
             ordered = sorted(agents, key=lambda a: (0 if a["role"] == "server" else 2 if a.get("relay_for") else 1,
@@ -389,6 +396,7 @@ def shoot_hierarchical(sc, work, rushes):
                 tab.goto(f"http://localhost:{a['port']}/session/agent/registration/waiting")
                 tab.wait_for_url(lambda u: "/config?" in u, timeout=60000); tab.wait_for_timeout(2500)
                 shooting.add_view(view, tab, AGENT_PANELS, agent_label(a["name"]))
+                shooting.set_focus(*(f"manager:{b}" for b in order), view)
                 step("form", name=a["name"])
                 check_and_launch(tab, a["name"], work)
                 # the agents' tabs are closed once launched: nine of them, with the runs, would exhaust the memory
@@ -397,8 +405,15 @@ def shoot_hierarchical(sc, work, rushes):
 
             def done(levels):
                 return all(len(l.get("cycles", [])) >= rounds and done(l.get("lower_levels", [])) for l in levels)
-            deadline = time.time() + sc.get("timeout", 1800)
+            deadline, shown = time.time() + sc.get("timeout", 1800), None
+            lowers = children[root]
+            root_page = shooting.views[f"manager:{root}"]["page"]
             while True:
+                current = page_text(root_page, "round-num")
+                if current != shown:
+                    turn = lowers[(int(current) - 1) % len(lowers)] if current.isdigit() and int(current) > 0 and lowers else (lowers or [""])[0]
+                    shooting.event("round", round=current or "…", rounds=rounds, turn=turn)
+                    log(f"round {current or '…'} / {rounds}"); shown = current
                 d = requests.get(f"{url(root)}/pybiscus-session/agents", headers=H).json()
                 if len(d.get("cycles", [])) >= rounds and done(d.get("lower_levels", [])):
                     break
