@@ -391,12 +391,20 @@
   }
 
   // ============ fetch loops (préservés) ============
+  // each page reads the feeds from its own cursor: a read no longer empties them for the others
+  const cursors = {};
+  function fetchFeed(url, onItems){
+    return fetch(`${url}?since=${cursors[url] || 0}`).then(r=>r.json()).then(feed=>{
+      cursors[url] = feed.next;
+      if(feed.items.length) onItems(feed.items);
+    }).catch(console.error);
+  }
   function fetchAgents(){ if(agentsPaused) return;
-    fetch(AGENTS_URL).then(r=>r.json()).then(data=>{ if(data.length){ addEntries(agentsList, displayedAgents, data); checkAgentLogs(data); } }).catch(console.error); }
+    fetchFeed(AGENTS_URL, data=>{ addEntries(agentsList, displayedAgents, data); checkAgentLogs(data); }); }
   function fetchLogs(){ if(logsPaused) return;
-    fetch(LOGS_URL).then(r=>r.json()).then(data=>{ if(data.length){ addEntries(logList, displayedLogs, data); checkLogs(data); renderCharts(); } }).catch(console.error); }
+    fetchFeed(LOGS_URL, data=>{ addEntries(logList, displayedLogs, data); checkLogs(data); renderCharts(); }); }
   function fetchMetrics(){ if(metricsPaused) return;
-    fetch(METRICS_URL).then(r=>r.json()).then(data=>{ if(data.length){ addEntries(metricsList, displayedMetrics, data); } }).catch(console.error); }
+    fetchFeed(METRICS_URL, data=>{ addEntries(metricsList, displayedMetrics, data); }); }
 
   // ============ charts (nouveau rendu SVG à partir des buffers) ============
   function renderAccuracy(){
@@ -925,7 +933,7 @@
   }
 
   function updateVignettes(){
-    fetch('/pybiscus-session/vignettes').then(r=>r.json()).then(data=>{
+    fetchFeed('/pybiscus-session/vignettes', data=>{
       let changed=false;
       data.forEach(id=>{
         if(vign.seen.has(id)) return;

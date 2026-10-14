@@ -4,7 +4,6 @@ import glob
 import json
 from flask import render_template, request, jsonify
 import requests
-from threading import Lock
 
 import urllib
 import pybiscus.session.manager.session_manager
@@ -13,6 +12,7 @@ import pybiscus.core.pybiscus_logger as logm
 from pybiscus.session.auth import session_access
 from pybiscus.session.csrf import HEADER
 from pybiscus.session.manager import cycles
+from pybiscus.session.manager.feeds import Feed
 
 # **************************
 
@@ -328,9 +328,8 @@ def drop_session():
     cycles.reset()
     pybiscus.session.manager.session_manager.clear_session()
 
-    # les buffers sont drainés par leurs GET respectifs, mais un drop pendant un run laisse
-    # des messages non consommés : rechargée, la page les rejouerait et ressusciterait des
-    # agents d'une session morte
+    # les pages relisent les flux depuis le début à leur chargement : sans ce ménage, la page
+    # rechargée après le drop rejouerait la session morte et en ressusciterait les agents
     clear_message_buffers()
 
 # **************************
@@ -342,6 +341,7 @@ def pybiscus_manager_list_clients():
         "clients": pybiscus.session.manager.session_manager.registered_clients,
         "servers": pybiscus.session.manager.session_manager.registered_servers,
         "meta":    pybiscus.session.manager.session_manager.registered_agents_meta,
+        "states":  pybiscus.session.manager.session_manager.agent_states,
         "lower_levels": lower_levels(),
         "upper_level": upper_level(),
         "manager": manager_place(),
@@ -432,8 +432,7 @@ def pybiscus_manager_ping_server():
 # *** Agent management ***
 # ************************
 
-agent_messages = []  # stored messages list
-agent_lock = Lock()  # lock used to prevent agent logs concurrent access
+agent_feed = Feed()
 
 # **************************
 
@@ -448,9 +447,7 @@ def pybiscus_manager_receive_agents():
     # purement informatifs, auquel cas le front retombe sur l'analyse du texte
     state = data.get('state')
 
-    # private section
-    with agent_lock:
-        agent_messages.append({'source': source, 'message': message, 'state': state})
+    agent_feed.append({'source': source, 'message': message, 'state': state})
 
     # the source is "<bouquet>:<agent name>", as the page reads it (checkAgentLogs)
     if state and ":" in source:
@@ -462,21 +459,13 @@ def pybiscus_manager_receive_agents():
 
 @pybiscus_manager_app.route('/pybiscus-session/agents_logs', methods=['GET'])
 def pybiscus_manager_get_agents():
-
-    with agent_lock:
-        global agent_messages
-        _agent_messages = agent_messages
-        agent_messages = []
-
-    # return json encoded messages
-    return jsonify(_agent_messages)
+    return jsonify(agent_feed.read(request.args.get("since", 0, type=int)))
 
 # *******************************
 # *** Pybiscus Log management ***
 # *******************************
 
-log_messages = []  # stored messages list
-log_lock = Lock()  # lock used to prevent logs concurrent access
+log_feed = Feed()
 
 # **************************
 
@@ -487,9 +476,7 @@ def pybiscus_manager_receive_log():
     message = data.get('content', '')
     source = data.get('source', 'unknown')
 
-    # private section
-    with log_lock:
-        log_messages.append({'source': source, 'message': message})
+    log_feed.append({'source': source, 'message': message})
     cycles.note_server_line(message)
 
     return jsonify({"status": "success"}), 200
@@ -498,21 +485,13 @@ def pybiscus_manager_receive_log():
 
 @pybiscus_manager_app.route('/pybiscus-session/logs', methods=['GET'])
 def pybiscus_manager_get_logs():
-
-    with log_lock:
-        global log_messages
-        _log_messages = log_messages
-        log_messages = []
-
-    # return json encoded messages
-    return jsonify(_log_messages)
+    return jsonify(log_feed.read(request.args.get("since", 0, type=int)))
 
 # ***********************************
 # *** Pybiscus Metrics management ***
 # ***********************************
 
-metrics_messages = []  # stored metrics list
-metrics_lock = Lock()  # lock used to prevent metrics concurrent access
+metrics_feed = Feed()
 
 # **************************
 
@@ -524,9 +503,7 @@ def pybiscus_manager_receive_metrics():
     source = data.get('source', 'unknown')
     log = { 'source' : source, 'message' : str(metrics) }
 
-    # private section
-    with metrics_lock:
-        metrics_messages.append(log)
+    metrics_feed.append(log)
 
     return jsonify({"status": "success"}), 200
 
@@ -534,21 +511,13 @@ def pybiscus_manager_receive_metrics():
 
 @pybiscus_manager_app.route('/pybiscus-session/metrics', methods=['GET'])
 def pybiscus_manager_get_metrics():
-
-    with metrics_lock:
-        global metrics_messages
-        _metrics_messages = metrics_messages
-        metrics_messages = []
-
-    # return json encoded messages
-    return jsonify(_metrics_messages)
+    return jsonify(metrics_feed.read(request.args.get("since", 0, type=int)))
 
 # *************************************
 # *** Pybiscus vignettes management ***
 # *************************************
 
-new_vignettes = []
-vignettes_lock = Lock()  # lock used to prevent logs concurrent access
+vignettes_feed = Feed()
 
 # cache d'affichage du manager ; les vignettes de référence sont dans experiments/<session>.
 # Un dossier par port, sous le dossier static du paquet (et non relatif au répertoire courant) :
@@ -585,9 +554,7 @@ def pybiscus_manager_post_vignette():
     os.makedirs(vignettes_dir(), exist_ok=True)
     file.save(save_path)
 
-    # memo file
-    with vignettes_lock:
-        new_vignettes.append( col_row )
+    vignettes_feed.append(col_row)
 
     return jsonify({
         "status": "ok",
@@ -599,14 +566,7 @@ def pybiscus_manager_post_vignette():
 
 @pybiscus_manager_app.route('/pybiscus-session/vignettes', methods=['GET'])
 def pybiscus_manager_get_new_vignettes():
-
-    with vignettes_lock:
-        global new_vignettes
-        _new_vignettes = new_vignettes
-        new_vignettes = []
-
-    # return json encoded vignettes
-    return jsonify(_new_vignettes)
+    return jsonify(vignettes_feed.read(request.args.get("since", 0, type=int)))
 
 # *****************************
 # *** Session reset support ***
@@ -615,25 +575,14 @@ def pybiscus_manager_get_new_vignettes():
 def clear_message_buffers():
     """Vide tout ce qu'un agent ou un run a pu déposer, pour repartir d'une page vierge."""
 
-    global agent_messages, log_messages, metrics_messages, new_vignettes
+    for feed in (agent_feed, log_feed, metrics_feed, vignettes_feed):
+        feed.clear()
 
-    with agent_lock:
-        agent_messages = []
-
-    with log_lock:
-        log_messages = []
-
-    with metrics_lock:
-        metrics_messages = []
-
-    with vignettes_lock:
-        new_vignettes = []
-
-        # les png du run précédent sont un cache d'affichage : l'original est archivé
-        # dans experiments/<session>. Sans ce ménage ils survivent jusqu'à être écrasés,
-        # et une session plus courte laisserait voir les vignettes de la précédente.
-        for vignette in glob.glob(os.path.join(vignettes_dir(), "grid_*.png")):
-            try:
-                os.remove(vignette)
-            except OSError as e:
-                logm.console.log(f"vignette removal failed: {vignette} ({e})")
+    # les png du run précédent sont un cache d'affichage : l'original est archivé
+    # dans experiments/<session>. Sans ce ménage ils survivent jusqu'à être écrasés,
+    # et une session plus courte laisserait voir les vignettes de la précédente.
+    for vignette in glob.glob(os.path.join(vignettes_dir(), "grid_*.png")):
+        try:
+            os.remove(vignette)
+        except OSError as e:
+            logm.console.log(f"vignette removal failed: {vignette} ({e})")
