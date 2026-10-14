@@ -1,11 +1,16 @@
 # Recording a session: time-lapse videos
 
 `launch/doc/record_session.py` records a session as seen from the session manager's page and
-turns it into a short time-lapse video, for the documentation or a presentation. It runs the whole
-session itself: a manager and its agents start on the machine, a *scenario* file says which agents
-register, how the server's session is configured and what the captions say. The video shows the
-agents appearing on the map, the runs being launched, then the accuracy and loss curves and the
-model vignettes filling in round after round.
+turns it into a short time-lapse video, for the documentation or a presentation. It works in two
+ways:
+- **with a scenario**, it runs the whole session itself: a manager and its agents start on the
+  machine, a *scenario* file says which agents register, how the server's session is configured
+  and what the captions say;
+- **with `--attach`**, it records a session someone runs, from its manager, without driving it
+  (see [Recording a session you run yourself](#recording-a-session-you-run-yourself)).
+
+The video shows the agents appearing on the map, the runs being launched, then the accuracy and
+loss curves and the model vignettes filling in round after round.
 
 > This page follows the tool as it grows: views of the agents' pages, hierarchical sessions and a
 > recording started by the manager itself are planned (see the end of the page).
@@ -36,6 +41,10 @@ uv run launch/doc/record_session.py launch/doc/scenarios/mnist-session.yml
 | option | effect |
 |---|---|
 | `--output <path>` | basename of the outputs, instead of the scenario's `output` |
+| `--attach <manager URL>` | record a running session instead of a scenario (see below) |
+| `--max-duration <s>` | with `--attach`: stop recording after this many seconds |
+| `--viewport <width>x<height>` | size of the captured page, instead of the scenario's `viewport` (`--viewport 1920x1080`) |
+| `--scale <factor>` | pixel density of the captures, instead of the scenario's `scale` (see below) |
 | `--work-root <dir>` | where the working directory is created (default `/tmp`) |
 | `--keep` | keep the working directory: logs of the manager and of each agent, frames, run reports |
 
@@ -92,6 +101,7 @@ captions:
 | `output` | basename of the outputs, relative to the directory the tool is run from | required (or `--output`) |
 | `formats` | among `mp4`, `webp`, `png` (`png`: the frames, in `<output>-frames/`) | `[mp4, webp]` |
 | `viewport` | size of the captured page, in pixels | `1440 × 900` |
+| `scale` | pixel density of the captures: the page keeps the viewport's layout, its pixels are multiplied (2: a 1440 × 900 page captured in 2880 × 1800, sharper text) | `1` |
 | `period` | pause between two captures, in seconds (a capture itself takes a few tenths) | `0.35` |
 | `manager` | `bouquet` (the session's name), `location`, `geo` (`[latitude, longitude]`) | required |
 | `agents` | one entry per agent: `name`, `role` (`server` or `client`), `location`, `geo`; the first server holds the session | required |
@@ -115,9 +125,6 @@ captions:
 | `round` | during the training, updated with the round shown by the page | `{round}`, `{rounds}` |
 | `finished` | at the end | `{accuracy}` (the test accuracy shown by the page), `{rounds}` |
 
-The rounds are recognised in the video by the beginning of the `round` caption, up to its first
-`{`: it must differ from the other captions' beginning.
-
 **Timing** (`timing:`, seconds)
 
 | key | meaning | default |
@@ -125,18 +132,24 @@ The rounds are recognised in the video by the beginning of the `round` caption, 
 | `caption` | time a caption stays on screen, shared by its captures | `2.2` |
 | `last_caption` | the same, for the last caption | `4.0` |
 | `min_frame` | shortest time of one capture | `0.25` |
-| `round_frame` | time of one capture during the rounds | `0.12` |
+| `round_frame` | time of one capture during the rounds and the waits | `0.12` |
+| `progress_max` | longest time of a round or of a wait, however many its captures: a long wait is squeezed | `8.0` |
 | `end_hold` | extra time on the last image | `2.5` |
-| `webp_width` | width of the WebP, in pixels (the MP4 keeps the viewport's) | `1080` |
+| `webp_width` | width of the WebP, in pixels (the MP4 keeps the viewport's size times `scale`) | `1080` |
 
 ## Outputs
 
-- `<output>.mp4`: H.264, at the viewport's size, readable everywhere (about 0.8 MB for the
-  bundled scenario).
+- `<output>.mp4`: H.264, at the viewport's size times `scale`, readable everywhere (about 0.8 MB
+  for the bundled scenario at `1440 × 900`; at `1920 × 1080` with `scale: 2`, a 3840 × 2160 video,
+  about four times heavier per second).
 - `<output>.webp`: animated WebP, 1080 pixels wide (about 0.5 MB). Unlike an MP4 kept in the
   repository, GitHub shows it inside a page: `![a mnist session](videos/mnist-session.webp)`.
-- `<output>-frames/` (with `png`): every capture and `captions.tsv`, which gives the caption of
-  each one.
+- `<output>-frames/` (with `png`): every capture and `captions.tsv`, which gives the kind
+  (`event`, `progress`, `final`) and the caption of each one.
+
+**Choosing the size.** The manager's page follows the width of the window: below about 1200 pixels
+its panels narrow and the logs become hard to read in a video. `1440 × 900` and `1920 × 1080` suit
+it; `scale: 2` is for a large screen or a presentation, the WebP stays `webp_width` wide.
 
 `docs/videos/` is kept out of git for now (its `.gitignore`): every video weighs in the
 repository's history forever, so only short ones should be versioned, once chosen.
@@ -153,15 +166,55 @@ repository's history forever, so only short ones should be versioned, once chose
 
 ## Recording a session you run yourself
 
-The tool runs its own session. To record one driven by hand in a browser, use a screen recorder
-for now: [OBS Studio](https://obsproject.com/) (a *browser source* per page lets a scene show the
-manager and agents side by side), or on Windows the Xbox Game Bar (`Win` + `Alt` + `R`). Captions
-and time-lapse are then added while editing (Clipchamp, Shotcut, Kdenlive, ffmpeg).
+**With `--attach`**, the tool follows a session driven by hand, from its manager:
+
+```bash
+uv run launch/doc/record_session.py --attach http://localhost:5555 --output docs/videos/my-session
+```
+
+It drives nothing and starts nothing: it opens the manager's page in a headless browser, reads the
+manager's state (`/pybiscus-session/agents`) between two captures, and captions what happens: the
+agents registering, the session starting, each agent's configuration checked and run launched, the
+rounds, a run that fails. It stops by itself when every launched run has ended (or when the session
+is dropped), at `--max-duration`, or on **Ctrl+C**; the captures are then assembled as usual.
+It can be started before or during the session. Started during it, it captions only what
+happens from then on (`joined` first), but the page still shows the whole session so far: it
+reads the logs, the metrics and the vignettes from their beginning.
+
+- Without a scenario, the outputs go to `experiments/recordings/session-<date>-<time>`, unless
+  `--output` is given. A scenario file can still be given, for its `output`, `formats`,
+  `viewport`, `scale`, `period`, `hold`, `timing` and its `captions`, which then replace these
+  (`--viewport` and `--scale` also apply without a scenario):
+
+  | caption | shown | variables |
+  |---|---|---|
+  | `waiting` | before the runs, between the events | `{count}` (agents registered) |
+  | `registered` | when an agent registers | `{name}`, `{role}`, `{location}` |
+  | `started` | when the session starts | |
+  | `joined` | at the start of the recording, when the session is already running | `{count}` (agents registered) |
+  | `validated` | when an agent's configuration has been checked | `{name}` |
+  | `executing` | when an agent's run is launched | `{name}` |
+  | `round` | during the training | `{round}`, `{of_rounds}` (" / 5", or empty when the manager does not know the number of rounds) |
+  | `failed` | when a run fails or is stopped | `{name}`, `{state}` |
+  | `finished` | when every launched run has ended | `{accuracy}` |
+  | `dropped` | when the session is dropped | |
+  | `interrupted` | at `--max-duration` or Ctrl+C | |
+
+  An agent going through a step faster than a capture (a few tenths of a second) gets no caption
+  for it: its next state's caption follows.
+- A manager reachable beyond the loopback requires its administration token: give the URL it
+  printed when it started, `--attach 'http://host:5555?token=…'`.
+- The recorder's page and the pages of the people following the session do not take anything from
+  each other: each page reads the manager's logs, metrics and vignettes from its own position.
+
+**With a screen recorder**, the session can also be recorded from your own screen:
+[OBS Studio](https://obsproject.com/) (a *browser source* per page lets a scene show the manager
+and agents side by side), or on Windows the Xbox Game Bar (`Win` + `Alt` + `R`). Captions and
+time-lapse are then added while editing (Clipchamp, Shotcut, Kdenlive, ffmpeg).
 
 **Planned** (not available yet):
 - several views in one video: the agents' forms and run monitors with the manager, either one view
   at a time following the steps, or side by side;
 - scenarios for hierarchical sessions;
-- `--attach <manager URL>`: record a session started by hand, without driving it;
 - a recording started by the session manager itself, with captions taken from its events;
 - a record button in the manager's page, recording the tab from the browser.
