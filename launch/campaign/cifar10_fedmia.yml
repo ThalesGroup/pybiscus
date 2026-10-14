@@ -2,7 +2,7 @@
 #   uv run python launch/campaign/strategy_campaign.py launch/campaign/cifar10_fedmia.yml
 # then, per variant, the analyser against the clients' exported partitions:
 #   uv run pybiscus data partition <variant>/client_0.yml --export <dir>
-#   uv run python pybiscus-plugins/strategydecorator/clientprivacyevaluation/fedmiaprivacy_analyser.py \
+#   uv run python pybiscus-plugins-privacy-evaluation/strategydecorator/clientprivacyevaluation/fedmiaprivacy_analyser.py \
 #       --round-path <variant>/experiments/<run>/rounds --ground-truth-folder <dir> --plot_per_label false
 # No train.max_samples here: a client would train on part of its share while the exported indices
 # list all of it, counting untrained examples as members.
@@ -12,6 +12,7 @@
 server_config: configs/cifar10_cnn/distributed/without_ssl/with_privacy_eval_cpu/server.yml
 client_config: configs/cifar10_cnn/distributed/without_ssl/with_privacy_eval_cpu/client_1.yml
 output: experiments/campaigns
+plugin_manifests: [pybiscus-plugins-privacy-evaluation/plugins-conf.yml]   # the FedMIA decorator
 
 clients: 3
 rounds: 3

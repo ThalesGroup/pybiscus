@@ -1,3 +1,4 @@
+# the FedMIA decorator is in pybiscus-plugins-privacy-evaluation/: PYBISCUS_PLUGIN_CONF_PATH=pybiscus-plugins/plugins-conf.yml:pybiscus-plugins-privacy-evaluation/plugins-conf.yml
 root_dir: ${oc.env:PWD}
 flower_server:
   listen_address: '[::1]:3333'

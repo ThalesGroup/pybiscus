@@ -12,6 +12,10 @@
 * The relay client and the file writing decorator move to `pybiscus-plugins-hierarchical/`, with
   its own manifest, added only for the hierarchical sessions: they no longer appear in a simple
   session's forms.
+* The FedMIA privacy evaluation decorator and its analyser, the iSAID data and FasterRCNN model
+  plugins (PR #44, not finalized) move to `pybiscus-plugins-privacy-evaluation/`, with its own manifest,
+  added only for the sessions that use them (the cifar10 privacy evaluation demo, the FedMIA
+  campaign).
 
 ### Hierarchical sessions (under development)
 

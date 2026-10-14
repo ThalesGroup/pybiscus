@@ -4,7 +4,8 @@
 #
 #   launch/ci/smoke.sh [check] [run] [build] [container-run]     (default: check run)
 #
-#   check          every configuration of configs/ passes `server check` / `client check`
+#   check          every configuration of configs/ passes `server check` / `client check`, with the
+#                  manifests of every plugin directory
 #   run            a short federated run (mnist demo, server + 2 clients, CPU)
 #   build          the two container images
 #   container-run  the same short run, in containers of the pybiscus image
@@ -64,8 +65,11 @@ wait_for_exit() {
 }
 
 step_check() {
-    local logs="$WORK/check" config kind log failed=0 checked=0
+    local logs="$WORK/check" config kind log failed=0 checked=0 manifests
     mkdir -p "$logs"
+    # a shipped configuration may use the plugins of a directory a simple session does not load
+    # (pybiscus-plugins-privacy-evaluation for the FedMIA demo)
+    manifests="${PYBISCUS_PLUGIN_CONF_PATH:-$(cd "$REPO" && ls pybiscus-plugins*/plugins-conf.yml | paste -sd:)}"
     # configs/uploaded holds what the agents wrote at run time, not shipped configurations
     while IFS= read -r config; do
         if grep -q '^server_run:' "$REPO/$config"; then
@@ -78,7 +82,7 @@ step_check() {
         fi
         log="$logs/$(echo "$config" | tr '/' '_').log"
         checked=$((checked + 1))
-        if (cd "$REPO" && $PYTHON pybiscus/main.py "$kind" check "$config") >"$log" 2>&1; then
+        if (cd "$REPO" && PYBISCUS_PLUGIN_CONF_PATH="$manifests" $PYTHON pybiscus/main.py "$kind" check "$config") >"$log" 2>&1; then
             echo "  ok       $config"
         else
             echo "  FAILED   $config ($kind check, see $log)"

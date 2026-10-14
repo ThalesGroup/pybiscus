@@ -4,16 +4,24 @@
 > writes and the analyser may change, and its results should be read as preliminary.
 
 The `fedmiaprivacyevaluation` strategy decorator (plugin
-`pybiscus-plugins/strategydecorator/clientprivacyevaluation`, contributed in PR #44) runs a
-membership inference attack from the server: every round, for each example of a *privacy set* and
-each client, it scores how much the client's update looks like it was trained on that example
-(cosine between the example's gradient and the client's update, and the example's loss before and
-after the client's training). An analyser then compares these scores to which client really trained
-on which example, and plots ROC curves.
+`pybiscus-plugins-privacy-evaluation/strategydecorator/clientprivacyevaluation`, contributed in
+PR #44) runs a membership inference attack from the server: every round, for each example of a
+*privacy set* and each client, it scores how much the client's update looks like it was trained on
+that example (cosine between the example's gradient and the client's update, and the example's loss
+before and after the client's training). An analyser then compares these scores to which client
+really trained on which example, and plots ROC curves.
 
 It measures what an honest-but-curious **server** can infer from each client's own update.
 Server-side differential privacy (`serverdpfixed`, `serverdpadaptive`) noises only the aggregated
 model, not these updates: it is not expected to lower this attack's success.
+
+Its plugins, with the iSAID data and FasterRCNN model of the same PR, are in
+`pybiscus-plugins-privacy-evaluation/`, with their own manifest: a session that uses them adds it
+to the bundled one,
+
+```bash
+export PYBISCUS_PLUGIN_CONF_PATH=pybiscus-plugins/plugins-conf.yml:pybiscus-plugins-privacy-evaluation/plugins-conf.yml
+```
 
 ## Configuration
 
@@ -51,7 +59,8 @@ it while the exported indices list all of it, counting untrained examples as mem
 ## Running it
 
 A demo lives in `configs/cifar10_cnn/distributed/without_ssl/with_privacy_eval_cpu/` (one server,
-two clients, each on half of the train split). The campaign tool runs it with three clients:
+two clients, each on half of the train split; the server needs the manifest above). The campaign
+tool runs it with three clients, adding the manifest itself:
 
 ```bash
 uv run python launch/campaign/strategy_campaign.py launch/campaign/cifar10_fedmia.yml
@@ -61,7 +70,7 @@ Then, the clients' memberships and the analysis:
 
 ```bash
 uv run python pybiscus/main.py data partition <a client config> --export experiments/partition
-uv run python pybiscus-plugins/strategydecorator/clientprivacyevaluation/fedmiaprivacy_analyser.py \
+uv run python pybiscus-plugins-privacy-evaluation/strategydecorator/clientprivacyevaluation/fedmiaprivacy_analyser.py \
     --round-path <experiment>/rounds --ground-truth-folder experiments/partition \
     --save-folder plots --plot_per_label false
 ```

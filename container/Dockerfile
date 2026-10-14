@@ -45,6 +45,7 @@ RUN mkdir datasets
 COPY pybiscus                  ./pybiscus
 COPY pybiscus-plugins          ./pybiscus-plugins
 COPY pybiscus-plugins-hierarchical ./pybiscus-plugins-hierarchical
+COPY pybiscus-plugins-privacy-evaluation ./pybiscus-plugins-privacy-evaluation
 COPY bin                       ./bin
 COPY certificates/             ./certificates
 COPY configs/                  ./configs

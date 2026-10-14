@@ -52,7 +52,8 @@ Here are the main directories of the Pybiscus project:
     * **pybiscus/session/manager** the sources of the session manager (`session_manager`).
 * the **pybiscus-plugins** directory and its manifest **plugins-conf.yml**: the bundled
   plugins (data, models, strategies, decorators...); **pybiscus-plugins-hierarchical**, with its
-  own manifest, those of the hierarchical sessions only.
+  own manifest, those of the hierarchical sessions only; **pybiscus-plugins-privacy-evaluation**, with
+  its own manifest, the privacy evaluation of PR #44 (FedMIA, iSAID, FasterRCNN), not finalized.
 * **configs** YAML configuration files. To change the behaviour of your client, model etc, do not
   change the code - change the config!
 * **container** everything related to the build of docker/podman images.

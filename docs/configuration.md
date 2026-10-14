@@ -199,7 +199,8 @@ With `max_samples`, the subset keeps the original index of each example
 (`pybiscus.ml.datasplit.example_indices`). The server hands the loader to its plugins through
 `pybiscus_context[PRIVACY_SET]` (`pybiscus/core/pybiscuscontext.py`, which lists the context keys);
 a data plugin provides it with a `privacy_dataloader()` method returning `None` when unset. iSAID
-builds it from `dir_privacy`, whose examples must be the ones its indices files number.
+(in `pybiscus-plugins-privacy-evaluation/`) builds it from `dir_privacy`, whose examples must be the
+ones its indices files number.
 The FedMIA attack that uses it is described in [privacy-evaluation.md](privacy-evaluation.md).
 
 ### Strategy
