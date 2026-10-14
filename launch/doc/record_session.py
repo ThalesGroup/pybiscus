@@ -1,6 +1,6 @@
 # /// script
 # requires-python = ">=3.12"
-# dependencies = ["playwright==1.63.0", "requests", "pyyaml"]
+# dependencies = ["playwright==1.63.0", "requests", "pyyaml", "pillow"]
 # ///
 """Record a session as seen from the session manager's page: a time-lapse video for the docs.
 
@@ -46,6 +46,20 @@ RUN_ENDED = ("success", "failure", "stopped")
 AGENT_ENDED = ("terminated", "failed", "stopped")
 
 DEFAULT_VIEWPORT = {"width": 1440, "height": 900}
+
+# the views of each step of a scenario: "manager", "agent:<name>" (the agent's tab: its registration
+# form, then its configuration form, then its run monitor), "session-form" (the server's session form),
+# or a part of one, "<view>@<element id>" (manager@geo: the map, manager@nodes: the agents, agent:<name>@console:
+# the run's log); {agent} is the agent of the step, {clients} the client whose turn it is during the rounds
+DIRECTION = {
+    "empty": {"main": "manager", "inset": None},
+    "registered": {"main": "agent:{agent}", "inset": "manager@geo"},
+    "configured": {"main": "session-form", "inset": "manager@nodes"},
+    "started": {"main": "manager", "inset": None},
+    "launched": {"main": "agent:{agent}", "inset": "manager@nodes"},
+    "round": {"main": "manager", "inset": "agent:{clients}@console"},
+    "finished": {"main": "manager", "inset": None},
+}
 
 ATTACH_CAPTIONS = {
     "waiting": "Waiting for the agents: {count} registered",
@@ -107,15 +121,25 @@ class Processes:
                 pass
 
 
+def direction_of(sc):
+    """main view and inset of each step: the defaults, then the scenario's"""
+    direction = {step: dict(views) for step, views in DIRECTION.items()}
+    for step, views in (sc.get("direction") or {}).items():
+        direction[step] = {"main": views.get("main", "manager"), "inset": views.get("inset")}
+    return direction
+
+
 def run_scenario(sc, work, frames):
     rounds = int(sc["session"]["values"]["num_rounds"])
     captions, hold = sc["captions"], sc.get("hold", {})
+    direction = direction_of(sc)
     viewport = sc.get("viewport", DEFAULT_VIEWPORT)
-    # the captured page alone: its layout stays the viewport's, its pixels are multiplied
+    # the captured pages alone: their layout stays the viewport's, their pixels are multiplied
     scale = sc.get("scale", 1)
     procs = Processes(work)
     manager_port, flower_port = free_port(), free_port()
     agents = [{**a, "port": free_port()} for a in sc["agents"]]
+    clients = [a["name"] for a in agents if a["role"] == "client"]
     m = sc["manager"]
     procs.start("manager", ["session_manager", "--port", str(manager_port), "--bouquet", m["bouquet"],
                             "--location", m["location"], "--geo", ",".join(map(str, m["geo"]))])
@@ -128,56 +152,96 @@ def run_scenario(sc, work, frames):
         log(f"manager {manager}")
         with sync_playwright() as p:
             browser = p.chromium.launch()
-            page = browser.new_page(viewport=viewport, device_scale_factor=scale)
-            page.goto(f"{manager}/pybiscus-session/manage"); page.wait_for_timeout(3000)
-            rec = Recorder(page, frames, sc.get("period", 0.35))
+
+            def new_page():
+                return browser.new_page(viewport=viewport, device_scale_factor=scale)
+
+            pages = {"manager": new_page()}
+            pages["manager"].goto(f"{manager}/pybiscus-session/manage"); pages["manager"].wait_for_timeout(3000)
+            rec = Recorder(pages, frames, sc.get("period", 0.35), viewport, scale, sc.get("inset"))
+
+            def step(name, **fields):
+                views = direction[name]
+                fill = lambda v: v and v.format(**fields)
+                rec.view(fill(views["main"]), fill(views.get("inset")))
+
+            step("empty")
             rec.say(captions["empty"], hold.get("empty", 8))
 
+            # each agent is registered through its own registration form, as a person does
             for a in agents:
-                lat, lon = a["geo"]
-                meta = {"name": a["name"], "role": a["role"], "bouquet": m["bouquet"], "location": a["location"],
-                        "geo_location": {"type": "coordinates", "latitude": lat, "longitude": lon},
-                        "organisation": sc.get("organisation", "pybiscus-demo")}
+                tab = pages[f"agent:{a['name']}"] = new_page()
                 url = f"http://localhost:{a['port']}"
-                assert requests.post(f"{manager}/pybiscus-session/agent", headers=H, json={**meta, "agent_url": url}).ok
-                assert requests.post(f"{url}/session/agent/registration", headers=H, json={**meta, "manager_url": manager}).ok
-                rec.say(captions["registered"].format(**a), hold.get("registered", 5))
+                tab.goto(f"{url}/session/agent/registration"); tab.wait_for_timeout(1000)
+                lat, lon = a["geo"]
+                for field, value in (("managerUrl", manager), ("name", a["name"]), ("baseUrl", url), ("bouquet", m["bouquet"]),
+                                     ("location", a["location"]), ("organisation", sc.get("organisation", "pybiscus-demo"))):
+                    tab.fill(f"#{field}", value)
+                tab.click("#coordsToggle")
+                tab.fill("#latitude", str(lat)); tab.fill("#longitude", str(lon))
+                tab.select_option("#role", a["role"])
+                step("registered", agent=a["name"])
+                caption = captions["registered"].format(**a)
+                registered_hold = hold.get("registered", 5)
+                rec.say(caption, max(1, registered_hold // 2))
+                tab.click("#submitBtn")
+                tab.wait_for_url(lambda u: "/registration/waiting" in u, timeout=30000)
+                # the manager's map shows the new agent once its page has polled the registrations
+                pages["manager"].wait_for_timeout(1500)
+                rec.shoot(caption, EVENT, registered_hold - registered_hold // 2)
 
-            rec.say(captions["configured"].format(rounds=rounds), hold.get("configured", 4))
             server = next(a for a in agents if a["role"] == "server")
-            form = browser.new_page(viewport=viewport)
+            form = pages["session-form"] = new_page()
             presets = {"values_set": {"flower_server.server_port": flower_port}, "values_lock": []}
             form.goto(f"http://localhost:{server['port']}/session/config?presets=" + urllib.parse.quote(json.dumps(presets)))
             form.wait_for_timeout(1500)
+            step("configured")
+            caption = captions["configured"].format(rounds=rounds)
+            configured_hold = hold.get("configured", 6)
+            rec.say(caption, max(1, configured_hold // 3))
             form.evaluate("(o) => set_options(o)", sc["session"]["options"]); form.wait_for_timeout(1200)
+            rec.shoot(caption, EVENT, max(1, configured_hold // 3))
             form.evaluate("(v) => set_values(v)", sc["session"]["values"]); form.wait_for_timeout(300)
+            rec.shoot(caption, EVENT, max(1, configured_hold - 2 * (configured_hold // 3)))
             form.evaluate("""() => { window.__sc = null; window.addEventListener('message',
                 e => { if (e.data && e.data.type === 'session_config') window.__sc = e.data.value; }); }""")
             form.click("#launch-session-button"); form.wait_for_timeout(500)
-            session_config = form.evaluate("window.__sc"); form.close()
+            session_config = form.evaluate("window.__sc")
+            step("started")
+            del pages["session-form"]; form.close()
             r = requests.post(f"{manager}/pybiscus-session/run?presets=" + urllib.parse.quote(json.dumps(session_config)), headers=H)
             if not r.ok:
                 raise SystemExit(f"the manager refused the session: {r.status_code} {r.text}")
             rec.say(captions["started"], hold.get("started", 3))
 
             for a in agents:
-                agent_page = browser.new_page(viewport=viewport)
-                agent_page.goto(f"http://localhost:{a['port']}/session/agent/registration/waiting")
-                agent_page.wait_for_url(lambda u: "/config?" in u, timeout=60000); agent_page.wait_for_timeout(2500)
-                agent_page.click("#check-config-button")
-                agent_page.wait_for_function(CHECK_DONE_JS, timeout=60000)
-                if not agent_page.evaluate("() => !!document.getElementById('check-success-result').offsetParent"):
+                tab = pages[f"agent:{a['name']}"]
+                tab.wait_for_url(lambda u: "/config?" in u, timeout=60000); tab.wait_for_timeout(2500)
+                step("launched", agent=a["name"])
+                caption = captions["launched"].format(**a)
+                launched_hold = hold.get("launched", 5)
+                rec.say(caption, 1)
+                tab.click("#check-config-button")
+                tab.wait_for_function(CHECK_DONE_JS, timeout=60000)
+                if not tab.evaluate("() => !!document.getElementById('check-success-result').offsetParent"):
                     raise SystemExit(f"{a['name']}: its configuration does not pass the check (see {work}/agent_{a['name']}.log)")
-                agent_page.click("#execute-button"); agent_page.wait_for_timeout(1000); agent_page.close()
-                rec.say(captions["launched"].format(**a), hold.get("launched", 3))
+                rec.shoot(caption, EVENT, max(1, (launched_hold - 1) // 2))
+                tab.click("#execute-button"); tab.wait_for_timeout(1000)
+                tab.goto(f"http://localhost:{a['port']}/run"); tab.wait_for_timeout(800)
+                rec.shoot(caption, EVENT, max(1, launched_hold - 1 - (launched_hold - 1) // 2))
+                # from now on the tab is only an inset
+                tab.set_viewport_size(rec.inset_style["viewport"])
 
             shown = None
             deadline = time.time() + sc.get("timeout", 1800)
             while True:
-                current = page_text(page, "round-num")
+                current = page_text(pages["manager"], "round-num")
                 caption = captions["round"].format(round=current or "…", rounds=rounds)
                 if current != shown:
                     log(caption); shown = current
+                # the clients take turns in the inset, one per round
+                turn = clients[(int(current) - 1) % len(clients)] if current.isdigit() and int(current) > 0 and clients else (clients or [""])[0]
+                step("round", clients=turn)
                 rec.shoot(caption)
                 status = [requests.get(f"http://localhost:{a['port']}/run/status", headers=H).json().get("status") for a in agents]
                 if all(s in RUN_ENDED for s in status):
@@ -187,8 +251,9 @@ def run_scenario(sc, work, frames):
             if any(s != "success" for s in status):
                 raise SystemExit(f"a run did not succeed: {dict(zip((a['name'] for a in agents), status))} (logs in {work})")
             # the last round's metrics reach the page shortly after the runs end
-            page.wait_for_timeout(2000)
-            accuracy = page_text(page, "acc-test")
+            pages["manager"].wait_for_timeout(2000)
+            accuracy = page_text(pages["manager"], "acc-test")
+            step("finished")
             rec.say(captions["finished"].format(accuracy=accuracy, rounds=rounds), hold.get("finished", 12), FINAL)
             browser.close()
     finally:
@@ -218,10 +283,11 @@ def attach(url, sc, frames, max_duration):
     signal.signal(signal.SIGINT, lambda *_: interrupted.append(True))
     with sync_playwright() as p:
         browser = p.chromium.launch(handle_sigint=False)
-        page = browser.new_page(viewport=sc.get("viewport", DEFAULT_VIEWPORT), device_scale_factor=sc.get("scale", 1))
+        scale = sc.get("scale", 1)
+        page = browser.new_page(viewport=sc.get("viewport", DEFAULT_VIEWPORT), device_scale_factor=scale)
         page.goto(f"{base}/pybiscus-session/manage" + (f"?token={urllib.parse.quote(token)}" if token else ""))
         page.wait_for_timeout(3000)
-        rec = Recorder(page, frames, sc.get("period", 0.35))
+        rec = Recorder({"manager": page}, frames, sc.get("period", 0.35), sc.get("viewport", DEFAULT_VIEWPORT), scale)
         # what happened before the recording is the starting point, not news to caption
         known = set(first["servers"]) | set(first["clients"])
         states = dict(first.get("states") or {})
@@ -286,6 +352,9 @@ def main():
                         help="scenario file; with --attach, optional: its output, formats, viewport, scale, period, captions, hold, timing")
     parser.add_argument("--attach", metavar="MANAGER_URL", help="record the session of a running manager, without driving it")
     parser.add_argument("--max-duration", type=float, help="with --attach: stop recording after this many seconds")
+    parser.add_argument("--assemble", metavar="FRAMES_DIR", type=Path,
+                        help="only assemble the images of an earlier recording (its frames directory: --keep, or the png format), "
+                             "with the scenario's output, formats and timing")
     parser.add_argument("--output", type=Path, help="basename of the outputs (default: the scenario's)")
     parser.add_argument("--viewport", metavar="WIDTHxHEIGHT", help="size of the captured page, instead of the scenario's (default 1440x900)")
     parser.add_argument("--scale", type=float, help="pixel density of the captures: 2 gives a 2880x1800 video of a 1440x900 page")
@@ -293,8 +362,10 @@ def main():
     parser.add_argument("--work-root", type=Path, default=Path("/tmp"))
     parser.add_argument("--keep", action="store_true", help="keep the working directory (logs, frames, experiments)")
     args = parser.parse_args()
-    if not args.scenario and not args.attach:
-        parser.error("a scenario, or --attach")
+    if not args.scenario and not args.attach and not args.assemble:
+        parser.error("a scenario, --attach or --assemble")
+    if args.attach and args.assemble:
+        parser.error("--attach or --assemble, not both")
 
     sc = yaml.safe_load(args.scenario.read_text()) if args.scenario else {}
     if args.viewport:
@@ -313,6 +384,13 @@ def main():
     formats = sc.get("formats", ["mp4", "webp"])
     if shutil.which("ffmpeg") is None:
         raise SystemExit("ffmpeg is needed to assemble the video: install it first (Debian: apt install ffmpeg)")
+    if args.assemble:
+        if not (args.assemble / "captions.tsv").is_file():
+            parser.error(f"--assemble {args.assemble}: no captions.tsv, not the frames of a recording")
+        if args.output is None and not args.scenario:
+            parser.error("--assemble needs --output, or a scenario giving one")
+        assemble(args.assemble.resolve(), output, formats, sc.get("timing"))
+        return
 
     work = Path(tempfile.mkdtemp(prefix="pybiscus-demo-", dir=args.work_root))
     log(f"working directory {work}")
