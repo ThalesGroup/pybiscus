@@ -308,6 +308,20 @@
             100% { transform: rotate(360deg); }
         }
 
+        .field-hint {
+            margin-top: 0.35rem;
+            font-size: 0.8rem;
+            color: #6b7280;
+        }
+
+        .field-hint.warn {
+            color: #b45309;
+        }
+
+        input[readonly] {
+            cursor: not-allowed;
+        }
+
         .result {
             margin-top: 2rem;
             padding: 1rem;
@@ -413,7 +427,8 @@
             <div class="form-group">
                 <label for="bouquet">💐🏷️ Bouquet Tags</label>
                 <input type="text" id="bouquet" name="bouquet" required 
-                    value="{{ config.get('bouquet', 'europe-west-cluster') }}">
+                    value="{{ config.get('bouquet', '') }}">
+                <div class="field-hint" id="bouquetHint"></div>
             </div>
 
             <div class="form-group">
@@ -574,6 +589,76 @@
             }
         }
 
+        // the bouquet of the session joined: the manager's own, set and locked here once the manager
+        // answers; it refuses (or warns about) an agent declaring another one
+        const configBouquet = {{ config.get('bouquet') | tojson }};
+        const bouquetInput = document.getElementById('bouquet');
+        let identityRequest = 0;
+
+        function bouquetHint(text, warn) {
+            const hint = document.getElementById('bouquetHint');
+            hint.textContent = text;
+            hint.className = 'field-hint' + (warn ? ' warn' : '');
+        }
+
+        // the colour of a bouquet is computed by the manager's script, the one of its pages
+        function loadBouquetColor(managerUrl) {
+            if (window.bouquetColor) return Promise.resolve();
+            return new Promise(resolve => {
+                const script = document.createElement('script');
+                script.src = `${managerUrl}/static/pybiscus/js/bouquet_color.js`;
+                script.onload = script.onerror = resolve;
+                document.head.appendChild(script);
+            });
+        }
+
+        async function followManagerBouquet() {
+            const request = ++identityRequest;
+            const managerUrl = document.getElementById('managerUrl').value.trim().replace(/\/$/, '');
+            const token = document.getElementById('sessionToken').value;
+            bouquetInput.readOnly = false;
+            bouquetInput.style.borderColor = bouquetInput.style.boxShadow = '';
+            bouquetHint('');
+            if (!managerUrl) return;
+            try {
+                const response = await fetch(`${managerUrl}/pybiscus-session/identity`, {
+                    mode: 'cors',
+                    headers: {'X-Pybiscus': '1', ...(token ? {'Authorization': 'Bearer ' + token} : {})}
+                });
+                if (request !== identityRequest) return;
+                if (!response.ok) {
+                    bouquetHint(response.status === 401 || response.status === 403
+                        ? 'the manager asks for its session token: the bouquet is checked at registration'
+                        : `the manager answered HTTP ${response.status}: the bouquet is checked at registration`);
+                    return;
+                }
+                const identity = await response.json();
+                if (!identity.bouquet) {
+                    bouquetHint("this manager's session has no bouquet: the agent declares its own");
+                    return;
+                }
+                await loadBouquetColor(managerUrl);
+                if (request !== identityRequest) return;
+                bouquetInput.value = identity.bouquet;
+                bouquetInput.readOnly = true;
+                const colour = identity.color || (window.bouquetColor ? bouquetColor(identity.bouquet) : null);
+                if (colour) {
+                    bouquetInput.style.borderColor = colour;
+                    bouquetInput.style.boxShadow = `0 0 0 2px ${colour}`;
+                }
+                const differs = configBouquet && configBouquet !== identity.bouquet;
+                bouquetHint(`set by the manager: its session is the bouquet ${identity.bouquet}`
+                    + (differs ? ` (this agent's configuration says ${configBouquet}: is it the right manager?)` : ''), differs);
+            } catch (error) {
+                if (request === identityRequest) bouquetHint('the manager cannot be reached: the bouquet is checked at registration');
+            }
+        }
+
+        for (const id of ['managerUrl', 'sessionToken']) {
+            document.getElementById(id).addEventListener('change', followManagerBouquet);
+        }
+        window.addEventListener('load', followManagerBouquet);
+
         async function notifyAgentBackEnd(formData, managerUrl) {
 
             // this page is served by the agent to notify, hence a relative URL: baseUrl is how
@@ -685,7 +770,7 @@
 
             try {
                 const [message, payload] = await registerAgent(formData, managerUrl);
-                showResult(true, message);
+                showResult(true, message + (payload.warning ? ` ⚠️ ${payload.warning}` : ''));
 
                 notifyAgentBackEnd(formData, managerUrl)
 

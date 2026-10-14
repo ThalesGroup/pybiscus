@@ -24,6 +24,12 @@ bouquet also titles the browser tab and gives the page a colour (band, pill and 
 from its name, or given with `--color` (any CSS colour, e.g. `--color "#ff8800"`): the pages of
 two managers open side by side are told apart at a glance.
 
+With `--bouquet`, an agent declaring another bouquet is **refused** at its registration (HTTP 409,
+with the bouquet expected): it has most likely been given the wrong manager's URL, which is easy to
+do when several managers run. `--bouquet-mismatch warn` registers it anyway, with a warning in the
+manager's log and in the agent's registration page. An agent declaring no bouquet gets the
+manager's.
+
 ![Session manager, empty](images/session_manager_init.png "Session manager, empty")
 
 ### 2. Start the agents
@@ -46,6 +52,11 @@ Open the registration page each agent prints, `http://127.0.0.1:500x/session/age
 the manager's URL, the **session token** (proposed when the agent runs from the manager's
 directory, otherwise copied from the manager's 🔑 *Session token* button), the agent's name,
 its group (*bouquet*), location and role (*Server* for the agent 5000, *Client* for the others).
+Once the manager's URL is given, the page asks the manager for its session's bouquet
+(`/pybiscus-session/identity`): when it has one, the *Bouquet* field takes it, is locked and drawn in
+the bouquet's colour, with a warning if the agent's `--config` names another one; otherwise (no
+bouquet, manager not reached, token missing) the field stays free and the manager checks it at the
+registration.
 *Register agent* sends it to the manager; the agent then waits for the session to start.
 (On one machine, [`3frames.html`](#all-the-agents-in-one-page) shows all the agents in one page.)
 

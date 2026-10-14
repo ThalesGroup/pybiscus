@@ -194,8 +194,12 @@ def shoot_scenario(sc, work, rushes):
                 shooting.add_view(view, tab, AGENT_PANELS, agent_label(a["name"]))
                 shooting.set_focus("manager", view)
                 lat, lon = a["geo"]
-                for field, value in (("managerUrl", manager), ("name", a["name"]), ("baseUrl", url), ("bouquet", m["bouquet"]),
-                                     ("location", a["location"]), ("organisation", sc.get("organisation", "pybiscus-demo"))):
+                # the form asks the manager for its bouquet once its URL is given, and locks the field
+                tab.fill("#managerUrl", manager); tab.dispatch_event("#managerUrl", "change"); tab.wait_for_timeout(1000)
+                if not tab.eval_on_selector("#bouquet", "e => e.readOnly"):
+                    tab.fill("#bouquet", m["bouquet"])
+                for field, value in (("name", a["name"]), ("baseUrl", url), ("location", a["location"]),
+                                     ("organisation", sc.get("organisation", "pybiscus-demo"))):
                     tab.fill(f"#{field}", value)
                 tab.click("#coordsToggle")
                 tab.fill("#latitude", str(lat)); tab.fill("#longitude", str(lon))

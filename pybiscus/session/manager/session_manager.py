@@ -41,6 +41,9 @@ manager_port = None
 # agents declare at their registration; None keeps showing theirs
 bouquet = None
 bouquet_color = None   # --color: a CSS colour; None derives one from the bouquet's name
+# --bouquet-mismatch: an agent declaring another bouquet than --bouquet is refused, or only warned
+# about: it has most likely registered with the wrong manager
+bouquet_mismatch = "refuse"
 manager_url = None     # how the other managers reach this one's page
 # where this manager is (--location, --geo), drawn on the maps of a hierarchical session
 manager_location = None
@@ -166,6 +169,8 @@ def main():
                         help=f"token given to the agents (default: ${SESSION_TOKEN_ENV}, else the one of the previous start, else a new one)")
     parser.add_argument("--bouquet", default=None,
                         help="bouquet of this manager's session, shown in its page (default: the bouquets the agents declare)")
+    parser.add_argument("--bouquet-mismatch", choices=("refuse", "warn"), default="refuse",
+                        help="an agent declaring another bouquet than --bouquet: refused (default), or registered with a warning")
     parser.add_argument("--color", default=None,
                         help="CSS colour of this manager's page (default: derived from --bouquet, the same for the same name)")
     parser.add_argument("--location", default=None, help="where this manager is, e.g. palaiseau-dc (shown on the maps)")
@@ -185,11 +190,12 @@ def main():
 
     CORS(pybiscus_manager_app, origins=[LOCAL_ORIGINS, *args.allow_origin], allow_headers=["Content-Type", "Authorization", HEADER])
 
-    global manager_port, admin_token, session_token, tokens_are_required, bouquet, bouquet_color, manager_url, manager_location, manager_geo
+    global manager_port, admin_token, session_token, tokens_are_required, bouquet, bouquet_color, bouquet_mismatch, manager_url, manager_location, manager_geo
     manager_port=args.port
     manager_location, manager_geo = args.location, args.geo
     bouquet = args.bouquet
     bouquet_color = args.color
+    bouquet_mismatch = args.bouquet_mismatch
     tokens_are_required = tokens_required(args.host, args.require_token)
     admin_name, session_name = manager_token_names(manager_port)
     admin_token = component_token(admin_name, args.admin_token) if tokens_are_required else None

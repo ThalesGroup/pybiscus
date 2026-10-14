@@ -120,12 +120,24 @@ def pybiscus_manager_register_agent():
     if role is None:
         return jsonify({"status": "error", "message": "Missing 'role'"}), 400
 
+    sm = pybiscus.session.manager.session_manager
+    declared = data.get("bouquet") or sm.bouquet
+    warning = None
+    if sm.bouquet and declared != sm.bouquet:
+        problem = (f"this session is the bouquet '{sm.bouquet}', the agent '{name}' declares '{declared}': "
+                   f"is it registering with the right manager?")
+        if sm.bouquet_mismatch == "refuse":
+            logm.console.log(f"⛔ registration of {name} refused: {problem}")
+            return jsonify({"status": "error", "message": problem, "expected_bouquet": sm.bouquet}), 409
+        warning = problem
+        logm.console.log(f"⚠️ {problem}")
+
     # métadonnées transmises par le formulaire de registration (déjà envoyées, jusqu'ici ignorées)
     pybiscus.session.manager.session_manager.registered_agents_meta[name] = {
         "role": role,
         "agent_url": agent_url,
         "geo_location": data.get("geo_location"),
-        "bouquet": data.get("bouquet"),
+        "bouquet": declared,
         "location": data.get("location"),
         "organisation": data.get("organisation"),
     }
@@ -151,6 +163,7 @@ def pybiscus_manager_register_agent():
         return jsonify({
             "status": "success",
             "message": f"Server '{name}' registered.",
+            **({"warning": warning} if warning else {}),
         })
 
     if role == "client":
@@ -177,10 +190,22 @@ def pybiscus_manager_register_agent():
         return jsonify({
             "status": "success",
             "message": f"Client '{name}' registered.",
+            **({"warning": warning} if warning else {}),
         })
 
     else:
         return jsonify({"status": "error", "message": f"Bad role={role}, it should be server or client"}), 400
+
+# **************************
+
+# called by an agent's registration form: the bouquet of the session it is about to join, which the
+# form then sets and locks (the registration of another one is refused or warned about)
+@pybiscus_manager_app.route("/pybiscus-session/identity", methods=["GET"])
+@session_access
+def pybiscus_manager_identity():
+    sm = pybiscus.session.manager.session_manager
+    return jsonify({"bouquet": sm.bouquet, "color": sm.bouquet_color, "location": sm.manager_location,
+                    "bouquet_mismatch": sm.bouquet_mismatch})
 
 # **************************
 

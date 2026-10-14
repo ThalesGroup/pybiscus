@@ -115,7 +115,8 @@ def session_registration():
         'manager_url': 'http://localhost:5555',
         'agent_name': 'John Doe',
         'agent_url': 'http://localhost:5001',
-        'bouquet': 'noname-bouquet',
+        # none of its own: the form takes the manager's (a named default was warned about as a mismatch)
+        'bouquet': '',
         'location': 'somewhere',
         'geo_location': {
             'type': 'text',  # 'text' or 'coordinates'
@@ -149,7 +150,7 @@ def session_registration():
         config = default_config
 
     global client_registration_resume
-    client_registration_resume = f"{config['role']} {config['agent_name']}@{config['organisation']} in {config['bouquet']}"
+    client_registration_resume = f"{config['role']} {config['agent_name']}@{config['organisation']} in {config.get('bouquet') or "the manager's bouquet"}"
 
     # proposed, so that an agent of the manager's machine needs no copy (see session_token_for)
     session_token = config.get('session_token') or session_token_for(config.get('manager_url')) or ''
