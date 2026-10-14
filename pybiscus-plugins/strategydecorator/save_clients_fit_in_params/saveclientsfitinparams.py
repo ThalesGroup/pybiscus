@@ -38,11 +38,8 @@ class ConfigSaveClientsFitInParamsDecorator(BaseModel):
 # -------------------------------------------------------------------------
 
 class SaveClientsFitInParamsStrategyDecorator(StrategyDecorator):
-    """
-    Decorator that save all the base strategy clients fit in params
-    useful when each client is given a dedicated value
-    otherwise the servet fit params fit
-    """
+    """Saves the weights sent to each client at every round, in a round_<n> directory of the reports:
+    useful when each client gets its own version of the model (personalizeclientsfitin)."""
     
     def __init__(
         self,

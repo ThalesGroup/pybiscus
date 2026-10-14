@@ -50,47 +50,8 @@ class CNNSignature(TypedDict):
 #        --------------------
 
 class LitCNN(pl.LightningModule):
-    """
-    A LightningModule is an abstract class provided by the PyTorch Lightning framework, 
-    designed to structure and simplify the development of machine learning models in PyTorch. 
-    It encapsulates the entire lifecycle of a model, including training, validation, testing, 
-    and inference, while providing additional features for managing configurations, metrics, 
-    and callbacks.
-
-    Role of LightningModule
-
-        1) Model Encapsulation:
-
-            Centralizes the model logic, including layers, the forward pass (forward), and loss functions.
-
-        2) Separation of Concerns:
-
-            Separates the model logic from the training logic, enabling better organization and reusability of code.
-
-        3) Code Simplification:
-
-            Reduces code verbosity by automating common tasks such as metric tracking, device management (CPU/GPU), and checkpointing.
-
-    Key Components of a LightningModule
-
-        1) __init__:
-            Initializes the model layers and any other necessary components (e.g., loss functions).
-
-        2) forward:
-            Defines the forward pass of the model, 
-            specifying how data flows through the network to produce an output.
-
-        3) training_step:
-            Defines what happens at each training step. 
-            This is where you compute the loss and perform backpropagation.
-
-        4) validation_step and test_step:
-            Define the validation and test steps, respectively. 
-            They are used to evaluate the model's performance on validation or test datasets.
-
-        5) configure_optimizers:
-            Configures the optimizers and learning rate schedulers used for training.
-    """
+    """A small convolutional network for the 32 x 32 colour images of CIFAR-10 (data `cifar`): reports
+    its loss and accuracy."""
 
     @override
     def __init__( self, input_shape: int, mid_shape: int, n_classes: int, lr: float, _logging: bool = False,):

@@ -37,9 +37,7 @@ class ConfigSaveServerFitParamsDecorator(BaseModel):
 # -------------------------------------------------------------------------
 
 class SaveServerFitParamsStrategyDecorator(StrategyDecorator):
-    """
-    Decorator that save the base strategy server fit params
-    """
+    """Saves the aggregated weights of every round, in a round_<n> directory of the reports."""
     
     def __init__(
         self,

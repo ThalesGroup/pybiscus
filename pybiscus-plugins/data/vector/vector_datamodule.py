@@ -25,6 +25,8 @@ class VectorDataset(Dataset):
 #               -------------------------------
 
 class VectorLightningDataModule(pl.LightningDataModule):
+    """Synthetic vectors with a linear target, generated from the configuration: a dataset with no file,
+    for the linearregression model."""
 
     def __init__(self, int_value=42, train=None, val=None, test=None, **former_fields):
         super().__init__()

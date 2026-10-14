@@ -51,6 +51,7 @@ class LinearRegressionSignature(TypedDict):
 
 # LightningModule définition
 class LitLinearRegression(pl.LightningModule):
+    """A linear regression, for the synthetic vectors of the `vector_` and `randomvector` data."""
 
     @override
     def __init__(self, input_dim, output_dim, learning_rate=1e-3, accuracy_threshold=0.5, _logging: bool = False,):

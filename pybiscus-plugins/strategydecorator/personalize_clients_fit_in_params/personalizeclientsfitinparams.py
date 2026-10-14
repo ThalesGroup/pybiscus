@@ -40,9 +40,8 @@ class ConfigPersonalizeClientsFitInParamsStrategyDecorator(BaseModel):
 # -------------------------------------------------------------------------
 
 class PersonalizeClientsFitInParamsStrategyDecorator(StrategyDecorator):
-    """
-    Decorator that add result personalization to a Flower strategy.
-    """
+    """Changes the global model for each client before it is sent, with a result modifier
+    (`result_modifier`): each client trains its own version."""
     
     def __init__(
         self,

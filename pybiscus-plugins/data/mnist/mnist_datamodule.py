@@ -75,6 +75,9 @@ class ConfigData_Mnist(BaseModel):
 
 
 class MnistLitDataModule(pl.LightningDataModule):
+    """MNIST from torchvision: 28 x 28 grey images of handwritten digits, 60,000 to train and 10,000 to
+    test; the shared train, val, test and privacy sections choose the examples, the partition between
+    clients and the loaders."""
     def __init__(self, train=None, val=None, test=None, privacy=None, num_workers: int = 0, **former_fields):
         super().__init__()
         # pybiscus local passes the YAML's sections unvalidated: validated here

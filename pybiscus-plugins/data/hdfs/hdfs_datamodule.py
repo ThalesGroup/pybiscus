@@ -69,6 +69,9 @@ class HDFSSessions(Dataset):
 
 
 class HDFSDataModule(pl.LightningDataModule):
+    """HDFS logs, for the deeplog model: each session is a sequence of event ids, cut into windows of
+    `window` events with the event that follows; the test file holds labelled sessions (normal or
+    anomalous), scored by whether every event is among the model's predicted candidates."""
 
     def __init__(self, window: int = 10, train=None, val=None, test=None, num_workers: int = 0, **former_fields):
         super().__init__()

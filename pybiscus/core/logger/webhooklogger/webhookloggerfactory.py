@@ -27,6 +27,7 @@ class ConfigWebHookLoggerFactory(BaseModel):
 
 
 class WebHookLoggerFactory(LoggerFactory):
+    """The server's log lines posted to the session manager (its server log panel)."""
 
     def __init__(self, config):
         super().__init__()

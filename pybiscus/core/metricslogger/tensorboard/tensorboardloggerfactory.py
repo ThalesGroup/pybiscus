@@ -34,6 +34,7 @@ class ConfigTensorBoardLoggerFactory(BaseModel):
 
 
 class TensorBoardLoggerFactory(MetricsLoggerFactory):
+    """The metrics written for TensorBoard, in a subdirectory of the reports (server_run.reporting.basedir)."""
 
     def __init__(self, config):
         super().__init__()

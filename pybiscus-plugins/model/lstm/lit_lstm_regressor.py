@@ -45,6 +45,8 @@ class LSTMSignature(TypedDict):
 
 
 class LitLSTMRegressor(pl.LightningModule):
+    """An LSTM regressor of time series, for the remaining useful life of turbofan engines (data
+    `turbofan`): reports its loss."""
     def __init__(
         self,
         n_features: int,

@@ -8,12 +8,14 @@ repository root:
 pybiscus --help
 ```
 
-The `pybiscus` command has four groups of commands:
+The `pybiscus` command has five groups of commands:
 - `server`: `launch` a Flower server, or `check` its configuration;
 - `client`: `launch` a client, or `check` its configuration;
 - `local`: `train-config`, a training on one site's data without federation, as a baseline;
 - `data`: `partition`, how the training data is shared between the clients (`--export` writes
-  each client's indices).
+  each client's indices);
+- `plugins`: `doc`, which writes [the reference of the loaded plugins](plugins-reference.md)
+  (`--check` only tells whether it is up to date).
 
 ## A federated session
 

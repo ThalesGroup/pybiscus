@@ -47,9 +47,8 @@ class ConfigModelWeightVignetteStrategyDecorator(BaseModel):
 # -------------------------------------------------------------------------
 
 class ModelWeightVignetteStrategyDecorator(StrategyDecorator):
-    """
-    Decorator that produces model vignettes.
-    """
+    """After each round, an image of every layer of the aggregated model (weights, biases, convolution
+    filters), saved in the round's directory and posted to the session manager's model vignettes."""
     
     def __init__(
         self,

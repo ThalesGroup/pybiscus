@@ -60,6 +60,9 @@ class RelayClient(fl.client.Client):
 
 
 class RelayClientFactory(ClientFactory):
+    """Hierarchical sessions: a client of the upper level that stands for a whole lower session; it
+    trains nothing, hands the model it receives to the lower level and returns that level's
+    aggregate, weighted by its examples; see hierarchical-session.md."""
 
     # the relay's machine (the lower level's server's) may not hold the training set
     NEEDS_DATA = False

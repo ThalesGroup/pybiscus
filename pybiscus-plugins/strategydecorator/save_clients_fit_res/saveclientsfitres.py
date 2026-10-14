@@ -35,9 +35,7 @@ class ConfigSaveClientsFitResStrategyDecorator(BaseModel):
 # -------------------------------------------------------------------------
 
 class SaveClientsFitResStrategyDecorator(StrategyDecorator):
-    """
-    Decorator that save clients results into files.
-    """
+    """Saves the weights each client sends back at every round, in a round_<n> directory of the reports."""
     
     def __init__(
         self,

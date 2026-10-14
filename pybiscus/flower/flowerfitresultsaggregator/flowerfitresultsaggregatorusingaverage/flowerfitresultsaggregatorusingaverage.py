@@ -43,6 +43,7 @@ def pyb_aggregate_unweighted(ndarrays):
 
 
 class FlowerFitResultsAggregatorUsingAverage(FlowerFitResultsAggregator):
+    """The new weights are the plain average of the clients' weights, whatever their number of examples."""
     
     def __init__(self,empty_configuration):
         pass

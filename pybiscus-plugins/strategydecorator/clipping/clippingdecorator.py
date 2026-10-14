@@ -30,7 +30,7 @@ class ConfigClippingDecoratorData(BaseModel):
 
     PYBISCUS_CONFIG: ClassVar[str] = "config"
 
-    mode: ClippingMode = ClippingMode.median
+    mode: ClippingMode = Field(default=ClippingMode.median, description="fixed: updates clipped to clipping_norm; median: to median_factor x the round's median update norm, set by itself, without lag, and which a minority of clients cannot move")
     median_factor: float = Field(default=1.5, gt=0, description="mode median: updates are clipped to this many times the round's median update norm")
     clipping_norm: float = Field(default=2.0, gt=0, description='mode fixed: updates are clipped to this norm')
     reject_factor: Optional[float] = Field(default=None, gt=1, description='clients whose update norm exceeds this many times the median are left out of the round; none if unset')
@@ -103,6 +103,8 @@ def clipped_params(params, reference, scale: float) -> list:
 
 
 class ClippingStrategyDecorator(StrategyDecorator):
+    """Robust aggregation: clips the clients' updates to a norm (fixed, or a multiple of their median)
+    before the strategy aggregates them, and can reject the largest ones; see robust-aggregation.md."""
 
     def __init__(self, base_strategy, config):
         super().__init__(base_strategy)

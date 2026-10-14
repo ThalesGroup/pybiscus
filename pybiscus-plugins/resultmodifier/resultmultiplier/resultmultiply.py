@@ -22,6 +22,7 @@ class ConfigResultMultiply(BaseModel):
 
 
 class ResultMultiply(ResultModifier):
+    """Multiplies every weight by `factor`: a simple modification, to try personalizeclientsfitin."""
 
     def __init__(self,factor):
         logm.console.log(f"ResultMultiply(factor={factor}) allocated !")

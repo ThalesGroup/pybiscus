@@ -69,7 +69,22 @@ Class attributes (`ClassVar`) of the configuration classes, read by the forms an
 | `PYBISCUS_SERVER_SECTIONS` | a data plugin's configuration | sections the server reads (`test` and `privacy` by default): the server warns when another one differs from its defaults |
 
 Describe every field with `Field(description=...)`: it is shown on hover in the forms (see the
-[integration guide](pybiscus_model_guide.md)).
+[integration guide](pybiscus_model_guide.md)), and in the [plugins reference](plugins-reference.md).
+
+## The plugins reference
+
+`docs/plugins-reference.md` describes every bundled plugin: its `name:`, where it comes from, what it
+does, its fields (type, default, description) and the shipped configurations that use it. It is
+generated from the plugins themselves, not written by hand:
+
+```bash
+PYBISCUS_PLUGIN_CONF_PATH=pybiscus-plugins/plugins-conf.yml:pybiscus-plugins-hierarchical/plugins-conf.yml \
+  uv run pybiscus plugins doc
+```
+
+A plugin's description is the first paragraph of the docstring of its class (the class its
+`get_modules_and_configs()` registers), else of its configuration's `config` class. After a change
+of a plugin, generate it again: `launch/ci/smoke.sh check` fails when it is not up to date.
 
 # Multi projects mode : developping plugins in separated projects
 

@@ -111,6 +111,10 @@ def traitor_tracing(nb_clients: int, fingerprints = list[torch.tensor], secret_k
 # --------------------------------------------------------
 
 class ResultClientWatermarking(ResultModifier):
+    """Embeds a fingerprint of each client in the weights it is sent (one layer carries the watermark),
+    and traces how well each fingerprint can be read back. Not to be relied on yet: known defects
+    remain (an early stop, weights ignored, a duplicated step, the match between clients and
+    fingerprints)."""
 
     def __init__(self, save_as_cp, reporting_sub_dir, client_watermaked_model_prefix, client_watermaking_traces_path, nb_clients, key_size_layer, key_size_fingerprint):
 

@@ -22,6 +22,7 @@ class ConfigResultIdentity(BaseModel):
 
 
 class ResultIdentity(ResultModifier):
+    """Leaves the weights unchanged."""
 
     def __init__(self,empty_configuration):
         logm.console.log("ResultIdentity allocated !")

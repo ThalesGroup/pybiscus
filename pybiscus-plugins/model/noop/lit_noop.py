@@ -56,6 +56,8 @@ class NoopModel(nn.Module):
 
 
 class LitNoop(pl.LightningModule):
+    """A model that learns nothing (an identity with a few unused parameters): to try a session, its
+    messages and its tools without the cost of a training."""
     def __init__(self, empty_configuration: bool):
         super().__init__()
         self.model = NoopModel()

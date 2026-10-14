@@ -20,6 +20,7 @@ class ConfigRichLoggerFactory(BaseModel):
 
 
 class RichLoggerFactory(LoggerFactory):
+    """The server's log lines on its console, formatted by Rich."""
     
     def __init__(self, config = ConfigRichLoggerFactoryData() ):
         super().__init__()

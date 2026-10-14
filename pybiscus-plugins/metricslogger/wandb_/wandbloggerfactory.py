@@ -66,6 +66,7 @@ class WandbMetricsLogger:
 
 
 class WandbLoggerFactory(MetricsLoggerFactory):
+    """The metrics sent to Weights & Biases (online, offline or disabled); needs the wandb package."""
 
     def __init__(self, config):
         super().__init__()

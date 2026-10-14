@@ -5,7 +5,7 @@
 #   launch/ci/smoke.sh [check] [run] [build] [container-run]     (default: check run)
 #
 #   check          every configuration of configs/ passes `server check` / `client check`, with the
-#                  manifests of every plugin directory
+#                  manifests of every plugin directory; docs/plugins-reference.md is up to date
 #   run            a short federated run (mnist demo, server + 2 clients, CPU)
 #   build          the two container images
 #   container-run  the same short run, in containers of the pybiscus image
@@ -90,6 +90,15 @@ step_check() {
         fi
     done < <(cd "$REPO" && find configs -name '*.yml' -not -path 'configs/uploaded/*' | sort)
     echo "  $checked configuration(s) checked, $failed failed"
+    # generated from the bundled and the hierarchical plugins: a plugin changed without it is caught here
+    log="$logs/plugins-reference.log"
+    if (cd "$REPO" && PYBISCUS_PLUGIN_CONF_PATH=pybiscus-plugins/plugins-conf.yml:pybiscus-plugins-hierarchical/plugins-conf.yml \
+            $PYTHON pybiscus/main.py plugins doc --check) >"$log" 2>&1; then
+        echo "  ok       docs/plugins-reference.md"
+    else
+        echo "  FAILED   docs/plugins-reference.md is not up to date (pybiscus plugins doc, see $log)"
+        failed=$((failed + 1))
+    fi
     [ "$failed" -eq 0 ]
 }
 

@@ -26,6 +26,7 @@ class ConfigWebHookMetricsLoggerFactory(BaseModel):
 
 
 class WebHookMetricsLoggerFactory(MetricsLoggerFactory):
+    """The metrics posted to the session manager (its curves and metrics panel)."""
 
     def __init__(self, config):
         super().__init__()

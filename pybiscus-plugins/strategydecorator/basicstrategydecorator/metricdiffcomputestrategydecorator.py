@@ -30,6 +30,8 @@ class ConfigMetricDiffComputeStrategyDecorator(BaseModel):
 
 
 class MetricDiffComputeStrategyDecorator(StrategyDecorator):
+    """After each federated evaluation, the change of the main metric since the previous round, sent to
+    the session manager's page (its loss · metric diff panel)."""
 
     def __init__(self, base_strategy, config: ConfigMetricDiffComputeStrategyDecorator):
         super().__init__(base_strategy)

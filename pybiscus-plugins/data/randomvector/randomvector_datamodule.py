@@ -26,6 +26,8 @@ class RandomVectorDataset(Dataset):
 #               -------------------------------
 
 class RandomVectorLightningDataModule(pl.LightningDataModule):
+    """Synthetic vectors drawn at random, with a linear target: a dataset with no file, to try a session
+    or a regression model (linearregression) quickly."""
     def __init__(self, feature_dim=1, seed=42, train=None, val=None, test=None, **former_fields):
         super().__init__()
         # pybiscus local passes the YAML's sections unvalidated: validated here

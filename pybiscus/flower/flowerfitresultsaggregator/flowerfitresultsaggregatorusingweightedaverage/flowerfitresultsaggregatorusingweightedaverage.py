@@ -30,6 +30,8 @@ class ConfigFlowerFitResultsAggregatorUsingWeightedAverage(BaseModel):
 
 
 class FlowerFitResultsAggregatorUsingWeightedAverage(FlowerFitResultsAggregator):
+    """The new weights are the average of the clients' weights, each weighted by its number of examples
+    (as FedAvg)."""
     
     def __init__(self,empty_configuration):
         pass

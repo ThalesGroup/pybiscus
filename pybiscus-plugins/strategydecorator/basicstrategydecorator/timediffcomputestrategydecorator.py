@@ -31,6 +31,7 @@ class ConfigTimeDiffComputeStrategyDecorator(BaseModel):
 
 
 class TimeDiffComputeStrategyDecorator(StrategyDecorator):
+    """The duration of each round, sent to the session manager's page (Δ round)."""
 
     def __init__(self, base_strategy, config: ConfigTimeDiffComputeStrategyDecorator):
         super().__init__(base_strategy)

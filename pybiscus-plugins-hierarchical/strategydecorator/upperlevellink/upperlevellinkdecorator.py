@@ -27,6 +27,10 @@ class ConfigUpperLevelLinkDecorator(BaseModel):
 
 
 class UpperLevelLinkDecorator(StrategyDecorator):
+    """Hierarchical sessions: on the server of a lower level, waits for the upper level's model at each
+    round, puts it in place of the session's, and publishes the round's aggregate for the upper
+    level's relay; added last to the pipeline by `server_strategy.upper_level_link`, set by the
+    session managers; see hierarchical-session.md."""
 
     def __init__(self, base_strategy, config: ConfigSessionLink):
         super().__init__(base_strategy)

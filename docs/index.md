@@ -17,11 +17,12 @@ You can find here a short documentation on how to use and adapt Pybiscus. The to
 * [Config files](configuration.md)
 * [Containers](containers.md)
 * [Logging and Tensorboard](logging.md)
-* [Recording a session: time-lapse videos](recording.md)
+* [Recording a session: rushes, videos and screenshots](recording.md)
 
 ### Extending Pybiscus
 
 * [Plugins](plugins.md)
+* [Plugins reference](plugins-reference.md) - every bundled plugin, its fields and the configurations using it
 * [How-to: add models and datasets](how-to.md)
 * [Model integration guide](pybiscus_model_guide.md)
 * [Developer guide](developper-guide.md)
