@@ -207,7 +207,8 @@ walkthrough into `docs/images` (check them with `git diff` before committing).
 | `lower_session` | `options` and `values` added to each lower level's form, on top of what its upper level imposes and locks |
 | `plugin_manifests` | the relay and `upper_level_link` need the hierarchical plugins |
 | `viewport`, `form_viewport` | the managers' pages, the forms |
-| `takes` | `name`, `at` (`registered`, `relays`, `session-form:<bouquet>`, `form:<agent>`, `end`), `view` (with `@<panel>`), `full_page`, `tab` (a tab of the manager's middle panel to open first: `cycles`, `constraints`) |
+| `film` | the managers having a page, which a cut can show (default: all); fewer pages save memory on a large tree, and the root must be one |
+| `takes` | `name`, `at` (`registered`, `relays`, `session-form:<bouquet>`, `form:<agent>`, `end`), `view` (with `@<panel>`), `full_page`, `tab` (a tab of the manager's middle panel to open first: `cycles`, `constraints`), `click_text` (an element to click first, by its text: a form's tab, such as `server_strategy`) |
 
 Its other cut, `hierarchical-core-edges.video.cut.yml`, makes a video of the same rushes: the tree
 on the core's map, the relays, the session forms, the launches, then the rounds on the core's page
@@ -222,6 +223,9 @@ a take opened, the pages being captured after it). The agents register by the AP
 for memory) and their tab is closed once launched.
 **Memory**: its 3 managers, 9 agents (6 mnist runs) and the browser reach about 15.5 GB on a 16 GB
 machine; run it alone.
+
+`launch/doc/scenarios/hierarchical-tree.yml` runs the tree of four sessions of the second experiment
+(10 agents; `film: [core, south]`), and its cut writes the `hier3_*` screenshots.
 
 ## Outputs
 

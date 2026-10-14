@@ -1,0 +1,10 @@
+# Cut of the rushes of launch/doc/scenarios/hierarchical-tree.yml: the screenshots of the three-level
+# walkthrough of docs/hierarchical-session.md.
+
+shots_dir: docs/images
+shots:
+  - {file: hier3_core_relays.png, view: "manager:core", at: relays}
+  - {file: hier3_core_after.png, view: "manager:core", at: end}
+  - {file: hier3_south_after.png, view: "manager:south", at: end}
+  - {file: hier3_cycles.png, take: core-cycles}
+  - {file: hier3_constraints.png, take: core-constraints}

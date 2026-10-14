@@ -1,0 +1,42 @@
+# Scenario of launch/doc/record_session.py: the tree of four sessions of docs/hierarchical-session.md
+# (core; north and south under it; sophia under south), 3 rounds; takes the screenshots of its
+# walkthrough (about 4 minutes).
+#   uv run launch/doc/record_session.py shoot launch/doc/scenarios/hierarchical-tree.yml
+# Its cut writes the screenshots into docs/images: check them (git diff) before committing.
+# Memory: 4 managers, 10 agents and the browser reach about 15.6 GB: run it alone; only the managers
+# of the screenshots are filmed (film), each page costing a few hundred MB more.
+
+kind: hierarchical
+cut: launch/doc/scenarios/hierarchical-tree.cut.yml
+plugin_manifests: [pybiscus-plugins/plugins-conf.yml, pybiscus-plugins-hierarchical/plugins-conf.yml]
+viewport: {width: 1500, height: 1250}        # the managers' pages
+form_viewport: {width: 1500, height: 950}    # the forms
+film: [core, south]                          # managers having a page (default: all)
+
+managers:
+  - {bouquet: core, location: paris-hq, geo: [48.8566, 2.3522]}
+  - {bouquet: north, location: lille-dc, geo: [50.6292, 3.0573], upper: core}
+  - {bouquet: south, location: lyon-dc, geo: [45.7640, 4.8357], upper: core}
+  - {bouquet: sophia, location: sophia-dc, geo: [43.6163, 7.0552], upper: south}
+
+agents:                                      # placed near their manager; a relay near the server it stands for
+  - {name: core-server, role: server, bouquet: core}
+  - {name: relay-north, role: client, bouquet: core, relay_for: north}
+  - {name: relay-south, role: client, bouquet: core, relay_for: south}
+  - {name: north-server, role: server, bouquet: north}
+  - {name: north-client1, role: client, bouquet: north}
+  - {name: south-server, role: server, bouquet: south}
+  - {name: south-client1, role: client, bouquet: south}
+  - {name: relay-sophia, role: client, bouquet: south, relay_for: sophia}
+  - {name: sophia-server, role: server, bouquet: sophia}
+  - {name: sophia-client1, role: client, bouquet: sophia}
+
+session:                                     # the core's session form
+  options: {model: MNIST CNN, num_rounds: " "}
+  values: {data: Mnist, num_rounds: "3"}
+lower_session:                               # each lower level's, on top of what its upper level imposes
+  options: {data_partition: " "}
+
+takes:
+  - {name: core-cycles, at: end, view: "manager:core@cyclesChart", tab: cycles}
+  - {name: core-constraints, at: end, view: "manager:core@cyclesChart", tab: constraints}

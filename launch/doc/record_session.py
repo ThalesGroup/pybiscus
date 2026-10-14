@@ -300,11 +300,16 @@ def shoot_hierarchical(sc, work, rushes):
         with sync_playwright() as p:
             browser = p.chromium.launch()
             shooting = Shooting(rushes, viewport, 1, sc.get("period", 0.35))
-            for b in order:
+            # a page per manager filmed only: each one costs a few hundred MB, next to the runs of a large tree
+            filmed = [b for b in order if b in sc.get("film", order)]
+            if root not in filmed:
+                raise SystemExit(f"film: the root manager {root} is the one the rounds are read on, it must be filmed")
+            for b in filmed:
                 page = browser.new_page(viewport=viewport)
                 page.goto(f"{url(b)}/pybiscus-session/manage")
                 shooting.add_view(f"manager:{b}", page, MANAGER_PANELS, manager_label(b))
-            shooting.set_focus(*(f"manager:{b}" for b in order))
+            managers_in_focus = [f"manager:{b}" for b in filmed]
+            shooting.set_focus(*managers_in_focus)
             time.sleep(3)
 
             def step(kind, **fields):
@@ -317,6 +322,9 @@ def shoot_hierarchical(sc, work, rushes):
                     page = shooting.views[tab]["page"]
                     if take.get("tab"):
                         page.click(f"#mid-tabs .tool[data-tab={take['tab']}]"); page.wait_for_timeout(800)
+                    if take.get("click_text"):
+                        # a tab of a form, which shows the section the take is about
+                        page.get_by_text(take["click_text"], exact=True).first.click(); page.wait_for_timeout(800)
                     shooting.take(take["name"], page, take.get("full_page", False), panel or None)
                     if take.get("tab"):
                         # the page now shows that tab: a cut can end on it
@@ -348,15 +356,21 @@ def shoot_hierarchical(sc, work, rushes):
 
             for a in agents:
                 if a.get("relay_for"):
-                    page = shooting.views[f"manager:{a['bouquet']}"]["page"]
+                    view = shooting.views.get(f"manager:{a['bouquet']}")
+                    # a manager not filmed gets a page just for the designation
+                    page = view["page"] if view else browser.new_page(viewport=viewport)
+                    if not view:
+                        page.goto(f"{url(a['bouquet'])}/pybiscus-session/manage"); page.wait_for_timeout(3000)
                     page.select_option(f'select.relay-select[data-bouquet="{a["relay_for"]}"]', a["name"])
                     shooting.tick(3)
+                    if not view:
+                        page.close()
             shooting.tick(6)
             step("relays")
 
             form = browser.new_page(viewport=form_viewport)
             shooting.add_view("session-form", form, (), lambda page: "session form")
-            shooting.set_focus(*(f"manager:{b}" for b in order), "session-form")
+            shooting.set_focus(*managers_in_focus, "session-form")
 
             def launch_session(b, presets, options=None, values=None):
                 form.goto(f"http://localhost:{servers[b]['port']}/session/config?presets=" + urllib.parse.quote(json.dumps(presets)))
@@ -386,7 +400,7 @@ def shoot_hierarchical(sc, work, rushes):
                            "values_lock": list(plain) + list(model_values)}
                 launch_session(b, presets, sc.get("lower_session", {}).get("options"), sc.get("lower_session", {}).get("values"))
             shooting.remove_view("session-form"); form.close()
-            shooting.set_focus(*(f"manager:{b}" for b in order))
+            shooting.set_focus(*managers_in_focus)
 
             # servers from the top down, then the clients, then the relays: a relay's level waits for its lower one
             ordered = sorted(agents, key=lambda a: (0 if a["role"] == "server" else 2 if a.get("relay_for") else 1,
@@ -396,7 +410,7 @@ def shoot_hierarchical(sc, work, rushes):
                 tab.goto(f"http://localhost:{a['port']}/session/agent/registration/waiting")
                 tab.wait_for_url(lambda u: "/config?" in u, timeout=60000); tab.wait_for_timeout(2500)
                 shooting.add_view(view, tab, AGENT_PANELS, agent_label(a["name"]))
-                shooting.set_focus(*(f"manager:{b}" for b in order), view)
+                shooting.set_focus(*managers_in_focus, view)
                 step("form", name=a["name"])
                 check_and_launch(tab, a["name"], work)
                 # the agents' tabs are closed once launched: nine of them, with the runs, would exhaust the memory
