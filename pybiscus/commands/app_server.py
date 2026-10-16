@@ -16,6 +16,7 @@ import pybiscus.core.gui_events as gui_events
 import pybiscus.core.pybiscus_logger as logm
 from pybiscus.core.logger.multiplelogger.multipleloggerfactory import MultipleLoggerFactory
 from pybiscus.core.metricslogger.multiplemetricslogger.multiplemetricsloggerfactory import MultipleMetricsLoggerFactory
+from pybiscus.flower.stoppableserver import StoppableServer
 from pybiscus.flower_config.config_server import ConfigServer
 from pybiscus.commands.onnx_mngt import to_onnx_with_datamodule
 from pybiscus.commands.apps_common import apply_num_threads, apply_seed, exit_if_port_in_use, exit_on_invalid_config, load_config, resolve_defaults
@@ -336,13 +337,16 @@ def launch_config(
         decorator_class = strategydecorator_registry()[conf_decorator.name]
         strategy = decorator_class(strategy,conf_decorator.config)
     
+    server = StoppableServer(client_manager=fl.server.SimpleClientManager(), strategy=strategy)
+    server.stop_on_signal()
+
     logm.console.log("start of 🌺🖥️ flower server")
 
     # starting flower server
     fl.server.start_server(
         server_address = conf.flower_server.listen_address,
         config         = fl.server.ServerConfig(num_rounds=conf.server_run.num_rounds),
-        strategy       = strategy,
+        server         = server,
         certificates   = server_certificates(conf.flower_server.ssl),
     )
 

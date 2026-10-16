@@ -1,5 +1,13 @@
 # Changelog
 
+## [Unreleased]
+
+### New features
+
+* A server stops after its current round on `SIGUSR1` (`kill -USR1 <pid>`), its reports written
+  as at a normal end (final checkpoint, ONNX export): the first step of sessions not bound to a
+  fixed number of rounds. Without the signal, a session runs its `num_rounds` as before.
+
 ## [Version 0.9.0]
 
 Since `v0.8.0` (2026-10-05): hierarchical federated learning — sessions federating other sessions,

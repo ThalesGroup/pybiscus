@@ -34,6 +34,12 @@ replace some values of the configuration: `--server-listen-address`, `--num-roun
 `--weights-path` (initial weights) for the server; `--server-address`, `--cid`, `--root-dir` for a
 client.
 
+The server runs `num_rounds` rounds. `kill -USR1 <pid>` (the server logs its pid at start) stops it
+after the current round: the clients are disconnected and the reports written as at a normal end
+(final checkpoint, ONNX export). Not on Windows, which has no `SIGUSR1`. Flower's summary still
+says `Run finished <num_rounds> round(s)`; the line `session stopped after 2/6 rounds` before it
+gives the rounds actually run.
+
 The scripts of `launch/uv/` run the demos, one terminal per process:
 
 ```bash
