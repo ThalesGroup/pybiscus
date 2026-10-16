@@ -17,6 +17,7 @@ PR #44 (`pybiscus-plugins-privacy-evaluation/`, not finalized) is not described 
 - [Loggers](#loggers): `rich`, `webhook`
 - [Metrics loggers](#metrics-loggers): `tensorboard`, `webhook`, `wandb`
 - [Result modifiers](#result-modifiers): `resultidentity`, `result * factor`, `client watermarking`
+- [Stopping criteria](#stopping-criteria): `threshold`, `patience`, `maxduration`
 - [Fit results aggregators](#fit-results-aggregators): `average`, `weightedaverage`
 
 ## Data
@@ -821,6 +822,47 @@ Embeds a fingerprint of each client in the weights it is sent (one layer carries
 | `client_watermaking_traces_path` | str | `'client_watermarking_traces.txt'` | file of the watermarking traces (WSR of every client) |
 
 Used by: [`configs/watermarking_5_clients/config_server1.yml`](../configs/watermarking_5_clients/config_server1.yml)
+
+## Stopping criteria
+
+When the server ends the session before its `num_rounds`, tested after each round (`server_run.stopping`).
+
+### `threshold` — Metric threshold
+
+*core, `pybiscus/flower/stoppingcriterion/basic`*
+
+Ends the session once a metric reaches a value (an accuracy of 0.98, a loss of 0.05).
+
+| field (under `config`) | type | default | description |
+|---|---|---|---|
+| `metric` | str | `'accuracy'` | name of the metric, as the strategy reports it (accuracy, loss, f1score…) |
+| `source` | 'test' \| 'evaluate' \| 'fit' | `'test'` | which evaluation the metric comes from |
+| `goal` | 'maximize' \| 'minimize' | `'maximize'` | maximize: stop once the metric reaches the value or more; minimize: the value or less |
+| `value` | float | required | the value to reach |
+
+### `patience` — Metric patience
+
+*core, `pybiscus/flower/stoppingcriterion/basic`*
+
+Ends the session when a metric has not improved for a number of rounds (early stopping).
+
+| field (under `config`) | type | default | description |
+|---|---|---|---|
+| `metric` | str | `'loss'` | name of the metric, as the strategy reports it (accuracy, loss, f1score…) |
+| `source` | 'test' \| 'evaluate' \| 'fit' | `'test'` | which evaluation the metric comes from |
+| `goal` | 'maximize' \| 'minimize' | `'minimize'` | whether the metric improves by going up or down |
+| `patience` | int | `3` | rounds without improvement before the session ends |
+| `min_delta` | float | `0.0` | a change of the best value smaller than this is no improvement |
+
+### `maxduration` — Maximal duration
+
+*core, `pybiscus/flower/stoppingcriterion/basic`*
+
+Ends the session after a duration: the round under way when it is over is finished.
+
+| field (under `config`) | type | default | description |
+|---|---|---|---|
+| `minutes` | float | required | duration of the rounds after which the session ends, from the start of the first one; tested at the end of each round, which is finished |
 
 ## Fit results aggregators
 

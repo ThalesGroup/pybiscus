@@ -7,6 +7,10 @@
 * A server stops after its current round on `SIGUSR1` (`kill -USR1 <pid>`), its reports written
   as at a normal end (final checkpoint, ONNX export): the first step of sessions not bound to a
   fixed number of rounds. Without the signal, a session runs its `num_rounds` as before.
+* Stopping criteria (`server_run.stopping`): a session ends before its `num_rounds`, which stays
+  its maximum, when a metric reaches a value (`threshold`), stops improving (`patience`) or the
+  rounds have lasted long enough (`maxduration`); a new plugin category, `stoppingcriterion`. Not
+  in a hierarchical session yet (refused in a lower level).
 * Session manager: a *⏹ stop after round* button does it from the page (not in a hierarchical
   session yet); the round counter shows `k/N ⏹` and the reason of the stop, the server agent ends
   *stopped*.

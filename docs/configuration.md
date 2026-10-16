@@ -348,6 +348,37 @@ fixed order), but training amplifies it: after 5 rounds of 3 local epochs on cif
 twice differed by up to 1 point of accuracy. Seeds make runs comparable, not bit for bit
 identical.
 
+### Ending a session before its last round
+
+`server_run.num_rounds` is always the most rounds a session runs. `server_run.stopping` lists
+criteria tested after each round; the first one met ends the session after that round, which is
+reported as at a normal end (final checkpoint, ONNX export):
+
+```yaml
+server_run:
+  num_rounds: 50
+  stopping:
+  - name: threshold             # a metric reaches a value
+    config: {metric: accuracy, source: test, goal: maximize, value: 0.98}
+  - name: patience              # a metric no longer improves (early stopping)
+    config: {metric: loss, source: evaluate, goal: minimize, patience: 3, min_delta: 0.001}
+  - name: maxduration           # the rounds have lasted this long
+    config: {minutes: 120}
+```
+
+- `source` is one of the manager's curves: `test` the server's evaluation on its test set,
+  `evaluate` the clients' evaluation, `fit` their training metrics. `metric` is a name the strategy
+  reports (`loss`, `accuracy`, `f1score`…). A metric missing at a round is logged once, with the
+  available ones, and never ends the session.
+- The session manager's page shows `k/N ⏹` and the reason (`test accuracy 0.981 ≥ 0.98`), or
+  `N/N 🏁` when every round was run. The server can also be stopped by hand after its round: the
+  manager's *⏹ stop after round* button, or `kill -USR1 <pid>` ([cli.md](cli.md)).
+- Not in a hierarchical session yet: a lower level refuses `stopping` at `check` (it runs the rounds
+  of its upper level), and an upper level ending early leaves its lower levels waiting for a model.
+- The criteria are plugins (the `stoppingcriterion` category, [plugins-reference.md](plugins-reference.md#stopping-criteria)):
+  `should_stop(server_round, history)` gets Flower's `History` of the session and returns the
+  reason to stop, or `None`.
+
 ### Exporting the final model (ONNX)
 
 `server_run.reporting.onnx_export` exports the global model at the end of the session:

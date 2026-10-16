@@ -11,6 +11,7 @@ from pybiscus.plugin.registries.model_registry import ModelConfig
 from pybiscus.plugin.registries.data_registry import DataConfig
 from pybiscus.plugin.registries.strategy_registry import StrategyConfig
 from pybiscus.plugin.registries.strategydecorator_registry import StrategyDecoratorConfig
+from pybiscus.plugin.registries.stoppingcriterion_registry import StoppingCriterionConfig
 from pybiscus.plugin.registryloader import get_name_value_if_literal
 import pybiscus.core.pybiscus_logger as logm
 
@@ -97,7 +98,9 @@ class ConfigServerRun(BaseModel):
 
     # >= 1: 0 local epochs crashed clients at their first fit (round 1, far from the cause),
     # 0 rounds silently trained nothing
-    num_rounds:        int = Field(default=10, ge=1)
+    num_rounds:        int = Field(default=10, ge=1, description='number of rounds of the session; with stopping criteria, the most it runs')
+    # always bounded by num_rounds: a threshold may never be reached
+    stopping:          list[StoppingCriterionConfig()] = Field(default=[], description='criteria ending the session before num_rounds, tested after each round: the first one met ends it')# pyright: ignore[reportInvalidTypeForm]
     clients_fit_local_epochs: int = Field(default=1, ge=1)
     client_configs:    list[str] = Field(default=[], description='configuration files of the clients, saved with the reports (command line sessions)')
     seed:              Optional[int] = None
@@ -307,3 +310,11 @@ class ConfigServer(BaseModel):
     model:                  ModelConfig() # pyright: ignore[reportInvalidTypeForm]
 
     model_config = ConfigDict(extra="forbid")
+
+    # the upper level counts on its rounds one for one: a lower level ending first left it waiting
+    @model_validator(mode="after")
+    def refuse_stopping_in_lower_level(self):
+        if self.server_run.stopping and self.server_strategy.upper_level_link is not None:
+            raise ValueError("server_run.stopping: a lower level of a hierarchical session runs the rounds of its upper level, "
+                             "it cannot end before it")
+        return self

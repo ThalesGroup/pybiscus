@@ -36,6 +36,8 @@ FAMILIES = [
      "where the metrics go (`server_compute_context.metrics_loggers`)"),
     ("Result modifiers", "resultmodifier_registry", "resultmodifier_registry", "ResultModifierConfig", ("result_modifier",),
      "a change made to a client's result before aggregation (the `result_modifier` of `personalizeclientsfitin`)"),
+    ("Stopping criteria", "stoppingcriterion_registry", "stoppingcriterion_registry", "StoppingCriterionConfig", ("stopping",),
+     "when the server ends the session before its `num_rounds`, tested after each round (`server_run.stopping`)"),
     ("Fit results aggregators", "flowerfitresultagregator_registry", "flowerfitresultsaggregator_registry",
      "FlowerFitResultsAggregatorConfig", ("aggregator",),
      "how the clients' fit metrics are combined (the `aggregator` of `fedavgwithaggregator`)"),

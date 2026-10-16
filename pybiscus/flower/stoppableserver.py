@@ -2,7 +2,7 @@ import os
 import signal
 import timeit
 from logging import INFO
-from typing import Optional
+from typing import Optional, Sequence
 
 import flwr as fl
 from flwr.common.logger import log
@@ -11,12 +11,15 @@ from flwr.server.history import History
 import pybiscus.core.gui_events as gui_events
 import pybiscus.core.pybiscus_logger as logm
 from pybiscus.core.stop_signal import STOP_SIGNAL
+from pybiscus.interfaces.flower.stoppingcriterion import StoppingCriterion
 
 
 class StoppableServer(fl.server.Server):
 
-    def __init__(self, *, client_manager: fl.server.ClientManager, strategy: fl.server.strategy.Strategy) -> None:
+    def __init__(self, *, client_manager: fl.server.ClientManager, strategy: fl.server.strategy.Strategy,
+                 criteria: Sequence[StoppingCriterion] = ()) -> None:
         super().__init__(client_manager=client_manager, strategy=strategy)
+        self.criteria = list(criteria)
         self.stop_reason: Optional[str] = None
         self.rounds_done = 0
         self.current_round = 0
@@ -48,6 +51,8 @@ class StoppableServer(fl.server.Server):
             log(INFO, "Evaluation returned no results (`None`)")
 
         start_time = timeit.default_timer()
+        for criterion in self.criteria:
+            criterion.start()
 
         for current_round in range(1, num_rounds + 1):
             # a stop received during the previous round's evaluation, or before the first one
@@ -56,10 +61,18 @@ class StoppableServer(fl.server.Server):
             self.current_round = current_round
             self._run_round(current_round, timeout, history, start_time)
             self.rounds_done = current_round
+            self._test_criteria(current_round, history)
 
         gui_events.log_session_end(self.rounds_done, num_rounds, self.stop_reason)
 
         return history, timeit.default_timer() - start_time
+
+    def _test_criteria(self, server_round: int, history: History) -> None:
+        for criterion in self.criteria:
+            reason = criterion.should_stop(server_round, history)
+            if reason:
+                self.request_stop(reason)
+                return
 
     def _run_round(self, current_round: int, timeout: Optional[float], history: History, start_time: float) -> None:
         log(INFO, "")

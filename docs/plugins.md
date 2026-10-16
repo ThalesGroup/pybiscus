@@ -38,6 +38,7 @@ Abbreviated packages representation used in the following array :
 |🌺.🔌.🌼.clientfactory.ClientFactory|🌺.flower_fabric.client|client|
 |🌺.🔌.🌼.flowerfitresultsaggregator.FlowerFitResultsAggregator|🌺.🌼.flowerfitresultsaggregator|flowerfitresultsaggregator|
 |🌺.🔌.🌼.resultmodifier.ResultModifier|🌺.🌼.resultmodifier|resultmodifier|
+|🌺.🔌.🌼.stoppingcriterion.StoppingCriterion|🌺.🌼.stoppingcriterion|stoppingcriterion|
 
 ## Loading: what stops Pybiscus, what does not
 

@@ -26,6 +26,7 @@ from pybiscus.plugin.registries.metriclogger_registry import metricslogger_regis
 from pybiscus.plugin.registries.model_registry import model_registry
 from pybiscus.plugin.registries.strategy_registry import strategy_registry
 from pybiscus.plugin.registries.strategydecorator_registry import strategydecorator_registry
+from pybiscus.plugin.registries.stoppingcriterion_registry import stoppingcriterion_registry
 
 #                    ------------------------------------------------
 
@@ -337,7 +338,11 @@ def launch_config(
         decorator_class = strategydecorator_registry()[conf_decorator.name]
         strategy = decorator_class(strategy,conf_decorator.config)
     
-    server = StoppableServer(client_manager=fl.server.SimpleClientManager(), strategy=strategy)
+    criteria = [stoppingcriterion_registry()[criterion.name](**criterion.config.model_dump()) for criterion in conf.server_run.stopping]
+    for criterion in conf.server_run.stopping:
+        logm.console.log(f"setting 🛑 stopping criterion <{criterion.name}>")
+
+    server = StoppableServer(client_manager=fl.server.SimpleClientManager(), strategy=strategy, criteria=criteria)
     server.stop_on_signal()
 
     logm.console.log("start of 🌺🖥️ flower server")

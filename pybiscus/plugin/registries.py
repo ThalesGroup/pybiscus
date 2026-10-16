@@ -9,6 +9,7 @@ from pybiscus.plugin.registries.strategydecorator_registry import _strategydecor
 from pybiscus.plugin.registries.client_registry import _client_modules
 from pybiscus.plugin.registries.resultmodifier_registry import _resultmodifier_modules
 from pybiscus.plugin.registries.flowerfitresultagregator_registry import _flowerfitresultsaggregator_modules
+from pybiscus.plugin.registries.stoppingcriterion_registry import _stoppingcriterion_modules
 
 plugins_by_category = get_plugins_by_category()
 
@@ -22,4 +23,5 @@ if __name__ == "__main__":
     print(f'Client plugins : {plugins_by_category["client"]} {_client_modules }')
     print(f'ResultModifier plugins : {plugins_by_category["resultmodifier"]} {_resultmodifier_modules }')
     print(f'FlowerFitResultsAggregator plugins : {plugins_by_category["flowerfitresultsaggregator"]} {_flowerfitresultsaggregator_modules }')
+    print(f'StoppingCriterion plugins : {plugins_by_category["stoppingcriterion"]} {_stoppingcriterion_modules }')
 
