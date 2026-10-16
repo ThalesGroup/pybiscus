@@ -191,6 +191,8 @@ class ConfigMaxDuration(BaseModel):
 class MaxDuration(StoppingCriterion):
     """Ends the session after a duration: the round under way when it is over is finished."""
 
+    CLOCK_ONLY = True
+
     def __init__(self, minutes: float):
         self.minutes = minutes
         self.started = None

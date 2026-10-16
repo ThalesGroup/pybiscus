@@ -16,6 +16,7 @@ import pybiscus.core.gui_events as gui_events
 import pybiscus.core.pybiscus_logger as logm
 from pybiscus.core.logger.multiplelogger.multipleloggerfactory import MultipleLoggerFactory
 from pybiscus.core.metricslogger.multiplemetricslogger.multiplemetricsloggerfactory import MultipleMetricsLoggerFactory
+from pybiscus.core.schedule import Schedule
 from pybiscus.flower.stoppableserver import StoppableServer
 from pybiscus.flower.legacyentrypoints import hide_legacy_entry_point_warnings
 from pybiscus.flower_config.config_server import ConfigServer
@@ -362,7 +363,12 @@ def launch_config(
     for criterion in conf.server_run.stopping:
         logm.console.log(f"setting 🛑 stopping criterion <{criterion.name}>")
 
-    server = StoppableServer(client_manager=fl.server.SimpleClientManager(), strategy=strategy, criteria=criteria)
+    schedule = Schedule(conf.server_run.schedule) if conf.server_run.schedule is not None else None
+    if schedule is not None:
+        logm.console.log(f"setting 🗓️ schedule <{conf.server_run.schedule.every or conf.server_run.schedule.cron}> ({schedule.zone})")
+
+    server = StoppableServer(client_manager=fl.server.SimpleClientManager(), strategy=strategy, criteria=criteria,
+                             schedule=schedule)
     server.stop_on_signal()
 
     logm.console.log("start of 🌺🖥️ flower server")

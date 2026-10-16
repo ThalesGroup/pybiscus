@@ -375,12 +375,15 @@
   const PHASE_BUFFER = { fit: fit_accuracies, test: test_accuracies, evaluate: evaluate_accuracies };
   let mainMetricName = null;
   // stopRound: the last round run when a stop after it was asked for; sessionEnd: {done, total, reason}
-  let stopRound = null, sessionEnd = null, stopPending = false;
+  let stopRound = null, sessionEnd = null, stopPending = false, roundsCounted = false;
 
   function checkLogs(newItems){
     newItems.forEach(item=>{
       const mRound = item.message.match(RE.round);
-      if(mRound) session.roundNumber = parseInt(mRound[1],10);
+      if(mRound && !roundsCounted) session.roundNumber = parseInt(mRound[1],10);
+      // a schedule skips rounds that do not count: its own counter wins over Flower's numbers
+      const mDone = item.message.match(RE.rounds_done);
+      if(mDone){ roundsCounted = true; session.roundNumber = parseInt(mDone[1],10); return; }
       const mMetric = item.message.match(RE.round_metric);
       if(mMetric){
         mainMetricName = mMetric[3];

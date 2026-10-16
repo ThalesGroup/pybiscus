@@ -13,6 +13,10 @@ class EndSession(Exception):
 
 class StoppingCriterion:
 
+    # depends on the clock only: also tested on the rounds a schedule skips (no client with new data)
+    # and while the server waits for a scheduled round; the others look at rounds actually run
+    CLOCK_ONLY = False
+
     def start(self) -> None:
         """called when the first round begins: the clients may have been awaited long before"""
 

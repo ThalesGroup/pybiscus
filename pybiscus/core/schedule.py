@@ -3,7 +3,8 @@ import os
 import re
 from datetime import datetime, timedelta, timezone, tzinfo
 from pathlib import Path
-from typing import ClassVar, Literal, Optional
+from enum import Enum
+from typing import ClassVar, Optional
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from cronsim import CronSim, CronSimError
@@ -41,6 +42,18 @@ def machine_zone() -> tzinfo:
     return datetime.now().astimezone().tzinfo
 
 
+# an Enum, not a Literal: the agent's forms show a Literal as a fixed value, like a plugin's name
+class ScheduleStart(str, Enum):
+    now = "now"
+    deadline = "deadline"
+
+
+ScheduleStart.PYBISCUS_DESCRIPTIONS = {
+    "now": "the first round starts at once",
+    "deadline": "the first round waits for the first deadline too",
+}
+
+
 class ConfigSchedule(BaseModel):
 
     PYBISCUS_CONFIG: ClassVar[str] = "schedule"
@@ -52,7 +65,7 @@ class ConfigSchedule(BaseModel):
         'a round at fixed times, a cron expression: minute hour day month weekday, e.g. "0 2 * * *" every day at 02:00')
     timezone: Optional[str] = Field(default=None, description=
         "zone of the cron times, e.g. Europe/Paris; the machine's if unset")
-    start: Literal["now", "deadline"] = Field(default="now", description=
+    start: ScheduleStart = Field(default=ScheduleStart.now, description=
         "now: the first round starts at once; deadline: it waits for the first deadline too")
 
     model_config = ConfigDict(extra="forbid")
@@ -98,7 +111,7 @@ class Schedule:
         now = now or self.now()
         self.skipped = 0
         if self.previous is None:
-            deadline = now if self.config.start == "now" else self._after(now, now)
+            deadline = now if self.config.start == ScheduleStart.now else self._after(now, now)
         else:
             deadline = self._after(self.previous, now)
         self.previous = deadline

@@ -4,7 +4,7 @@ import typer
 from pydantic import ValidationError
 
 import pybiscus.core.pybiscus_logger as logm
-from pybiscus.core.schedule import ConfigSchedule, Schedule
+from pybiscus.core.schedule import ConfigSchedule, Schedule, ScheduleStart
 
 app = typer.Typer(pretty_exceptions_show_locals=False, rich_markup_mode="rich")
 
@@ -14,7 +14,7 @@ def preview(
     every:    Annotated[Optional[str], typer.Option(help="a period: 90s, 15min, 1h30min, 1d, 2w")] = None,
     cron:     Annotated[Optional[str], typer.Option(help='fixed times: "minute hour day month weekday", e.g. "0 2 * * *"')] = None,
     timezone: Annotated[Optional[str], typer.Option(help="zone of the cron times, e.g. Europe/Paris; the machine's if unset")] = None,
-    start:    Annotated[str, typer.Option(help="now: the first round at once; deadline: at the first deadline")] = "now",
+    start:    Annotated[ScheduleStart, typer.Option(help="now: the first round at once; deadline: at the first deadline")] = ScheduleStart.now,
     count:    Annotated[int, typer.Option(min=1, help="deadlines shown")] = 5,
 ) -> None:
     """The next deadlines of a schedule, to check it before a session."""

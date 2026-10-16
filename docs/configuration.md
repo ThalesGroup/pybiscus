@@ -380,11 +380,46 @@ server_run:
   `should_stop(server_round, history)` gets Flower's `History` of the session and returns the
   reason to stop, or `None`.
 
+### Rounds at fixed times
+
+`server_run.schedule` runs the rounds at deadlines rather than back to back, so that each one
+trains on the data arrived since the previous one ([below](#data-arriving-between-rounds)):
+
+```yaml
+server_run:
+  num_rounds: 30                # the rounds counted: the skipped ones are not
+  schedule:
+    cron: "0 2 * * *"           # every day at 02:00; or every: 1h30min
+    timezone: Europe/Paris      # the machine's zone if unset
+    start: now                  # the first round at once; deadline: it waits too
+  stopping:
+  - name: maxduration
+    config: {minutes: 43200}    # 30 days, waits included
+```
+
+- The server waits between two rounds; Flower announces `[ROUND n]` when the round starts, and the
+  server logs `next round at …` beforehand. A deadline missed, the previous round having lasted
+  longer than the period, is not made up for (`pybiscus schedule preview` shows the deadlines,
+  [cli.md](cli.md#checking-a-schedule)).
+- A round in which no client trained (none had new data: every one left it) is **skipped**: no
+  evaluation, no stopping criterion tested, and it does not count among `num_rounds`. Flower's
+  round numbers, used in the logs and the metrics, go on over it: the manager's page shows the
+  rounds counted (`🗓️ gui rounds_done=k/N` in the server's log). Without a schedule, a round all
+  clients failed still counts, so that `num_rounds` bounds a session whose clients keep failing.
+- `maxduration` depends on the clock only: it is also tested on the skipped rounds and while the
+  server waits, so that a session left without new data ends. The other criteria look at the
+  rounds actually run. The *⏹ stop after round* button and `kill -USR1` end the wait at once.
+- The connections to the clients stay open during the waits, kept alive by gRPC (Flower's
+  keepalive, every 3 min 30 s): checked with a 5 min wait on one machine; a firewall or a NAT that
+  cuts idle connections sooner may still end a long wait, and a client lost is not taken back.
+- A lower level of a hierarchical session refuses `schedule`: it runs its upper level's rounds.
+- Each round of a long session keeps the state of the server; a session per deadline, launched
+  again with `--weights-path latest`, is planned as the manager's job.
+
 ### Data arriving between rounds
 
 New examples may arrive while a session runs, or between two sessions: the logs of the day, new
-captures. A first step towards rounds at fixed times (planned: a round every period or at cron
-times, in one long session or one session per deadline):
+captures:
 
 ```yaml
 client_run:
@@ -417,7 +452,8 @@ data:
   session of the reporting `basedir` that saved them (`save_on_train_end`), or from random weights
   if none did yet: the next session of a series goes on from where the previous one ended.
 - `pybiscus schedule preview --every 1h` or `--cron "0 2 * * *" --timezone Europe/Paris` shows
-  the next deadlines of a schedule ([cli.md](cli.md#checking-a-schedule)).
+  the next deadlines of a schedule ([cli.md](cli.md#checking-a-schedule)), before setting
+  `server_run.schedule` ([above](#rounds-at-fixed-times)).
 
 ### Files of the reporting directory
 

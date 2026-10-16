@@ -19,7 +19,12 @@
 * Session manager: a *⏹ stop after round* button does it from the page; the round counter shows `k/N ⏹` and the reason of the stop, the server agent ends
   *stopped*.
 
-* Data arriving between rounds, a first step towards rounds at fixed times: with
+* Rounds at fixed times (`server_run.schedule`): every period (`every: 1h`) or at cron times
+  (`cron: "0 2 * * *"`, with a time zone), the server waiting between two rounds; a round in which
+  no client had new data is skipped and does not count among `num_rounds`; `maxduration` is also
+  tested while waiting, and the stop button or `SIGUSR1` ends a wait at once; the manager's
+  counter shows the rounds counted ([configuration.md](docs/configuration.md#rounds-at-fixed-times)).
+* Data arriving between rounds, the base of rounds at fixed times: with
   `client_run.refresh_data` a client reads its data again before each round; the `hdfs` plugin
   reads lots (`train.directory`, a file each) and with `train.lots: new` only those not trained on
   yet, remembered per client across sessions. A client with nothing to train on leaves the round

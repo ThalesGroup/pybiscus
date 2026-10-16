@@ -1,5 +1,6 @@
 import os
 import signal
+import time
 import timeit
 from logging import INFO
 from typing import Optional, Sequence
@@ -10,6 +11,7 @@ from flwr.server.history import History
 
 import pybiscus.core.gui_events as gui_events
 import pybiscus.core.pybiscus_logger as logm
+from pybiscus.core.schedule import Schedule
 from pybiscus.core.stop_signal import STOP_SIGNAL
 from pybiscus.interfaces.flower.stoppingcriterion import EndSession, StoppingCriterion
 
@@ -17,9 +19,10 @@ from pybiscus.interfaces.flower.stoppingcriterion import EndSession, StoppingCri
 class StoppableServer(fl.server.Server):
 
     def __init__(self, *, client_manager: fl.server.ClientManager, strategy: fl.server.strategy.Strategy,
-                 criteria: Sequence[StoppingCriterion] = ()) -> None:
+                 criteria: Sequence[StoppingCriterion] = (), schedule: Optional[Schedule] = None) -> None:
         super().__init__(client_manager=client_manager, strategy=strategy)
         self.criteria = list(criteria)
+        self.schedule = schedule
         self.stop_reason: Optional[str] = None
         self.rounds_done = 0
         self.current_round = 0
@@ -59,36 +62,69 @@ class StoppableServer(fl.server.Server):
         for criterion in self.criteria:
             criterion.start()
 
-        for current_round in range(1, num_rounds + 1):
+        # Flower's round number goes on over the rounds a schedule skips, rounds_done does not
+        current_round = 0
+        while self.rounds_done < num_rounds:
             # a stop received during the previous round's evaluation, or before the first one
             if self.stop_reason is not None:
                 break
+            if self.schedule is not None and not self._wait_deadline(current_round, history):
+                break
+            current_round += 1
             self.current_round = current_round
             try:
-                self._run_round(current_round, timeout, history, start_time)
+                counted = self._run_round(current_round, timeout, history, start_time)
             except EndSession as end:
                 # raised before the round trained anything: the session ends after the previous one
-                self.current_round = self.rounds_done
+                self.current_round = current_round - 1
                 self.request_stop(str(end))
                 break
-            self.rounds_done = current_round
-            self._test_criteria(current_round, history)
+            if counted:
+                self.rounds_done += 1
+                if self.schedule is not None:
+                    gui_events.log_rounds_done(self.rounds_done, num_rounds)
+            else:
+                logm.console.log(f"⏭️ round {current_round} skipped: no client had new data, it does not count "
+                                 f"({self.rounds_done}/{num_rounds} rounds run)")
+            self._test_criteria(current_round, history, clock_only=not counted)
 
         gui_events.log_session_end(self.rounds_done, num_rounds, self.stop_reason)
 
         return history, timeit.default_timer() - start_time
 
-    def _test_criteria(self, server_round: int, history: History) -> None:
+    def _wait_deadline(self, last_round: int, history: History) -> bool:
+        """False: the session ended while waiting (a stop asked for, a duration reached)"""
+        deadline = self.schedule.next_deadline()
+        if self.schedule.skipped:
+            logm.console.log(f"🗓️ {self.schedule.skipped} deadline(s) passed during the previous round, not made up for")
+        if deadline > self.schedule.now():
+            logm.console.log(f"🗓️ next round at {deadline.isoformat(sep=' ', timespec='seconds')}")
+        # by short sleeps: SIGUSR1 and the clock-only criteria are looked at while waiting
+        while (remaining := (deadline - self.schedule.now()).total_seconds()) > 0:
+            time.sleep(min(remaining, 1.0))
+            self._test_criteria(last_round, history, clock_only=True)
+            if self.stop_reason is not None:
+                return False
+        return True
+
+    def _test_criteria(self, server_round: int, history: History, clock_only: bool = False) -> None:
         for criterion in self.criteria:
+            if clock_only and not criterion.CLOCK_ONLY:
+                continue
             reason = criterion.should_stop(server_round, history)
             if reason:
                 self.request_stop(reason)
                 return
 
-    def _run_round(self, current_round: int, timeout: Optional[float], history: History, start_time: float) -> None:
+    def _run_round(self, current_round: int, timeout: Optional[float], history: History, start_time: float) -> bool:
+        """False: a scheduled round no client trained in, neither evaluated nor counted"""
         log(INFO, "")
         log(INFO, "[ROUND %s]", current_round)
         res_fit = self.fit_round(server_round=current_round, timeout=timeout)
+        # without a schedule a round all clients failed still counts: num_rounds bounds a session
+        # whose clients keep failing
+        if self.schedule is not None and (res_fit is None or not res_fit[2][0]):
+            return False
         if res_fit is not None:
             parameters_prime, fit_metrics, _ = res_fit
             if parameters_prime:
@@ -109,3 +145,4 @@ class StoppableServer(fl.server.Server):
             if loss_fed is not None:
                 history.add_loss_distributed(server_round=current_round, loss=loss_fed)
                 history.add_metrics_distributed(server_round=current_round, metrics=evaluate_metrics_fed)
+        return True

@@ -79,6 +79,11 @@ def log_stop_requested(reason: str, server_round: int) -> None:
     logm.console.log(f"🛑 gui stop_requested round={server_round}: {reason}, the session ends {end}")
 
 
+def log_rounds_done(rounds_done: int, num_rounds: int) -> None:
+    """with a schedule, the rounds run so far: Flower's round numbers also count the skipped ones"""
+    logm.console.log(f"🗓️ gui rounds_done={rounds_done}/{num_rounds}")
+
+
 def log_session_end(rounds_done: int, num_rounds: int, reason: Optional[str]) -> None:
     if reason is None:
         logm.console.log(f"🏁 gui session_end rounds={rounds_done}/{num_rounds}")
@@ -105,4 +110,6 @@ def gui_log_patterns() -> dict[str, str]:
         "stop_requested": r"gui stop_requested round=(\d+)",
         # end of the rounds: groups rounds done, num_rounds, reason of an early stop
         "session_end": r"gui session_end rounds=(\d+)/(\d+)(?: stopped: (.*))?",
+        # with a schedule, the rounds counted (log_rounds_done): groups rounds done, num_rounds
+        "rounds_done": r"gui rounds_done=(\d+)/(\d+)",
     }

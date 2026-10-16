@@ -4,6 +4,7 @@ from typing import List, Optional, ClassVar, get_args
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
+from pybiscus.core.schedule import ConfigSchedule
 from pybiscus.flower.sessionlink import ConfigSessionLink
 from pybiscus.flower_config.config_computecontext import ConfigServerComputeContext
 from pybiscus.plugin.registries.logger_registry import LoggerConfig
@@ -103,6 +104,10 @@ class ConfigServerRun(BaseModel):
     num_rounds:        int = Field(default=10, ge=1, description='number of rounds of the session; with stopping criteria, the most it runs')
     # always bounded by num_rounds: a threshold may never be reached
     stopping:          list[StoppingCriterionConfig()] = Field(default=[], description='criteria ending the session before num_rounds, tested after each round: the first one met ends it')# pyright: ignore[reportInvalidTypeForm]
+    # rounds waiting for new data rather than running back to back; num_rounds still bounds them
+    schedule:          Optional[ConfigSchedule] = Field(default=None, description=
+        "rounds at deadlines (a period or cron times) rather than back to back; a round in which no client had "
+        "new data is skipped and does not count")
     clients_fit_local_epochs: int = Field(default=1, ge=1)
     client_configs:    list[str] = Field(default=[], description='configuration files of the clients, saved with the reports (command line sessions)')
     seed:              Optional[int] = None
@@ -319,6 +324,14 @@ class ConfigServer(BaseModel):
         if self.server_run.stopping and self.server_strategy.upper_level_link is not None:
             raise ValueError("server_run.stopping: a lower level of a hierarchical session runs the rounds of its upper level, "
                              "it cannot end before it")
+        return self
+
+    # the lower level's rounds are its upper level's: they cannot follow a schedule of their own
+    @model_validator(mode="after")
+    def refuse_schedule_in_lower_level(self):
+        if self.server_run.schedule is not None and self.server_strategy.upper_level_link is not None:
+            raise ValueError("server_run.schedule: a lower level of a hierarchical session runs the rounds of its upper "
+                             "level, schedule the top level only")
         return self
 
     # checked here rather than when writing: a file overwritten silently is found only after the session

@@ -56,8 +56,8 @@ session on one machine) and the address the server listens on; the scripts pass 
 
 ## Checking a schedule
 
-Rounds at fixed times are planned ([configuration.md](configuration.md#data-arriving-between-rounds));
-their schedule can already be checked:
+The deadlines of a schedule of rounds (`server_run.schedule`,
+[configuration.md](configuration.md#rounds-at-fixed-times)), before a session:
 
 ```bash
 pybiscus schedule preview --every 1h30min
