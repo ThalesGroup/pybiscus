@@ -1,6 +1,11 @@
 # Changelog
 
-## [Unreleased]
+## [Version 0.9.0]
+
+Since `v0.8.0` (2026-10-05): hierarchical federated learning — sessions federating other sessions,
+on one machine or over the network — under development; the session manager shows a session's
+network and keeps several pages consistent; the bundled plugins get a generated reference, and the
+documentation's screenshots and videos a recording tool.
 
 ### Breaking changes
 
@@ -9,32 +14,93 @@
   carrying its own (paths relative to it). A `PYBISCUS_PLUGIN_CONF_PATH` naming the former file
   must be updated; without the variable, a file left at the former place is still read, with a
   warning, when the new one is missing.
-* The relay client and the file writing decorator move to `pybiscus-plugins-hierarchical/`, with
-  its own manifest, added only for the hierarchical sessions: they no longer appear in a simple
-  session's forms.
+* The relay client and the link decorator of the hierarchical sessions are in
+  `pybiscus-plugins-hierarchical/`, with its own manifest, added only for those sessions: they do not
+  appear in a simple session's forms.
 * The FedMIA privacy evaluation decorator and its analyser, the iSAID data and FasterRCNN model
-  plugins (PR #44, not finalized) move to `pybiscus-plugins-privacy-evaluation/`, with its own manifest,
-  added only for the sessions that use them (the cifar10 privacy evaluation demo, the FedMIA
-  campaign).
+  plugins (PR #44, not finalized) move to `pybiscus-plugins-privacy-evaluation/`, with its own
+  manifest, added only for the sessions that use them (the cifar10 privacy evaluation demo, the
+  FedMIA campaign).
+* **Bouquets**: a session manager started with `--bouquet` refuses (HTTP 409) an agent declaring
+  another bouquet, most likely given the wrong manager's URL; `--bouquet-mismatch warn` registers it
+  with a warning. An agent's registration form takes the manager's bouquet and locks it; an agent
+  without a bouquet of its own (its default is now empty, it was `noname-bouquet`) gets the manager's.
+* The manager's feeds (`/pybiscus-session/agents_logs`, `/logs`, `/metrics`, `/vignettes`) no longer
+  empty on reading: they answer `{"items": [...], "next": n}` from `?since=<cursor>`.
+* The mnist data plugin loads its batches in the main process by default (`num_workers: 0`, it was
+  2): faster on a CPU-only session (5.7 s a round instead of 11.0 s on the demo).
 
 ### Hierarchical sessions (under development)
 
-* A second, lower-level session manager (`launch/session/run_lower_level_manager.sh`); `--bouquet`
-  and `--color` name and colour a manager's session; `--upper-url` links a manager to its upper
-  level, which shows the tree of the bouquets and the lower levels' agents and managers on its map.
-* The session is configured from the top: a lower-level session waits for its upper level's, whose
-  model and data it keeps.
-* Map nodes moved with the mouse; `3frames.html` follows a session's bouquet.
-* `manager_url` in the server and client configurations: the webhooks' default address
-  (`PYBISCUS_MANAGER_URL`, else `http://localhost:5555`), set and locked by the session manager, so
-  that a lower-level session's logs and metrics reach its own manager; an agent's states go to the
-  manager given at its registration.
-* Sessions sharing a directory no longer collide: a server agent's pinned configuration and the
-  client run configurations it collects are kept per agent port, and the manager proposes a reports
-  directory per bouquet.
-* A Flower server refuses to start on a port already listened to (exit code 69): gRPC let a
-  second server share it silently, and the clients of two sessions were mixed. The session form
-  proposes a Flower port per manager (3333 + manager port - 5555).
+* **Managers linked into a tree**: a lower-level session manager (`--upper-url`, script
+  `launch/session/run_lower_level_manager.sh`) reports its bouquet, agents and session to its
+  parent; `--bouquet` and `--color` name and colour a session. The upper level's page shows the
+  tree of the bouquets, the lower levels' agents and managers on its map, and their agents' states.
+* **Configured from the top**: a lower-level session waits for its upper level's, whose model, its
+  hyperparameters, data and number of rounds it receives locked; its own data partition, holdout
+  and robustness stay its own.
+* **Relays**: the upper-level manager designates, for each lower level, one of its clients as its
+  relay (a client that trains nothing and loads no data), and refuses to launch without them.
+* **The link between two levels**, set by the managers at each launch (a new `link_id`): the relay
+  hands the upper model to the lower level's server and returns its aggregate, weighted by its
+  examples; the lower server's `upperlevellink` decorator (added last to its pipeline by
+  `server_strategy.upper_level_link`) takes that model at each round and publishes its aggregate.
+  Two transports: a directory the relay and the server share on one machine, or the upper
+  manager's **mailbox, over HTTP** (each end talking to its own manager with its own session's
+  token, the lower manager relaying upwards), the two ends on any machines. The upper manager
+  chooses each link's transport in its page, else `--link-transport`, else
+  `$PYBISCUS_LINK_TRANSPORT`, else `directory`.
+* Dropping a session stops its runs and its lower levels' sessions.
+* The manager's page: cycles per level (where each level spends the rounds), constraints checked
+  per level, a missing relay shown as a warning, map labels placed where they overlap nothing.
+* **Network view** (`/pybiscus-session/network`, the 🌐 button): the machines, the processes
+  listening on them (managers, agents, Flower servers), the flows from the one opening the
+  connection to the one listening, the flows between machines a firewall must let through (CSV),
+  and a shared-directory link across two machines flagged; the whole session at the head manager.
+  `--machine` names a manager's machine in it.
+* Several sessions side by side: `manager_url` in the server and client configurations (the
+  webhooks' address, set and locked by the manager), nothing shared between agents started from one
+  directory, a Flower server refusing a port already listened to (exit code 69) and a Flower port
+  proposed per manager.
+* `docs/hierarchical-session.md`: two experiments, a core and two edges, then a tree of four sessions
+  on three levels, with their deployment, walkthrough and results.
+
+### Session manager and forms
+
+* Every page of a session reads the manager's logs, metrics and vignettes from its own cursor: two
+  pages (two people, a person and the recording tool) show the same curves, and a page reloaded
+  during a session finds its history.
+* The loss panel says when no client evaluated the model (a session whose clients are all relays).
+* `/pybiscus-session/identity` gives the session's bouquet, colour and location.
+* Forms: the lock of an enum shown, a locked checkbox no longer clickable.
+* Fit metrics: a first client without metrics no longer makes their aggregation fail (KeyError), and
+  `visualizemodellayers` no longer empties the aggregated metrics of the decorators around it.
+
+### Data and runs
+
+* DataLoader workers are started by forkserver: forked from a process running Flower's gRPC
+  threads, they aborted.
+
+### Documentation and tools
+
+* `docs/plugins-reference.md`: every bundled plugin, its fields, defaults and descriptions and the
+  shipped configurations using it, generated by `pybiscus plugins doc` from the plugins' docstrings
+  and field descriptions; `launch/ci/smoke.sh check` fails when it is not up to date.
+* `launch/doc/record_session.py` and its scenarios (`docs/recording.md`): a session is shot (every
+  page of it, with its events) then edited into a directed video or screenshots, again with another
+  cut without running it again; it plays a simple or a hierarchical session, or follows one run by
+  hand (`--attach`). The hierarchical walkthroughs' screenshots are shot by it.
+* Agents and launch scripts of the `cortaixlabs-core` (5000–5008) and `cortaixlabs-edge1`
+  (5100–5108) bouquets; the agent launch scripts have their shebang on the first line.
+
+### Known limits
+
+* The hierarchical sessions were run on one machine only: the link over the network and the
+  network view were not tried on several. The mailbox keeps the objects in the upper manager's
+  memory until read (1.6 MB a model for the MNIST CNN).
+* The lower levels do not receive the model's hyperparameters given as a dict or a list; a relay's
+  configuration still asks for a data section.
+* iSAID and FasterRCNN were not run on real data; FedMIA is under development.
 
 ## [Version 0.8.0]
 
