@@ -19,6 +19,14 @@
 * Session manager: a *⏹ stop after round* button does it from the page; the round counter shows `k/N ⏹` and the reason of the stop, the server agent ends
   *stopped*.
 
+* Reports written twice: the server's `check` refuses a configuration where two writers (the
+  server, a metrics logger, a decorator) would write the same file of the reporting directory, or
+  one in a directory another owns. A plugin used twice in the pipeline, to save before and after a
+  transformation, takes a `tag`, the subdirectory of its files ([configuration.md](docs/configuration.md#files-of-the-reporting-directory)).
+* The clients' configurations given in `server_run.client_configs` are saved in the reporting
+  directory again, not at the root of the file system.
+* FedMIA's default `.npz` files are prefixed with `fedmia_`, no longer those of the save decorators.
+
 ## [Version 0.9.0]
 
 Since `v0.8.0` (2026-10-05): hierarchical federated learning — sessions federating other sessions,

@@ -14,6 +14,8 @@ from pybiscus.plugin.registries.strategydecorator_registry import StrategyDecora
 from pybiscus.plugin.registries.stoppingcriterion_registry import StoppingCriterionConfig
 from pybiscus.plugin.registryloader import get_name_value_if_literal
 import pybiscus.core.pybiscus_logger as logm
+from pybiscus.core.reportingoutputs import (CID, CLIENT_CONFIGS_DIR, METRICS_FILE, SERVER_LOG_FILE,
+                                            collisions, declared_outputs, template_of, output_dir, output_file)
 
 class ConfigSslServer(BaseModel):
     """A Pydantic Model to validate the ssl configuration given by the user.
@@ -317,4 +319,24 @@ class ConfigServer(BaseModel):
         if self.server_run.stopping and self.server_strategy.upper_level_link is not None:
             raise ValueError("server_run.stopping: a lower level of a hierarchical session runs the rounds of its upper level, "
                              "it cannot end before it")
+        return self
+
+    # checked here rather than when writing: a file overwritten silently is found only after the session
+    @model_validator(mode="after")
+    def refuse_reports_written_twice(self):
+        reporting = self.server_run.reporting
+        core = [("server log", output_file(SERVER_LOG_FILE)), ("metrics", output_file(METRICS_FILE)),
+                ("server_run.reporting.server_config_filename", output_file(reporting.server_config_filename)),
+                ("clients' configurations", output_dir(CLIENT_CONFIGS_DIR)),
+                ("server_run.client_configs", output_file(f"config_client_{CID}_launch.yml"))]
+        if reporting.save_on_train_end:
+            core.append(("server_run.reporting.save_on_train_end", output_file(reporting.save_on_train_end.filename)))
+        if reporting.onnx_export:
+            core += [("server_run.reporting.onnx_export", output_file(reporting.onnx_export.filename)),
+                     ("server_run.reporting.onnx_export (weights)", output_file(reporting.onnx_export.filename + ".data"))]
+        outputs = [(writer, template_of(output, None), output.kind) for writer, output in core]
+        problems = collisions(outputs + declared_outputs(self))
+        if problems:
+            raise ValueError("reports written twice in the reporting directory: " + "; ".join(problems)
+                             + " (a plugin used more than once needs a distinct tag on each; a file name set in the configuration, another name)")
         return self

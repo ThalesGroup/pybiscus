@@ -9,13 +9,13 @@ from flwr.common import parameters_to_ndarrays
 import numpy as np
 from pydantic import BaseModel, ConfigDict, Field
 
-from pybiscus.core.ensure_filesystem import ensure_file_dir_exists, ensure_dir_exists
+from pybiscus.core.reportingoutputs import CID, ROUND, TAG, TaggedReportingOutputs, output_file
 from pybiscus.interfaces.flower.strategydecorator import StrategyDecorator
 import pybiscus.core.pybiscus_logger as logm
 
 # -------------------------------------------------------------------------
 
-class ConfigSaveClientsFitInParamsDecoratorData(BaseModel):
+class ConfigSaveClientsFitInParamsDecoratorData(TaggedReportingOutputs):
     
     PYBISCUS_CONFIG: ClassVar[str] = "config"
 
@@ -23,6 +23,9 @@ class ConfigSaveClientsFitInParamsDecoratorData(BaseModel):
     client_fitin_parameters_file_prefix: str = Field(default="client_fitin_parameters", description='prefix of the files of the weights sent to each client')
 
     model_config = ConfigDict(extra="forbid")
+
+    def reporting_outputs(self):
+        return {"fitin": output_file(self.reporting_sub_dir, f"round_{ROUND}", TAG, f"{self.client_fitin_parameters_file_prefix}_{CID}.npz")}
 
 
 class ConfigSaveClientsFitInParamsDecorator(BaseModel):
@@ -64,9 +67,6 @@ class SaveClientsFitInParamsStrategyDecorator(StrategyDecorator):
     ) -> List[Tuple[ClientProxy, fl.common.FitIns]]:
         """send personalized models to clients"""
 
-        import pybiscus.core.pybiscuscontext as pcpc
-        reporting_path = pcpc.pybiscus_context["reporting_path"]
-
         # get base config
         fit_ins_list = self.base_strategy.configure_fit( server_round, parameters, client_manager )
         
@@ -76,10 +76,6 @@ class SaveClientsFitInParamsStrategyDecorator(StrategyDecorator):
 
             cid = client_proxy.cid
 
-            round_path = reporting_path / self.conf.reporting_sub_dir
-            ensure_dir_exists(round_path)
-            params_path = round_path / f"round_{server_round}" / f"{self.conf.client_fitin_parameters_file_prefix}_{cid}.npz"
-            ensure_file_dir_exists(params_path)
-            np.savez(params_path, *client_weights)
+            np.savez(self.conf.output_path("fitin", round=server_round, cid=cid), *client_weights)
 
         return fit_ins_list

@@ -4,16 +4,16 @@ import numpy as np
 from pydantic import BaseModel, ConfigDict, Field
 import torch
 import torch.nn
-from pybiscus.core.ensure_filesystem import ensure_file_dir_exists
 import pybiscus.core.pybiscus_logger as logm
 
 from pybiscus.interfaces.flower.resultmodifier import ResultModifier
 from pybiscus.flower.utils_server import get_params
-from pybiscus.core.ensure_filesystem import ensure_file_dir_exists, ensure_dir_exists
+from pybiscus.core.ensure_filesystem import ensure_file_dir_exists
+from pybiscus.core.reportingoutputs import TAG, TaggedReportingOutputs, output_dir, output_file
 
 # --------------------------------------------------------
 
-class ConfigResultClientWatermarkingData(BaseModel):
+class ConfigResultClientWatermarkingData(TaggedReportingOutputs):
     PYBISCUS_CONFIG: ClassVar[str] = "config"
 
     nb_clients: int = Field(default=5, description='clients to give a fingerprint')
@@ -27,6 +27,10 @@ class ConfigResultClientWatermarkingData(BaseModel):
     client_watermaking_traces_path: str = Field(default="client_watermarking_traces.txt", description='file of the watermarking traces (WSR of every client)')
 
     model_config = ConfigDict(extra="forbid")
+
+    def reporting_outputs(self):
+        return {"traces": output_file(TAG, self.client_watermaking_traces_path),
+                "checkpoints": output_dir(TAG, "watermarked_checkpoints")}
 
 class ConfigResultClientWatermarking(BaseModel):
 
@@ -116,16 +120,16 @@ class ResultClientWatermarking(ResultModifier):
     remain (an early stop, weights ignored, a duplicated step, the match between clients and
     fingerprints)."""
 
-    def __init__(self, save_as_cp, reporting_sub_dir, client_watermaked_model_prefix, client_watermaking_traces_path, nb_clients, key_size_layer, key_size_fingerprint):
+    # instantiated with its config's fields as keywords (personalizeclientsfitin): the config is
+    # rebuilt, its outputs giving the paths
+    def __init__(self, **config):
 
-        self.save_as_cp = save_as_cp
-        self.reporting_sub_dir = reporting_sub_dir
-        self.client_watermaked_model_prefix = client_watermaked_model_prefix
-        self.client_watermaking_traces_path = client_watermaking_traces_path
+        self.conf = ConfigResultClientWatermarkingData(**config)
+        self.save_as_cp = self.conf.save_as_cp
+        nb_clients, key_size_layer, key_size_fingerprint = self.conf.nb_clients, self.conf.key_size_layer, self.conf.key_size_fingerprint
 
         self.model = None
         self.fabric = None
-        self.reporting_path = None
 
         self.client_index = 0
         self.client_hash = {}
@@ -145,7 +149,6 @@ class ResultClientWatermarking(ResultModifier):
         if self.model is None:
             self.fabric = pybiscus_context["fabric"]
             self.model = pybiscus_context["model"]
-            self.reporting_path = pybiscus_context["reporting_path"]
 
         self.clients_weights = pybiscus_context.get("clients_weights", {} )
         logm.console.log(f"context has {len(self.clients_weights)} clients_weights")
@@ -178,7 +181,7 @@ round,client,cid,wsr_before,wsr_after
             logm.interactiveConsole.log( f"cid={cid} <=> {self.client_hash[cid]}" )
             self.client_index += 1
 
-        watermarking_traces_path = self.reporting_path / self.client_watermaking_traces_path
+        watermarking_traces_path = self.conf.output_path("traces")
 
         with TracerAndLogger(watermarking_traces_path) as logger:
             current_client = self.client_hash[cid]
@@ -232,7 +235,7 @@ round,client,cid,wsr_before,wsr_after
 
         if self.save_as_cp:
 
-            checkpoint_client_path = self.reporting_path / f"watermarked_checkpoints/round_{round}/client_{cid}.cp"
+            checkpoint_client_path = self.conf.output_path("checkpoints") / f"round_{round}/client_{cid}.cp"
 
             state = {"model": self.model}
 
@@ -241,7 +244,7 @@ round,client,cid,wsr_before,wsr_after
             logm.console.log(f"[fabric] save 💧 watermarked client {cid} checkpoint 💾📍🗄️to : {checkpoint_client_path}")
 
         if round==1:
-            checkpoint_path = self.reporting_path / "watermarked_checkpoints/secret_key.pth"
+            checkpoint_path = self.conf.output_path("checkpoints") / "secret_key.pth"
 
             state = {"secret_key": self.secret_keys}
 
@@ -249,7 +252,7 @@ round,client,cid,wsr_before,wsr_after
             self.fabric.save(checkpoint_path, state)
             logm.console.log(f"[fabric] save 💧 Secret Key 💾📍🗄️to : {checkpoint_path}")
 
-            checkpoint_client_path = self.reporting_path / f"watermarked_checkpoints/fingerprint_{cid}.pth"
+            checkpoint_client_path = self.conf.output_path("checkpoints") / f"fingerprint_{cid}.pth"
 
             state = {"fingerprint": self.fingerprints[current_client]}
 

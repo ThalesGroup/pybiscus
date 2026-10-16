@@ -20,6 +20,7 @@ from pybiscus.flower.stoppableserver import StoppableServer
 from pybiscus.flower.legacyentrypoints import hide_legacy_entry_point_warnings
 from pybiscus.flower_config.config_server import ConfigServer
 from pybiscus.commands.onnx_mngt import to_onnx_with_datamodule
+from pybiscus.core.reportingoutputs import CLIENT_CONFIGS_DIR, METRICS_FILE, SERVER_LOG_FILE
 from pybiscus.commands.apps_common import apply_num_threads, apply_seed, exit_if_port_in_use, exit_on_invalid_config, load_config, resolve_defaults
 from pybiscus.plugin.registries.data_registry import datamodule_registry
 from pybiscus.plugin.registries.logger_registry import logger_registry
@@ -255,7 +256,7 @@ def launch_config(
     _logger_classes = [ logger_registry()[logger.name](config=logger.config) for logger in conf.server_run.loggers ]
 
     # additional factory for logging into reporting directory
-    _file_logger_factory = FileLoggerFactory( reporting_path / Path("server_logs.txt") )
+    _file_logger_factory = FileLoggerFactory( reporting_path / SERVER_LOG_FILE )
 
     if len(_logger_classes) > 0:
         # add this factory to the list
@@ -270,7 +271,7 @@ def launch_config(
     _metricslogger_classes = [ metricslogger_registry()[mlogger.name](config=mlogger.config) for mlogger in conf.server_compute_context.metrics_loggers ]
 
     # additional factory for logging metrics into reporting directory
-    _file_metrics_logger_factory = FileMetricsLoggerFactory( "metrics.txt" )
+    _file_metrics_logger_factory = FileMetricsLoggerFactory( METRICS_FILE )
 
     # add this factory to the list
     _metricslogger_classes.append( _file_metrics_logger_factory )
@@ -395,7 +396,7 @@ def launch_config(
             logm.console.log(client_conf)
             _conf = OmegaConf.load(client_conf)
 
-            clientconfig_path = reporting_path / f"/config_client_{_conf.client_run.cid}_launch.yml"
+            clientconfig_path = reporting_path / f"config_client_{_conf.client_run.cid}_launch.yml"
             ensure_file_dir_exists(clientconfig_path)
             with open(clientconfig_path, "w") as file:
                 OmegaConf.save(config=_conf, f=file)
@@ -413,9 +414,9 @@ def launch_config(
     clients_config_dir = client_configs_dir()
 
     if clients_config_dir.exists() and clients_config_dir.is_dir():
-        logm.console.log(f"[pybiscus] save clients config 💾🖥️⚙️ as : {reporting_path / "config_clients"}")
+        logm.console.log(f"[pybiscus] save clients config 💾🖥️⚙️ as : {reporting_path / CLIENT_CONFIGS_DIR}")
         # named explicitly: moved into the directory, a per-agent one would keep its port as name
-        shutil.move(clients_config_dir, reporting_path / "config_clients")
+        shutil.move(clients_config_dir, reporting_path / CLIENT_CONFIGS_DIR)
 
 if __name__ == "__main__":
     app()

@@ -10,6 +10,7 @@ import pybiscus.core.pybiscus_logger as logm
 import pybiscus.core.pybiscuscontext as pcpc
 from pybiscus.core.pybiscusexception import PybiscusValueException
 from pybiscus.interfaces.core.metricsloggerfactory import MetricsLoggerFactory
+from pybiscus.core.reportingoutputs import ReportingOutputs, output_dir
 
 
 class WandbMode(str, Enum):
@@ -19,7 +20,7 @@ class WandbMode(str, Enum):
     disabled = "disabled"    # nothing logged
 
 
-class ConfigWandbLoggerFactoryData(BaseModel):
+class ConfigWandbLoggerFactoryData(ReportingOutputs):
     """Weights & Biases run of the server, which logs every metric (the clients' too).
     project: W&B project; entity: team or user (unset: the account's default); name, group, tags:
     of the run (name unset: drawn by W&B); mode: online, offline (no network needed) or disabled;
@@ -38,6 +39,10 @@ class ConfigWandbLoggerFactoryData(BaseModel):
     api_key_env_var: str = "WANDB_API_KEY"
 
     model_config = ConfigDict(extra="forbid")
+
+    # given the reporting directory, W&B writes its run files in its own wandb/ inside
+    def reporting_outputs(self):
+        return {"run": output_dir("wandb")}
 
 
 class ConfigWandbLoggerFactory(BaseModel):

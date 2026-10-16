@@ -585,6 +585,7 @@ After each round, an image of every layer of the aggregated model (weights, bias
 
 | field (under `config`) | type | default | description |
 |---|---|---|---|
+| `tag` | str (optional) | `None` | subdirectory of this instance's files; needed when the plugin appears more than once, to save before and after a transformation for instance |
 | `reporting_sub_dir` | str | `'rounds'` | subdirectory of the reporting directory, one round_<n> directory per round inside |
 | `layers_sub_dir` | str | `'layers'` | subdirectory of each round's directory holding the images |
 | `layer_prefix` | str | `'layer'` | prefix of the image files |
@@ -602,6 +603,7 @@ Saves the aggregated weights of every round, in a round_<n> directory of the rep
 
 | field (under `config`) | type | default | description |
 |---|---|---|---|
+| `tag` | str (optional) | `None` | subdirectory of this instance's files; needed when the plugin appears more than once, to save before and after a transformation for instance |
 | `reporting_sub_dir` | str | `'rounds'` | subdirectory of the reporting directory, one round_<n> directory per round inside |
 | `server_aggregated_fit_parameters_file_name` | str | `'server_aggregated_fit_parameters.npz'` | file of the aggregated weights of the round |
 
@@ -615,6 +617,7 @@ Saves the weights sent to each client at every round, in a round_<n> directory o
 
 | field (under `config`) | type | default | description |
 |---|---|---|---|
+| `tag` | str (optional) | `None` | subdirectory of this instance's files; needed when the plugin appears more than once, to save before and after a transformation for instance |
 | `reporting_sub_dir` | str | `'rounds'` | subdirectory of the reporting directory, one round_<n> directory per round inside |
 | `client_fitin_parameters_file_prefix` | str | `'client_fitin_parameters'` | prefix of the files of the weights sent to each client |
 
@@ -626,6 +629,7 @@ Saves the weights each client sends back at every round, in a round_<n> director
 
 | field (under `config`) | type | default | description |
 |---|---|---|---|
+| `tag` | str (optional) | `None` | subdirectory of this instance's files; needed when the plugin appears more than once, to save before and after a transformation for instance |
 | `reporting_sub_dir` | str | `'rounds'` | subdirectory of the reporting directory, one round_<n> directory per round inside |
 | `client_fitres_parameters_file_prefix` | str | `'client_fitres_parameters'` | prefix of the files of the weights each client sent back |
 
@@ -813,6 +817,7 @@ Embeds a fingerprint of each client in the weights it is sent (one layer carries
 
 | field (under `config`) | type | default | description |
 |---|---|---|---|
+| `tag` | str (optional) | `None` | subdirectory of this instance's files; needed when the plugin appears more than once, to save before and after a transformation for instance |
 | `nb_clients` | int | `5` | clients to give a fingerprint |
 | `key_size_layer` | int | `2112` | weights of the layer that carries the watermark |
 | `key_size_fingerprint` | int | `256` | bits of each client's fingerprint |

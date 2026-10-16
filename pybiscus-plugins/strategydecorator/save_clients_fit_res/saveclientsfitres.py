@@ -6,13 +6,13 @@ from flwr.server.strategy import Strategy
 import numpy as np
 from pydantic import BaseModel, ConfigDict, Field
 
-from pybiscus.core.ensure_filesystem import ensure_dir_exists
+from pybiscus.core.reportingoutputs import CID, ROUND, TAG, TaggedReportingOutputs, output_file
 from pybiscus.interfaces.flower.strategydecorator import StrategyDecorator
 import pybiscus.core.pybiscus_logger as logm
 
 # -------------------------------------------------------------------------
 
-class ConfigSaveClientsFitResStrategyDecoratorData(BaseModel):
+class ConfigSaveClientsFitResStrategyDecoratorData(TaggedReportingOutputs):
     
     PYBISCUS_CONFIG: ClassVar[str] = "config"
 
@@ -20,6 +20,9 @@ class ConfigSaveClientsFitResStrategyDecoratorData(BaseModel):
     client_fitres_parameters_file_prefix: str = Field(default="client_fitres_parameters", description='prefix of the files of the weights each client sent back')
 
     model_config = ConfigDict(extra="forbid")
+
+    def reporting_outputs(self):
+        return {"fitres": output_file(self.reporting_sub_dir, f"round_{ROUND}", TAG, f"{self.client_fitres_parameters_file_prefix}_{CID}.npz")}
 
 
 class ConfigSaveClientsFitResStrategyDecorator(BaseModel):
@@ -45,17 +48,11 @@ class SaveClientsFitResStrategyDecorator(StrategyDecorator):
         self.base_strategy = base_strategy
         self.conf = conf
 
-        import pybiscus.core.pybiscuscontext as pcpc
-        self.reporting_path = pcpc.pybiscus_context["reporting_path"]
-
     # -------------------------------------------------------------------------
 
     def aggregate_fit(self, server_round, results, failures):
 
         aggregated, _ = super().aggregate_fit(server_round, results, failures)
-
-        round_path = self.reporting_path / self.conf.reporting_sub_dir
-        ensure_dir_exists(round_path)
 
         for client_proxy, fit_res in results:
 
@@ -63,10 +60,8 @@ class SaveClientsFitResStrategyDecorator(StrategyDecorator):
             logm.console.log(f"Source is flower => client_id = {client_id}")
             logm.console.log(f"Source is metrics => cid = {fit_res.metrics['cid']}")
 
-            result_path = round_path / f"round_{server_round}" / f"{self.conf.client_fitres_parameters_file_prefix}_{client_id}.npz"
-
             result = fl.common.parameters_to_ndarrays(fit_res.parameters)
 
-            np.savez(result_path, *result)
+            np.savez(self.conf.output_path("fitres", round=server_round, cid=client_id), *result)
 
         return aggregated, {}

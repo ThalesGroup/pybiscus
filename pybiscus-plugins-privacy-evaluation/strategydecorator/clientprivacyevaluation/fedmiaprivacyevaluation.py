@@ -16,7 +16,7 @@ import flwr as fl
 from flwr.common import Parameters, parameters_to_ndarrays
 
 from pybiscus.interfaces.flower.strategydecorator import StrategyDecorator
-from pybiscus.core.ensure_filesystem import ensure_file_dir_exists, ensure_dir_exists
+from pybiscus.core.reportingoutputs import CID, ROUND, TAG, TaggedReportingOutputs, output_file
 from pybiscus.core.pybiscusexception import PybiscusValueException
 import pybiscus.core.pybiscuscontext as pcpc
 import pybiscus.core.pybiscus_logger as logm
@@ -36,7 +36,7 @@ def print_GPU_usage(suffix=""):
 
 # --------------------------------------------------------
     
-class ConfigFedMIAPrivacyEvaluationStrategyDecoratorData(BaseModel):
+class ConfigFedMIAPrivacyEvaluationStrategyDecoratorData(TaggedReportingOutputs):
 
     
     PYBISCUS_CONFIG: ClassVar[str] = "config"
@@ -47,13 +47,22 @@ class ConfigFedMIAPrivacyEvaluationStrategyDecoratorData(BaseModel):
     # model_ids_path : str = "models_ids_list.txt"
     # data_ids_path : str = "data_ids_list.txt"
     criterion: str = Field(default="CrossEntropyLoss", description='loss of the attack: CrossEntropyLoss, or model_val for a model whose forward returns its loss')
-    server_aggregated_fit_parameters_file_name: str = Field(default="server_aggregated_fit_parameters.npz", description='file of the aggregated weights of the round')
-    client_fitin_parameters_file_prefix: str = Field(default="client_fitin_parameters", description='prefix of the files of the weights sent to each client')
-    client_fitres_parameters_file_prefix: str = Field(default="client_fitres_parameters", description='prefix of the files of the weights each client sent back')
+    # fedmia_: the save decorators' names otherwise, the two plugins overwriting each other's files
+    server_aggregated_fit_parameters_file_name: str = Field(default="fedmia_server_aggregated_fit_parameters.npz", description='file of the aggregated weights of the round')
+    client_fitin_parameters_file_prefix: str = Field(default="fedmia_client_fitin_parameters", description='prefix of the files of the weights sent to each client')
+    client_fitres_parameters_file_prefix: str = Field(default="fedmia_client_fitres_parameters", description='prefix of the files of the weights each client sent back')
     # parameters_iterator : Iterator[Parameter] = None
     # Todo fournir plutot un fichier avec la liste
 
     model_config = ConfigDict(extra="forbid")
+
+    def reporting_outputs(self):
+        round_dir = (self.reporting_sub_dir, f"round_{ROUND}", TAG)
+        return {"aggregated": output_file(*round_dir, self.server_aggregated_fit_parameters_file_name),
+                "fitin": output_file(*round_dir, f"{self.client_fitin_parameters_file_prefix}_{CID}.npz"),
+                "fitres": output_file(*round_dir, f"{self.client_fitres_parameters_file_prefix}_{CID}.npz"),
+                "cosine": output_file(*round_dir, self.cosine_matrix_path),
+                "losses": output_file(*round_dir, self.losses_path)}
 
 class ConfigFedMIAPrivacyEvaluationStrategyDecorator(BaseModel):
 
@@ -79,7 +88,6 @@ class FedMIAPrivacyEvaluationStrategyDecorator(StrategyDecorator):
         self.base_strategy = base_strategy
         self.model = pcpc.pybiscus_context[pcpc.MODEL]
         self.fabric = pcpc.pybiscus_context[pcpc.FABRIC]
-        self.reporting_path = pcpc.pybiscus_context[pcpc.REPORTING_PATH]
         self.privacyset = pcpc.pybiscus_context.get(pcpc.PRIVACY_SET)
         if self.privacyset is None:
             raise PybiscusValueException(
@@ -123,20 +131,14 @@ class FedMIAPrivacyEvaluationStrategyDecorator(StrategyDecorator):
         
         global_weights = fl.common.parameters_to_ndarrays(parameters)
 
-        round_path = self.reporting_path / self.conf.reporting_sub_dir
-        ensure_dir_exists(round_path)
-        params_path = round_path / f"round_{server_round}" / self.conf.server_aggregated_fit_parameters_file_name
-        ensure_file_dir_exists(params_path)
-        np.savez(params_path, *global_weights)
+        np.savez(self.conf.output_path("aggregated", round=server_round), *global_weights)
         
         for client_proxy, fit_ins in base_config:
 
             client_weights = parameters_to_ndarrays(fit_ins.parameters)
 
             cid = client_proxy.cid
-            params_path = round_path / f"round_{server_round}" / f"{self.conf.client_fitin_parameters_file_prefix}_{cid}.npz"
-            ensure_file_dir_exists(params_path)
-            np.savez(params_path, *client_weights)
+            np.savez(self.conf.output_path("fitin", round=server_round, cid=cid), *client_weights)
 
 
         return base_config
@@ -146,8 +148,6 @@ class FedMIAPrivacyEvaluationStrategyDecorator(StrategyDecorator):
         # aggregated, _ = super().aggregate_fit(server_round, results, failures)
         # state_dict() returns references that the per-client load_state_dict calls overwrite in place
         current_model_state_dict = copy.deepcopy(self.model.state_dict())
-        round_path = self.reporting_path / self.conf.reporting_sub_dir
-        ensure_dir_exists(round_path)
         cid_list = []
         # the result files are named after Flower's id of the client, the only one configure_fit
         # knows; the reports after the Pybiscus cid, which numbers the exported indices files
@@ -160,11 +160,9 @@ class FedMIAPrivacyEvaluationStrategyDecorator(StrategyDecorator):
             logm.console.log(f"Source is flower => client_id = {cid}")
             logm.console.log(f"Source is metrics => cid = {fit_res.metrics.get('cid')}")
 
-            result_path = round_path / f"round_{server_round}" / f"{self.conf.client_fitres_parameters_file_prefix}_{cid}.npz"
-
             result = fl.common.parameters_to_ndarrays(fit_res.parameters)
 
-            np.savez(result_path, *result)
+            np.savez(self.conf.output_path("fitres", round=server_round, cid=cid), *result)
         
         self._process_client_round(
             round_num= server_round,
@@ -342,23 +340,14 @@ class FedMIAPrivacyEvaluationStrategyDecorator(StrategyDecorator):
             DataLoader( MIADataset,  batch_size=batch_size, num_workers=MIADataloader.num_workers, drop_last=False, shuffle=False, collate_fn=MIADataloader.collate_fn,
                         **worker_start(MIADataloader.num_workers)))
 
-        round_path = self.reporting_path / self.conf.reporting_sub_dir
-        ensure_dir_exists(round_path)
-
-        server_params_path = round_path / f"round_{round_num}" / self.conf.server_aggregated_fit_parameters_file_name
-        ensure_file_dir_exists(server_params_path)
-        server_state_dict = self._from_npz_to_state_dict(server_params_path)
+        server_state_dict = self._from_npz_to_state_dict(self.conf.output_path("aggregated", round=round_num))
 
         clients_updates = []
         clients_res_losses = []
         clients_in_losses = []
         for cid in cid_list: # alternative, take into account all files found
-            client_in_params_path = round_path / f"round_{round_num}" / f"{self.conf.client_fitin_parameters_file_prefix}_{cid}.npz"
-            ensure_file_dir_exists(client_in_params_path)
-            client_in_state_dict = self._from_npz_to_state_dict(client_in_params_path)
-            client_res_params_path = round_path / f"round_{round_num}" / f"{self.conf.client_fitres_parameters_file_prefix}_{cid}.npz"
-            ensure_file_dir_exists(client_res_params_path)
-            client_res_state_dict = self._from_npz_to_state_dict(client_res_params_path)
+            client_in_state_dict = self._from_npz_to_state_dict(self.conf.output_path("fitin", round=round_num, cid=cid))
+            client_res_state_dict = self._from_npz_to_state_dict(self.conf.output_path("fitres", round=round_num, cid=cid))
 
             clients_res_losses.append(
                 self._compute_per_instance_losses(
@@ -399,14 +388,14 @@ class FedMIAPrivacyEvaluationStrategyDecorator(StrategyDecorator):
         logm.console.log("done", cosine_matrix.shape, len(server_losses))
         data_matrix = {name : cosine_matrix[:,i].tolist() for i, name in enumerate(client_names)}
         df_matrix = pd.DataFrame(data=data_matrix, index=MIAindices)
-        df_matrix.to_csv(f"{round_path}/round_{round_num}/{self.conf.cosine_matrix_path}", index_label='Image_idx')
+        df_matrix.to_csv(self.conf.output_path("cosine", round=round_num), index_label='Image_idx')
 
         data_losses = {f"{name}_in" : clients_in_losses[i] for i, name in enumerate(client_names)}
         for i, name in enumerate(client_names):
             data_losses[f"{name}_res"] = clients_res_losses[i]
         data_losses["server_in"] = server_losses
         df_losses = pd.DataFrame(data=data_losses, index=MIAindices)
-        df_losses.to_csv(f"{round_path}/round_{round_num}/{self.conf.losses_path}", index_label='Image_idx')
+        df_losses.to_csv(self.conf.output_path("losses", round=round_num), index_label='Image_idx')
         return None
 
 

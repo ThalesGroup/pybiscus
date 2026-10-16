@@ -5,8 +5,9 @@ from pybiscus.core.metricslogger.tensorboard.filteredtensorboardlogger import cr
 from pybiscus.interfaces.core.metricsloggerfactory import MetricsLoggerFactory
 from lightning.fabric.loggers import TensorBoardLogger
 import pybiscus.core.pybiscus_logger as logm
+from pybiscus.core.reportingoutputs import ReportingOutputs, output_dir
 
-class ConfigTensorBoardLoggerFactoryData(BaseModel):
+class ConfigTensorBoardLoggerFactoryData(ReportingOutputs):
     """The subdir is relative to the path defined by : 
 server_run.reporting.basedir 
 whose default is $(root_dir)/experiments/date-hour/"""
@@ -16,6 +17,9 @@ whose default is $(root_dir)/experiments/date-hour/"""
     subdir: str = Field(default="tensorboard", description="subdirectory of the reporting directory holding the TensorBoard logs")
 
     model_config = ConfigDict(extra="forbid")
+
+    def reporting_outputs(self):
+        return {"logs": output_dir(self.subdir)}
 
 
 class ConfigTensorBoardLoggerFactory(BaseModel):

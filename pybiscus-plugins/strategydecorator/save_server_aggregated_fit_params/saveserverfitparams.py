@@ -9,12 +9,12 @@ from flwr.server.client_proxy import ClientProxy
 import numpy as np
 from pydantic import BaseModel, ConfigDict, Field
 
-from pybiscus.core.ensure_filesystem import ensure_file_dir_exists, ensure_dir_exists
+from pybiscus.core.reportingoutputs import ROUND, TAG, TaggedReportingOutputs, output_file
 from pybiscus.interfaces.flower.strategydecorator import StrategyDecorator
 
 # -------------------------------------------------------------------------
 
-class ConfigSaveServerFitParamsDecoratorData(BaseModel):
+class ConfigSaveServerFitParamsDecoratorData(TaggedReportingOutputs):
     
     PYBISCUS_CONFIG: ClassVar[str] = "config"
 
@@ -22,6 +22,9 @@ class ConfigSaveServerFitParamsDecoratorData(BaseModel):
     server_aggregated_fit_parameters_file_name: str = Field(default="server_aggregated_fit_parameters.npz", description='file of the aggregated weights of the round')
 
     model_config = ConfigDict(extra="forbid")
+
+    def reporting_outputs(self):
+        return {"aggregated": output_file(self.reporting_sub_dir, f"round_{ROUND}", TAG, self.server_aggregated_fit_parameters_file_name)}
 
 
 class ConfigSaveServerFitParamsDecorator(BaseModel):
@@ -65,14 +68,7 @@ class SaveServerFitParamsStrategyDecorator(StrategyDecorator):
         
         global_weights = fl.common.parameters_to_ndarrays(parameters)
 
-        import pybiscus.core.pybiscuscontext as pcpc
-        reporting_path = pcpc.pybiscus_context["reporting_path"]
-
-        round_path = reporting_path / self.conf.reporting_sub_dir
-        ensure_dir_exists(round_path)
-        params_path = round_path / f"round_{server_round}" / self.conf.server_aggregated_fit_parameters_file_name
-        ensure_file_dir_exists(params_path)
-        np.savez(params_path, *global_weights)
+        np.savez(self.conf.output_path("aggregated", round=server_round), *global_weights)
 
         return base_config
     

@@ -380,6 +380,34 @@ server_run:
   `should_stop(server_round, history)` gets Flower's `History` of the session and returns the
   reason to stop, or `None`.
 
+### Files of the reporting directory
+
+The server, its metrics loggers and the strategy decorators write into one reporting directory
+(`server_run.reporting.basedir`, a subdirectory per session). `check` refuses a configuration
+where two of them would write the same file, or one in a directory another owns (TensorBoard's,
+W&B's `wandb/`): the overwritten file would otherwise be found only after the session.
+
+The usual case is a decorator used twice in the pipeline, to save the weights before and after a
+transformation. Give each instance its own `tag`, a subdirectory of its files:
+
+```yaml
+server_strategy:
+  pipeline:
+  - name: saveserverfitparams
+    config: {tag: before}       # rounds/round_<n>/before/server_aggregated_fit_parameters.npz
+  - name: clipping              # any decorator transforming the aggregate
+    config: {...}
+  - name: saveserverfitparams
+    config: {tag: after}        # rounds/round_<n>/after/server_aggregated_fit_parameters.npz
+```
+
+The plugins writing files take a `tag`: the decorators `saveserverfitparams`, `saveclientsfitin`,
+`saveclientsfitres`, `visualizemodellayers`, `fedmiaprivacyevaluation`, and the result modifier
+`clientwatermarking` (in `personalizeclientsfitin`). The check covers the server only for now. For a plugin author: a config
+inheriting `ReportingOutputs` (or `TaggedReportingOutputs`, `pybiscus/core/reportingoutputs.py`)
+declares its outputs in `reporting_outputs()` and builds their paths with `output_path(name,
+round=..., cid=...)`, so that the check and the writing use the same path.
+
 ### Exporting the final model (ONNX)
 
 `server_run.reporting.onnx_export` exports the global model at the end of the session:

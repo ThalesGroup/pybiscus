@@ -8,14 +8,14 @@ from pydantic import BaseModel, ConfigDict, Field
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-from pybiscus.core.ensure_filesystem import ensure_dir_exists
+from pybiscus.core.reportingoutputs import ROUND, TAG, TaggedReportingOutputs, output_dir
 from pybiscus.interfaces.flower.strategydecorator import StrategyDecorator
 import pybiscus.core.pybiscus_logger as logm
 from pybiscus.session.auth import headers_for
 
 # -------------------------------------------------------------------------
 
-class ConfigModelWeightVignetteDecoratorData(BaseModel):
+class ConfigModelWeightVignetteDecoratorData(TaggedReportingOutputs):
     
     PYBISCUS_CONFIG: ClassVar[str] = "config"
 
@@ -32,6 +32,9 @@ class ConfigModelWeightVignetteDecoratorData(BaseModel):
     debug: bool = Field(default=False, description='log every step of the drawing')
 
     model_config = ConfigDict(extra="forbid")
+
+    def reporting_outputs(self):
+        return {"layers": output_dir(self.reporting_sub_dir, f"round_{ROUND}", TAG, self.layers_sub_dir)}
 
 
 class ConfigModelWeightVignetteStrategyDecorator(BaseModel):
@@ -57,9 +60,6 @@ class ModelWeightVignetteStrategyDecorator(StrategyDecorator):
     ):
         self.base_strategy = base_strategy
         self.conf = conf
-
-        import pybiscus.core.pybiscuscontext as pcpc
-        self.reporting_path = pcpc.pybiscus_context["reporting_path"]
 
     # -------------------------------------------------------------------------
 
@@ -92,8 +92,7 @@ class ModelWeightVignetteStrategyDecorator(StrategyDecorator):
                     )
 
 
-        layers_path = self.reporting_path / self.conf.reporting_sub_dir / f"round_{rnd}" / self.conf.layers_sub_dir 
-        ensure_dir_exists(layers_path)
+        layers_path = self.conf.output_path("layers", round=rnd)
 
         visualize_federated_layers(
             server_weights,
