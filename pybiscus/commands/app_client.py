@@ -11,6 +11,7 @@ from torch.utils.data import DataLoader, IterableDataset
 import pybiscus.core.pybiscus_logger as logm
 from pybiscus.core.pybiscusexception import PybiscusValueException
 from pybiscus.flower_fabric.client.flowerfabricclient.flowerfabricclientfactory import FlowerFabricClientFactory
+from pybiscus.flower.legacyentrypoints import hide_legacy_entry_point_warnings
 from pybiscus.plugin.registries.client_registry import client_registry
 from pybiscus.plugin.registries.data_registry import datamodule_registry
 from pybiscus.plugin.registries.model_registry import model_registry 
@@ -217,6 +218,7 @@ def launch_config(
         ssl_secure_cnx=conf.flower_client.ssl.secure_cnx
         ssl_root_certificate=conf.flower_client.ssl.root_certificate
 
+    hide_legacy_entry_point_warnings()
     fl.client.start_client(
         server_address=conf.flower_client.server_address,
         client=client.to_client(),

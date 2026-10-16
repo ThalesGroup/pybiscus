@@ -17,6 +17,7 @@ import pybiscus.core.pybiscus_logger as logm
 from pybiscus.core.logger.multiplelogger.multipleloggerfactory import MultipleLoggerFactory
 from pybiscus.core.metricslogger.multiplemetricslogger.multiplemetricsloggerfactory import MultipleMetricsLoggerFactory
 from pybiscus.flower.stoppableserver import StoppableServer
+from pybiscus.flower.legacyentrypoints import hide_legacy_entry_point_warnings
 from pybiscus.flower_config.config_server import ConfigServer
 from pybiscus.commands.onnx_mngt import to_onnx_with_datamodule
 from pybiscus.commands.apps_common import apply_num_threads, apply_seed, exit_if_port_in_use, exit_on_invalid_config, load_config, resolve_defaults
@@ -346,6 +347,8 @@ def launch_config(
     server.stop_on_signal()
 
     logm.console.log("start of 🌺🖥️ flower server")
+
+    hide_legacy_entry_point_warnings()
 
     # starting flower server
     fl.server.start_server(

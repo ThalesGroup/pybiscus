@@ -11,6 +11,8 @@
   its maximum, when a metric reaches a value (`threshold`), stops improving (`patience`) or the
   rounds have lasted long enough (`maxduration`); a new plugin category, `stoppingcriterion`. Not
   in a hierarchical session yet (refused in a lower level).
+* Flower's deprecation warning of `start_server()` and `start_client()`, at every launch, is no
+  longer shown: Pybiscus runs on Flower's legacy API on purpose; any other Flower warning still is.
 * Session manager: a *⏹ stop after round* button does it from the page (not in a hierarchical
   session yet); the round counter shows `k/N ⏹` and the reason of the stop, the server agent ends
   *stopped*.
