@@ -18,16 +18,17 @@ class FileMetricsLogger():
 
     def __init__(self, log_file_path):
 
-        if log_file_path is str:
-            log_file_path = Path(log_file_path)
-
+        log_file_path = Path(log_file_path).resolve()
         log_file_path.parent.mkdir(parents=True, exist_ok=True)
 
-        metrics_logger = logging.getLogger("metrics")
+        # one logger per file, a child of "metrics" as before: a second instance on the shared
+        # "metrics" logger added a handler, every line then written twice
+        metrics_logger = logging.getLogger(f"metrics.{log_file_path}")
         metrics_logger.setLevel(logging.INFO)
-        metrics_handler = logging.FileHandler(log_file_path)
-        metrics_handler.setFormatter(logging.Formatter('%(asctime)s - %(message)s'))
-        metrics_logger.addHandler(metrics_handler)
+        if not metrics_logger.handlers:
+            metrics_handler = logging.FileHandler(log_file_path)
+            metrics_handler.setFormatter(logging.Formatter('%(asctime)s - %(message)s'))
+            metrics_logger.addHandler(metrics_handler)
 
         self.logging = metrics_logger
 
