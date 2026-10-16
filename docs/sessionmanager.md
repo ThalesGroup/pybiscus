@@ -278,6 +278,42 @@ gets the topology again at the next heartbeat. When the upper-level manager requ
 its session token with `--upper-token` (or `PYBISCUS_UPPER_TOKEN`); a manager started from the same
 directory on the same machine finds it on its own.
 
+## Network view
+
+The **🌐 network** button of the manager's page opens `/pybiscus-session/network`: the session seen
+as a system administrator sees it.
+
+- **A graph of the machines**, each with the processes listening on it: the session manager
+  (HTTP), the agents (HTTP), the Flower server of the session (gRPC, once the session is
+  configured). Each arrow goes from the process opening the connection to the one listening:
+  an agent's registration, states and its runs' logs and metrics to the manager; the manager's
+  ping, launch and stop to an agent; the training rounds of the clients to the Flower server; a
+  lower manager's reports to its parent; the links between the levels (the mailbox over HTTP, or a
+  shared directory). Hover an arrow or a process for its purpose.
+- **The flows between machines**: from which machine to which machine, port and protocol, what a
+  firewall must let through; **⬇ flows (CSV)** downloads them (`/pybiscus-session/network.csv`).
+- **The listening processes, by machine**: port, protocol, the address they listen on, their role.
+- **Problems**: a link through a shared directory whose relay and server are on two machines.
+
+An agent's machine is the name it gives at its registration; without one, the host of its address,
+the loopback meaning the manager's own machine. Each manager sees its own session, its lower levels
+(each lower manager reports its part with its topology) and, from outside, its parent: **the whole
+session is seen at the head manager only**. On a single machine, the graph shows one machine with
+all the ports; it is meant for sessions spread over several (`/pybiscus-session/network.json` gives
+the same view as data).
+
+![Network view of a hierarchical session on one machine](images/network_session.png "Network view: a core and two edges on one machine")
+
+On several machines (an illustration: the agents register under simulated machine names, the
+managers are started with `--machine`, `launch/doc/network_sites.py`), the relay of `edge1` uses
+the core manager's mailbox and stays on the core's machine, the relay of `edge2` shares a directory
+with its server, and the flows between machines list what each site must let through:
+
+![Network view on several machines](images/network_machines.png "Network view: four machines")
+
+`--machine` names a manager's machine in this view (default: its host name), and the agents it
+reaches at the loopback.
+
 ## Session parameters
 
 The session configuration (server agent) has an optional `data_partition` block: when set, the

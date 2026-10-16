@@ -41,6 +41,7 @@
   .kv{display:flex; align-items:center; gap:9px} .kv .num{font-size:15px} .kv b{color:var(--accent)}
   .right{margin-left:auto; display:flex; align-items:center; gap:10px}
   .btn{cursor:pointer; color:var(--text); border:1px solid var(--border); border-radius:8px; padding:6px 12px;
+  a.btn{text-decoration:none}
     font-family:var(--mono); font-size:11px; letter-spacing:.12em; text-transform:uppercase; background:var(--panel-2)}
   .btn:hover{border-color:var(--accent); color:var(--accent)}
   .btn.danger:hover{border-color:#d9534f; color:#ff6b66}
@@ -175,6 +176,7 @@
     <div class="right">
       <span class="eyebrow">Δ round</span><span class="num" id="dround-val">—</span>
       <svg id="droundSpark" width="76" height="22"></svg>
+      <a class="btn" href="/pybiscus-session/network" target="_blank" title="the machines, ports and flows of the session">🌐 network</a>
       <button class="btn" id="token-btn" title="Copy the session token: the agents give it at registration">🔑 session token</button>
       <button class="btn" id="cfg-btn" disabled title="the session can be configured once its server agent is registered">⚙ config</button>
       <button class="btn danger" id="revokeBtn">Drop session</button>

@@ -295,8 +295,10 @@ def shoot_hierarchical(sc, work, rushes):
         m = managers[b]
         upper = ["--upper-url", url(m["upper"])] if m.get("upper") else []
         transport = ["--link-transport", sc["link_transport"]] if sc.get("link_transport") else []
+        # the name shown for the machine in the network view: the real host name stays out of the captures
+        machine = ["--machine", m.get("machine") or sc["machine"]] if m.get("machine") or sc.get("machine") else []
         procs.start(f"manager_{b}", ["session_manager", "--port", str(m["port"]), "--bouquet", b, "--location", m["location"],
-                                     "--geo", ",".join(map(str, m["geo"])), *upper, *transport])
+                                     "--geo", ",".join(map(str, m["geo"])), *upper, *transport, *machine])
     for a in agents:
         procs.start(f"agent_{a['name']}", ["pybiscus_agent", "--port", str(a["port"])])
     try:
@@ -324,6 +326,13 @@ def shoot_hierarchical(sc, work, rushes):
                 at = ":".join([kind, *map(str, fields.values())])
                 for take in (t for t in takes if t["at"] == at):
                     tab, _, panel = take["view"].partition("@")
+                    if take.get("path"):
+                        # another page of a manager (its network view...), opened for the take
+                        page = browser.new_page(viewport=viewport)
+                        page.goto(url(tab.split(":", 1)[1]) + take["path"]); page.wait_for_timeout(2500)
+                        shooting.take(take["name"], page, take.get("full_page", False), panel or None)
+                        page.close()
+                        continue
                     page = shooting.views[tab]["page"]
                     if take.get("tab"):
                         page.click(f"#mid-tabs .tool[data-tab={take['tab']}]"); page.wait_for_timeout(800)
@@ -448,6 +457,9 @@ def shoot_hierarchical(sc, work, rushes):
             # the last round's metrics and states reach the pages shortly after
             time.sleep(8)
             log(f"{rounds} rounds on every level")
+            # the network view of every manager, kept with the rushes
+            for b in order:
+                (rushes / f"network-{b}.json").write_text(requests.get(f"{url(b)}/pybiscus-session/network.json", headers=H).text)
             step("end")
             browser.close()
     finally:

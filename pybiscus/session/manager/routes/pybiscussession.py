@@ -140,6 +140,8 @@ def pybiscus_manager_register_agent():
         "bouquet": declared,
         "location": data.get("location"),
         "organisation": data.get("organisation"),
+        # the machine it runs on, as it names itself: the addresses say localhost on one machine
+        "machine": data.get("machine"),
     }
 
     if role == "server":
@@ -398,6 +400,39 @@ def pybiscus_manager_designate_relay():
         return jsonify({"status": "error", "message": f"no client named {client!r} in this session"}), 400
     designate_relay(bouquet, client)
     return jsonify({"status": "ok", "relays": session.relays})
+
+# **************************
+
+# the page of the network view
+@pybiscus_manager_app.route("/pybiscus-session/network", methods=["GET"])
+def pybiscus_manager_network_page():
+    return render_template("pybiscus/network.html", bouquet=pybiscus.session.manager.session_manager.bouquet)
+
+
+# the network view of the session: machines, listening processes, flows (the whole session at the head manager)
+@pybiscus_manager_app.route("/pybiscus-session/network.json", methods=["GET"])
+def pybiscus_manager_network():
+    from pybiscus.session.manager.network import network_view
+    return jsonify(network_view())
+
+
+# the flows between two machines, as a firewall request needs them
+@pybiscus_manager_app.route("/pybiscus-session/network.csv", methods=["GET"])
+def pybiscus_manager_network_csv():
+    import csv
+    import io
+    from pybiscus.session.manager.network import network_view
+    view = network_view()
+    machine = {p["id"]: p["machine"] for p in view["processes"]}
+    out = io.StringIO()
+    writer = csv.writer(out)
+    writer.writerow(["from machine", "to machine", "port", "protocol", "purpose"])
+    rows = sorted({(machine.get(f["from"], "?"), machine.get(f["to"], "?"), f["port"] or "", f["protocol"], f["purpose"])
+                   for f in view["flows"] if f["port"] and machine.get(f["from"]) != machine.get(f["to"])},
+                  key=lambda r: tuple(str(x) for x in r))
+    writer.writerows(rows)
+    return out.getvalue(), 200, {"Content-Type": "text/csv; charset=utf-8",
+                                 "Content-Disposition": "attachment; filename=pybiscus-flows.csv"}
 
 # **************************
 

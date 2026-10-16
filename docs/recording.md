@@ -208,9 +208,10 @@ walkthrough into `docs/images` (check them with `git diff` before committing).
 | `plugin_manifests` | the relay and `upper_level_link` need the hierarchical plugins |
 | `link_transport` | `directory` (default) or `manager`: given to the managers as `--link-transport` |
 | `link_transports` | the transport of some links, by lower bouquet (`{north: manager, south: directory}`), chosen in their upper manager's page |
+| `machine` | the name of the machine in the network view (`--machine` of every manager; a manager may give its own `machine`): the real host name stays out of the captures |
 | `viewport`, `form_viewport` | the managers' pages, the forms |
 | `film` | the managers having a page, which a cut can show (default: all); fewer pages save memory on a large tree, and the root must be one |
-| `takes` | `name`, `at` (`registered`, `relays`, `session-form:<bouquet>`, `form:<agent>`, `end`), `view` (with `@<panel>`), `full_page`, `tab` (a tab of the manager's middle panel to open first: `cycles`, `constraints`), `click_text` (an element to click first, by its text: a form's tab, such as `server_strategy`) |
+| `takes` | `name`, `at` (`registered`, `relays`, `session-form:<bouquet>`, `form:<agent>`, `end`), `view` (with `@<panel>`), `full_page`, `tab` (a tab of the manager's middle panel to open first: `cycles`, `constraints`), `click_text` (an element to click first, by its text: a form's tab, such as `server_strategy`), `path` (another page of the manager, opened for the take: `/pybiscus-session/network`) |
 
 Its other cut, `hierarchical-core-edges.video.cut.yml`, makes a video of the same rushes: the tree
 on the core's map, the relays, the session forms, the launches, then the rounds on the core's page

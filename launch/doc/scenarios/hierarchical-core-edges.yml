@@ -7,6 +7,7 @@
 kind: hierarchical
 cut: launch/doc/scenarios/hierarchical-core-edges.cut.yml
 plugin_manifests: [pybiscus-plugins/plugins-conf.yml, pybiscus-plugins-hierarchical/plugins-conf.yml]
+machine: demo-host                           # the machine's name in the network view (not its host name)
 viewport: {width: 1500, height: 1250}        # the managers' pages
 form_viewport: {width: 1500, height: 950}    # the forms, captured whole with full_page
 
@@ -37,3 +38,4 @@ takes:                                       # special captures, at: session-for
   - {name: edge1-server-form, at: "form:edge1-server", view: "agent:edge1-server", full_page: true, click_text: server_strategy}
   - {name: relay-edge1-form, at: "form:relay-edge1", view: "agent:relay-edge1", full_page: true}
   - {name: core-cycles, at: end, view: "manager:core@cyclesChart", tab: cycles}
+  - {name: core-network, at: end, view: "manager:core", path: /pybiscus-session/network, full_page: true}

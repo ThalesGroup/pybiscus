@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Pybiscus network{% if bouquet %} · {{ bouquet }}{% endif %}</title>
+<style>
+  :root{
+    --bg:#0e1116; --panel:#151a21; --panel-2:#1b222b; --border:#232c37;
+    --text:#e6edf3; --muted:#7d8794; --dim:#4b545f; --accent:#ff5d73; --warn:#ffb454;
+    --http:#4ecdc4; --grpc:#ff5d73; --files:#ffb454;
+    --mono:ui-monospace,"JetBrains Mono","SF Mono",Menlo,Consolas,monospace; --r:10px;
+  }
+  *{box-sizing:border-box}
+  body{margin:0; background:radial-gradient(1200px 700px at 82% -12%, #16202b 0%, transparent 60%), var(--bg);
+    color:var(--text); font-family:var(--mono); font-size:13px; line-height:1.5}
+  .app{padding:12px; display:grid; gap:12px}
+  .topbar{display:flex; align-items:center; gap:14px; padding:10px 14px; border:1px solid var(--border);
+    border-radius:var(--r); background:linear-gradient(180deg,var(--panel-2),var(--panel))}
+  .topbar .right{margin-left:auto; display:flex; gap:8px}
+  .eyebrow{font-size:10.5px; letter-spacing:.22em; text-transform:uppercase; color:#cdd6e0; font-weight:600}
+  .btn{background:var(--panel-2); color:var(--text); border:1px solid var(--border); border-radius:8px; padding:5px 10px;
+    font:inherit; text-decoration:none; cursor:pointer}
+  .panel{border:1px solid var(--border); border-radius:var(--r); background:var(--panel); padding:10px 14px}
+  .panel>header{display:flex; align-items:center; gap:10px; margin-bottom:8px}
+  .note{color:var(--muted)}
+  .problems{border-color:var(--warn)} .problems li{color:var(--warn)}
+  table{border-collapse:collapse; width:100%}
+  th,td{text-align:left; padding:4px 8px; border-bottom:1px solid var(--border); vertical-align:top}
+  th{color:var(--muted); font-weight:500}
+  td.num{font-variant-numeric:tabular-nums}
+  .proto{padding:1px 7px; border-radius:999px; font-size:11px; border:1px solid currentColor}
+  .proto.HTTP{color:var(--http)} .proto.gRPC{color:var(--grpc)} .proto.files{color:var(--files)}
+  .machine-row td{background:var(--panel-2); font-weight:600}
+  svg text{font-family:var(--mono); fill:var(--text)}
+  details summary{cursor:pointer; color:var(--muted)}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="topbar">
+    <span class="eyebrow">Pybiscus · network</span>
+    <span id="scope" class="note"></span>
+    <div class="right">
+      <a class="btn" href="/pybiscus-session/network.csv" title="the flows between two machines, as a firewall request needs them">⬇ flows (CSV)</a>
+      <a class="btn" href="/pybiscus-session/manage">← session</a>
+    </div>
+  </div>
+
+  <section class="panel problems" id="problems-panel" hidden><header><span class="eyebrow">Problems</span></header><ul id="problems"></ul></section>
+
+  <section class="panel">
+    <header><span class="eyebrow">Graph</span>
+      <span class="note">each arrow goes from the process opening the connection to the one listening;
+        <span class="proto HTTP">HTTP</span> <span class="proto gRPC">gRPC</span> <span class="proto files">files</span></span></header>
+    <div id="graph"></div>
+  </section>
+
+  <section class="panel">
+    <header><span class="eyebrow">Flows between machines</span><span class="note">what a firewall must let through</span></header>
+    <table id="cross"></table>
+  </section>
+
+  <section class="panel">
+    <header><span class="eyebrow">Listening processes, by machine</span></header>
+    <table id="ports"></table>
+  </section>
+
+  <section class="panel">
+    <details><summary>every flow, machines included</summary><table id="flows"></table></details>
+  </section>
+</div>
+<script>
+  const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+  const KIND_ICON = {manager:'👨‍🌾', flower:'🌺', agent:'🤖'};
+  const KIND_ORDER = {manager:0, flower:1, agent:2};
+  const proto = p => `<span class="proto ${esc(p)}">${esc(p)}</span>`;
+
+  function render(view){
+    const byId = Object.fromEntries(view.processes.map(p => [p.id, p]));
+    const machines = view.machines.map(m => m.name);
+    document.getElementById('scope').textContent =
+      `${machines.length} machine${machines.length === 1 ? '' : 's'}, ${view.processes.length} processes, ${view.flows.length} flows`;
+    const problems = view.problems || [];
+    document.getElementById('problems-panel').hidden = !problems.length;
+    document.getElementById('problems').innerHTML = problems.map(p => `<li>${esc(p)}</li>`).join('');
+
+    // the flows a firewall sees: between two machines, with a port
+    const cross = {};
+    view.flows.forEach(f => {
+      const a = byId[f.from], b = byId[f.to];
+      if(!a || !b || a.machine === b.machine || !f.port) return;
+      const key = [a.machine, b.machine, f.port, f.protocol].join('|');
+      (cross[key] = cross[key] || {from:a.machine, to:b.machine, port:f.port, protocol:f.protocol, purposes:new Set()}).purposes.add(f.purpose);
+    });
+    const crossRows = Object.values(cross);
+    document.getElementById('cross').innerHTML = crossRows.length
+      ? '<tr><th>from machine</th><th>to machine</th><th>port</th><th>protocol</th><th>purpose</th></tr>' +
+        crossRows.map(r => `<tr><td>${esc(r.from)}</td><td>${esc(r.to)}</td><td class="num">${esc(r.port)}</td><td>${proto(r.protocol)}</td>` +
+                           `<td>${[...r.purposes].map(esc).join('<br>')}</td></tr>`).join('')
+      : '<tr><td class="note">none: every process runs on one machine</td></tr>';
+
+    const sorted = list => list.slice().sort((a, b) => (a.bouquet || '').localeCompare(b.bouquet || '') ||
+      KIND_ORDER[a.kind] - KIND_ORDER[b.kind] || a.name.localeCompare(b.name));
+    document.getElementById('ports').innerHTML =
+      '<tr><th>process</th><th>bouquet</th><th>port</th><th>protocol</th><th>listens on</th><th>role</th></tr>' +
+      view.machines.map(m => `<tr class="machine-row"><td colspan="6">🖥 ${esc(m.name)}</td></tr>` +
+        sorted(m.processes.map(id => byId[id])).map(p =>
+          `<tr><td>${KIND_ICON[p.kind] || ''} ${esc(p.name)}</td><td>${esc(p.bouquet)}</td><td class="num">${esc(p.port ?? '—')}</td>` +
+          `<td>${proto(p.protocol)}</td><td>${esc(p.listen || (p.external ? 'seen from outside' : '—'))}</td><td>${esc(p.role)}</td></tr>`).join('')).join('');
+
+    document.getElementById('flows').innerHTML =
+      '<tr><th>from</th><th>to</th><th>port</th><th>protocol</th><th>purpose</th></tr>' +
+      view.flows.map(f => `<tr><td>${esc((byId[f.from] || {}).name || f.from)}</td><td>${esc((byId[f.to] || {}).name || f.to)}</td>` +
+                          `<td class="num">${esc(f.port ?? '—')}</td><td>${proto(f.protocol)}</td><td>${esc(f.purpose)}</td></tr>`).join('');
+
+    drawGraph(view, byId, sorted);
+  }
+
+  // machines as columns of their processes; a flow is an arc beside its column (same machine) or goes
+  // from one column to another through a lane of its own under the boxes, crossing none of them; its
+  // arrow at the listening end
+  function drawGraph(view, byId, sorted){
+    const BOX_W = 250, BOX_H = 26, GAP = 8, HEAD = 34, COL_GAP = 170, ARC_ROOM = 120;
+    const columns = view.machines.map(m => sorted(m.processes.map(id => byId[id])));
+    const pos = {};
+    let x = 10, height = 0;
+    columns.forEach((procs, c) => {
+      procs.forEach((p, i) => { pos[p.id] = {x, y: HEAD + i * (BOX_H + GAP), c}; });
+      height = Math.max(height, HEAD + procs.length * (BOX_H + GAP));
+      x += BOX_W + ARC_ROOM + (c < columns.length - 1 ? COL_GAP : 0);
+    });
+    const width = x + 10;
+    const LANE_TOP = height + 18, LANE_GAP = 9;
+    let lanes = 0;
+    const colour = p => getComputedStyle(document.documentElement).getPropertyValue(`--${p.toLowerCase()}`).trim() || '#7d8794';
+    let arcs = '', boxes = '', arcIndex = {};
+    view.flows.forEach(f => {
+      const a = pos[f.from], b = pos[f.to];
+      if(!a || !b) return;
+      const ya = a.y + BOX_H / 2, yb = b.y + BOX_H / 2, col = colour(f.protocol);
+      const title = `<title>${esc((byId[f.from] || {}).name)} → ${esc((byId[f.to] || {}).name)} · ${esc(f.protocol)}${f.port ? ' ' + esc(f.port) : ''}: ${esc(f.purpose)}</title>`;
+      if(a.c === b.c){
+        const k = arcIndex[a.c] = (arcIndex[a.c] || 0) + 1;
+        const bulge = a.x + BOX_W + 8 + (k % 12) * 9;
+        arcs += `<path d="M${a.x + BOX_W},${ya} C${bulge},${ya} ${bulge},${yb} ${b.x + BOX_W},${yb}" fill="none" stroke="${col}" stroke-opacity=".55" stroke-width="1.4" marker-end="url(#arrow-${f.protocol})">${title}</path>`;
+      } else {
+        // out of the source's right side and into the target's right side, down to the flow's lane between
+        const lane = LANE_TOP + (lanes++) * LANE_GAP;
+        const x1 = a.x + BOX_W, x2 = b.x + BOX_W, out1 = x1 + 14, out2 = x2 + 14;
+        arcs += `<path d="M${x1},${ya} H${out1 - 6} Q${out1},${ya} ${out1},${ya + 6} V${lane - 6} Q${out1},${lane} ${out1 + (out2 > out1 ? 6 : -6)},${lane}` +
+          ` H${out2 + (out2 > out1 ? -6 : 6)} Q${out2},${lane} ${out2},${lane - 6} V${yb + 6} Q${out2},${yb} ${out2 - 6},${yb} H${x2}"` +
+          ` fill="none" stroke="${col}" stroke-opacity=".8" stroke-width="1.6" marker-end="url(#arrow-${f.protocol})">${title}</path>`;
+      }
+    });
+    columns.forEach((procs, c) => {
+      const first = procs[0] && pos[procs[0].id];
+      if(!first) return;
+      boxes += `<text x="${first.x}" y="20" font-size="12" font-weight="600">🖥 ${esc(view.machines[c].name)}</text>`;
+      procs.forEach(p => {
+        const {x, y} = pos[p.id];
+        boxes += `<g><title>${esc(p.role)}${p.listen ? ' · listens on ' + esc(p.listen) : ''}</title>` +
+          `<rect x="${x}" y="${y}" width="${BOX_W}" height="${BOX_H}" rx="6" fill="#1b222b" stroke="${p.external ? '#4b545f' : '#2d3845'}"${p.external ? ' stroke-dasharray="4 3"' : ''}/>` +
+          `<text x="${x + 8}" y="${y + 17}" font-size="11.5">${KIND_ICON[p.kind] || ''} ${esc(p.name)}</text>` +
+          `<text x="${x + BOX_W - 8}" y="${y + 17}" font-size="11" text-anchor="end" fill="#7d8794">${p.port ? esc(p.protocol) + ' :' + esc(p.port) : ''}</text></g>`;
+      });
+    });
+    const markers = ['HTTP', 'gRPC', 'files'].map(p =>
+      `<marker id="arrow-${p}" viewBox="0 0 8 8" refX="8" refY="4" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L8,4 L0,8 z" fill="${colour(p)}"/></marker>`).join('');
+    document.getElementById('graph').innerHTML =
+      `<svg width="${width}" height="${LANE_TOP + lanes * LANE_GAP + 10}" viewBox="0 0 ${width} ${LANE_TOP + lanes * LANE_GAP + 10}"><defs>${markers}</defs>${arcs}${boxes}</svg>`;
+  }
+
+  function refresh(){
+    fetch('/pybiscus-session/network.json').then(r => r.json()).then(render).catch(console.error);
+  }
+  refresh();
+  setInterval(refresh, 5000);
+</script>
+</body>
+</html>

@@ -10,3 +10,4 @@ shots:
   - {file: hier_core_after.png, view: "manager:core", at: end}
   - {file: hier_edge1_after.png, view: "manager:edge1", at: end}
   - {file: hier_cycles.png, take: core-cycles}
+  - {file: network_session.png, take: core-network}

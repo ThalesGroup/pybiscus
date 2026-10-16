@@ -40,7 +40,8 @@ def bouquet_topology() -> dict:
               for role, registered in (("server", sm.registered_servers), ("client", sm.registered_clients))
               for name in registered]
     from pybiscus.session.manager.cycles import session_cycles
-    return {"bouquet": sm.bouquet, "color": sm.bouquet_color, "manager_url": sm.manager_url,
+    from pybiscus.session.manager.network import local_view
+    return {"bouquet": sm.bouquet, "color": sm.bouquet_color, "manager_url": sm.manager_url, "network": local_view(),
             "manager": manager_place(), "agents": agents, "relays": dict(sm.relays), "lower_levels": lower_levels(),
             "cycles": session_cycles(), "session": session_state()}
 

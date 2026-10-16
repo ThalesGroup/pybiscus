@@ -51,6 +51,8 @@ bouquet_mismatch = "refuse"
 link_transport = "directory"   # --link-transport
 # lower-level bouquet -> the transport of its link, chosen in this manager's page (else link_transport)
 link_transports = {}
+manager_host = "127.0.0.1"   # --host: the address the manager listens on
+machine_name = None   # --machine: the name of this manager's machine in the network view (default: its host name)
 manager_url = None     # how the other managers reach this one's page
 # where this manager is (--location, --geo), drawn on the maps of a hierarchical session
 manager_location = None
@@ -186,6 +188,9 @@ def main():
                              f"(default: ${LINK_TRANSPORT_ENV}, else directory)")
     parser.add_argument("--color", default=None,
                         help="CSS colour of this manager's page (default: derived from --bouquet, the same for the same name)")
+    parser.add_argument("--machine", default=None,
+                        help="name of this manager's machine in the network view, and of its agents reached at the loopback "
+                             "(default: the host name)")
     parser.add_argument("--location", default=None, help="where this manager is, e.g. palaiseau-dc (shown on the maps)")
     parser.add_argument("--geo", type=geo_coordinates, default=None,
                         help="this manager's coordinates, LAT,LON (default on the maps: next to its session's server)")
@@ -206,13 +211,15 @@ def main():
 
     CORS(pybiscus_manager_app, origins=[LOCAL_ORIGINS, *args.allow_origin], allow_headers=["Content-Type", "Authorization", HEADER])
 
-    global manager_port, admin_token, session_token, tokens_are_required, bouquet, bouquet_color, bouquet_mismatch, link_transport, manager_url, manager_location, manager_geo
+    global manager_port, admin_token, session_token, tokens_are_required, bouquet, bouquet_color, bouquet_mismatch, link_transport, manager_host, machine_name, manager_url, manager_location, manager_geo
     manager_port=args.port
     manager_location, manager_geo = args.location, args.geo
     bouquet = args.bouquet
     bouquet_color = args.color
     bouquet_mismatch = args.bouquet_mismatch
     link_transport = args.link_transport
+    manager_host = args.host
+    machine_name = args.machine
     tokens_are_required = tokens_required(args.host, args.require_token)
     admin_name, session_name = manager_token_names(manager_port)
     admin_token = component_token(admin_name, args.admin_token) if tokens_are_required else None
