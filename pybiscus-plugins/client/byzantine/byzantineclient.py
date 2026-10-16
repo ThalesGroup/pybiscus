@@ -171,4 +171,5 @@ class ByzantineClientFactory(ClientFactory):
             conf_fabric=self.config.client_compute_context.hardware,
             pre_train_val=self.config.client_run.pre_train_val,
             optimizer_state=self.config.client_run.optimizer_state,
+            refresh_data=self.config.client_run.refresh_data,
         )

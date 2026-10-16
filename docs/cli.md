@@ -8,14 +8,15 @@ repository root:
 pybiscus --help
 ```
 
-The `pybiscus` command has five groups of commands:
+The `pybiscus` command has six groups of commands:
 - `server`: `launch` a Flower server, or `check` its configuration;
 - `client`: `launch` a client, or `check` its configuration;
 - `local`: `train-config`, a training on one site's data without federation, as a baseline;
 - `data`: `partition`, how the training data is shared between the clients (`--export` writes
   each client's indices);
 - `plugins`: `doc`, which writes [the reference of the loaded plugins](plugins-reference.md)
-  (`--check` only tells whether it is up to date).
+  (`--check` only tells whether it is up to date);
+- `schedule`: `preview`, the next deadlines of a schedule of rounds.
 
 ## A federated session
 
@@ -31,8 +32,8 @@ pybiscus client launch configs/cifar10_cnn/distributed/without_ssl/client_2.yml
 
 `check` validates a configuration against its Pydantic models without running anything. Options
 replace some values of the configuration: `--server-listen-address`, `--num-rounds`,
-`--weights-path` (initial weights) for the server; `--server-address`, `--cid`, `--root-dir` for a
-client.
+`--weights-path` (initial weights; `latest`: those the last session of the reporting `basedir`
+saved) for the server; `--server-address`, `--cid`, `--root-dir` for a client.
 
 The server runs `num_rounds` rounds. `kill -USR1 <pid>` (the server logs its pid at start) stops it
 after the current round: the clients are disconnected and the reports written as at a normal end
@@ -52,6 +53,26 @@ The scripts of `launch/uv/` run the demos, one terminal per process:
 `common.sh` in each directory sets the address the clients reach the server at (`localhost` for a
 session on one machine) and the address the server listens on; the scripts pass them as options.
 `launch/uv/mnist_cnn/distributed/` runs the mnist demo the same way.
+
+## Checking a schedule
+
+Rounds at fixed times are planned ([configuration.md](configuration.md#data-arriving-between-rounds));
+their schedule can already be checked:
+
+```bash
+pybiscus schedule preview --every 1h30min
+pybiscus schedule preview --cron "30 2 * * *" --timezone Europe/Paris --count 3
+```
+
+- `--every`: a period, a number and a unit (`s`, `min`, `h`, `d`, `w`): `90s`, `15min`, `1h30min`,
+  `1d`. The deadlines follow one another in elapsed time: a change of time shifts them by an hour
+  on the clock.
+- `--cron`: fixed times, `minute hour day month weekday`; in `--timezone` (an IANA name), the
+  machine's zone otherwise. A time that does not exist on the night the clocks go forward is run
+  at the jump (`02:30` → `03:00`), a time that occurs twice on the night they go back, once.
+- `--start deadline`: the first round waits for the first deadline too (`now` by default).
+- A deadline missed, a round lasting longer than the period, is not made up for: the next round
+  is at the first deadline still to come.
 
 ## Encrypting the Flower traffic (SSL)
 

@@ -326,7 +326,8 @@ def make_loader(dataset: Dataset, options, num_workers: int = 0, order_seed: Opt
         dataset,
         batch_size=options.batch_size,
         num_workers=num_workers,
-        shuffle=options.shuffle,
+        # an empty set (an incremental module with nothing new): torch refuses to shuffle it
+        shuffle=options.shuffle and len(dataset) > 0,
         drop_last=options.drop_last,
         generator=generator,
         **worker_start(num_workers),

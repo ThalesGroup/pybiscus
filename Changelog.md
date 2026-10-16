@@ -19,6 +19,14 @@
 * Session manager: a *⏹ stop after round* button does it from the page; the round counter shows `k/N ⏹` and the reason of the stop, the server agent ends
   *stopped*.
 
+* Data arriving between rounds, a first step towards rounds at fixed times: with
+  `client_run.refresh_data` a client reads its data again before each round; the `hdfs` plugin
+  reads lots (`train.directory`, a file each) and with `train.lots: new` only those not trained on
+  yet, remembered per client across sessions. A client with nothing to train on leaves the round
+  instead of failing it; `--weights-path latest` starts a session from the last one's final
+  weights; `pybiscus schedule preview` shows the deadlines of a period or of a cron expression
+  ([configuration.md](docs/configuration.md#data-arriving-between-rounds)). New dependency:
+  `cronsim`.
 * Reports written twice: the server's `check` refuses a configuration where two writers (the
   server, a metrics logger, a decorator) would write the same file of the reporting directory, or
   one in a directory another owns. A plugin used twice in the pipeline, to save before and after a

@@ -1,4 +1,5 @@
 import csv
+from pathlib import Path
 from typing import Optional
 
 import lightning.pytorch as pl
@@ -8,10 +9,12 @@ import torch
 from torch.utils.data import DataLoader, Dataset
 
 import pybiscus.core.pybiscus_logger as logm
+import pybiscus.core.pybiscuscontext as pcpc
+from pybiscus.ml.datarefresh import DataCursor
 from pybiscus.ml.datasplit import ConfigPartition, all_partitions, holdout, limit, make_loader, reject_former_fields, worker_start
 
 from hdfs.hdfs_dataconfig import (
-    HDFS_FORMER_FIELDS, HdfsTestFormat, HdfsTestSet, HdfsTrainSet, HdfsValSet, HdfsValSource,
+    HDFS_FORMER_FIELDS, HdfsLots, HdfsTestFormat, HdfsTestSet, HdfsTrainSet, HdfsValSet, HdfsValSource,
 )
 
 
@@ -85,29 +88,72 @@ class HDFSDataModule(pl.LightningDataModule):
         self.test = HdfsTestSet.model_validate(test or {})
         self.num_workers = num_workers
         self.data_train = self.data_val = self.data_test = None
+        self.cursor = None
+        if self.train.lots == HdfsLots.new:
+            # per client: two clients of one machine reading the same directory each keep their own
+            client = pcpc.pybiscus_context.get(pcpc.CID, "local")
+            self.cursor = DataCursor(f"hdfs-client{client}-{Path(self.train.directory).resolve()}")
+
+    def lots(self) -> list[Path]:
+        """the files read: train.file, or the lots of train.directory still to read"""
+        if not self.train.directory:
+            return [Path(self.train.file)]
+        lots = sorted(Path(self.train.directory).glob("*.csv"))
+        if self.train.lots == HdfsLots.new:
+            last = self.cursor.load()
+            lots = [lot for lot in lots if last is None or lot.name > last]
+        return lots
+
+    def read_lots(self) -> list[list[tuple[int, ...]]]:
+        self.lots_read = self.lots()
+        self._lot_sequences = [read_sequences(str(lot)) for lot in self.lots_read]
+        return self._lot_sequences
 
     def train_source(self):
         """the training sequences, which the partitions and holdout share out"""
-        return read_sequences(self.train.file)
+        return [sequence for lot in self.read_lots() for sequence in lot]
 
     def split_units(self, partition: Optional[ConfigPartition]) -> tuple[np.ndarray, Optional[np.ndarray]]:
-        """indices of the training and (holdout) validation sequences of a partition"""
-        sequences = self.train_source()
-        base = np.arange(len(sequences)) if partition is None else all_partitions(sequences, partition)[partition.partition_id]
-        if self.val.source == HdfsValSource.holdout:
-            return holdout(base, self.val.fraction, self.val.seed)
-        return np.sort(base), None
+        """indices of the training and (holdout) validation sequences of a partition, in train_source"""
+        train, val, offset = [], [], 0
+        # lot by lot: drawn on the whole of a growing directory, the shares and the held-out
+        # sequences of the earlier lots would change at each new lot
+        for sequences in self.read_lots():
+            base = np.arange(len(sequences)) if partition is None else all_partitions(sequences, partition)[partition.partition_id]
+            if self.val.source == HdfsValSource.holdout and len(base):
+                lot_train, lot_val = holdout(base, self.val.fraction, self.val.seed)
+                val.append(lot_val + offset)
+            else:
+                lot_train = np.sort(base)
+            train.append(lot_train + offset)
+            offset += len(sequences)
+        indices = np.concatenate(train) if train else np.array([], dtype=int)
+        if self.val.source != HdfsValSource.holdout:
+            return indices, None
+        return indices, np.concatenate(val) if val else np.array([], dtype=int)
+
+    def refresh(self) -> dict:
+        self.setup(stage="fit")
+        return {"data_lots": len(self.lots_read)}
+
+    def commit_refresh(self) -> None:
+        if self.cursor is not None:
+            self.cursor.commit()
 
     def setup(self, stage: Optional[str] = None):
         if stage == "fit" or stage is None:
-            sequences = self.train_source()
             train_idx, val_idx = self.split_units(self.train.partition)
+            sequences = [sequence for lot in self._lot_sequences for sequence in lot]
             self.data_train = limit(HDFSWindows([sequences[i] for i in train_idx], self.window), self.train.max_samples)
             val_sequences = [sequences[i] for i in val_idx] if val_idx is not None else read_sequences(self.val.file)
             self.data_val = limit(HDFSWindows(val_sequences, self.window), self.val.max_samples)
             partition = self.train.partition
+            if self.cursor is not None and self.lots_read:
+                self.cursor.stage(self.lots_read[-1].name)
+            lots = f"lots {self.lots_read[0].name} .. {self.lots_read[-1].name}, " if self.train.directory and self.lots_read else \
+                ("no new lot, " if self.train.directory else "")
             logm.console.log(
-                f"hdfs: {len(train_idx)} training sequences ({len(self.data_train)} windows), "
+                f"hdfs: {lots}{len(train_idx)} training sequences ({len(self.data_train)} windows), "
                 f"{len(val_sequences)} validation sequences ({len(self.data_val)} windows, {self.val.source.value})"
                 + (f", partition {partition.partition_id + 1}/{partition.num_partitions}" if partition else "")
             )

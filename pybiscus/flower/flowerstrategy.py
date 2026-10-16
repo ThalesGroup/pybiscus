@@ -53,6 +53,12 @@ class FabricLoggingMixin:
         # overriding the aggregation here would turn every strategy into a FedAvg
         aggregated = super().aggregate_fit(server_round, results, failures)
 
+        # a client that withdrew (no new data) says why, its cid included: Flower's line only
+        # counts the failures, and its proxies are named by a hash
+        for failure in failures:
+            if isinstance(failure, tuple):
+                logm.console.log(f"🚫 Round {server_round}: a client left the round: {failure[1].status.message}")
+
         if results:
             logm.console.log(
                 f"🔁 Round:{server_round} aggregates using {type(self).__name__}\n"

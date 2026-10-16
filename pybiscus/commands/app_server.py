@@ -6,7 +6,7 @@ import typer
 from lightning.fabric import Fabric
 from omegaconf import OmegaConf
 from pydantic import ValidationError
-from typing import Annotated
+from typing import Annotated, Optional
 
 from pybiscus.core.ensure_filesystem import ensure_dir_exists, ensure_file_dir_exists
 from pybiscus.core.logger.filelogger.filelogger import FileLoggerFactory
@@ -20,7 +20,7 @@ from pybiscus.flower.stoppableserver import StoppableServer
 from pybiscus.flower.legacyentrypoints import hide_legacy_entry_point_warnings
 from pybiscus.flower_config.config_server import ConfigServer
 from pybiscus.commands.onnx_mngt import to_onnx_with_datamodule
-from pybiscus.core.reportingoutputs import CLIENT_CONFIGS_DIR, METRICS_FILE, SERVER_LOG_FILE
+from pybiscus.core.reportingoutputs import CLIENT_CONFIGS_DIR, LATEST, METRICS_FILE, SERVER_LOG_FILE, latest_checkpoint
 from pybiscus.commands.apps_common import apply_num_threads, apply_seed, exit_if_port_in_use, exit_on_invalid_config, load_config, resolve_defaults
 from pybiscus.plugin.registries.data_registry import datamodule_registry
 from pybiscus.plugin.registries.logger_registry import logger_registry
@@ -167,12 +167,25 @@ def server_certificates(conf_ssl):
 
 #                    ------------------------------------------------
 
+def resolve_latest_weights(conf: ConfigServer) -> Optional[Path]:
+    reporting = conf.server_run.reporting
+    if reporting.save_on_train_end is None:
+        logm.console.log("❌ --weights-path latest: server_run.reporting.save_on_train_end is not set, no session saves its weights")
+        raise typer.Exit(code=1)
+    found = latest_checkpoint(reporting.basedir, reporting.save_on_train_end.filename)
+    if found is None:
+        # the first session of a schedule has no predecessor
+        logm.console.log(f"--weights-path latest: no {reporting.save_on_train_end.filename} in {reporting.basedir} yet, random initialization")
+    return found
+
+
 @app.command(name="launch")
 def launch_config(
     config:                Annotated[Path, typer.Argument()],
     num_rounds:            Annotated[int, typer.Option(rich_help_panel="Overriding some parameters")] = None,
     server_listen_address: Annotated[str, typer.Option(rich_help_panel="Overriding some parameters")] = None,
-    weights_path:          Annotated[Path,typer.Option(rich_help_panel="Overriding some parameters")] = None,
+    weights_path:          Annotated[Path,typer.Option(rich_help_panel="Overriding some parameters",
+                                           help='weights to start from; "latest": those the last session of the reporting basedir saved (save_on_train_end)')] = None,
 ):
     """Launch a Flower Server.
 
@@ -188,7 +201,8 @@ def launch_config(
     server_listen_address: optional
         the IP address and port of the Flower Server.
     weights_path: optional
-        path to the weights of the model to be loaded at the beginning of the Federated Learning.
+        path to the weights of the model to be loaded at the beginning of the Federated Learning;
+        "latest": the final weights of the last session of the reporting basedir
     """
 
     # handling mandatory config path parameter
@@ -217,6 +231,10 @@ def launch_config(
     # saved to the reporting directory at the end of the run
     import pybiscus.core.pybiscuscontext as pcpc
     pcpc.pybiscus_context[pcpc.SERVER_CONFIG] = conf.model_dump(mode="json")
+
+    # before this session's directory exists: it would be the last one, without weights yet
+    if weights_path is not None and str(weights_path) == LATEST:
+        weights_path = resolve_latest_weights(conf)
 
     # compute the reporting path
     

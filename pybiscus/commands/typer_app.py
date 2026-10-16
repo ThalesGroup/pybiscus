@@ -6,6 +6,7 @@ import pybiscus.commands.app_client as client
 import pybiscus.commands.app_data as data
 import pybiscus.commands.app_local as local_train
 import pybiscus.commands.app_plugins as plugins
+import pybiscus.commands.app_schedule as schedule
 import pybiscus.commands.app_server as server
 
 app = typer.Typer(pretty_exceptions_show_locals=False, rich_markup_mode="rich")
@@ -14,6 +15,7 @@ app.add_typer(client.app, name="client")
 app.add_typer(local_train.app, name="local")
 app.add_typer(data.app, name="data")
 app.add_typer(plugins.app, name="plugins")
+app.add_typer(schedule.app, name="schedule")
 
 
 @app.command()
@@ -25,7 +27,7 @@ def tui(ctx: typer.Context):
 def explain():
     """
 
-    **The Pybiscus app is made of five commands:**
+    **The Pybiscus app is made of six commands:**
 
     * server: to launch a server for a Federated Learning session.
 
@@ -36,6 +38,8 @@ def explain():
     * data: to inspect or export how the data is partitioned between the clients.
 
     * plugins: to write the reference of the loaded plugins.
+
+    * schedule: to check the deadlines of scheduled rounds.
 
     ---
 

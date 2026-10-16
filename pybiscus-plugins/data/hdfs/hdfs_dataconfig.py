@@ -11,14 +11,31 @@ from pybiscus.ml.datasplit import SET_FIELDS, ConfigPartition, PartitionScheme, 
 # overlap, and a sequence split between two sets would put the same events on both sides.
 
 
+class HdfsLots(str, Enum):
+    all = "all"
+    new = "new"
+
+
+HdfsLots.PYBISCUS_DESCRIPTIONS = {
+    "all": "every lot of the directory",
+    "new": "only the lots not trained on yet: a cursor per client remembers the last one, across sessions",
+}
+
+
 class HdfsTrainSet(BaseModel):
-    """file: the training sequences (one per line); partition: this client's share of the
-    sequences (iid only); seed: order of the shuffled batches"""
+    """file: the training sequences (one per line), or directory: lots of them, one file each (e.g.
+    the logs of a day), read in the order of their names; lots: all of them or the new ones only;
+    partition: this client's share of the sequences (iid only), of each lot; seed: order of the
+    shuffled batches"""
 
     PYBISCUS_CONFIG: ClassVar[str] = "train"
 
     # the sample shipped with the plugin; a "${root_dir}" default would not be interpolated
     file: str = Field(default=str(Path(__file__).parent / "train0.csv"), description='the training sequences, one per line')
+    directory: Optional[str] = Field(default=None, description=
+        "a directory of lots of sequences (*.csv), read in the order of their names; replaces file")
+    lots: HdfsLots = Field(default=HdfsLots.all, description=
+        "directory: which lots are read, again before each round with client_run.refresh_data")
     batch_size: int = Field(default=32, ge=1, description=SET_FIELDS["batch_size"])
     shuffle: bool = Field(default=True, description=SET_FIELDS["shuffle"])
     drop_last: bool = Field(default=False, description=SET_FIELDS["drop_last"])
@@ -32,6 +49,8 @@ class HdfsTrainSet(BaseModel):
     def _iid_only(self):
         if self.partition is not None and self.partition.scheme != PartitionScheme.iid:
             raise ValueError("train.partition: sequences are shared iid only (dirichlet and shards split classes)")
+        if self.lots == HdfsLots.new and not self.directory:
+            raise ValueError("train.lots = new needs train.directory: the lots are its files")
         return self
 
 

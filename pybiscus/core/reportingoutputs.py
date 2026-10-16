@@ -113,3 +113,17 @@ def declared_outputs(node, label: str = "") -> list[tuple[str, str, str]]:
         for key, child in node.items():
             found += declared_outputs(child, f"{label}.{key}")
     return found
+
+
+LATEST = "latest"
+
+
+def latest_checkpoint(basedir: str, filename: str) -> Optional[Path]:
+    """the final weights of the last session of basedir that saved them: a scheduled session
+    starts from its predecessor's; not "current", which a session that failed leaves pointing to
+    a directory without weights"""
+    # the session directories are named after their start time in ISO format: sorted by name, by time
+    for session in sorted((p for p in Path(basedir).glob("*") if p.is_dir() and not p.is_symlink()), reverse=True):
+        if (session / filename).exists():
+            return session / filename
+    return None

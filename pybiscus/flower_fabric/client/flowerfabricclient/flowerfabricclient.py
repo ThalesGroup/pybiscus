@@ -6,6 +6,7 @@ import torch
 
 from pybiscus.core.pybiscusexception import PybiscusValueException
 from pybiscus.flower_config.config_computecontext import ConfigClientComputeContext
+from pybiscus.ml.datarefresh import NoNewData, commit_refresh, count_data, refresh_data
 from pybiscus.ml.loops_fabric import (
     SchedulerConfig, check_schedulers_monitor, squared_distance, test_loop, trainable_params, train_loop,
 )
@@ -76,6 +77,7 @@ class FlowerFabricClient(fl.client.NumPyClient):
         conf_fabric: dict,
         pre_train_val: bool = False,
         optimizer_state: str = "reset",
+        refresh_data: bool = False,
     ) -> None:
         """Initialize the FlowerClient instance.
 
@@ -103,6 +105,7 @@ class FlowerFabricClient(fl.client.NumPyClient):
         self.num_examples = num_examples
         self.pre_train_val = pre_train_val
         self.optimizer_state = str(getattr(optimizer_state, "value", optimizer_state))
+        self.refresh_data = refresh_data
 
         self.optimizers, self.schedulers = self._configure_optimizers()
         check_schedulers_monitor(self.schedulers, model)
@@ -133,6 +136,9 @@ class FlowerFabricClient(fl.client.NumPyClient):
         else:
             self.model = self.fabric.setup(self.model)
 
+        self._setup_dataloaders()
+
+    def _setup_dataloaders(self):
         (
             self._train_dataloader,
             self._validation_dataloader,
@@ -152,6 +158,14 @@ class FlowerFabricClient(fl.client.NumPyClient):
 
     def fit(self, parameters, config):
         logm.console.log(f"[Client {self.cid}] fit, config: {config}")
+        data_metrics = {}
+        if self.refresh_data:
+            data_metrics = refresh_data(self.data)
+            self.num_examples = count_data(self.data)
+            self._setup_dataloaders()
+            logm.console.log(f"[Client {self.cid}] data refreshed: {self.num_examples} {data_metrics}")
+        if self.num_examples["trainset"] == 0:
+            raise NoNewData(f"client {self.cid} has no example to train on in round {config['server_round']}")
         self.set_parameters(parameters)
         metrics = {}
 
@@ -189,6 +203,8 @@ class FlowerFabricClient(fl.client.NumPyClient):
         )
             
         logm.console.log(f"Training Finished! Loss is {results_train['loss']}")
+        commit_refresh(self.data)
+        metrics.update(data_metrics)
         metrics["cid"] = self.cid
         for key, val in results_train.items():
             metrics[key] = val
@@ -200,6 +216,8 @@ class FlowerFabricClient(fl.client.NumPyClient):
 
     def evaluate(self, parameters, config):
         logm.console.log(f"[Client {self.cid}] evaluate, config: {config}")
+        if self.num_examples["valset"] == 0:
+            raise NoNewData(f"client {self.cid} has no example to evaluate on in round {config['server_round']}")
         self.set_parameters(parameters)
         metrics = {}
         logm.console.log(f"Round {config['server_round']}, evaluation Started...")

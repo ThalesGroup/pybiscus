@@ -136,7 +136,15 @@ def get_modules_and_configs() -> Tuple[Dict[str, pl.LightningDataModule], List[B
 
     return registry, configs
 ```
-5. of course, add the needed Python libraries using uv
+5. data arriving between rounds (`client_run.refresh_data`): before each fit the client calls the
+   module's `refresh()` if it has one (by default, `setup("fit")` again). An incremental module
+   reads only what is new since its position, kept with `pybiscus.ml.datarefresh.DataCursor`
+   (one key per client: `pybiscus_context[CID]`): `stage(position)` when it reads, `commit()` from
+   its `commit_refresh()`, which the client calls after a successful fit only. `refresh()` may
+   return numbers describing what it read, sent with the round's metrics. Empty sets are allowed:
+   the client then leaves the round. The `hdfs` plugin (`train.directory`, `train.lots: new`) is an
+   example.
+6. of course, add the needed Python libraries using uv
 ```bash
 uv add needed-library1 needed-library2 ...
 ```

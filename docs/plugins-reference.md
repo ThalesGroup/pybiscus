@@ -212,6 +212,8 @@ HDFS logs, for the deeplog model: each session is a sequence of event ids, cut i
 | `window` | int | `10` | events the model sees before the one it predicts |
 | `train` | section | (section) | the sequences the client trains on |
 | `train.file` | str | `'/home/elmo/Pybiscus/fromGithub/pybiscus/pybiscus-plugins/data/hdfs/train0.csv'` | the training sequences, one per line |
+| `train.directory` | str (optional) | `None` | a directory of lots of sequences (*.csv), read in the order of their names; replaces file |
+| `train.lots` | 'all' \| 'new' | `'all'` | directory: which lots are read, again before each round with client_run.refresh_data |
 | `train.batch_size` | int | `32` | examples per batch |
 | `train.shuffle` | bool | `True` | examples drawn in a new random order at every epoch |
 | `train.drop_last` | bool | `False` | leave out the last, incomplete batch of every epoch |

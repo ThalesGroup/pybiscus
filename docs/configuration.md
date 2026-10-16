@@ -380,6 +380,45 @@ server_run:
   `should_stop(server_round, history)` gets Flower's `History` of the session and returns the
   reason to stop, or `None`.
 
+### Data arriving between rounds
+
+New examples may arrive while a session runs, or between two sessions: the logs of the day, new
+captures. A first step towards rounds at fixed times (planned: a round every period or at cron
+times, in one long session or one session per deadline):
+
+```yaml
+client_run:
+  refresh_data: true            # the data module reads its data again before each round
+data:
+  name: hdfs
+  config:
+    train:
+      directory: ${root_dir}/logs   # a lot per file, read in the order of the names
+      lots: new                     # only the lots not trained on yet
+```
+
+- Without `refresh_data`, a client reads its data once, when it starts. With it, before each fit,
+  the data module reads its data again: all of it by default (`setup("fit")` again), or only what
+  is new for a module that supports it, such as `hdfs` with `train.lots: new`.
+- An incremental module remembers, per client, the last data it trained on, in
+  `.pybiscus-cache/data-cursors/` of the directory the client runs from, across sessions: a
+  client restarted for a new session does not train on its old lots again. The position moves on
+  after a successful fit only, so a round that fails leaves its data to the next one. Delete the
+  file to read everything again.
+- A client with no example to train on (nothing new) **leaves the round**: the server counts it
+  among the round's failures and logs why (`a client left the round: no new data: client 1 has no example to train on…`). With
+  `accept_failures: true` (the default) the round goes on with the others; with no client left the
+  global model stays as it was. Strategies that refuse any failure (the server-side adaptive
+  clipping of DP) skip such rounds.
+- `hdfs` shares out (`partition`) and holds out (`val.source: holdout`) each lot on its own: drawn
+  on the whole of a growing directory, the earlier lots' shares would change at each new lot.
+  The reports of each round carry `fit_data_lots_<cid>`, the number of lots the client read.
+- `pybiscus server launch … --weights-path latest` starts from the final weights of the last
+  session of the reporting `basedir` that saved them (`save_on_train_end`), or from random weights
+  if none did yet: the next session of a series goes on from where the previous one ended.
+- `pybiscus schedule preview --every 1h` or `--cron "0 2 * * *" --timezone Europe/Paris` shows
+  the next deadlines of a schedule ([cli.md](cli.md#checking-a-schedule)).
+
 ### Files of the reporting directory
 
 The server, its metrics loggers and the strategy decorators write into one reporting directory
