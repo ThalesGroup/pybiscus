@@ -118,6 +118,14 @@ The manager shows, live:
 
 ![Finished session](images/session_manager_run.png "Finished session")
 
+*⏹ stop after round* ends the session after its current round: the server is sent `SIGUSR1`
+(see [cli.md](cli.md)), finishes the round, disconnects the clients and writes its reports
+(checkpoint, ONNX export) as at a normal end. The button reads *stopping after round k…* until the
+server's last round is over; the round counter then shows `k/N ⏹` (`N/N 🏁` for a session that ran
+all its rounds, the reason of the stop in its tooltip), the server agent is *stopped* (⏹️), the
+clients *terminated* (🏁). Not available yet in a hierarchical session: its lower levels would wait
+for a model that never comes; *Drop session* stops it.
+
 *Drop session* ends the session and empties the page, for a new one with the same agents (which
 register again). The runs of its agents still going are stopped. In a hierarchical session, the
 lower levels follow: a lower-level manager drops its own session (and stops its runs) as soon as it

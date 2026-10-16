@@ -8,10 +8,9 @@ import flwr as fl
 from flwr.common.logger import log
 from flwr.server.history import History
 
+import pybiscus.core.gui_events as gui_events
 import pybiscus.core.pybiscus_logger as logm
-
-# SIGINT/SIGTERM/SIGQUIT are taken by Flower's immediate shutdown; Windows has no SIGUSR1
-STOP_SIGNAL = getattr(signal, "SIGUSR1", None)
+from pybiscus.core.stop_signal import STOP_SIGNAL
 
 
 class StoppableServer(fl.server.Server):
@@ -25,12 +24,11 @@ class StoppableServer(fl.server.Server):
     def request_stop(self, reason: str) -> None:
         if self.stop_reason is None:
             self.stop_reason = reason
-            end = f"after round {self.current_round}" if self.current_round else "before its first round"
-            logm.console.log(f"🛑 stop requested ({reason}): the session ends {end}")
+            gui_events.log_stop_requested(reason, self.current_round)
 
     def stop_on_signal(self) -> None:
         if STOP_SIGNAL is not None:
-            signal.signal(STOP_SIGNAL, lambda _signum, _frame: self.request_stop("manual stop, signal SIGUSR1"))
+            signal.signal(STOP_SIGNAL, lambda _signum, _frame: self.request_stop("operator's request (SIGUSR1)"))
             logm.console.log(f"🛑 kill -USR1 {os.getpid()} stops the session after the current round")
 
     # Copy of flwr 1.27 Server.fit, whose `for` over range(num_rounds) cannot be left otherwise:
@@ -59,10 +57,7 @@ class StoppableServer(fl.server.Server):
             self._run_round(current_round, timeout, history, start_time)
             self.rounds_done = current_round
 
-        if self.stop_reason is None:
-            logm.console.log(f"🏁 session ended after {self.rounds_done}/{num_rounds} rounds")
-        else:
-            logm.console.log(f"🛑 session stopped after {self.rounds_done}/{num_rounds} rounds: {self.stop_reason}")
+        gui_events.log_session_end(self.rounds_done, num_rounds, self.stop_reason)
 
         return history, timeit.default_timer() - start_time
 

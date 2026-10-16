@@ -74,6 +74,18 @@ def log_link_event(event: str, server_round: int, examples: Optional[int] = None
     logm.console.log(f"🔗 gui link={event} round={server_round}{tail}")
 
 
+def log_stop_requested(reason: str, server_round: int) -> None:
+    end = f"after round {server_round}" if server_round else "before its first round"
+    logm.console.log(f"🛑 gui stop_requested round={server_round}: {reason}, the session ends {end}")
+
+
+def log_session_end(rounds_done: int, num_rounds: int, reason: Optional[str]) -> None:
+    if reason is None:
+        logm.console.log(f"🏁 gui session_end rounds={rounds_done}/{num_rounds}")
+    else:
+        logm.console.log(f"🛑 gui session_end rounds={rounds_done}/{num_rounds} stopped: {reason}")
+
+
 def gui_log_patterns() -> dict[str, str]:
     # JavaScript RegExp sources, compiled as is by the manager page (also valid Python)
     return {
@@ -89,4 +101,8 @@ def gui_log_patterns() -> dict[str, str]:
         "no_evaluation": r"gui no_evaluation round=(\d+)",
         # a lower level's link (log_link_event): groups event, round, examples
         "link": r"🔗 gui link=(model_received|aggregate|failed) round=(\d+)(?: examples=(\d+))?",
+        # a stop asked for (StoppableServer.request_stop): group round, the last one run
+        "stop_requested": r"gui stop_requested round=(\d+)",
+        # end of the rounds: groups rounds done, num_rounds, reason of an early stop
+        "session_end": r"gui session_end rounds=(\d+)/(\d+)(?: stopped: (.*))?",
     }

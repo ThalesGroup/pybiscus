@@ -333,6 +333,35 @@ def pybiscus_manager_delete_session():
     return jsonify({"status": "success"}), 200
 
 
+@pybiscus_manager_app.route("/pybiscus-session/stop-after-round", methods=["POST"])
+def pybiscus_manager_stop_after_round():
+    session = pybiscus.session.manager.session_manager
+    if not session.session_is_running:
+        return jsonify({"status": "error", "message": "no session is running"}), 409
+    # the lower levels only follow an abandoned link: they would wait for a model that never comes
+    if session.lower_levels or session.upper_link is not None:
+        return jsonify({"status": "error", "message":
+                        "a hierarchical session cannot be stopped after its round yet: drop it to stop it"}), 409
+
+    headers = {HEADER: "1", "Authorization": f"Bearer {session.session_token}"}
+    stopping = []
+    for name, url in session.registered_servers.items():
+        try:
+            response = requests.post(f"{url.rstrip('/')}/run/stop-after-round", headers=headers, timeout=5)
+        except requests.RequestException as error:
+            logm.console.log(f"⚠️ {name}: its run could not be stopped after its round ({type(error).__name__})")
+            continue
+        if response.status_code == 202:
+            logm.console.log(f"🛑 {name}: its run stops after the current round")
+            stopping.append(name)
+        else:
+            logm.console.log(f"⚠️ {name}: its run could not be stopped after its round (HTTP {response.status_code})")
+
+    if not stopping:
+        return jsonify({"status": "error", "message": "no server run could be stopped after its round"}), 409
+    return jsonify({"status": "success", "servers": stopping}), 202
+
+
 def stop_agent_runs():
     """a dropped session's runs stop with it: they went on without a manager, and a lower level's
     server waited for a model that no longer comes"""

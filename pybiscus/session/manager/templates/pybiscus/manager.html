@@ -38,7 +38,7 @@
   .server-url{color:var(--muted); letter-spacing:.14em; text-transform:uppercase; font-size:10.5px}
   .server-url b{color:var(--text)}
   .sep{width:1px; height:22px; background:var(--border)}
-  .kv{display:flex; align-items:center; gap:9px} .kv .num{font-size:15px} .kv b{color:var(--accent)}
+  .kv{display:flex; align-items:center; gap:9px} .kv .num{font-size:15px; white-space:nowrap} .kv b{color:var(--accent)}
   .right{margin-left:auto; display:flex; align-items:center; gap:10px}
   .btn{cursor:pointer; color:var(--text); border:1px solid var(--border); border-radius:8px; padding:6px 12px;
   a.btn{text-decoration:none}
@@ -179,6 +179,7 @@
       <a class="btn" href="/pybiscus-session/network" target="_blank" title="the machines, ports and flows of the session">🌐 network</a>
       <button class="btn" id="token-btn" title="Copy the session token: the agents give it at registration">🔑 session token</button>
       <button class="btn" id="cfg-btn" disabled title="the session can be configured once its server agent is registered">⚙ config</button>
+      <button class="btn" id="stop-round-btn" disabled title="no session is running">⏹ stop after round</button>
       <button class="btn danger" id="revokeBtn">Drop session</button>
     </div>
   </div>
@@ -373,6 +374,8 @@
   const RE = Object.fromEntries(Object.entries(GUI_PATTERNS).map(([k, src]) => [k, new RegExp(src)]));
   const PHASE_BUFFER = { fit: fit_accuracies, test: test_accuracies, evaluate: evaluate_accuracies };
   let mainMetricName = null;
+  // stopRound: the last round run when a stop after it was asked for; sessionEnd: {done, total, reason}
+  let stopRound = null, sessionEnd = null, stopPending = false;
 
   function checkLogs(newItems){
     newItems.forEach(item=>{
@@ -390,6 +393,10 @@
       if(mMd){ metricDiffs.add(parseFloat(mMd[1])); return; }
       const mNe = item.message.match(RE.no_evaluation);
       if(mNe){ noEvaluationRound = parseInt(mNe[1],10); return; }
+      const mSr = item.message.match(RE.stop_requested);
+      if(mSr){ stopRound = parseInt(mSr[1],10); return; }
+      const mEnd = item.message.match(RE.session_end);
+      if(mEnd){ sessionEnd = {done: parseInt(mEnd[1],10), total: parseInt(mEnd[2],10), reason: mEnd[3] || null}; return; }
     });
   }
 
@@ -535,7 +542,13 @@
     });
     svg.innerHTML = s;
   }
-  function renderCharts(){ renderAccuracy(); renderLoss(); renderDround(); renderCycles(); renderConstraints(); setTxt('round-num', session.roundNumber); }
+  function renderCharts(){ renderAccuracy(); renderLoss(); renderDround(); renderCycles(); renderConstraints(); renderRound(); }
+  function renderRound(){
+    const el = document.getElementById('round-num');
+    if(!sessionEnd){ el.textContent = session.roundNumber; el.title = ''; return; }
+    el.textContent = `${sessionEnd.done}/${sessionEnd.total} ${sessionEnd.reason ? '⏹' : '🏁'}`;
+    el.title = sessionEnd.reason ? `stopped after round ${sessionEnd.done}: ${sessionEnd.reason}` : 'all the rounds were run';
+  }
 
   // ============ topology + geo ============
   const ROLE_ICON  = { server:'🧠', client:'💻' };
@@ -864,6 +877,7 @@
       const cfgBtn = document.getElementById('cfg-btn');
       cfgBtn.disabled = missing.length > 0;
       cfgBtn.title = missing.length ? 'the session can be configured once it has ' + missing.join(', and ') : 'configure and launch the session';
+      renderStopButton(lowerBouquets.length > 0 || !!data.upper_level);
     }).catch(console.error);
   }
 
@@ -892,6 +906,25 @@
     // the clipboard API exists in secure contexts only (https, localhost): shown otherwise
     try{ await navigator.clipboard.writeText(SESSION_TOKEN); e.target.textContent='🔑 copied'; setTimeout(()=>e.target.textContent='🔑 session token', 1500); }
     catch{ prompt('Session token, to give to the agents:', SESSION_TOKEN); }
+  };
+  function renderStopButton(hierarchical){
+    const btn = document.getElementById('stop-round-btn');
+    const asked = stopPending || stopRound !== null;
+    btn.disabled = !sessionRunning || hierarchical || asked || !!sessionEnd;
+    btn.textContent = asked && !sessionEnd ? (stopRound === null ? '⏹ stopping…' : `⏹ stopping after round ${stopRound}…`) : '⏹ stop after round';
+    btn.title = sessionEnd ? 'the session has ended'
+      : !sessionRunning ? 'no session is running'
+      : hierarchical ? 'a hierarchical session cannot be stopped after its round yet: drop it to stop it'
+      : asked ? 'the server ends the session after its current round'
+      : 'end the session after its current round: the clients are disconnected, the reports written (checkpoint, ONNX)';
+  }
+  document.getElementById('stop-round-btn').onclick = async ()=>{
+    stopPending = true; renderStopButton(false);
+    try{
+      const response = await fetch('/pybiscus-session/stop-after-round', {method:'POST', headers:{'X-Pybiscus':'1'}});
+      if(!response.ok){ stopPending = false; alert((await response.json()).message); }
+    }catch(error){ stopPending = false; console.error('Error stopping the session after its round:', error); }
+    updateGraph();
   };
   document.getElementById('cfg-btn').onclick = ()=>{ if(serverUrl) openSessionConfig(sessionConfigUrl(serverUrl)); };
   addEventListener('keydown', e=>{ if(e.key==='Escape') closeSessionConfig(); });

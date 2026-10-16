@@ -8,6 +8,7 @@ from rich import print as rich_print
 
 from pybiscus.commands.apps_common import CONFIG_VALIDATION_EXIT_CODE
 from pybiscus.core.pybiscusexception import PybiscusValueException
+from pybiscus.core.stop_signal import STOP_SIGNAL
 from pybiscus.session.agent import agent_weblog
 from pybiscus.session.agent.agent_weblog import AgentState
 
@@ -32,6 +33,8 @@ class RunSession:
         self._process     = None
         # the terminated process exits with a non-zero code: without this, a stop looked like a failure
         self._stop_requested = False
+        # a server stopped after its round exits with 0, as at its last round
+        self._stop_after_round_requested = False
 
         self.mode   = None
         self.status = IDLE
@@ -92,6 +95,7 @@ class RunSession:
             self.status = RUNNING
             self.detail = ""
             self._stop_requested = False
+            self._stop_after_round_requested = False
 
         self._publish({"type": "reset", "mode": mode})
 
@@ -105,6 +109,15 @@ class RunSession:
             return False
         self._stop_requested = True
         process.terminate()
+        return True
+
+    def stop_after_round(self) -> bool:
+        process = self._process
+        if STOP_SIGNAL is None or self.mode != "server" or process is None or process.poll() is not None:
+            return False
+        self._stop_after_round_requested = True
+        # uv run forwards it to the pybiscus process it started
+        process.send_signal(STOP_SIGNAL)
         return True
 
     def _run(self, command: list[str]) -> None:
@@ -133,6 +146,9 @@ class RunSession:
             elif self._stop_requested:
                 agent_weblog.agent_logger.log("pybiscus run stopped by the operator", state=AgentState.STOPPED)
                 self._set_status(STOPPED, "stopped by the operator")
+            elif return_code == 0 and self._stop_after_round_requested:
+                agent_weblog.agent_logger.log("pybiscus run stopped after its round by the operator", state=AgentState.STOPPED)
+                self._set_status(STOPPED, "stopped after its round by the operator")
             elif return_code == 0:
                 agent_weblog.agent_logger.log("pybiscus run completed", state=AgentState.TERMINATED)
                 self._set_status(SUCCESS, "pybiscus run completed")
