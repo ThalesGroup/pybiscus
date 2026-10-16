@@ -877,7 +877,7 @@
       const cfgBtn = document.getElementById('cfg-btn');
       cfgBtn.disabled = missing.length > 0;
       cfgBtn.title = missing.length ? 'the session can be configured once it has ' + missing.join(', and ') : 'configure and launch the session';
-      renderStopButton(lowerBouquets.length > 0 || !!data.upper_level);
+      renderStopButton(!!data.upper_level);
     }).catch(console.error);
   }
 
@@ -907,14 +907,14 @@
     try{ await navigator.clipboard.writeText(SESSION_TOKEN); e.target.textContent='🔑 copied'; setTimeout(()=>e.target.textContent='🔑 session token', 1500); }
     catch{ prompt('Session token, to give to the agents:', SESSION_TOKEN); }
   };
-  function renderStopButton(hierarchical){
+  function renderStopButton(lowerLevel){
     const btn = document.getElementById('stop-round-btn');
     const asked = stopPending || stopRound !== null;
-    btn.disabled = !sessionRunning || hierarchical || asked || !!sessionEnd;
+    btn.disabled = !sessionRunning || lowerLevel || asked || !!sessionEnd;
     btn.textContent = asked && !sessionEnd ? (stopRound === null ? '⏹ stopping…' : `⏹ stopping after round ${stopRound}…`) : '⏹ stop after round';
     btn.title = sessionEnd ? 'the session has ended'
       : !sessionRunning ? 'no session is running'
-      : hierarchical ? 'a hierarchical session cannot be stopped after its round yet: drop it to stop it'
+      : lowerLevel ? "a lower level runs the rounds of its upper level: stop the session from the upper level's manager"
       : asked ? 'the server ends the session after its current round'
       : 'end the session after its current round: the clients are disconnected, the reports written (checkpoint, ONNX)';
   }

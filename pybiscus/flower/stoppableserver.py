@@ -11,7 +11,7 @@ from flwr.server.history import History
 import pybiscus.core.gui_events as gui_events
 import pybiscus.core.pybiscus_logger as logm
 from pybiscus.core.stop_signal import STOP_SIGNAL
-from pybiscus.interfaces.flower.stoppingcriterion import StoppingCriterion
+from pybiscus.interfaces.flower.stoppingcriterion import EndSession, StoppingCriterion
 
 
 class StoppableServer(fl.server.Server):
@@ -40,7 +40,12 @@ class StoppableServer(fl.server.Server):
         history = History()
 
         log(INFO, "[INIT]")
-        self.parameters = self._get_initial_parameters(server_round=0, timeout=timeout)
+        try:
+            self.parameters = self._get_initial_parameters(server_round=0, timeout=timeout)
+        except EndSession as end:
+            self.request_stop(str(end))
+            gui_events.log_session_end(0, num_rounds, self.stop_reason)
+            return history, 0.0
         log(INFO, "Starting evaluation of initial global parameters")
         res = self.strategy.evaluate(0, parameters=self.parameters)
         if res is not None:
@@ -59,7 +64,13 @@ class StoppableServer(fl.server.Server):
             if self.stop_reason is not None:
                 break
             self.current_round = current_round
-            self._run_round(current_round, timeout, history, start_time)
+            try:
+                self._run_round(current_round, timeout, history, start_time)
+            except EndSession as end:
+                # raised before the round trained anything: the session ends after the previous one
+                self.current_round = self.rounds_done
+                self.request_stop(str(end))
+                break
             self.rounds_done = current_round
             self._test_criteria(current_round, history)
 

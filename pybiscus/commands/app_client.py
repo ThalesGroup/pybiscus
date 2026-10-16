@@ -226,5 +226,10 @@ def launch_config(
         insecure= not ssl_secure_cnx,
     )
 
+    # only on a normal end: the server disconnected its clients
+    finalize = getattr(client, "finalize", None)
+    if finalize is not None:
+        finalize()
+
 if __name__ == "__main__":
     app()

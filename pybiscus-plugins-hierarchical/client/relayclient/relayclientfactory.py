@@ -31,9 +31,18 @@ class RelayClient(fl.client.Client):
         self.cid = cid
         self.model = model
         self.link = link
+        self.last_round = 0
 
     def initialize(self):
         self.link.reset()
+
+    def finalize(self):
+        # the upper server disconnected its clients: whatever the reason, it has no round
+        # last_round + 1, which the lower level's server would wait for until its timeout
+        try:
+            self.link.publish_end(self.last_round + 1, f"the upper level ended its session after round {self.last_round}")
+        except SessionLinkError as error:
+            logm.console.log(f"🔁 relay {self.cid}: the end of the session could not be sent down: {error}")
 
     def get_parameters(self, ins):
         arrays = [value.cpu().numpy() for value in self.model.state_dict().values()]
@@ -41,6 +50,7 @@ class RelayClient(fl.client.Client):
 
     def fit(self, ins):
         server_round = ins.config["server_round"]
+        self.last_round = server_round
         self.link.publish_model(server_round, parameters_to_ndarrays(ins.parameters))
         try:
             arrays, num_examples, metrics = self.link.wait_aggregate(server_round)

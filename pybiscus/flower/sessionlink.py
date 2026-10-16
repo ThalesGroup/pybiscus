@@ -13,6 +13,7 @@ import requests
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 import pybiscus.core.pybiscus_logger as logm
+from pybiscus.interfaces.flower.stoppingcriterion import EndSession
 
 # The link between two levels of a hierarchical session, shared by the upper level's relay client
 # (plugin "client") and the lower level's server decorator (plugin "strategydecorator"): two plugins
@@ -72,8 +73,14 @@ class DirectoryLink:
         self._publish("model", server_round, arrays, {})
 
     def wait_model(self, server_round: int) -> list:
-        arrays, _ = self._wait("model", server_round)
+        arrays, header = self._wait("model", server_round)
+        if "end" in header:
+            raise EndSession(header["end"])
         return arrays
+
+    def publish_end(self, server_round: int, reason: str) -> None:
+        """in place of the model of this round: the upper level runs no more rounds"""
+        self._publish("model", server_round, [], {"end": reason})
 
     def publish_aggregate(self, server_round: int, arrays: list, num_examples: int, metrics: dict) -> None:
         self._publish("aggregate", server_round, arrays, {"num_examples": num_examples, "metrics": metrics})

@@ -338,10 +338,11 @@ def pybiscus_manager_stop_after_round():
     session = pybiscus.session.manager.session_manager
     if not session.session_is_running:
         return jsonify({"status": "error", "message": "no session is running"}), 409
-    # the lower levels only follow an abandoned link: they would wait for a model that never comes
-    if session.lower_levels or session.upper_link is not None:
+    # its lower levels follow the end of its rounds through their links; a lower level ending first
+    # would leave its upper level waiting for its aggregate
+    if session.upper_link is not None:
         return jsonify({"status": "error", "message":
-                        "a hierarchical session cannot be stopped after its round yet: drop it to stop it"}), 409
+                        "a lower level runs the rounds of its upper level: stop the session from the upper level's manager"}), 409
 
     headers = {HEADER: "1", "Authorization": f"Bearer {session.session_token}"}
     stopping = []

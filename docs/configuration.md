@@ -373,8 +373,9 @@ server_run:
 - The session manager's page shows `k/N ⏹` and the reason (`test accuracy 0.981 ≥ 0.98`), or
   `N/N 🏁` when every round was run. The server can also be stopped by hand after its round: the
   manager's *⏹ stop after round* button, or `kill -USR1 <pid>` ([cli.md](cli.md)).
-- Not in a hierarchical session yet: a lower level refuses `stopping` at `check` (it runs the rounds
-  of its upper level), and an upper level ending early leaves its lower levels waiting for a model.
+- In a hierarchical session, only the top level decides: a lower level refuses `stopping` at
+  `check`, since it runs the rounds of its upper level, and ends with it, after the same round
+  ([hierarchical-session.md](hierarchical-session.md#ending-before-the-last-round)).
 - The criteria are plugins (the `stoppingcriterion` category, [plugins-reference.md](plugins-reference.md#stopping-criteria)):
   `should_stop(server_round, history)` gets Flower's `History` of the session and returns the
   reason to stop, or `None`.

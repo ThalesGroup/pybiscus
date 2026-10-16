@@ -9,12 +9,14 @@
   fixed number of rounds. Without the signal, a session runs its `num_rounds` as before.
 * Stopping criteria (`server_run.stopping`): a session ends before its `num_rounds`, which stays
   its maximum, when a metric reaches a value (`threshold`), stops improving (`patience`) or the
-  rounds have lasted long enough (`maxduration`); a new plugin category, `stoppingcriterion`. Not
-  in a hierarchical session yet (refused in a lower level).
+  rounds have lasted long enough (`maxduration`); a new plugin category, `stoppingcriterion`.
+* Hierarchical sessions: when the top level ends before its last round (criterion, button,
+  `SIGUSR1`), its lower levels end after the same round, their reports written, instead of waiting
+  for a model up to their link's timeout; only the top level may end early (a lower level refuses
+  `stopping`, its manager the button).
 * Flower's deprecation warning of `start_server()` and `start_client()`, at every launch, is no
   longer shown: Pybiscus runs on Flower's legacy API on purpose; any other Flower warning still is.
-* Session manager: a *⏹ stop after round* button does it from the page (not in a hierarchical
-  session yet); the round counter shows `k/N ⏹` and the reason of the stop, the server agent ends
+* Session manager: a *⏹ stop after round* button does it from the page; the round counter shows `k/N ⏹` and the reason of the stop, the server agent ends
   *stopped*.
 
 ## [Version 0.9.0]

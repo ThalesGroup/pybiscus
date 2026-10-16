@@ -123,8 +123,9 @@ The manager shows, live:
 (checkpoint, ONNX export) as at a normal end. The button reads *stopping after round k…* until the
 server's last round is over; the round counter then shows `k/N ⏹` (`N/N 🏁` for a session that ran
 all its rounds, the reason of the stop in its tooltip), the server agent is *stopped* (⏹️), the
-clients *terminated* (🏁). Not available yet in a hierarchical session: its lower levels would wait
-for a model that never comes; *Drop session* stops it.
+clients *terminated* (🏁). In a hierarchical session, the button is the top level's: its lower
+levels end after the same round ([hierarchical-session.md](hierarchical-session.md#ending-before-the-last-round));
+a lower level's manager disables it.
 
 *Drop session* ends the session and empties the page, for a new one with the same agents (which
 register again). The runs of its agents still going are stopped. In a hierarchical session, the

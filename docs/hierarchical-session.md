@@ -134,6 +134,22 @@ The core aggregates 2 results per round (its relays); its federated evaluation r
 and 2 failures — the relays hold no data, each edge evaluates every model on its own — and the
 session goes on.
 
+## Ending before the last round
+
+The top level alone decides when the session ends: at its `num_rounds`, on a stopping criterion
+(`server_run.stopping`, see [configuration.md](configuration.md#ending-a-session-before-its-last-round)),
+or by hand (its manager's *⏹ stop after round* button, `kill -USR1` to its server). A lower level
+follows it: when the top server ends after round `k` and disconnects its clients, each relay sends
+down, in place of the model of round `k + 1`, the end of the session; the lower server, waiting for
+that model, ends after its round `k` with the reason *the upper level ended its session after round
+k*, its reports written as at a normal end, and its own relays pass the end further down. Without
+it, a lower server waited for its link's `timeout` (one hour by default), then failed.
+
+A lower level cannot end first: its server refuses `stopping` at `check`, its manager's button is
+disabled, since its upper level would wait for its aggregate. A relay killed rather than
+disconnected (the top server's process stopped at once, *Drop session*) sends nothing: the lower
+levels' managers drop their sessions when the top one is dropped ([sessionmanager.md](sessionmanager.md)).
+
 ## Three levels: a tree of four sessions
 
 The core federates two sessions, `north` and `south`; `south` federates in turn a third one,
