@@ -694,10 +694,12 @@ Hierarchical sessions: on the server of a lower level, waits for the upper level
 
 | field (under `config`) | type | default | description |
 |---|---|---|---|
-| `directory` | str | `'/tmp/pybiscus-links'` | directory shared by the relay and the lower level's server, on the machine where both run |
+| `transport` | 'directory' \| 'manager' | `'directory'` | directory: files in a directory shared by the relay and the lower level's server, on one machine; manager: the mailbox of the upper level's session manager, over HTTP, the two ends on any machines |
+| `directory` | str | `'/tmp/pybiscus-links'` | transport directory: directory shared by the relay and the lower level's server, on the machine where both run |
+| `manager_url` | str | `''` | transport manager: this end's own session manager (the relay's: the upper level's; the lower server's: its level's, which relays to the upper one) |
 | `link_id` | str | `'link'` | the same on both ends; a new one for each hierarchical run, files of an earlier run being taken otherwise |
 | `timeout` | float | `3600` | seconds to wait for the other level: a whole round of the lower level, or between two rounds of the upper level |
-| `poll_interval` | float | `0.5` | seconds between two looks at the directory |
+| `poll_interval` | float | `0.5` | transport directory: seconds between two looks at the directory |
 
 ## Clients
 
@@ -711,10 +713,12 @@ Hierarchical sessions: a client of the upper level that stands for a whole lower
 
 | field (under `config`) | type | default | description |
 |---|---|---|---|
-| `directory` | str | `'/tmp/pybiscus-links'` | directory shared by the relay and the lower level's server, on the machine where both run |
+| `transport` | 'directory' \| 'manager' | `'directory'` | directory: files in a directory shared by the relay and the lower level's server, on one machine; manager: the mailbox of the upper level's session manager, over HTTP, the two ends on any machines |
+| `directory` | str | `'/tmp/pybiscus-links'` | transport directory: directory shared by the relay and the lower level's server, on the machine where both run |
+| `manager_url` | str | `''` | transport manager: this end's own session manager (the relay's: the upper level's; the lower server's: its level's, which relays to the upper one) |
 | `link_id` | str | `'link'` | the same on both ends; a new one for each hierarchical run, files of an earlier run being taken otherwise |
 | `timeout` | float | `3600` | seconds to wait for the other level: a whole round of the lower level, or between two rounds of the upper level |
-| `poll_interval` | float | `0.5` | seconds between two looks at the directory |
+| `poll_interval` | float | `0.5` | transport directory: seconds between two looks at the directory |
 
 ## Loggers
 

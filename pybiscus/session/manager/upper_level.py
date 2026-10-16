@@ -82,13 +82,27 @@ def session_for_lower_levels(bouquet: str) -> dict:
             "relay": sm.relays.get(bouquet), "link": sm.session_links.get(bouquet) if running else None}
 
 
+def transport_of(lower: str) -> str:
+    """the transport of a lower level's link: chosen in the page, else the manager's default"""
+    return sm.link_transports.get(lower, sm.link_transport)
+
+
 def links_for_lower_levels() -> dict:
     """one link per lower level, new at each launch: a link_id used again would hand a lower level
     the files of an earlier run"""
     stamp = time.strftime("%Y%m%dT%H%M%S")
+    # transport manager: the mailbox is this manager's, which the relays reach directly
     return {lower: {**ConfigSessionLink().model_dump(),
-                    "link_id": re.sub(r"[^A-Za-z0-9._-]", "_", f"{sm.bouquet or 'upper'}-{lower}-{stamp}")}
+                    "link_id": re.sub(r"[^A-Za-z0-9._-]", "_", f"{sm.bouquet or 'upper'}-{lower}-{stamp}"),
+                    "transport": transport_of(lower),
+                    "manager_url": sm.manager_url if transport_of(lower) == "manager" else ""}
             for lower in sm.relays}
+
+
+def link_for_own_server(link: dict) -> dict:
+    """the link the upper level made, as this level's server uses it: through this manager, which
+    relays to the upper one's mailbox (the server holds no token of the upper session)"""
+    return {**link, "manager_url": sm.manager_url} if link.get("transport") == "manager" else link
 
 
 def link_presets(presets: dict, prefix: str, link: dict) -> None:
@@ -197,6 +211,7 @@ def report_to_upper_level(upper_url: str, token) -> None:
     addresses"""
 
     base = upper_url.rstrip("/") + "/pybiscus-session/lower-level"
+    sm.upper_token = token
     sm.upper_link = {"url": upper_url.rstrip("/"), "bouquet": None, "color": None, "reached": None,
                      "problem": None, "last_contact": None, "session": None, "dropped": None}
 

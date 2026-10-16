@@ -213,7 +213,7 @@ def pybiscus_manager_identity():
 @session_access
 def pybiscus_manager_get_session_params():
 
-    from pybiscus.session.manager.upper_level import RELAY_LINK, RELAY_OPTION, SERVER_LINK, link_presets
+    from pybiscus.session.manager.upper_level import RELAY_LINK, RELAY_OPTION, SERVER_LINK, link_for_own_server, link_presets
 
     if not pybiscus.session.manager.session_manager.session_is_running:
         return jsonify({"status": "error", "message": "session is not running yet"})
@@ -269,7 +269,7 @@ def pybiscus_manager_get_session_params():
         # " " selects Some for an Optional[T] (see set_option)
         custom_presets["options_set"][SERVER_LINK] = " "
         custom_presets["options_lock"].append(SERVER_LINK)
-        link_presets(custom_presets, SERVER_LINK, session.upper_session_link)
+        link_presets(custom_presets, SERVER_LINK, link_for_own_server(session.upper_session_link))
     if agent in session.registered_servers and robustness:
         custom_presets["values_set"]["server_strategy.robustness"] = robustness
         custom_presets["values_lock"].append("server_strategy.robustness")
@@ -361,7 +361,8 @@ def drop_session():
 
 @pybiscus_manager_app.route("/pybiscus-session/agents", methods=["GET"])
 def pybiscus_manager_list_clients():
-    from pybiscus.session.manager.upper_level import lower_levels, manager_place, session_state, upper_level
+    from pybiscus.flower.sessionlink import LINK_TRANSPORTS
+    from pybiscus.session.manager.upper_level import lower_levels, manager_place, session_state, transport_of, upper_level
     return jsonify({
         "clients": pybiscus.session.manager.session_manager.registered_clients,
         "servers": pybiscus.session.manager.session_manager.registered_servers,
@@ -371,6 +372,8 @@ def pybiscus_manager_list_clients():
         "upper_level": upper_level(),
         "manager": manager_place(),
         "relays": pybiscus.session.manager.session_manager.relays,
+        "link_transports": {lower: transport_of(lower) for lower in pybiscus.session.manager.session_manager.lower_levels},
+        "link_transport_choices": list(LINK_TRANSPORTS),
         "session_running": pybiscus.session.manager.session_manager.session_is_running,
         "cycles": cycles.session_cycles(),
         "session": session_state(),
@@ -395,6 +398,30 @@ def pybiscus_manager_designate_relay():
         return jsonify({"status": "error", "message": f"no client named {client!r} in this session"}), 400
     designate_relay(bouquet, client)
     return jsonify({"status": "ok", "relays": session.relays})
+
+# **************************
+
+# the transport of a lower level's link, chosen in this manager's page before the launch
+@pybiscus_manager_app.route("/pybiscus-session/link-transports", methods=["POST"])
+def pybiscus_manager_choose_link_transport():
+    from pybiscus.flower.sessionlink import LINK_TRANSPORTS
+    session = pybiscus.session.manager.session_manager
+    data = request.get_json(silent=True) or {}
+    bouquet, transport = data.get("bouquet"), data.get("transport") or None
+    if session.session_is_running:
+        return jsonify({"status": "error", "message": "the session is running: drop it to change its links"}), 409
+    with session.lower_levels_lock:
+        known = bouquet in session.lower_levels
+    if not known:
+        return jsonify({"status": "error", "message": f"no lower level named {bouquet!r}"}), 400
+    if transport is not None and transport not in LINK_TRANSPORTS:
+        return jsonify({"status": "error", "message": f"transport {transport!r}: one of {', '.join(LINK_TRANSPORTS)} expected"}), 400
+    if transport is None:
+        session.link_transports.pop(bouquet, None)
+    else:
+        session.link_transports[bouquet] = transport
+    logm.console.log(f"🔗 link to {bouquet}: transport {transport or session.link_transport}")
+    return jsonify({"status": "ok", "link_transports": session.link_transports})
 
 # **************************
 

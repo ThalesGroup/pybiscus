@@ -5,7 +5,7 @@ from flwr.common import Code, EvaluateRes, FitRes, GetParametersRes, Status, nda
 from pydantic import BaseModel, ConfigDict
 
 import pybiscus.core.pybiscus_logger as logm
-from pybiscus.flower.sessionlink import ConfigSessionLink, DirectoryLink, SessionLinkError, scalar_metrics
+from pybiscus.flower.sessionlink import ConfigSessionLink, DirectoryLink, make_link, SessionLinkError, scalar_metrics
 from pybiscus.interfaces.flower.clientfactory import ClientFactory
 
 # A client of the upper session standing for a whole lower session: it trains nothing, its fit
@@ -72,5 +72,5 @@ class RelayClientFactory(ClientFactory):
         self.model = model
 
     def get_client(self):
-        link = DirectoryLink(self.config.flower_client.alternate_client_class.config)
+        link = make_link(self.config.flower_client.alternate_client_class.config)
         return RelayClient(self.config.client_run.cid, self.model, link)

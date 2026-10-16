@@ -73,7 +73,7 @@
   .chip.alert{color:var(--warn); border-color:var(--warn); background:rgba(255,180,84,.14); font-weight:600}
   .relay-select.missing{color:var(--warn); border-color:var(--warn)}
   /* the open list is drawn by the browser on a light background unless told otherwise, and inherits the select's colour */
-  .relay-select{color-scheme:dark} .relay-select option{background:var(--panel-2); color:var(--text)}
+  .relay-select,.transport-select{color-scheme:dark} .relay-select option,.transport-select option{background:var(--panel-2); color:var(--text)}
   .tool{cursor:pointer; color:var(--muted); border:1px solid var(--border); border-radius:6px; padding:2px 8px; font-size:10.5px; background:transparent; font-family:var(--mono)}
   .tool:hover{color:var(--text)}
   .tool.active{color:var(--text); border-color:var(--accent)}
@@ -306,6 +306,7 @@
   // a lower level of a hierarchical session: its upper level's link, whose session comes first
   let upperState = null;
   let sessionRunning = false;   // once launched, its relays no longer change
+  let linkTransports = {}, linkTransportChoices = [];   // per lower level, as the manager gives them
   const upperConstraints = () => (upperState && upperState.session && upperState.session.running) ? upperState.session.constraints : null;
   const waitsForUpperSession = () => !!upperState && !upperConstraints();
   // the session form: the model, the data and the rounds of the upper level's session set and locked; a Flower
@@ -606,6 +607,13 @@
   });
   // the relays designated in the topology: kept by the manager, which refuses a change once the session runs
   document.getElementById('nodes').addEventListener('change', ev=>{
+    if(ev.target.classList.contains('transport-select')){
+      fetch('/pybiscus-session/link-transports', {method:'POST', headers:{'Content-Type':'application/json', 'X-Pybiscus':'1'},
+                                                  body: JSON.stringify({bouquet: ev.target.dataset.bouquet, transport: ev.target.value})})
+        .then(r=>r.json().then(answer=>{ if(!r.ok) alert(answer.message); }))
+        .finally(()=>{ ev.target.blur(); updateGraph(); });
+      return;
+    }
     if(!ev.target.classList.contains('relay-select')) return;
     fetch('/pybiscus-session/relays', {method:'POST', headers:{'Content-Type':'application/json', 'X-Pybiscus':'1'},
                                        body: JSON.stringify({bouquet: ev.target.dataset.bouquet, client: ev.target.value})})
@@ -653,6 +661,14 @@
         `<span class="name">${esc(nd.name)}`+
         (nd.relays ? ` <span class="bouquet-pill" style="--session-color:${esc(colourOf(nd.relays))}" title="relays this lower level">→ ${esc(nd.relays)}</span>` : '')+
         `</span><span class="kpi">${STATE_ICON[nd.state]||'⚪'}</span></div>`;
+    // how the link to a direct lower level is made, chosen with its relay before the launch
+    const TRANSPORT_HINT = {directory: 'files in a directory: its relay runs on the machine of its server',
+                            manager: "this manager's mailbox, over HTTP: its relay and its server on any machines"};
+    const transportPicker = gr => linkTransportChoices.length ?
+      `<select class="transport-select tool" data-bouquet="${esc(gr.bouquet)}"${sessionRunning ? ' disabled' : ''}`+
+      ` title="${sessionRunning ? 'the session is running: its links no longer change' : 'how the link to ' + esc(gr.bouquet) + ' is made'}">`+
+      linkTransportChoices.map(t=>`<option value="${esc(t)}"${t===linkTransports[gr.bouquet]?' selected':''} title="${esc(TRANSPORT_HINT[t] || t)}">link: ${esc(t)}</option>`).join('')+
+      `</select>` : '';
     // a direct lower level: its relay chosen among this session's clients; deeper: shown only
     const relayPicker = gr => {
       if(gr.depth === 1){
@@ -661,7 +677,8 @@
           ` title="${sessionRunning ? 'the session is running: its relays no longer change' : 'the client of this session that relays ' + esc(gr.bouquet)}">`+
           `<option value="">relay: —</option>`+
           nodes.filter(n=>n.role==='client').map(c=>`<option value="${esc(c.name)}"${c.name===chosen?' selected':''}>relay: ${esc(c.name)}</option>`).join('')+`</select>`+
-          (missing ? '<span class="chip alert" title="a session with lower levels launches once each has a relay">⚠ no relay</span>' : '');
+          (missing ? '<span class="chip alert" title="a session with lower levels launches once each has a relay">⚠ no relay</span>' : '')+
+          transportPicker(gr);
       }
       const relay = (gr.parent.relays || {})[gr.bouquet];
       return `<span class="chip">relay: ${esc(relay || '—')}</span>`;
@@ -689,8 +706,8 @@
              groups.map(gr=>`<div class="tier${gr.stale?' stale':''}" style="--tier-color:${esc(gr.color)}; margin-left:${gr.depth*14}px">`+
                tierHead('↳ '+gr.bouquet, gr.color, gr.nodes.length, gr.url, gr.stale, relayPicker(gr))+gr.nodes.map(row).join('')+`</div>`).join('');
     }
-    // not while a relay is being chosen: the periodic redraw would close the list under the pointer
-    if(!document.activeElement || !document.activeElement.classList.contains('relay-select'))
+    // not while a relay or a link is being chosen: the periodic redraw would close the list under the pointer
+    if(!document.activeElement || !['relay-select', 'transport-select'].some(c=>document.activeElement.classList.contains(c)))
       // the link to the upper level shows before the first agent registers
       document.getElementById('nodes').innerHTML = allNodes.length ? list : upperHead + '<div class="empty">no agents yet</div>';
     // positions : par lat/lon si dispo (ajustées à la bbox des agents + décalage anti-superposition),
@@ -825,6 +842,7 @@
       setTxt('cfg-clients', `${registeredClients} client${registeredClients === 1 ? '' : 's'} registered = default min_clients`);
       upperState = data.upper_level || null;
       sessionRunning = !!data.session_running;
+      linkTransports = data.link_transports || {}; linkTransportChoices = data.link_transport_choices || [];
       lastCycles = {own: data.cycles || [], ownSession: data.session || null, groups: flattenLowerLevels(data.lower_levels || [], null, 1, [])};
       document.getElementById('mid-tabs').hidden = !lastCycles.groups.length && !data.upper_level;
       try { renderTopology(servers, data.clients || {}, data.meta || {}, data.lower_levels || [], data.upper_level || null, data.manager || null, data.relays || {}); renderCharts(); }

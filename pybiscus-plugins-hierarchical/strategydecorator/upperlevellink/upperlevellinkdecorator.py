@@ -4,7 +4,7 @@ from flwr.common import ndarrays_to_parameters, parameters_to_ndarrays
 from pydantic import BaseModel, ConfigDict
 
 import pybiscus.core.gui_events as gui_events
-from pybiscus.flower.sessionlink import ConfigSessionLink, DirectoryLink, scalar_metrics
+from pybiscus.flower.sessionlink import ConfigSessionLink, make_link, scalar_metrics
 from pybiscus.interfaces.flower.strategydecorator import StrategyDecorator
 
 # The server of a lower level follows its upper level round for round: each round trains the upper
@@ -34,7 +34,7 @@ class UpperLevelLinkDecorator(StrategyDecorator):
 
     def __init__(self, base_strategy, config: ConfigSessionLink):
         super().__init__(base_strategy)
-        self.link = DirectoryLink(config)
+        self.link = make_link(config)
         self.first_model = None
 
     def initialize_parameters(self, client_manager):

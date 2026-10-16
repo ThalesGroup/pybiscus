@@ -48,7 +48,10 @@ flowchart TB
 | edge1 | 5596 (`--upper-url http://localhost:5595`) | 5693 edge1-server, 5694–5695 clients | server + `upperlevellink`, 2 clients |
 | edge2 | 5597 (`--upper-url http://localhost:5595`) | 5696 edge2-server, 5697–5698 clients | server + `upperlevellink`, 2 clients |
 
-A relay runs on the machine of the edge server it stands for: they share the link directory. The
+A relay runs on the machine of the edge server it stands for: they share the link directory
+(`--link-transport directory`, the default; with `--link-transport manager`, the link goes through
+the core manager's mailbox and the relay may run anywhere, see
+[sessionmanager.md](sessionmanager.md#bouquets-of-a-hierarchical-session)). The
 managers exchange only what the levels need: downwards the session's constraints (model and its
 hyperparameters, data plugin, number of rounds) and the link; upwards the topology (agents, states,
 relays) and the cycles (durations per round).

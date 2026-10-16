@@ -5,6 +5,10 @@ from threading import Lock
 from flask import Flask
 from flask_cors import CORS
 
+from pybiscus.flower.sessionlink import LINK_TRANSPORTS
+
+LINK_TRANSPORT_ENV = "PYBISCUS_LINK_TRANSPORT"
+
 from pybiscus.session.auth import SESSION_TOKEN_ENV, component_token, manager_token_names, print_access, require_tokens, tokens_required
 from pybiscus.session.csrf import HEADER, require_pybiscus_header
 
@@ -44,6 +48,9 @@ bouquet_color = None   # --color: a CSS colour; None derives one from the bouque
 # --bouquet-mismatch: an agent declaring another bouquet than --bouquet is refused, or only warned
 # about: it has most likely registered with the wrong manager
 bouquet_mismatch = "refuse"
+link_transport = "directory"   # --link-transport
+# lower-level bouquet -> the transport of its link, chosen in this manager's page (else link_transport)
+link_transports = {}
 manager_url = None     # how the other managers reach this one's page
 # where this manager is (--location, --geo), drawn on the maps of a hierarchical session
 manager_location = None
@@ -68,6 +75,8 @@ session_relays = []
 session_links = {}
 # with --upper-url: the link to the upper level the session was launched with
 upper_session_link = None
+# --upper-token: kept apart from upper_link, which the page shows
+upper_token = None
 session_is_running = False
 agent_gui_json_presets = None
 session_client_id_counter = -1
@@ -171,6 +180,10 @@ def main():
                         help="bouquet of this manager's session, shown in its page (default: the bouquets the agents declare)")
     parser.add_argument("--bouquet-mismatch", choices=("refuse", "warn"), default="refuse",
                         help="an agent declaring another bouquet than --bouquet: refused (default), or registered with a warning")
+    parser.add_argument("--link-transport", choices=LINK_TRANSPORTS, default=os.environ.get(LINK_TRANSPORT_ENV, "directory"),
+                        help="how the links to the lower levels are made, unless chosen per lower level in the page: a directory "
+                             "their relay and server share on one machine, or this manager's mailbox, over HTTP, any machines "
+                             f"(default: ${LINK_TRANSPORT_ENV}, else directory)")
     parser.add_argument("--color", default=None,
                         help="CSS colour of this manager's page (default: derived from --bouquet, the same for the same name)")
     parser.add_argument("--location", default=None, help="where this manager is, e.g. palaiseau-dc (shown on the maps)")
@@ -185,17 +198,21 @@ def main():
     parser.add_argument("--require-token", action="store_true",
                         help="require the tokens on the loopback too (always required when listening beyond it)")
     args = parser.parse_args()
+    # a default is not checked against the choices: the environment's is checked here
+    if args.link_transport not in LINK_TRANSPORTS:
+        parser.error(f"${LINK_TRANSPORT_ENV}={args.link_transport}: one of {', '.join(LINK_TRANSPORTS)} expected")
     if args.upper_url and not args.bouquet:
         parser.error("--upper-url requires --bouquet: the upper-level manager tells its lower levels apart by their bouquet")
 
     CORS(pybiscus_manager_app, origins=[LOCAL_ORIGINS, *args.allow_origin], allow_headers=["Content-Type", "Authorization", HEADER])
 
-    global manager_port, admin_token, session_token, tokens_are_required, bouquet, bouquet_color, bouquet_mismatch, manager_url, manager_location, manager_geo
+    global manager_port, admin_token, session_token, tokens_are_required, bouquet, bouquet_color, bouquet_mismatch, link_transport, manager_url, manager_location, manager_geo
     manager_port=args.port
     manager_location, manager_geo = args.location, args.geo
     bouquet = args.bouquet
     bouquet_color = args.color
     bouquet_mismatch = args.bouquet_mismatch
+    link_transport = args.link_transport
     tokens_are_required = tokens_required(args.host, args.require_token)
     admin_name, session_name = manager_token_names(manager_port)
     admin_token = component_token(admin_name, args.admin_token) if tokens_are_required else None

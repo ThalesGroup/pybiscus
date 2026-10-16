@@ -294,8 +294,9 @@ def shoot_hierarchical(sc, work, rushes):
     for b in order:
         m = managers[b]
         upper = ["--upper-url", url(m["upper"])] if m.get("upper") else []
+        transport = ["--link-transport", sc["link_transport"]] if sc.get("link_transport") else []
         procs.start(f"manager_{b}", ["session_manager", "--port", str(m["port"]), "--bouquet", b, "--location", m["location"],
-                                     "--geo", ",".join(map(str, m["geo"])), *upper])
+                                     "--geo", ",".join(map(str, m["geo"])), *upper, *transport])
     for a in agents:
         procs.start(f"agent_{a['name']}", ["pybiscus_agent", "--port", str(a["port"])])
     try:
@@ -358,17 +359,23 @@ def shoot_hierarchical(sc, work, rushes):
             shooting.tick(6)
             step("registered")
 
+            def choose(owner, selector, value):
+                """a choice in a manager's page; a manager not filmed gets a page just for it"""
+                view = shooting.views.get(f"manager:{owner}")
+                page = view["page"] if view else browser.new_page(viewport=viewport)
+                if not view:
+                    page.goto(f"{url(owner)}/pybiscus-session/manage"); page.wait_for_timeout(3000)
+                page.select_option(selector, value)
+                shooting.tick(3)
+                if not view:
+                    page.close()
+
             for a in agents:
                 if a.get("relay_for"):
-                    view = shooting.views.get(f"manager:{a['bouquet']}")
-                    # a manager not filmed gets a page just for the designation
-                    page = view["page"] if view else browser.new_page(viewport=viewport)
-                    if not view:
-                        page.goto(f"{url(a['bouquet'])}/pybiscus-session/manage"); page.wait_for_timeout(3000)
-                    page.select_option(f'select.relay-select[data-bouquet="{a["relay_for"]}"]', a["name"])
-                    shooting.tick(3)
-                    if not view:
-                        page.close()
+                    choose(a["bouquet"], f'select.relay-select[data-bouquet="{a["relay_for"]}"]', a["name"])
+            # the transport of each link, chosen by the upper level's manager (default: link_transport)
+            for lower, transport in (sc.get("link_transports") or {}).items():
+                choose(managers[lower]["upper"], f'select.transport-select[data-bouquet="{lower}"]', transport)
             shooting.tick(6)
             step("relays")
 

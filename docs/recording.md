@@ -206,6 +206,8 @@ walkthrough into `docs/images` (check them with `git diff` before committing).
 | `session` | `options` and `values` of the root's session form |
 | `lower_session` | `options` and `values` added to each lower level's form, on top of what its upper level imposes and locks |
 | `plugin_manifests` | the relay and `upper_level_link` need the hierarchical plugins |
+| `link_transport` | `directory` (default) or `manager`: given to the managers as `--link-transport` |
+| `link_transports` | the transport of some links, by lower bouquet (`{north: manager, south: directory}`), chosen in their upper manager's page |
 | `viewport`, `form_viewport` | the managers' pages, the forms |
 | `film` | the managers having a page, which a cut can show (default: all); fewer pages save memory on a large tree, and the root must be one |
 | `takes` | `name`, `at` (`registered`, `relays`, `session-form:<bouquet>`, `form:<agent>`, `end`), `view` (with `@<panel>`), `full_page`, `tab` (a tab of the manager's middle panel to open first: `cycles`, `constraints`), `click_text` (an element to click first, by its text: a form's tab, such as `server_strategy`) |
