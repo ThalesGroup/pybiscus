@@ -66,6 +66,7 @@ class Session {
         this.sessionState = "paramsUndefined";
         this.agentStates = {}; // dict : agentName -> state
         this.roundNumber = 0;
+        this.keepPolling = false;
         this.intervalIds = []; // Array to store all interval IDs
     }
 
@@ -84,7 +85,8 @@ class Session {
         if (AGENT_FINAL_STATES.includes(state)) {
             const allFinal = Object.values(this.agentStates)
                 .every(agentState => AGENT_FINAL_STATES.includes(agentState));
-            if (allFinal) {
+            // a repeated session's next one is launched by the manager: the page keeps reading
+            if (allFinal && !this.keepPolling) {
                 this.stop();
             }
         }

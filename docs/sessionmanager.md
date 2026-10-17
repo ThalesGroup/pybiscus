@@ -127,6 +127,9 @@ clients *terminated* (🏁). In a hierarchical session, the button is the top le
 levels end after the same round ([hierarchical-session.md](hierarchical-session.md#ending-before-the-last-round));
 a lower level's manager disables it.
 
+A session launched again at each deadline shows its number (`SESSION n`) and a *🔁 stop repeating*
+button ([below](#repeated-sessions)).
+
 *Drop session* ends the session and empties the page, for a new one with the same agents (which
 register again). The runs of its agents still going are stopped. In a hierarchical session, the
 lower levels follow: a lower-level manager drops its own session (and stops its runs) as soon as it
@@ -366,6 +369,40 @@ machine (still editable in its form). The server gets none, since it never compu
 time as the clients; with several sessions on one machine, set `server_compute_context.num_threads`
 by hand (see [CPU threads](configuration.md#cpu-threads)). Without it, every PyTorch client takes all the cores: three
 cifar10 clients on a 14-core machine took 233 s per round instead of 20 s.
+
+## Repeated sessions
+
+The optional `repeat` block of the session configuration (`every` or `cron`, `timezone`, as
+`server_run.schedule`, [configuration.md](configuration.md#rounds-at-fixed-times)) has the manager
+launch the session again at each deadline, rather than run all the rounds in one long session: a
+deadline is a new session of fresh processes, with no connection kept open in between.
+
+![Session configuration, repeated every 3 min](images/session_repeat_config.png "Session configuration, repeated every 3 min")
+
+- The operator checks and launches the first session as any other; its launch is the first
+  deadline. Once all the runs of a session have ended, the manager waits for the next deadline,
+  then has each agent run its last configuration again: the server first, the clients once it
+  listens (Flower's client does not retry: started sooner, it fails at once). A deadline missed,
+  the session having lasted longer than the period, is not made up for.
+- The manager sets and locks in the server's form `server_run.weights_path: latest`, so that each
+  session starts from the final weights of the previous one, `save_on_train_end`, which writes
+  them, and `server_run.stop_without_new_data: true`. The clients read their data at their start;
+  with an incremental data module (`hdfs`, `train.lots: new`), only what is new since the
+  previous session ([configuration.md](configuration.md#data-arriving-between-rounds)).
+  A session where no client has new data ends at once, its round not counted.
+
+  ![Server form of a repeated session](images/session_repeat_server_form.png "Server form of a repeated session: weights_path and stop_without_new_data locked")
+
+- The manager's page shows the number of the session (`SESSION 3`, followed by `⏳` between two
+  sessions; the period and the next deadline in its tooltip). *⏹ stop after round* and the
+  stopping criteria end the current session only: *🔁 stop repeating* lets it end and launches no
+  other one; the drop ends both.
+
+  ![Between two sessions](images/session_repeat_waiting.png "Between two sessions: SESSION 1 ⏳ and the stop repeating button")
+
+- A run that fails (a client leaving a round for lack of new data is not a failure) stops the
+  repetition (`💥`): a defect would otherwise come back at each deadline unnoticed.
+- A hierarchical session refuses `repeat`: its lower levels follow the rounds of the upper one.
 
 ## Access
 

@@ -66,6 +66,9 @@ class ModelWeightVignetteStrategyDecorator(StrategyDecorator):
     def aggregate_fit(self, rnd, results, failures):
         # its metrics passed on: the decorators around it, and a hierarchical session's upper level, read them
         aggregated, metrics = super().aggregate_fit(rnd, results, failures)
+        # no client trained (all left the round for lack of new data, or failed): nothing to draw
+        if aggregated is None:
+            return aggregated, metrics
 
         if self.conf.debug:
             logm.console.log(f"Model weights Round={rnd}")

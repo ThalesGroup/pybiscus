@@ -19,10 +19,12 @@ from pybiscus.interfaces.flower.stoppingcriterion import EndSession, StoppingCri
 class StoppableServer(fl.server.Server):
 
     def __init__(self, *, client_manager: fl.server.ClientManager, strategy: fl.server.strategy.Strategy,
-                 criteria: Sequence[StoppingCriterion] = (), schedule: Optional[Schedule] = None) -> None:
+                 criteria: Sequence[StoppingCriterion] = (), schedule: Optional[Schedule] = None,
+                 stop_without_new_data: bool = False) -> None:
         super().__init__(client_manager=client_manager, strategy=strategy)
         self.criteria = list(criteria)
         self.schedule = schedule
+        self.stop_without_new_data = stop_without_new_data
         self.stop_reason: Optional[str] = None
         self.rounds_done = 0
         self.current_round = 0
@@ -37,9 +39,18 @@ class StoppableServer(fl.server.Server):
             signal.signal(STOP_SIGNAL, lambda _signum, _frame: self.request_stop("operator's request (SIGUSR1)"))
             logm.console.log(f"🛑 kill -USR1 {os.getpid()} stops the session after the current round")
 
+    def fit(self, num_rounds: int, timeout: Optional[float]) -> tuple[History, float]:
+        try:
+            return self._fit(num_rounds, timeout)
+        except Exception:
+            # Flower disconnects the clients only after a fit that returns: their open streams kept
+            # the server's process alive after the exception, and the clients waiting, for ever
+            self.disconnect_all_clients(timeout=timeout)
+            raise
+
     # Copy of flwr 1.27 Server.fit, whose `for` over range(num_rounds) cannot be left otherwise:
     # compare with flwr/server/server.py at each upgrade of flwr
-    def fit(self, num_rounds: int, timeout: Optional[float]) -> tuple[History, float]:
+    def _fit(self, num_rounds: int, timeout: Optional[float]) -> tuple[History, float]:
         history = History()
 
         log(INFO, "[INIT]")
@@ -83,6 +94,9 @@ class StoppableServer(fl.server.Server):
                 self.rounds_done += 1
                 if self.schedule is not None:
                     gui_events.log_rounds_done(self.rounds_done, num_rounds)
+            elif self.stop_without_new_data:
+                self.current_round = current_round - 1
+                self.request_stop(f"no client had new data in round {current_round}, which does not count")
             else:
                 logm.console.log(f"⏭️ round {current_round} skipped: no client had new data, it does not count "
                                  f"({self.rounds_done}/{num_rounds} rounds run)")
@@ -121,9 +135,9 @@ class StoppableServer(fl.server.Server):
         log(INFO, "")
         log(INFO, "[ROUND %s]", current_round)
         res_fit = self.fit_round(server_round=current_round, timeout=timeout)
-        # without a schedule a round all clients failed still counts: num_rounds bounds a session
-        # whose clients keep failing
-        if self.schedule is not None and (res_fit is None or not res_fit[2][0]):
+        # otherwise a round all clients failed still counts: num_rounds bounds a session whose
+        # clients keep failing
+        if (self.schedule is not None or self.stop_without_new_data) and (res_fit is None or not res_fit[2][0]):
             return False
         if res_fit is not None:
             parameters_prime, fit_metrics, _ = res_fit

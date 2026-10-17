@@ -319,7 +319,10 @@ def generate_param_js(payload):
     values_set = payload.get("values_set", {})
     values_lock = payload.get("values_lock", [])
 
-    new_values_items = ", ".join(f"'{key}' : '{value}'" for key, value in values_set.items())
+    # a Python bool became 'True', which JSON.parse refuses: the exception left every value after
+    # it unset and every lock undone
+    new_values_items = ", ".join(f"'{key}' : '{str(value).lower() if isinstance(value, bool) else value}'"
+                                 for key, value in values_set.items())
     value_lock_lines = "\n".join(f'lock_value("{opt}");' for opt in values_lock)
 
     param_js = f'''

@@ -173,6 +173,7 @@
     <div class="server-url">server <b id="server-url-display">—</b></div>
     <div class="sep"></div>
     <div class="kv"><span class="eyebrow">round</span><span class="num"><b id="round-num">0</b></span></div>
+    <div class="kv" id="repeat-kv" hidden><span class="eyebrow">session</span><span class="num"><b id="repeat-num">1</b></span></div>
     <div class="right">
       <span class="eyebrow">Δ round</span><span class="num" id="dround-val">—</span>
       <svg id="droundSpark" width="76" height="22"></svg>
@@ -180,6 +181,7 @@
       <button class="btn" id="token-btn" title="Copy the session token: the agents give it at registration">🔑 session token</button>
       <button class="btn" id="cfg-btn" disabled title="the session can be configured once its server agent is registered">⚙ config</button>
       <button class="btn" id="stop-round-btn" disabled title="no session is running">⏹ stop after round</button>
+      <button class="btn" id="stop-repeat-btn" hidden title="no other session after the current one">🔁 stop repeating</button>
       <button class="btn danger" id="revokeBtn">Drop session</button>
     </div>
   </div>
@@ -860,6 +862,7 @@
       setTxt('cfg-clients', `${registeredClients} client${registeredClients === 1 ? '' : 's'} registered = default min_clients`);
       upperState = data.upper_level || null;
       sessionRunning = !!data.session_running;
+      renderRepetition(data.repetition || null);
       linkTransports = data.link_transports || {}; linkTransportChoices = data.link_transport_choices || [];
       lastCycles = {own: data.cycles || [], ownSession: data.session || null, groups: flattenLowerLevels(data.lower_levels || [], null, 1, [])};
       document.getElementById('mid-tabs').hidden = !lastCycles.groups.length && !data.upper_level;
@@ -909,6 +912,35 @@
     // the clipboard API exists in secure contexts only (https, localhost): shown otherwise
     try{ await navigator.clipboard.writeText(SESSION_TOKEN); e.target.textContent='🔑 copied'; setTimeout(()=>e.target.textContent='🔑 session token', 1500); }
     catch{ prompt('Session token, to give to the agents:', SESSION_TOKEN); }
+  };
+  // a session launched again at each deadline: the page goes on reading between two sessions, and
+  // each new one starts with its own round counter and end
+  let repetitionSessions = 0;
+  function renderRepetition(repetition){
+    const active = !!repetition && (repetition.status === 'running' || repetition.status === 'waiting');
+    session.keepPolling = active;
+    document.getElementById('repeat-kv').hidden = !repetition;
+    const btn = document.getElementById('stop-repeat-btn');
+    btn.hidden = !active;
+    btn.disabled = !!repetition?.stop_requested;
+    btn.textContent = repetition?.stop_requested ? '🔁 last session' : '🔁 stop repeating';
+    if(!repetition) return;
+    if(repetition.sessions > repetitionSessions){
+      if(repetitionSessions > 0){ sessionEnd = null; stopRound = null; stopPending = false; roundsCounted = false; session.roundNumber = 0; }
+      repetitionSessions = repetition.sessions;
+    }
+    const next = repetition.next_deadline ? new Date(repetition.next_deadline).toLocaleString() : null;
+    document.getElementById('repeat-num').textContent = repetition.status === 'waiting' ? `${repetition.sessions} ⏳` :
+      repetition.status === 'failed' ? `${repetition.sessions} 💥` : repetition.status === 'ended' ? `${repetition.sessions} 🏁` : `${repetition.sessions}`;
+    document.getElementById('repeat-kv').title = `launched again ${repetition.schedule}` + (next ? `; next session at ${next}` : '')
+      + (repetition.reason ? `; ${repetition.reason}` : '');
+  }
+  document.getElementById('stop-repeat-btn').onclick = async ()=>{
+    try{
+      const response = await fetch('/pybiscus-session/stop-repeating', {method:'POST', headers:{'X-Pybiscus':'1'}});
+      if(!response.ok) alert((await response.json()).message);
+    }catch(error){ console.error('Error stopping the repetition:', error); }
+    updateGraph();
   };
   function renderStopButton(lowerLevel){
     const btn = document.getElementById('stop-round-btn');

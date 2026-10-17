@@ -32,6 +32,18 @@
   weights; `pybiscus schedule preview` shows the deadlines of a period or of a cron expression
   ([configuration.md](docs/configuration.md#data-arriving-between-rounds)). New dependency:
   `cronsim`.
+* Repeated sessions: the `repeat` block of the session form (`every` or `cron`) has the manager
+  launch the session again at each deadline once all its runs have ended, each one starting from
+  the previous one's final weights (`server_run.weights_path: latest`, now settable in the
+  configuration) and ending at once when no client has new data
+  (`server_run.stop_without_new_data`); *🔁 stop repeating* launches no further session, a failed
+  run stops the repetition ([sessionmanager.md](docs/sessionmanager.md#repeated-sessions)).
+* Session manager: a boolean value set by the manager in a form (`true`) no longer stops the page
+  from setting the values and locks after it.
+* A server whose session raises an exception (a plugin's defect) now ends, its clients
+  disconnected: its process and its clients used to wait for ever.
+* `visualizemodellayers` no longer fails a round in which no client trained.
+* Agent forms: the input of a locked optional value (`weights_path`) is greyed like the other locked inputs.
 * Reports written twice: the server's `check` refuses a configuration where two writers (the
   server, a metrics logger, a decorator) would write the same file of the reporting directory, or
   one in a directory another owns. A plugin used twice in the pipeline, to save before and after a

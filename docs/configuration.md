@@ -413,8 +413,9 @@ server_run:
   keepalive, every 3 min 30 s): checked with a 5 min wait on one machine; a firewall or a NAT that
   cuts idle connections sooner may still end a long wait, and a client lost is not taken back.
 - A lower level of a hierarchical session refuses `schedule`: it runs its upper level's rounds.
-- Each round of a long session keeps the state of the server; a session per deadline, launched
-  again with `--weights-path latest`, is planned as the manager's job.
+- Each round of a long session keeps the state of the server, and its connections to the
+  clients. The manager can instead launch a session again at each deadline, each one starting
+  from the previous one's final weights ([sessionmanager.md](sessionmanager.md#repeated-sessions)).
 
 ### Data arriving between rounds
 
@@ -451,6 +452,9 @@ data:
 - `pybiscus server launch … --weights-path latest` starts from the final weights of the last
   session of the reporting `basedir` that saved them (`save_on_train_end`), or from random weights
   if none did yet: the next session of a series goes on from where the previous one ended.
+  `server_run.weights_path` sets it in the configuration (`latest` or a file); the option wins.
+- `server_run.stop_without_new_data: true` ends the session at a round in which no client
+  trained, that round not counted: a session launched while nothing new has arrived ends at once.
 - `pybiscus schedule preview --every 1h` or `--cron "0 2 * * *" --timezone Europe/Paris` shows
   the next deadlines of a schedule ([cli.md](cli.md#checking-a-schedule)), before setting
   `server_run.schedule` ([above](#rounds-at-fixed-times)).

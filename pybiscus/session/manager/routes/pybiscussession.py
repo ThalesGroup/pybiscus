@@ -11,7 +11,7 @@ from pybiscus.session.manager.session_manager import generate_new_cid, pybiscus_
 import pybiscus.core.pybiscus_logger as logm
 from pybiscus.session.auth import session_access
 from pybiscus.session.csrf import HEADER
-from pybiscus.session.manager import cycles
+from pybiscus.session.manager import cycles, repetition
 from pybiscus.session.manager.feeds import Feed
 
 # **************************
@@ -59,6 +59,11 @@ def pybiscus_manager_run_session():
             decoded = urllib.parse.unquote(presets_raw)
 
             presets = json.loads(decoded)
+            repeat = presets.get("repeat")
+            if repeat is not None:
+                problem = repetition_refused(repeat)
+                if problem:
+                    return jsonify({"status": "error", "message": problem}), 409
             if pybiscus.session.manager.session_manager.upper_link is not None:
                 apply_upper_constraints(presets)
             # the lower levels' servers stop after as many rounds: none may wait for a round that never comes
@@ -93,9 +98,30 @@ def pybiscus_manager_run_session():
     # set the session running flag
     pybiscus.session.manager.session_manager.session_is_running = True
 
+    repeat = (session.agent_gui_json_presets or {}).get("repeat")
+    if repeat is not None:
+        from pybiscus.core.schedule import ConfigSchedule
+        repetition.start(ConfigSchedule.model_validate(repeat))
+    else:
+        repetition.cancel()
+
     return jsonify({ 
         "status": "success",
     }), 200
+
+def repetition_refused(repeat) -> str:
+    """why a session cannot be launched again at deadlines, or an empty string"""
+    from pydantic import ValidationError
+    from pybiscus.core.schedule import ConfigSchedule
+    session = pybiscus.session.manager.session_manager
+    # each level of a tree is launched by its own operator, its rounds following its upper level's
+    if session.upper_link is not None or session.lower_levels:
+        return "a hierarchical session cannot be launched again at deadlines yet: repeat a session without lower or upper level"
+    try:
+        ConfigSchedule.model_validate(repeat)
+    except ValidationError as error:
+        return f"repeat: {error.errors()[0]['msg']}"
+    return ""
 
 # **************************
 
@@ -232,6 +258,7 @@ def pybiscus_manager_get_session_params():
     min_clients = custom_presets.pop("min_clients", None) or len(session.session_clients) + len(session.session_relays)
     robustness = custom_presets.pop("robustness", None)
     num_rounds = custom_presets.pop("num_rounds", None)
+    repeat = custom_presets.pop("repeat", None)
 
     # each call used to take a new cid: the server's page and every reload consumed one, and the
     # cids of the clients were neither consecutive nor stable. Pages name their agent now.
@@ -272,6 +299,16 @@ def pybiscus_manager_get_session_params():
         custom_presets["options_set"][SERVER_LINK] = " "
         custom_presets["options_lock"].append(SERVER_LINK)
         link_presets(custom_presets, SERVER_LINK, link_for_own_server(session.upper_session_link))
+    # each session of the repetition goes on from the previous one's weights, and ends at once when
+    # no client has new data
+    if agent in session.registered_servers and repeat is not None:
+        # " " selects Some for an Optional[T] (see set_option)
+        for prefix in ("server_run.reporting.save_on_train_end", "server_run.weights_path"):
+            custom_presets["options_set"][prefix] = " "
+            custom_presets["options_lock"].append(prefix)
+        for name, value in (("server_run.weights_path", "latest"), ("server_run.stop_without_new_data", True)):
+            custom_presets["values_set"][name] = value
+            custom_presets["values_lock"].append(name)
     if agent in session.registered_servers and robustness:
         custom_presets["values_set"]["server_strategy.robustness"] = robustness
         custom_presets["values_lock"].append("server_strategy.robustness")
@@ -363,6 +400,15 @@ def pybiscus_manager_stop_after_round():
     return jsonify({"status": "success", "servers": stopping}), 202
 
 
+# the current session goes on to its end; no other one is launched
+@pybiscus_manager_app.route("/pybiscus-session/stop-repeating", methods=["POST"])
+def pybiscus_manager_stop_repeating():
+    if repetition.repetition is None or repetition.repetition.status in (repetition.ENDED, repetition.FAILED):
+        return jsonify({"status": "error", "message": "the session is not launched again at deadlines"}), 409
+    repetition.repetition.request_stop()
+    return jsonify({"status": "success", "repetition": repetition.state()}), 202
+
+
 def stop_agent_runs():
     """a dropped session's runs stop with it: they went on without a manager, and a lower level's
     server waited for a model that no longer comes"""
@@ -381,6 +427,7 @@ def stop_agent_runs():
 
 
 def drop_session():
+    repetition.cancel()
     stop_agent_runs()
     cycles.reset()
     pybiscus.session.manager.session_manager.clear_session()
@@ -408,6 +455,7 @@ def pybiscus_manager_list_clients():
         "link_transport_choices": list(LINK_TRANSPORTS),
         "session_running": pybiscus.session.manager.session_manager.session_is_running,
         "cycles": cycles.session_cycles(),
+        "repetition": repetition.state(),
         "session": session_state(),
     })
 

@@ -171,12 +171,12 @@ def server_certificates(conf_ssl):
 def resolve_latest_weights(conf: ConfigServer) -> Optional[Path]:
     reporting = conf.server_run.reporting
     if reporting.save_on_train_end is None:
-        logm.console.log("❌ --weights-path latest: server_run.reporting.save_on_train_end is not set, no session saves its weights")
+        logm.console.log("❌ weights path latest: server_run.reporting.save_on_train_end is not set, no session saves its weights")
         raise typer.Exit(code=1)
     found = latest_checkpoint(reporting.basedir, reporting.save_on_train_end.filename)
     if found is None:
         # the first session of a schedule has no predecessor
-        logm.console.log(f"--weights-path latest: no {reporting.save_on_train_end.filename} in {reporting.basedir} yet, random initialization")
+        logm.console.log(f"weights path latest: no {reporting.save_on_train_end.filename} in {reporting.basedir} yet, random initialization")
     return found
 
 
@@ -233,6 +233,8 @@ def launch_config(
     import pybiscus.core.pybiscuscontext as pcpc
     pcpc.pybiscus_context[pcpc.SERVER_CONFIG] = conf.model_dump(mode="json")
 
+    if weights_path is None and conf.server_run.weights_path:
+        weights_path = Path(conf.server_run.weights_path)
     # before this session's directory exists: it would be the last one, without weights yet
     if weights_path is not None and str(weights_path) == LATEST:
         weights_path = resolve_latest_weights(conf)
@@ -368,7 +370,7 @@ def launch_config(
         logm.console.log(f"setting 🗓️ schedule <{conf.server_run.schedule.every or conf.server_run.schedule.cron}> ({schedule.zone})")
 
     server = StoppableServer(client_manager=fl.server.SimpleClientManager(), strategy=strategy, criteria=criteria,
-                             schedule=schedule)
+                             schedule=schedule, stop_without_new_data=conf.server_run.stop_without_new_data)
     server.stop_on_signal()
 
     logm.console.log("start of 🌺🖥️ flower server")

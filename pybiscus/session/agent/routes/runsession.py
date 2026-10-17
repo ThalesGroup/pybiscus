@@ -1,7 +1,8 @@
 import json
 import queue
+import socket
 
-from flask import Response, jsonify, render_template
+from flask import Response, jsonify, render_template, request
 
 from pybiscus.session.agent.pybiscus_agent import rest_server
 from pybiscus.session.auth import session_access
@@ -75,6 +76,45 @@ def runStop():
         return jsonify({"status": "terminating"}), 202
 
     return jsonify({"status": "no running process"}), 409
+
+# ..........................................................
+# .... POST /run/relaunch ..................................
+# ..........................................................
+
+# called by the manager at each deadline of a repeated session: the configuration checked and
+# launched by the operator the first time, run again
+@rest_server.route("/run/relaunch", methods=["POST"])
+@session_access
+def runRelaunch():
+    if run_session.relaunch():
+        return jsonify({"status": "relaunched", "mode": run_session.mode}), 202
+
+    return jsonify({"status": "no run to launch again, or still running"}), 409
+
+# ..........................................................
+# .... GET /run/listening ..................................
+# ..........................................................
+
+# called by the manager before it launches the clients of a repeated session again: Flower's
+# legacy client does not retry, one started before its server listens fails at once. Probed here,
+# on the server's machine: the manager may not reach a server listening on the loopback only.
+@rest_server.route("/run/listening", methods=["GET"])
+@session_access
+def runListening():
+    try:
+        port = int(request.args.get("port", ""))
+    except ValueError:
+        return jsonify({"status": "a port is required"}), 400
+    listening = False
+    # localhost may resolve to IPv4 only, and the session form listens on [::1] or [::]
+    for loopback in ("::1", "127.0.0.1"):
+        try:
+            socket.create_connection((loopback, port), timeout=1).close()
+            listening = True
+            break
+        except OSError:
+            pass
+    return jsonify({"listening": listening, "running": run_session.is_running()})
 
 # ..........................................................
 # .... POST /run/stop-after-round ..........................

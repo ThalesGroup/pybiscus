@@ -33,7 +33,7 @@ pybiscus client launch configs/cifar10_cnn/distributed/without_ssl/client_2.yml
 `check` validates a configuration against its Pydantic models without running anything. Options
 replace some values of the configuration: `--server-listen-address`, `--num-rounds`,
 `--weights-path` (initial weights; `latest`: those the last session of the reporting `basedir`
-saved) for the server; `--server-address`, `--cid`, `--root-dir` for a client.
+saved; `server_run.weights_path` in the configuration otherwise) for the server; `--server-address`, `--cid`, `--root-dir` for a client.
 
 The server runs `num_rounds` rounds. `kill -USR1 <pid>` (the server logs its pid at start) stops it
 after the current round: the clients are disconnected and the reports written as at a normal end

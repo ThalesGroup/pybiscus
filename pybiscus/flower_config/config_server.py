@@ -108,6 +108,14 @@ class ConfigServerRun(BaseModel):
     schedule:          Optional[ConfigSchedule] = Field(default=None, description=
         "rounds at deadlines (a period or cron times) rather than back to back; a round in which no client had "
         "new data is skipped and does not count")
+    # a session launched again at each deadline by its manager: nothing to train on, nothing to run
+    stop_without_new_data: bool = Field(default=False, description=
+        "end the session at a round in which no client trained (none had new data); the round does not count")
+    # in the configuration too, not only --weights-path: the agents launch the runs, and the manager
+    # sets this one for a session it launches again
+    weights_path:      Optional[str] = Field(default=None, description=
+        'weights to start from: a file, or "latest": those the last session of reporting.basedir saved (save_on_train_end); '
+        "--weights-path overrides it")
     clients_fit_local_epochs: int = Field(default=1, ge=1)
     client_configs:    list[str] = Field(default=[], description='configuration files of the clients, saved with the reports (command line sessions)')
     seed:              Optional[int] = None

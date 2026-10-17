@@ -3,6 +3,7 @@ from enum import Enum
 from pydantic import BaseModel, ConfigDict, Field
 from typing import Annotated, ClassVar, Optional, Union, get_args
 
+from pybiscus.core.schedule import ConfigSchedule
 from pybiscus.flower_config.config_server import Robustness
 from pybiscus.ml.datasplit import ConfigPartitionScheme
 from pybiscus.plugin.registryloader import get_name_value_if_literal
@@ -82,5 +83,8 @@ def make_session_model(models_confs, data: list[str], data_confs):
             "clients every round waits for; unset: the clients registered at launch (a confirmation states the risk of another number)")
         robustness: Robustness = Field(default=Robustness.none, description=
             "defense of the server against malicious clients, set and locked in its form")
+        repeat: Optional[ConfigSchedule] = Field(default=None, description=
+            "launch the session again at each deadline, once all its runs have ended: each one starts from the "
+            "previous one's final weights, its clients read their new data, and it ends at once if none has any")
 
     return ConfigSession

@@ -1126,7 +1126,9 @@ fieldset.foldable:not(.collapsed) > div.pybiscus-field:has(> fieldset) {
     filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.3));
 }
 
-.pybiscus-config.pybiscus-locked + input[readonly] {
+/* the input of a locked Optional scalar sits in a tab, not after its label */
+.pybiscus-config.pybiscus-locked + input[readonly],
+.pybiscus-fieldset-container.pybiscus-locked input[readonly] {
     color: var(--color-gray-400);
     background: linear-gradient(135deg, var(--color-gray-100) 0%, var(--color-gray-200) 100%);
     cursor: not-allowed;

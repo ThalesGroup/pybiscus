@@ -39,6 +39,8 @@ class RunSession:
         self.mode   = None
         self.status = IDLE
         self.detail = ""
+        # the last run launched, which the manager has run again at the deadlines of a repeated session
+        self._command = None
 
     # ---------- lecture ----------
 
@@ -96,12 +98,23 @@ class RunSession:
             self.detail = ""
             self._stop_requested = False
             self._stop_after_round_requested = False
+            self._command = command
 
         self._publish({"type": "reset", "mode": mode})
 
         agent_weblog.agent_logger.log(f"launching pybiscus {mode}", state=AgentState.EXECUTING)
 
         threading.Thread(target=self._run, args=(command,), daemon=True).start()
+
+    def relaunch(self) -> bool:
+        """the last run again, with the configuration it was launched with: False if none was, or if
+        it still runs"""
+        with self._lock:
+            mode, command, running = self.mode, self._command, self.status == RUNNING
+        if command is None or running:
+            return False
+        self.start(mode, command)
+        return True
 
     def stop(self) -> bool:
         process = self._process

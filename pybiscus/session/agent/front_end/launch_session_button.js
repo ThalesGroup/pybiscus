@@ -27,6 +27,8 @@ launch_session_button.addEventListener('click', function() {
     // client's train.partition and val section
     const is_partition = row => row[0].startsWith('data_partition.');
     const is_holdout = row => row[0].startsWith('data_holdout.');
+    // the manager's schedule of the session's repetition, not an option of the participants' forms
+    const is_repeat = row => row[0].startsWith('repeat.');
     // a manager setting too, not an option to select
     const share_row = raw_data.find(row => row[0] === 'share_cpu_threads');
     const share_cpu_threads = share_row ? share_row[1] === true || share_row[1] === 'true' : false;
@@ -41,7 +43,7 @@ launch_session_button.addEventListener('click', function() {
     // entries cannot be recreated in another form)
     const is_model = row => row[0] === 'model.name' || row[0].startsWith('model.config.');
     const model_values = raw_data.filter(row => /^model\.config\.[^.]+$/.test(row[0]) && ! Array.isArray(row[1]));
-    const new_data = raw_data.filter(row => ! exclude.includes(row[0]) && ! is_model(row) && ! is_partition(row) && ! is_holdout(row) && row !== share_row && row !== min_clients_row && row !== num_rounds_row && row !== robustness_row);
+    const new_data = raw_data.filter(row => ! exclude.includes(row[0]) && ! is_model(row) && ! is_partition(row) && ! is_holdout(row) && ! is_repeat(row) && row !== share_row && row !== min_clients_row && row !== num_rounds_row && row !== robustness_row);
     const partition_rows = raw_data.filter(is_partition);
     const data_partition = partition_rows.length
         ? Object.fromEntries(partition_rows.map(([key, value]) => [key.slice('data_partition.'.length), value]))
@@ -49,6 +51,12 @@ launch_session_button.addEventListener('click', function() {
     const holdout_rows = raw_data.filter(is_holdout);
     const data_holdout = holdout_rows.length
         ? Object.fromEntries(holdout_rows.map(([key, value]) => [key.slice('data_holdout.'.length), value]))
+        : null;
+
+    // an unset Optional field (every or cron) is left out: the schedule takes one of them
+    const repeat_rows = raw_data.filter(row => is_repeat(row) && row[1] !== null && row[1] !== '');
+    const repeat = repeat_rows.length
+        ? Object.fromEntries(repeat_rows.map(([key, value]) => [key.slice('repeat.'.length), value]))
         : null;
 
     // console.log( new_data );
@@ -103,6 +111,7 @@ launch_session_button.addEventListener('click', function() {
         min_clients,
         num_rounds,
         robustness,
+        repeat,
     };    
 
     // console.log( server_data );
