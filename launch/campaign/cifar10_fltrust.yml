@@ -1,0 +1,96 @@
+# Campaign of launch/campaign/strategy_campaign.py: FLTrust (Cao et al., NDSS 2021, the fltrust
+# decorator) against the attacks the other defenses did not stop: omniscient ALIE (the paper's z and
+# z 2; cifar10_alie_omniscient.yml: 7.5 to 11 points lost by FedAvg, median, trimmed mean and
+# clipping) and 2 sign flippers x10. The server trains on 100 trusted examples drawn from the train
+# split (data section trusted, as the paper's root dataset), as many optimizer steps as the median
+# client (server_steps: clients, as the paper's same number of local iterations), with each update
+# scaled to the server update's norm (the paper's) or to the median client norm. Each attacked variant is compared to
+# the same defense without attacker, seed by seed; the defenses without attacker to FedAvg.
+#   uv run python launch/campaign/strategy_campaign.py launch/campaign/cifar10_fltrust.yml
+# Dirichlet 0.5 shares, 7 clients, 3 local epochs, 5 rounds. 27 runs, about 55 minutes; do not run
+# it next to a live session.
+# Status: our own measurement, not a reproduction: the paper has 100 clients doing one local
+# iteration each, here 7 clients and 3 local epochs (docs/robust-aggregation.md, Limits).
+
+server_config: configs/cifar10_cnn/distributed/without_ssl/server.yml
+client_config: configs/cifar10_cnn/distributed/without_ssl/client_1.yml
+output: experiments/campaigns
+plugin_manifests: [launch/campaign/test-plugins-conf.yml]
+
+clients: 7
+rounds: 5
+local_epochs: 3
+port: 3399                 # the Flower server of each run: must be free
+threads_per_client: auto   # physical cores / clients
+timeout: 1800              # seconds per run
+seeds: [1, 2, 3]           # every variant once per seed, then mean ± std
+
+client_data:
+  train:
+    partition:
+      scheme: dirichlet
+      alpha: 0.5
+      seed: 42
+  val:
+    source: holdout
+    fraction: 0.1
+
+server_data:
+  test:
+    max_samples: 2000
+  trusted:
+    max_samples: 100
+
+variants:
+  - label: FedAvg, no attacker
+    strategy: {name: fedavg, config: {}}
+  - label: FLTrust server norm, no attacker
+    reference: FedAvg, no attacker
+    strategy: {name: fedavg, config: {}}
+    pipeline: [{name: fltrust, config: {normalize_to: server}}]
+  - label: FLTrust server norm, omniscient ALIE paper z
+    reference: FLTrust server norm, no attacker
+    strategy: {name: fedavg, config: {}}
+    pipeline: [{name: fltrust, config: {normalize_to: server}}, {name: omniscientalie, config: {}}]
+    client_overrides:
+      0: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: none}}}}
+      1: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: none}}}}
+  - label: FLTrust server norm, omniscient ALIE z 2
+    reference: FLTrust server norm, no attacker
+    strategy: {name: fedavg, config: {}}
+    pipeline: [{name: fltrust, config: {normalize_to: server}}, {name: omniscientalie, config: {z: 2.0}}]
+    client_overrides:
+      0: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: none}}}}
+      1: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: none}}}}
+  - label: FLTrust server norm, sign flip x10
+    reference: FLTrust server norm, no attacker
+    strategy: {name: fedavg, config: {}}
+    pipeline: [{name: fltrust, config: {normalize_to: server}}]
+    client_overrides:
+      0: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: sign_flip, scale: 10.0}}}}
+      1: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: sign_flip, scale: 10.0}}}}
+  - label: FLTrust median norm, no attacker
+    reference: FedAvg, no attacker
+    strategy: {name: fedavg, config: {}}
+    pipeline: [{name: fltrust, config: {normalize_to: median}}]
+  - label: FLTrust median norm, omniscient ALIE paper z
+    reference: FLTrust median norm, no attacker
+    strategy: {name: fedavg, config: {}}
+    pipeline: [{name: fltrust, config: {normalize_to: median}}, {name: omniscientalie, config: {}}]
+    client_overrides:
+      0: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: none}}}}
+      1: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: none}}}}
+  - label: FLTrust median norm, omniscient ALIE z 2
+    reference: FLTrust median norm, no attacker
+    strategy: {name: fedavg, config: {}}
+    pipeline: [{name: fltrust, config: {normalize_to: median}}, {name: omniscientalie, config: {z: 2.0}}]
+    client_overrides:
+      0: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: none}}}}
+      1: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: none}}}}
+  - label: FLTrust median norm, sign flip x10
+    reference: FLTrust median norm, no attacker
+    strategy: {name: fedavg, config: {}}
+    pipeline: [{name: fltrust, config: {normalize_to: median}}]
+    client_overrides:
+      0: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: sign_flip, scale: 10.0}}}}
+      1: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: sign_flip, scale: 10.0}}}}

@@ -8,17 +8,17 @@ from torch.utils.data import DataLoader
 from torchvision.datasets import CIFAR10
 
 import pybiscus.core.pybiscus_logger as logm
-from pybiscus.ml.datasplit import downloaded, limit, make_loader, privacy_loader, privacy_set, reject_former_fields, train_and_val_sets
+from pybiscus.ml.datasplit import downloaded, limit, make_loader, privacy_loader, privacy_set, reject_former_fields, train_and_val_sets, trusted_loader, trusted_set
 
-from cifar10.cifar10_dataconfig import CifarPrivacySet, CifarTestSet, CifarTrainSet, CifarValSet
+from cifar10.cifar10_dataconfig import CifarPrivacySet, CifarTestSet, CifarTrainSet, CifarTrustedSet, CifarValSet
 
 class CifarLightningDataModule(pl.LightningDataModule):
     """CIFAR-10 from torchvision: 32 x 32 colour images of 10 classes, 50,000 to train and 10,000 to test,
-    read from the dataset's directories; the shared train, val, test and privacy sections choose the
+    read from the dataset's directories; the shared train, val, test, privacy and trusted sections choose the
     examples, the partition between clients and the loaders."""
 
     @override
-    def __init__( self, train=None, val=None, test=None, privacy=None, num_workers: int = 0, **former_fields):
+    def __init__( self, train=None, val=None, test=None, privacy=None, trusted=None, num_workers: int = 0, **former_fields):
 
         super().__init__()
 
@@ -30,6 +30,7 @@ class CifarLightningDataModule(pl.LightningDataModule):
         self.val            = CifarValSet.model_validate(val or {})
         self.test           = CifarTestSet.model_validate(test or {})
         self.privacy        = None if privacy is None else CifarPrivacySet.model_validate(privacy)
+        self.trusted        = None if trusted is None else CifarTrustedSet.model_validate(trusted)
         self.num_workers    = num_workers
 
         self.transform      = transforms.Compose(
@@ -44,6 +45,7 @@ class CifarLightningDataModule(pl.LightningDataModule):
         self.data_val       = None
         self.data_test      = None
         self.data_privacy   = None
+        self.data_trusted   = None
 
     @override
     def setup(self, stage: Optional[str] = None):
@@ -77,6 +79,8 @@ class CifarLightningDataModule(pl.LightningDataModule):
             self.data_test  = limit( test_full, self.test.max_samples)
             if self.privacy is not None:
                 self.data_privacy = privacy_set( self.train_source(self.privacy.dir), self.privacy)
+            if self.trusted is not None:
+                self.data_trusted = trusted_set( self.train_source(self.trusted.dir), self.trusted)
 
     def train_source(self, dir=None):
         """the official train split, in which the partitions and indices files pick their examples"""
@@ -111,3 +115,9 @@ class CifarLightningDataModule(pl.LightningDataModule):
         if self.data_privacy is None:
             return None
         return privacy_loader( self.data_privacy, self.privacy, self.num_workers,)
+
+    def trusted_dataloader(self) -> Optional[DataLoader]:
+        """None without a trusted section"""
+        if self.data_trusted is None:
+            return None
+        return trusted_loader( self.data_trusted, self.trusted, self.num_workers,)

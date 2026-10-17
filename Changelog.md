@@ -2,6 +2,19 @@
 
 ## [Unreleased]
 
+### Robustness
+
+* FLTrust (Cao et al., NDSS 2021): the `fltrust` strategy decorator trains the global model on a
+  few trusted examples every round and weighs each client by the cosine similarity of its update to
+  the server's (0 when negative), its update scaled to the median client norm; over `fedavg` or
+  `fedprox`. Measured (`launch/campaign/cifar10_fltrust.yml`): it leaves out sign flippers every
+  round and lowers omniscient ALIE at z 2, but not at the paper's z, at a cost of 3 points without
+  attacker; `safeguard` stays the advice.
+* Data: an optional `trusted` section (cifar, mnist), examples drawn from the train split that the
+  server trains on (`pybiscus_context[TRUSTED_SET]`).
+* Server configuration: a decorator may name the strategies it works over (`PYBISCUS_STRATEGIES`)
+  and the data sections it needs (`PYBISCUS_DATA_SECTIONS`), refused at check otherwise.
+
 ### Robustness tests
 
 * The worst case of ALIE: the `omniscientalie` strategy decorator (test manifest only) replaces the

@@ -34,7 +34,7 @@ class ConfigOmniscientAlieDecorator(BaseModel):
     PYBISCUS_ALIAS: ClassVar[str] = "Omniscient ALIE (robustness tests)"
     PYBISCUS_GROUP: ClassVar[str] = "Robustness"
     # the defenses must see the forged updates: this decorator wraps them
-    PYBISCUS_AFTER: ClassVar[tuple] = ("clipping", "serverdpfixed", "serverdpadaptive")
+    PYBISCUS_AFTER: ClassVar[tuple] = ("clipping", "fltrust", "serverdpfixed", "serverdpadaptive")
     # the updates are measured against the global model, not what each client was sent
     PYBISCUS_INCOMPATIBLE_WITH: ClassVar[tuple] = ("personalizeclientsfitin",)
 

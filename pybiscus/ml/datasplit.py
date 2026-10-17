@@ -167,6 +167,24 @@ class ConfigPrivacySet(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
 
+class ConfigTrustedSet(BaseModel):
+    """examples the server trains on to judge the clients' updates (fltrust decorator; FLTrust's root
+    dataset, Cao et al., NDSS 2021): drawn uniformly from the official train split, they must be
+    clean and look like the clients' data; dir: directory of the official train split"""
+
+    PYBISCUS_CONFIG: ClassVar[str] = "trusted"
+
+    dir: str = Field(description="directory of the official train split, from which the trusted examples are drawn")
+    # 100: the paper's default; a larger set gives a steadier reference direction
+    max_samples: int = Field(default=100, ge=1, description="number of trusted examples, drawn at random from the train split")
+    seed: int = Field(default=0, description="draw of the trusted examples and order of their batches, reproducible")
+    batch_size: int = Field(default=32, ge=1, description=SET_FIELDS["batch_size"])
+    shuffle: bool = Field(default=True, description=SET_FIELDS["shuffle"])
+    drop_last: bool = Field(default=False, description=SET_FIELDS["drop_last"])
+
+    model_config = ConfigDict(extra="forbid")
+
+
 # the configurations written before the sections: say where each field went, instead of a bare
 # "extra inputs are not permitted"
 FORMER_FIELDS = {
@@ -350,6 +368,18 @@ def privacy_loader(dataset: Dataset, privacy: ConfigPrivacySet, num_workers: int
         collate_fn=collate_fn,
         **worker_start(num_workers),
     )
+
+
+def trusted_set(train_full: Dataset, trusted: ConfigTrustedSet) -> Dataset:
+    # its own seed, not limit()'s fixed one: the trusted draw is a setting of the experiment
+    count = min(trusted.max_samples, len(train_full))
+    kept = np.sort(np.random.default_rng(trusted.seed).permutation(len(train_full))[:count])
+    logm.console.log(f"data: {count} trusted examples, from the train split of {len(train_full)}")
+    return Subset(train_full, kept.tolist())
+
+
+def trusted_loader(dataset: Dataset, trusted: ConfigTrustedSet, num_workers: int = 0) -> DataLoader:
+    return make_loader(dataset, trusted, num_workers, order_seed=trusted.seed)
 
 
 def example_indices(dataset: Dataset) -> np.ndarray:

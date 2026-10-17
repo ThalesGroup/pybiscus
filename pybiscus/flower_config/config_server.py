@@ -295,6 +295,11 @@ class ConfigServerStrategy(BaseModel):
             # PYBISCUS_LAST: the outermost decorator, whose result is the pipeline's
             if getattr(type(decorator), "PYBISCUS_LAST", False) and names.index(decorator.name) != len(names) - 1:
                 raise ValueError(f"pipeline: {decorator.name} must come last")
+            # PYBISCUS_STRATEGIES: the strategies whose aggregation it relies on (one weighing the
+            # clients by their number of examples, for instance)
+            strategies = getattr(type(decorator), "PYBISCUS_STRATEGIES", None)
+            if strategies is not None and self.strategy.name not in strategies:
+                raise ValueError(f"pipeline: {decorator.name} works over the strategies {', '.join(strategies)}, not {self.strategy.name}")
         return self
 
 
@@ -340,6 +345,16 @@ class ConfigServer(BaseModel):
         if self.server_run.schedule is not None and self.server_strategy.upper_level_link is not None:
             raise ValueError("server_run.schedule: a lower level of a hierarchical session runs the rounds of its upper "
                              "level, schedule the top level only")
+        return self
+
+    # PYBISCUS_DATA_SECTIONS: the server's data sections a decorator reads (fltrust's trusted examples)
+    @model_validator(mode="after")
+    def check_decorator_data_sections(self):
+        for decorator in self.server_strategy.pipeline:
+            for section in getattr(type(decorator), "PYBISCUS_DATA_SECTIONS", ()):
+                if getattr(self.data.config, section, None) is None:
+                    raise ValueError(f"pipeline: {decorator.name} needs a data.config.{section} section"
+                                     + ("" if section in type(self.data.config).model_fields else f", which the data plugin {self.data.name} does not offer"))
         return self
 
     # checked here rather than when writing: a file overwritten silently is found only after the session

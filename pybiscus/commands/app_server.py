@@ -34,7 +34,7 @@ from pybiscus.plugin.registries.stoppingcriterion_registry import stoppingcriter
 #                    ------------------------------------------------
 
 # the sections of a data configuration the server reads, unless the plugin declares its own
-SERVER_DATA_SECTIONS = ("test", "privacy")
+SERVER_DATA_SECTIONS = ("test", "privacy", "trusted")
 
 
 def warn_unused_data_sections(conf_loaded, conf: ConfigServer) -> None:
@@ -354,6 +354,8 @@ def launch_config(
     # (as None) passed a hasattr test and crashed Fabric's setup
     privacy_loader = data.privacy_dataloader() if hasattr(data, "privacy_dataloader") else None
     pcpc.pybiscus_context[pcpc.PRIVACY_SET] = None if privacy_loader is None else fabric._setup_dataloader(privacy_loader)
+    trusted_loader = data.trusted_dataloader() if hasattr(data, "trusted_dataloader") else None
+    pcpc.pybiscus_context[pcpc.TRUSTED_SET] = None if trusted_loader is None else fabric._setup_dataloader(trusted_loader)
 
     # chaining strategy decorators 
     for conf_decorator in conf.server_strategy.pipeline:

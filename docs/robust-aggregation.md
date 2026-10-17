@@ -401,8 +401,8 @@ The colluders send the same update (similarity 1.000), while two honest clients 
     other. A lasting version of the above, harder to blur with one-off noise, but it may also
     weigh down honest clients whose data are alike.
   - *FLTrust* compares each update with one the server computes itself on a small trusted dataset
-    (the `test` section could provide it) and weighs it by their similarity. It does not rely on
-    the attackers' likeness, but the trusted data must resemble the clients'.
+    and weighs it by their similarity. It does not rely on the attackers' likeness, but the trusted
+    data must resemble the clients'. Implemented and measured below ([FLTrust](#fltrust-a-direction-the-server-trusts)).
 
 ### On iid shares, honest clients look alike too
 
@@ -441,6 +441,87 @@ does almost no harm there either (about 1 point).
 
 Before choosing, look at your own clients with `log_directions: true` on a run without attacker:
 how far apart their directions are, and how close the closest pair gets.
+
+## FLTrust: a direction the server trusts
+
+The `fltrust` strategy decorator ([[Cao 2021]](#references)) trains, every round, the global model on
+a few trusted examples the server holds (the data section `trusted`, see
+[configuration.md](configuration.md#data)), and judges each client by the direction of its update:
+
+- its weight is the cosine similarity of its update to the server's, 0 when negative (left out of
+  the round);
+- its update is scaled to a common norm, so that no client weighs by its norm (`normalize_to`);
+- FedAvg averages the scaled updates with these weights (passed as `num_examples`): `fltrust`
+  works over `fedavg` and `fedprox` only, and cannot be combined with `clipping` (which `robustness:
+  safeguard` adds) nor the server-side DP decorators, all enforced at check.
+
+```yaml
+server_strategy:
+  strategy: {name: fedavg, config: {}}
+  pipeline:
+    - name: fltrust
+      config: {}               # normalize_to: median, server_steps: clients
+data:
+  config:
+    trusted:
+      max_samples: 100         # drawn at random from the train split (dir), seed 0
+```
+
+Every round logs each client's trust score ("🛡️" lines, `fltrust_score_<cid>`), the server's
+number of steps and update norm, and how many clients were left out.
+
+Two choices differ from the paper, because its clients run one local iteration each, as the
+server, while Pybiscus clients run local epochs:
+
+- `server_steps: clients` (default): the server runs as many optimizer steps as the median client
+  (its number of examples x the local epochs / the trusted batch size), going through the trusted
+  examples again and again. With the clients' number of epochs instead (`server_steps: epochs`),
+  100 examples gave 12 steps against 650, a direction too short to say anything: the model did not
+  learn at all on a trial seed.
+- `normalize_to: median` (default): the updates are scaled to the median client norm. The paper's
+  choice, the server update's norm (`normalize_to: server`), cost 18 points without attacker below:
+  overfitting its 100 examples, the server's update is about twice as long as the clients', and
+  every update was stretched to it.
+
+`launch/campaign/cifar10_fltrust.yml`: dirichlet shares, 7 clients, 3 local epochs, 5 rounds, 100
+trusted examples, 3 seeds; test accuracy at round 5, and the difference to the same defense without
+attacker paired by seed:
+
+| variant | no attacker | omniscient ALIE, z 0.57 | omniscient ALIE, z 2 | 2 sign flippers x 10 |
+|---|---|---|---|---|
+| FedAvg (no defense) | 0.404 | 0.326 ¹ | 0.292 ¹ | 0.102 with 1 ² |
+| FLTrust, `normalize_to: median` | 0.372 (−3.2 vs FedAvg) | 0.313 (−5.8) | 0.319 (−5.3) | 0.327 (−4.5) |
+| FLTrust, `normalize_to: server` | 0.219 (−18.5 vs FedAvg) | 0.227 (+0.8) | 0.243 (+2.4) | 0.241 (+2.2) |
+| clipping x 1.5, reject x 1.7 (`safeguard`) | 0.401 ¹ | 0.327 ¹ | 0.291 ¹ | 0.337 with reject x 3 ² |
+
+¹ [The omniscient attacker](#the-omniscient-attacker), same setup; ² the clipping campaign
+([The `clipping` decorator](#the-clipping-decorator)), same setup.
+
+Trust scores over all rounds and seeds (`normalize_to: median`; the attackers are clients 0 and 1):
+
+| case | honest: mean score, left out | attackers: mean score, left out |
+|---|---|---|
+| no attacker | 0.27, 2 of 105 | |
+| omniscient ALIE, z 0.57 | 0.26, 2 of 75 | 0.33, 0 of 30 |
+| omniscient ALIE, z 2 | 0.25, 3 of 75 | 0.07, 2 of 30 |
+| sign flip x 10 | 0.24, 3 of 75 | 0, 30 of 30 |
+
+- The sign flippers were left out of every round: FLTrust stops them without knowing their number,
+  where FedAvg collapses. The `safeguard` defense does it too, at no cost without attacker.
+- Omniscient ALIE at z 2 keeps the attackers' weight at a quarter of the honest clients' (0.07
+  against 0.25): FLTrust ends 2.7 points above FedAvg and `safeguard` (0.319 against 0.292 and
+  0.291); Krum, which never picks the forged update at z 2, ends at 0.301 but costs 12 points
+  without attacker.
+- At the paper's z (0.57), the forged update is closer to the server's direction than the honest
+  ones (0.33 against 0.26): FLTrust trusts the attackers more and does no better than FedAvg.
+- Its cost without attacker, 3.2 points, comes from the weights: the honest clients' scores are low
+  (about 0.27) and uneven, 100 examples giving a rough direction on heterogeneous data.
+
+**Choosing**: `safeguard` stays the default advice: no cost without attacker, and it stops the
+attackers that stand out by their norm. FLTrust is worth its cost only when the server holds data
+like the clients' and discreet attackers are expected; even then, an attacker that knows the honest
+updates and stays close to their mean passes it. Not measured: a larger trusted set, iid shares,
+more clients.
 
 ## Limits of these measurements
 
@@ -487,6 +568,10 @@ per run, and keep it away from a live session.
 
 ## References
 
+- [Cao 2021] X. Cao, M. Fang, J. Liu, N. Z. Gong. *FLTrust: Byzantine-robust Federated Learning via
+  Trust Bootstrapping*. NDSS 2021. [arXiv:2012.13995](https://arxiv.org/abs/2012.13995) — the
+  `fltrust` decorator (Algorithm 2: trust score ReLU(cos), updates scaled to the server update's
+  norm; root dataset of 100 examples drawn from the clients' training data, sec. VI-A).
 - [Baruch 2019] M. Baruch, G. Baruch, Y. Goldberg. *A Little Is Enough: Circumventing Defenses For
   Distributed Learning*. NeurIPS 2019. [arXiv:1902.06156](https://arxiv.org/abs/1902.06156) — the
   ALIE attack (`byzantine`, `attack: alie`; `omniscientalie` is its worst-case variant, not the

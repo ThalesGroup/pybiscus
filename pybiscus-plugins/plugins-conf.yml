@@ -36,6 +36,7 @@ strategydecorator:
       - personalize_clients_fit_in_params
       - serverdp
       - clipping
+      - fltrust
 resultmodifier:
   - path: "./resultmodifier"
     modules:

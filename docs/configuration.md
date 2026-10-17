@@ -174,7 +174,7 @@ data:
 one batch: Deeplog's precision / recall / F1 are computed per batch. `pybiscus data partition`
 exports the clients' sequence indices (line numbers of `train.file`).
 
-The server reads only the `test` (and `privacy`) section of the data configuration — turbofan's
+The server reads only the `test` (and `privacy`, `trusted`) sections of the data configuration — turbofan's
 also `train.engines`. `server check` warns when its `train` or `val` section differs from the
 defaults: those settings have no effect on the server (the agent's form writes every section with
 its defaults, which does not warn).
@@ -202,6 +202,24 @@ a data plugin provides it with a `privacy_dataloader()` method returning `None` 
 (in `pybiscus-plugins-privacy-evaluation/`) builds it from `dir_privacy`, whose examples must be the
 ones its indices files number.
 The FedMIA attack that uses it is described in [privacy-evaluation.md](privacy-evaluation.md).
+
+An optional `trusted` section (cifar, mnist; server side) gives the server a few examples it trusts,
+drawn at random from the official train split: the `fltrust` strategy decorator trains on them
+every round to judge the clients' updates ([robust-aggregation.md](robust-aggregation.md#fltrust-a-direction-the-server-trusts)).
+They must be clean and look like the clients' data; in a simulation they are drawn from the same
+split as the clients' shares, as the FLTrust paper's root dataset.
+
+```yaml
+    trusted:
+      dir: ${root_dir}/datasets/train/
+      max_samples: 100       # the paper's size
+      seed: 0                # which examples, and the order of their batches
+      batch_size: 32         # the clients' batch size: fltrust counts its steps with it
+```
+
+The server hands the loader to its plugins through `pybiscus_context[TRUSTED_SET]`; a data plugin
+provides it with a `trusted_dataloader()` method returning `None` when unset. `server check`
+refuses a pipeline with `fltrust` when the section is missing.
 
 ### Strategy
 

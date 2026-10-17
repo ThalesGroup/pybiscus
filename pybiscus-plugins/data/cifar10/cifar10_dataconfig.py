@@ -1,7 +1,7 @@
 from typing import Literal, ClassVar, Optional
 from pydantic import BaseModel, ConfigDict, model_validator
 
-from pybiscus.ml.datasplit import ConfigPrivacySet, ConfigTestSet, ConfigTrainSet, ConfigValSet, reject_former_fields
+from pybiscus.ml.datasplit import ConfigPrivacySet, ConfigTestSet, ConfigTrainSet, ConfigTrustedSet, ConfigValSet, reject_former_fields
 
 
 class CifarTrainSet(ConfigTrainSet):
@@ -20,6 +20,10 @@ class CifarPrivacySet(ConfigPrivacySet):
     dir: str = "${root_dir}/datasets/train/"
 
 
+class CifarTrustedSet(ConfigTrustedSet):
+    dir: str = "${root_dir}/datasets/train/"
+
+
 class ConfigCifar10Data(BaseModel):
     """Pydantic Model used to validate the LightningDataModule config
 
@@ -29,6 +33,7 @@ class ConfigCifar10Data(BaseModel):
     val:         the validation set: source (official test split, holdout, indices file), loader options
     test:        the testing set (required for the server): directory, loader options
     privacy:     optional, the examples a server-side privacy evaluation attacks (the train split)
+    trusted:     optional, the examples the server trains on to judge the clients' updates (fltrust)
     num_workers: int, optional = the number of workers for the DataLoaders (default to 0)
     """
 
@@ -38,6 +43,7 @@ class ConfigCifar10Data(BaseModel):
     val:         CifarValSet = CifarValSet()
     test:        CifarTestSet = CifarTestSet()
     privacy:     Optional[CifarPrivacySet] = None
+    trusted:     Optional[CifarTrustedSet] = None
     num_workers: int = 0
 
     model_config = ConfigDict(extra="forbid")

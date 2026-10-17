@@ -12,7 +12,7 @@ PR #44 (`pybiscus-plugins-privacy-evaluation/`, not finalized) is not described 
 - [Data](#data): `cifar`, `randomvector`, `turbofan`, `mnist`, `vector_`, `hdfs`
 - [Models](#models): `cifar`, `mnist_cnn`, `linearregression`, `lstm`, `noop`, `deeplog`
 - [Strategies](#strategies): `fedavg`, `fedavgm`, `fedprox`, `fedadam`, `fedyogi`, `fedadagrad`, `fedmedian`, `fedtrimmedavg`, `krum`, `bulyan`, `qfedavg`, `faulttolerantfedavg`, `fedavgwithaggregator`
-- [Strategy decorators](#strategy-decorators): `metricdiffcompute`, `timediffcompute`, `visualizemodellayers`, `saveserverfitparams`, `saveclientsfitin`, `saveclientsfitres`, `personalizeclientsfitin`, `serverdpfixed`, `serverdpadaptive`, `clipping`, `upperlevellink`
+- [Strategy decorators](#strategy-decorators): `metricdiffcompute`, `timediffcompute`, `visualizemodellayers`, `saveserverfitparams`, `saveclientsfitin`, `saveclientsfitres`, `personalizeclientsfitin`, `serverdpfixed`, `serverdpadaptive`, `clipping`, `fltrust`, `upperlevellink`
 - [Clients](#clients): `relay`
 - [Loggers](#loggers): `rich`, `webhook`
 - [Metrics loggers](#metrics-loggers): `tensorboard`, `webhook`, `wandb`
@@ -28,7 +28,7 @@ A dataset and how it is split into train, validation and test sections (`data:` 
 
 *plugin, `pybiscus-plugins/data/cifar10`*
 
-CIFAR-10 from torchvision: 32 x 32 colour images of 10 classes, 50,000 to train and 10,000 to test, read from the dataset's directories; the shared train, val, test and privacy sections choose the examples, the partition between clients and the loaders.
+CIFAR-10 from torchvision: 32 x 32 colour images of 10 classes, 50,000 to train and 10,000 to test, read from the dataset's directories; the shared train, val, test, privacy and trusted sections choose the examples, the partition between clients and the loaders.
 
 | field (under `config`) | type | default | description |
 |---|---|---|---|
@@ -61,6 +61,13 @@ CIFAR-10 from torchvision: 32 x 32 colour images of 10 classes, 50,000 to train 
 | `privacy.dir` | str | `'${root_dir}/datasets/train/'` | directory of the official train split, whose examples are attacked |
 | `privacy.batch_size` | int | `32` | examples per batch |
 | `privacy.max_samples` | int (optional) | `None` | a fixed subset of at most this many examples, whose original indices stay known; all if unset |
+| `trusted` | section | `None` | optional, the examples the server trains on to judge the clients' updates (fltrust) |
+| `trusted.dir` | str | `'${root_dir}/datasets/train/'` | directory of the official train split, from which the trusted examples are drawn |
+| `trusted.max_samples` | int | `100` | number of trusted examples, drawn at random from the train split |
+| `trusted.seed` | int | `0` | draw of the trusted examples and order of their batches, reproducible |
+| `trusted.batch_size` | int | `32` | examples per batch |
+| `trusted.shuffle` | bool | `True` | examples drawn in a new random order at every epoch |
+| `trusted.drop_last` | bool | `False` | leave out the last, incomplete batch of every epoch |
 | `num_workers` | int | `0` | the number of workers for the DataLoaders (default to 0) |
 
 Used by: [`configs/cifar10_cnn/distributed/ssl/client_1.yml`](../configs/cifar10_cnn/distributed/ssl/client_1.yml), [`configs/cifar10_cnn/distributed/ssl/client_2.yml`](../configs/cifar10_cnn/distributed/ssl/client_2.yml), [`configs/cifar10_cnn/distributed/ssl/server.yml`](../configs/cifar10_cnn/distributed/ssl/server.yml), [`configs/cifar10_cnn/distributed/without_ssl/client_1.yml`](../configs/cifar10_cnn/distributed/without_ssl/client_1.yml), [`configs/cifar10_cnn/distributed/without_ssl/client_2.yml`](../configs/cifar10_cnn/distributed/without_ssl/client_2.yml), [`configs/cifar10_cnn/distributed/without_ssl/server.yml`](../configs/cifar10_cnn/distributed/without_ssl/server.yml), [`configs/cifar10_cnn/distributed/without_ssl/server_safeguard.yml`](../configs/cifar10_cnn/distributed/without_ssl/server_safeguard.yml), [`configs/cifar10_cnn/distributed/without_ssl/with_privacy_eval_cpu/client_1.yml`](../configs/cifar10_cnn/distributed/without_ssl/with_privacy_eval_cpu/client_1.yml), [`configs/cifar10_cnn/distributed/without_ssl/with_privacy_eval_cpu/client_2.yml`](../configs/cifar10_cnn/distributed/without_ssl/with_privacy_eval_cpu/client_2.yml), [`configs/cifar10_cnn/distributed/without_ssl/with_privacy_eval_cpu/server.yml`](../configs/cifar10_cnn/distributed/without_ssl/with_privacy_eval_cpu/server.yml), [`configs/cifar10_cnn/local/train.yml`](../configs/cifar10_cnn/local/train.yml)
@@ -136,7 +143,7 @@ Used by: [`configs/turbofan_lstm/client_1.yml`](../configs/turbofan_lstm/client_
 
 *plugin, `pybiscus-plugins/data/mnist`*
 
-MNIST from torchvision: 28 x 28 grey images of handwritten digits, 60,000 to train and 10,000 to test; the shared train, val, test and privacy sections choose the examples, the partition between clients and the loaders.
+MNIST from torchvision: 28 x 28 grey images of handwritten digits, 60,000 to train and 10,000 to test; the shared train, val, test, privacy and trusted sections choose the examples, the partition between clients and the loaders.
 
 | field (under `config`) | type | default | description |
 |---|---|---|---|
@@ -169,6 +176,13 @@ MNIST from torchvision: 28 x 28 grey images of handwritten digits, 60,000 to tra
 | `privacy.dir` | str | `'${root_dir}/datasets/mnist/train/'` | directory of the official train split, whose examples are attacked |
 | `privacy.batch_size` | int | `64` | examples per batch |
 | `privacy.max_samples` | int (optional) | `None` | a fixed subset of at most this many examples, whose original indices stay known; all if unset |
+| `trusted` | section | `None` | optional, the examples the server trains on to judge the clients' updates (fltrust) |
+| `trusted.dir` | str | `'${root_dir}/datasets/mnist/train/'` | directory of the official train split, from which the trusted examples are drawn |
+| `trusted.max_samples` | int | `100` | number of trusted examples, drawn at random from the train split |
+| `trusted.seed` | int | `0` | draw of the trusted examples and order of their batches, reproducible |
+| `trusted.batch_size` | int | `32` | examples per batch |
+| `trusted.shuffle` | bool | `True` | examples drawn in a new random order at every epoch |
+| `trusted.drop_last` | bool | `False` | leave out the last, incomplete batch of every epoch |
 | `num_workers` | int | `0` | processes loading the batches; 0: the main process |
 
 Used by: [`configs/mnist_cnn/distributed/client_1.yml`](../configs/mnist_cnn/distributed/client_1.yml), [`configs/mnist_cnn/distributed/client_2.yml`](../configs/mnist_cnn/distributed/client_2.yml), [`configs/mnist_cnn/distributed/server.yml`](../configs/mnist_cnn/distributed/server.yml), [`configs/mnist_cnn/local/train.yml`](../configs/mnist_cnn/local/train.yml)
@@ -692,6 +706,18 @@ Robust aggregation: clips the clients' updates to a norm (fixed, or a multiple o
 | `clipping_norm` | float | `2.0` | mode fixed: updates are clipped to this norm |
 | `reject_factor` | float (optional) | `None` | clients whose update norm exceeds this many times the median are left out of the round; none if unset |
 | `log_directions` | bool | `False` | logs each client's cosine similarity to the coordinate-wise median update and to its closest other client (clip_cos_median_<cid>, clip_cos_closest_<cid>); costs a copy of every update |
+
+### `fltrust` — FLTrust (trusted examples)
+
+*plugin, `pybiscus-plugins/strategydecorator/fltrust`*
+
+FLTrust: clients weighed by the direction of their update against the server's on trusted examples.
+
+| field (under `config`) | type | default | description |
+|---|---|---|---|
+| `server_steps` | 'clients' \| 'epochs' | `'clients'` | clients: the server trains as many optimizer steps as the median client (as the paper's same number of local iterations; set the trusted batch size to the clients'); epochs: local_epochs over the trusted examples |
+| `normalize_to` | 'median' \| 'server' | `'median'` | median: every update scaled to the median client update norm; server: to the server update's norm (the paper's), whose few trusted examples may make a step much longer or shorter than the clients' |
+| `local_epochs` | int (optional) | `None` | epochs over the trusted examples (server_steps: epochs), or the clients' epochs the steps are counted on; the clients' local epochs if unset |
 
 ### `upperlevellink` — Upper level link
 
