@@ -13,6 +13,9 @@ client_run.seed, the byzantine clients' seed, and with seed_partitions: true the
 and a second table gives the mean ± standard deviation of the seeds. A variant with
 reference: <label of another variant> also gets its difference to that variant at the last round,
 seed by seed (paired: the seed's own share of the spread cancels out).
+
+With --check, the configurations of every run are validated, as server check / client check do,
+and nothing runs: a campaign broken by a change of the configurations or of a plugin shows at once.
 """
 
 import argparse
@@ -24,6 +27,7 @@ import socket
 import statistics
 import subprocess
 import sys
+import tempfile
 import time
 from pathlib import Path
 
@@ -90,10 +94,14 @@ def stop(process: subprocess.Popen) -> None:
             os.killpg(process.pid, signal.SIGKILL)
 
 
-def run_variant(campaign: dict, variant: dict, out: Path, seed: int = None) -> dict:
+def run_label(variant: dict, seed: int = None) -> str:
+    return variant["label"] if seed is None else f"{variant['label']} (seed {seed})"
+
+
+def write_configs(campaign: dict, variant: dict, out: Path, seed: int = None) -> Path:
+    """the server's and the clients' configurations of a run, in a directory of its own"""
     clients, port = campaign["clients"], campaign["port"]
-    label = variant["label"] if seed is None else f"{variant['label']} (seed {seed})"
-    slug = re.sub(r"[^A-Za-z0-9]+", "_", label).strip("_")
+    slug = re.sub(r"[^A-Za-z0-9]+", "_", run_label(variant, seed)).strip("_")
     work = out / slug
     work.mkdir(parents=True, exist_ok=True)
 
@@ -145,6 +153,40 @@ def run_variant(campaign: dict, variant: dict, out: Path, seed: int = None) -> d
             if alternate.get("name") == "byzantine":
                 alternate.setdefault("config", {}).setdefault("seed", seed)
         OmegaConf.save(OmegaConf.create(client), work / f"client_{i}.yml")
+    return work
+
+
+def check_runs(campaign: dict, runs: list, out: Path) -> int:
+    """the generated configurations validated as server check / client check do, without running
+    anything; the number of runs with an invalid one"""
+    # set before the first import of a registry: the plugins are loaded once, from this manifest
+    os.environ.update(plugin_env(campaign))
+    from pydantic import ValidationError
+    from pybiscus.commands.apps_common import resolve_defaults
+    from pybiscus.flower_config.config_client import ConfigClient
+    from pybiscus.flower_config.config_server import ConfigServer
+
+    failed = 0
+    for variant, seed in runs:
+        work = write_configs(campaign, variant, out, seed)
+        errors = []
+        for path, model in [(work / "server.yml", ConfigServer)] + [(work / f"client_{i}.yml", ConfigClient) for i in range(campaign["clients"])]:
+            try:
+                resolve_defaults(model, model(**OmegaConf.load(path)))
+            except ValidationError as e:
+                errors.append(f"{path.name}: {e}")
+        if errors:
+            failed += 1
+            print(f"  FAILED   {run_label(variant, seed)}\n" + "\n".join("    " + line for error in errors for line in error.splitlines()), flush=True)
+        else:
+            print(f"  ok       {run_label(variant, seed)}", flush=True)
+    return failed
+
+
+def run_variant(campaign: dict, variant: dict, out: Path, seed: int = None) -> dict:
+    clients, port = campaign["clients"], campaign["port"]
+    label = run_label(variant, seed)
+    work = write_configs(campaign, variant, out, seed)
 
     command = [sys.executable, "pybiscus/main.py"]
     env = plugin_env(campaign)
@@ -234,14 +276,11 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("campaign", type=Path, help="campaign file (YAML)")
     parser.add_argument("--only", help="run only the variants whose label starts with this text")
+    parser.add_argument("--check", action="store_true",
+                        help="validate the configurations of every run, as server check / client check do, without running them")
     args = parser.parse_args()
 
     campaign = OmegaConf.to_container(OmegaConf.load(args.campaign), resolve=True)
-    out = Path(campaign.get("output", "experiments/campaigns")) / time.strftime("%Y-%m-%dT%H-%M-%S")
-    out.mkdir(parents=True, exist_ok=True)
-    if not port_is_free(campaign["port"]):
-        sys.exit(f"port {campaign['port']} is in use: choose a free one (the campaign starts its own server)")
-
     labels = [v["label"] for v in campaign["variants"]]
     for v in campaign["variants"]:
         if v.get("reference") and v["reference"] not in labels:
@@ -249,6 +288,18 @@ def main() -> None:
     variants = [v for v in campaign["variants"] if not args.only or v["label"].startswith(args.only)]
     seeds = campaign.get("seeds") or [None]
     runs = [(variant, seed) for variant in variants for seed in seeds]
+
+    if args.check:
+        with tempfile.TemporaryDirectory(prefix="pybiscus-campaign-check-") as out:
+            failed = check_runs(campaign, runs, Path(out))
+        print(f"  {len(runs)} run(s) checked, {failed} failed")
+        sys.exit(1 if failed else 0)
+
+    out = Path(campaign.get("output", "experiments/campaigns")) / time.strftime("%Y-%m-%dT%H-%M-%S")
+    out.mkdir(parents=True, exist_ok=True)
+    if not port_is_free(campaign["port"]):
+        sys.exit(f"port {campaign['port']} is in use: choose a free one (the campaign starts its own server)")
+
     results = []
     for number, (variant, seed) in enumerate(runs, 1):
         print(f"[{number}/{len(runs)}] {variant['label']}" + ("" if seed is None else f" (seed {seed})"), flush=True)

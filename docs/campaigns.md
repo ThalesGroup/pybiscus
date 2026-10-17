@@ -18,9 +18,15 @@ From the repository root:
 ```bash
 uv run python launch/campaign/strategy_campaign.py launch/campaign/cifar10_strategies.yml
 uv run python launch/campaign/strategy_campaign.py launch/campaign/cifar10_strategies.yml --only "Fed"
+uv run python launch/campaign/strategy_campaign.py launch/campaign/cifar10_strategies.yml --check
 ```
 
-`--only` runs the variants whose label starts with the given text.
+`--only` runs the variants whose label starts with the given text. `--check` runs nothing: it
+writes the configurations of every run (every variant and seed, in a temporary directory) and
+validates them as `server check` and `client check` do, with the campaign's `plugin_manifests`;
+it prints one line per run and exits non-zero if one is invalid. A campaign broken by a change of
+the configurations or of a plugin shows in seconds instead of after its first runs;
+`launch/ci/smoke.sh check` does it for every campaign.
 
 For every variant (and every seed, see below), the tool copies the campaign's server and client
 configurations, applies the variant to them, shares the training data between the clients, starts

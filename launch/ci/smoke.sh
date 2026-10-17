@@ -5,7 +5,8 @@
 #   launch/ci/smoke.sh [check] [run] [build] [container-run]     (default: check run)
 #
 #   check          every configuration of configs/ passes `server check` / `client check`, with the
-#                  manifests of every plugin directory; docs/plugins-reference.md is up to date
+#                  manifests of every plugin directory; docs/plugins-reference.md is up to date;
+#                  the configurations of every run of launch/campaign/ are valid (campaign --check)
 #   run            a short federated run (mnist demo, server + 2 clients, CPU)
 #   build          the two container images
 #   container-run  the same short run, in containers of the pybiscus image
@@ -99,6 +100,17 @@ step_check() {
         echo "  FAILED   docs/plugins-reference.md is not up to date (pybiscus plugins doc, see $log)"
         failed=$((failed + 1))
     fi
+    # the campaigns with the manifests their runs load (the default one and their plugin_manifests),
+    # not the configs' list above: a test-only plugin they need is declared there only
+    while IFS= read -r config; do
+        log="$logs/$(echo "$config" | tr '/' '_').log"
+        if (cd "$REPO" && $PYTHON launch/campaign/strategy_campaign.py --check "$config") >"$log" 2>&1; then
+            echo "  ok       $config ($(tail -1 "$log" | sed 's/^ *//'))"
+        else
+            echo "  FAILED   $config (campaign --check, see $log)"
+            failed=$((failed + 1))
+        fi
+    done < <(cd "$REPO" && grep -l '^variants:' launch/campaign/*.yml | sort)
     [ "$failed" -eq 0 ]
 }
 

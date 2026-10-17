@@ -66,7 +66,9 @@ a release or in a pipeline:
 ./launch/ci/smoke.sh build container-run   # the container images, then the same run in containers
 ```
 
-- `check`: every server and client configuration of `configs/` passes `check`;
+- `check`: every server and client configuration of `configs/` passes `check`,
+  `docs/plugins-reference.md` is up to date, and the configurations of every campaign run of
+  `launch/campaign/` are valid (`--check` of the campaign tool, below);
 - `run`: the mnist demo, server and two clients on CPU, 2 rounds on 2000 examples, on a free port;
 - `build`: the two container images ([Containers](containers.md));
 - `container-run`: the same run in containers of the pybiscus image.

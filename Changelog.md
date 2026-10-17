@@ -12,6 +12,12 @@
   rejecting near-duplicates by a fixed threshold would reject honest clients, and is not
   implemented; ALIE does almost no harm there (campaign `launch/campaign/cifar10_directions_iid.yml`).
 
+### Tools
+
+* `strategy_campaign.py --check` validates the configurations of every run of a campaign, as
+  `server check` and `client check` do, without running them; `launch/ci/smoke.sh check` runs it
+  on every campaign of `launch/campaign/`.
+
 ### Documentation
 
 * References for the defenses and attacks measured (Krum, Bulyan, median and trimmed mean, norm
