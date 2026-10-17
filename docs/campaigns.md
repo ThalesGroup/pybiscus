@@ -125,6 +125,7 @@ and how long it takes.
 | `cifar10_clipping_reject_alie.yml` | the clipping defense's rejection threshold against ALIE | [robust-aggregation.md](robust-aggregation.md#rejection-threshold) |
 | `cifar10_safeguard_iid.yml` | the `safeguard` defense on iid shares | [robust-aggregation.md](robust-aggregation.md#on-iid-shares) |
 | `cifar10_directions_alie.yml` | the updates' directions under ALIE (`log_directions`) | [robust-aggregation.md](robust-aggregation.md#discreet-attackers-what-the-norm-cannot-see) |
+| `cifar10_directions_iid.yml` | the updates' directions on iid shares, client-side and omniscient ALIE | [robust-aggregation.md](robust-aggregation.md#on-iid-shares-honest-clients-look-alike-too) |
 | `cifar10_serverdp.yml` | server-side differential privacy against FedAvg | [configuration.md](configuration.md#server-side-differential-privacy) |
 | `cifar10_fedmia.yml` | FedMIA membership inference (then the analyser) | [privacy-evaluation.md](privacy-evaluation.md) |
 | `cifar10_fedprox.yml` | FedProx's mu against FedAvg, 3 clients, short | [configuration.md](configuration.md#fedprox) |

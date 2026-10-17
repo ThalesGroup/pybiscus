@@ -1,0 +1,63 @@
+# Campaign of launch/campaign/strategy_campaign.py: can near-duplicate updates be rejected without
+# rejecting honest clients? On dirichlet shares, two honest clients never exceeded a similarity of
+# 0.82 while the colluders sent the same update (cifar10_directions_alie.yml); on iid shares, where
+# honest updates look more alike, it was not measured, nor ALIE's harm. The safeguard defense
+# (FedAvg + clipping, median x 1.5, reject x 1.7) logs each client's cosine similarity to its
+# closest other client (log_directions: "🧭" lines of the server log), on iid shares, without
+# attacker, against 2 client-side ALIE colluders of 7 (z 2) and against 2 omniscient ALIE attackers
+# (omniscientalie: the paper's z and z 2). 3 seeds, compared seed by seed to the run without attacker.
+#   uv run python launch/campaign/strategy_campaign.py launch/campaign/cifar10_directions_iid.yml
+# 12 runs, about 12 minutes; do not run it next to a live session.
+# Status: our own measurement, not a reproduction (docs/robust-aggregation.md, Limits).
+
+server_config: configs/cifar10_cnn/distributed/without_ssl/server.yml
+client_config: configs/cifar10_cnn/distributed/without_ssl/client_1.yml
+output: experiments/campaigns
+plugin_manifests: [launch/campaign/test-plugins-conf.yml]
+
+clients: 7
+rounds: 5
+local_epochs: 3
+port: 3399                 # the Flower server of each run: must be free
+threads_per_client: auto   # physical cores / clients
+timeout: 1800              # seconds per run
+seeds: [1, 2, 3]           # every variant once per seed, then mean ± std
+
+client_data:
+  train:
+    partition:
+      scheme: iid
+      seed: 42
+  val:
+    source: holdout
+    fraction: 0.1
+
+server_data:
+  test:
+    max_samples: 2000
+
+variants:
+  - label: no attacker
+    strategy: {name: fedavg, config: {}}
+    pipeline: [{name: clipping, config: {mode: median, median_factor: 1.5, reject_factor: 1.7, log_directions: true}}]
+  - label: client-side ALIE z 2
+    reference: no attacker
+    strategy: {name: fedavg, config: {}}
+    pipeline: [{name: clipping, config: {mode: median, median_factor: 1.5, reject_factor: 1.7, log_directions: true}}]
+    client_overrides:
+      0: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: alie, colluders: 2, num_clients: 7, z: 2.0, shared_dir: "{work}/alie"}}}}
+      1: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: alie, colluders: 2, num_clients: 7, z: 2.0, shared_dir: "{work}/alie"}}}}
+  - label: omniscient ALIE paper z
+    reference: no attacker
+    strategy: {name: fedavg, config: {}}
+    pipeline: [{name: clipping, config: {mode: median, median_factor: 1.5, reject_factor: 1.7, log_directions: true}}, {name: omniscientalie, config: {}}]
+    client_overrides:
+      0: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: none}}}}
+      1: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: none}}}}
+  - label: omniscient ALIE z 2
+    reference: no attacker
+    strategy: {name: fedavg, config: {}}
+    pipeline: [{name: clipping, config: {mode: median, median_factor: 1.5, reject_factor: 1.7, log_directions: true}}, {name: omniscientalie, config: {z: 2.0}}]
+    client_overrides:
+      0: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: none}}}}
+      1: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: none}}}}

@@ -8,6 +8,9 @@
   updates of the clients flagged byzantine by mean − z · std of the honest updates of the round,
   as attackers who know them would; campaign `launch/campaign/cifar10_alie_omniscient.yml` (six
   defenses, the paper's z and z 2, 3 seeds) and its results in `docs/robust-aggregation.md`.
+* On iid shares, honest clients' updates are as alike as 0.99 (cosine to the closest other):
+  rejecting near-duplicates by a fixed threshold would reject honest clients, and is not
+  implemented; ALIE does almost no harm there (campaign `launch/campaign/cifar10_directions_iid.yml`).
 
 ### Documentation
 

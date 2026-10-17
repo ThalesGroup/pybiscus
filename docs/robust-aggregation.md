@@ -394,8 +394,8 @@ The colluders send the same update (similarity 1.000), while two honest clients 
 - **Rejecting near-duplicates** (option A): leave out of the round the clients whose closest
   similarity exceeds about 0.95, as `reject_factor` does for norms. Cheap, and it stops naive
   colluders at every z. To check first: the honest clients' closest similarity on iid shares, where
-  their updates look more alike (not measured). Its weakness: colluders that each add their own
-  noise blur their likeness, at the price of part of their effect.
+  their updates look more alike (measured below: it rules out such a threshold). Its weakness:
+  colluders that each add their own noise blur their likeness, at the price of part of their effect.
 - **Defenses from the literature** (option C):
   - *FoolsGold* lowers, round after round, the weight of the clients that keep looking like each
     other. A lasting version of the above, harder to blur with one-off noise, but it may also
@@ -404,12 +404,40 @@ The colluders send the same update (similarity 1.000), while two honest clients 
     (the `test` section could provide it) and weighs it by their similarity. It does not rely on
     the attackers' likeness, but the trusted data must resemble the clients'.
 
+### On iid shares, honest clients look alike too
+
+`launch/campaign/cifar10_directions_iid.yml`: the same defense (FedAvg + clipping, median x 1.5,
+reject x 1.7, `log_directions`) on iid shares, 7 clients, 3 seeds, without attacker, against 2
+client-side ALIE colluders (z 2) and against 2 omniscient ALIE attackers (the paper's z and z 2).
+Each honest client's similarity to its closest other client, over all rounds and seeds:
+
+| case | median | 95th percentile | max | honest above 0.95 | attackers |
+|---|---|---|---|---|---|
+| no attacker | 0.941 | 0.985 | 0.988 | 44 of 105 | |
+| client-side ALIE z 2 | 0.944 | 0.985 | 0.988 | 32 of 75 | 1.000 |
+| omniscient, paper z (0.57) | 0.964 | 0.990 | 0.993 | 48 of 75 | 1.000 |
+| omniscient, z 2 | 0.943 | 0.986 | 0.988 | 33 of 75 | 1.000 |
+
+- The honest clients' closest similarity depends on the round (median 0.93 at round 1, 0.98 at
+  round 2, 0.89 at round 5): a threshold of 0.95 would reject 4 honest clients in 10.
+- Only the identical copies stand apart (1.000 against at most 0.993): a threshold close to 1
+  would catch colluders sending the same update, and no colluder adding the smallest noise of its own.
+- Rejecting near-duplicates by a fixed threshold is therefore not implemented.
+
+The attack's harm on iid shares, test accuracy at round 5 paired by seed against the run without
+attacker (0.363): client-side ALIE z 2 −0.7 ± 0.7 points, omniscient at the paper's z −0.2 ± 0.2,
+omniscient at z 2 −1.1 ± 0.7. Nothing was clipped nor rejected. On iid shares, every honest
+update already points close to the mean, so a forged update close to it changes little: the
+attack hurts where the data are heterogeneous (−7.5 to −11 points on dirichlet shares, [The
+omniscient attacker](#the-omniscient-attacker)).
+
 ### Is detecting them worth it?
 
-It depends on the data. On dirichlet shares, leaving 2 clients of 7 out costs 6.6 points (their
-data are lost), about as much as ALIE at z 2 harms (5.7): even a perfect detector would gain
-little. On iid shares, leaving them out costs nothing (see [On iid shares](#on-iid-shares)): a
-detector would be worth all the harm it prevents. ALIE's harm on iid shares has not been measured.
+Little, in these measurements. On dirichlet shares, leaving 2 clients of 7 out costs 6.6 points
+(their data are lost), about as much as ALIE at z 2 harms (5.7): even a perfect detector would
+gain little against the client-side attack, more against the omniscient one (11 points at z 2).
+On iid shares, leaving them out costs nothing (see [On iid shares](#on-iid-shares)), but the attack
+does almost no harm there either (about 1 point).
 
 Before choosing, look at your own clients with `log_directions: true` on a run without attacker:
 how far apart their directions are, and how close the closest pair gets.
