@@ -132,6 +132,7 @@ and how long it takes.
 | `cifar10_safeguard_iid.yml` | the `safeguard` defense on iid shares | [robust-aggregation.md](robust-aggregation.md#on-iid-shares) |
 | `cifar10_directions_alie.yml` | the updates' directions under ALIE (`log_directions`) | [robust-aggregation.md](robust-aggregation.md#discreet-attackers-what-the-norm-cannot-see) |
 | `cifar10_fltrust.yml` | FLTrust (trusted examples) against omniscient ALIE and sign flippers, two normalizations, 3 seeds | [robust-aggregation.md](robust-aggregation.md#fltrust-a-direction-the-server-trusts) |
+| `cifar10_label_flip.yml` | the defenses against 2 attackers training on flipped labels (data poisoning), 3 seeds | [robust-aggregation.md](robust-aggregation.md#label-flipping-poisoned-data) |
 | `cifar10_directions_iid.yml` | the updates' directions on iid shares, client-side and omniscient ALIE | [robust-aggregation.md](robust-aggregation.md#on-iid-shares-honest-clients-look-alike-too) |
 | `cifar10_serverdp.yml` | server-side differential privacy against FedAvg | [configuration.md](configuration.md#server-side-differential-privacy) |
 | `cifar10_fedmia.yml` | FedMIA membership inference (then the analyser) | [privacy-evaluation.md](privacy-evaluation.md) |

@@ -25,6 +25,9 @@ class ByzantineAttack(str, Enum):
     # "A Little Is Enough" (Baruch et al., 2019): colluders pool their honest updates and all send
     # mean - z * std, close enough to pass the robust aggregations, biased the same way every round
     alie = "alie"
+    # data poisoning: trains on the labels l -> num_classes - 1 - l (the LF attack of FLTrust, Cao et
+    # al., 2021) and sends that update unchanged, of an honest norm but the wrong direction
+    label_flip = "label_flip"
 
 
 class ConfigByzantineClientData(BaseModel):
@@ -46,6 +49,8 @@ class ConfigByzantineClientData(BaseModel):
     z: Optional[float] = Field(default=None, gt=0)
     shared_dir: str = "/tmp/pybiscus-alie"
     timeout: float = Field(default=120.0, gt=0)
+    # label_flip: number of classes of the task
+    num_classes: int = Field(default=10, ge=2)
 
     model_config = ConfigDict(extra="forbid")
 
@@ -119,6 +124,28 @@ def attacked(global_weights, trained_weights, conf: ConfigByzantineClientData, r
     return result
 
 
+class FlippedLabels:
+    """the batches of a loader, labels l -> num_classes - 1 - l while active() says so"""
+
+    def __init__(self, loader, num_classes: int, active):
+        self.loader = loader
+        self.num_classes = num_classes
+        self.active = active
+
+    def __len__(self):
+        return len(self.loader)
+
+    def __iter__(self):
+        for batch in self.loader:
+            if not self.active():
+                yield batch
+                continue
+            # (inputs, labels, ...) batches: the models of the bundled plugins unpack them so
+            if not isinstance(batch, (tuple, list)) or len(batch) < 2:
+                raise TypeError(f"byzantine label_flip: batches of (inputs, labels) expected, got {type(batch).__name__}")
+            yield type(batch)([batch[0], self.num_classes - 1 - batch[1], *batch[2:]])
+
+
 def byzantine_client_class():
     # imported here, not at the top: the server loads the plugins while it imports
     # FlowerFabricClient's module, and a top-level import of it came back partially initialized
@@ -129,15 +156,25 @@ def byzantine_client_class():
         def __init__(self, byzantine: ConfigByzantineClientData, **kwargs):
             super().__init__(**kwargs)
             self.byzantine = byzantine
+            self.flipping = False
+
+        def _setup_dataloaders(self):
+            super()._setup_dataloaders()
+            # wrapped every time the loaders are set up again (refresh_data), active from from_round
+            if self.byzantine.attack == ByzantineAttack.label_flip:
+                self._train_dataloader = FlippedLabels(self._train_dataloader, self.byzantine.num_classes, lambda: self.flipping)
 
         def fit(self, parameters, config):
-            trained, num_examples, metrics = super().fit(parameters, config)
             server_round = int(config["server_round"])
+            self.flipping = server_round >= self.byzantine.from_round
+            trained, num_examples, metrics = super().fit(parameters, config)
             # visible in the server's per-client fit metrics
             metrics["byzantine"] = 1
             if server_round < self.byzantine.from_round:
                 return trained, num_examples, metrics
-            if self.byzantine.attack == ByzantineAttack.alie:
+            if self.byzantine.attack == ByzantineAttack.label_flip:
+                pass  # the poisoning happened in the training: the update is sent as it is
+            elif self.byzantine.attack == ByzantineAttack.alie:
                 common = alie_update(parameters, trained, self.byzantine, str(self.cid), server_round)
                 if common is None:
                     logm.console.log(f"😈 round {server_round}: the other colluders did not show up, honest update sent")

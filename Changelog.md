@@ -24,6 +24,10 @@
 * On iid shares, honest clients' updates are as alike as 0.99 (cosine to the closest other):
   rejecting near-duplicates by a fixed threshold would reject honest clients, and is not
   implemented; ALIE does almost no harm there (campaign `launch/campaign/cifar10_directions_iid.yml`).
+* Data poisoning: `attack: label_flip` of the `byzantine` client trains on the labels
+  l → num_classes − 1 − l and sends that update unchanged; campaign
+  `launch/campaign/cifar10_label_flip.yml`: the norm-based `safeguard` sees nothing (−11.6 points,
+  as FedAvg), FLTrust ends highest under attack (−6.3 points from its own 0.372).
 
 ### Tools
 

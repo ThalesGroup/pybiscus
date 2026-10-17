@@ -49,6 +49,7 @@ delta = w_trained − w_global before sending it:
 | `gaussian` (`stddev`) | w_global + noise | a faulty client |
 | `none` | the honest update | with `num_examples_factor`, lies about its size only |
 | `alie` (`colluders`, `num_clients`, `z`) | mean − z · deviation of the colluders' updates | discreet, see [ALIE](#a-discreet-colluding-attack-alie) |
+| `label_flip` (`num_classes`) | the update trained on labels l → num_classes − 1 − l | data poisoning: an honest norm, the wrong direction, see [Label flipping](#label-flipping-poisoned-data) |
 
 `from_round` delays the attack, `seed` fixes the noise; the client reports a `byzantine` metric.
 It is a test tool: it is declared in `launch/campaign/test-plugins-conf.yml` only, never in the
@@ -522,6 +523,40 @@ attackers that stand out by their norm. FLTrust is worth its cost only when the 
 like the clients' and discreet attackers are expected; even then, an attacker that knows the honest
 updates and stays close to their mean passes it. Not measured: a larger trusted set, iid shares,
 more clients.
+
+## Label flipping: poisoned data
+
+`attack: label_flip`: the attacker trains on its own data with every label l replaced by
+num_classes − 1 − l (the LF attack of [[Cao 2021]](#references)) and sends that update unchanged. It
+touches no code nor weight: a client with corrupted labels does the same. Its update has an
+honest norm and the wrong direction.
+
+`launch/campaign/cifar10_label_flip.yml`: 2 label flippers of 7, dirichlet shares, 3 local epochs,
+5 rounds, 3 seeds; test accuracy at round 5, and the difference to the same defense without
+attacker paired by seed (mean ± std):
+
+| defense | no attacker | 2 label flippers | Δ |
+|---|---|---|---|
+| FedAvg | 0.402 | 0.286 | −0.116 ± 0.011 |
+| FedMedian | 0.354 | 0.277 | −0.077 ± 0.012 |
+| Krum, f 1 | 0.275 | 0.290 | +0.015 ± 0.015 |
+| Bulyan, f 1 | 0.305 | 0.272 | −0.034 ± 0.018 |
+| `safeguard` (clipping x 1.5, reject x 1.7) | 0.401 | 0.284 | −0.116 ± 0.008 |
+| FLTrust (`normalize_to: median`) | 0.372 | 0.309 | −0.063 ± 0.007 |
+
+- The norm sees nothing: `safeguard` clipped and rejected no client in any round, and loses as
+  much as FedAvg (11.6 points).
+- FLTrust ends highest under attack (0.309, 2.3 points above FedAvg and `safeguard`), for 3 points
+  lost without attacker. It learns to distrust the flippers as the model learns: their mean trust
+  score, 0.32 against 0.26 for the honest clients at round 1, falls to 0.09 against 0.20 at round
+  5. It never left them out (no score at 0).
+- The median halves the harm but starts 5 points lower; Krum keeps one honest update every round
+  and stays where it was, 13 points below FedAvg without attacker.
+
+**Choosing**, against data poisoning: no defense measured here does better than FedAvg without
+attacker and holds under attack. If poisoned data is the threat and the server holds data like the
+clients', FLTrust is the best trade-off measured: −3 points without attacker, +2.3 under attack,
+and its trust scores name the suspects.
 
 ## Limits of these measurements
 
