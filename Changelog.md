@@ -1,8 +1,12 @@
 # Changelog
 
-## [Unreleased]
+## [Version 0.10.0]
 
-### New features
+Since `v0.9.0` (2026-10-16): sessions that end before their last round — on a signal, a button or
+stopping criteria —, and federated learning on data arriving in lots — rounds at fixed times,
+sessions launched again at each deadline —; the server's `check` refuses reports written twice.
+
+### Ending a session before its last round
 
 * A server stops after its current round on `SIGUSR1` (`kill -USR1 <pid>`), its reports written
   as at a normal end (final checkpoint, ONNX export): the first step of sessions not bound to a
@@ -10,20 +14,15 @@
 * Stopping criteria (`server_run.stopping`): a session ends before its `num_rounds`, which stays
   its maximum, when a metric reaches a value (`threshold`), stops improving (`patience`) or the
   rounds have lasted long enough (`maxduration`); a new plugin category, `stoppingcriterion`.
+* Session manager: a *⏹ stop after round* button does it from the page; the round counter shows
+  `k/N ⏹` and the reason of the stop, the server agent ends *stopped*.
 * Hierarchical sessions: when the top level ends before its last round (criterion, button,
   `SIGUSR1`), its lower levels end after the same round, their reports written, instead of waiting
   for a model up to their link's timeout; only the top level may end early (a lower level refuses
   `stopping`, its manager the button).
-* Flower's deprecation warning of `start_server()` and `start_client()`, at every launch, is no
-  longer shown: Pybiscus runs on Flower's legacy API on purpose; any other Flower warning still is.
-* Session manager: a *⏹ stop after round* button does it from the page; the round counter shows `k/N ⏹` and the reason of the stop, the server agent ends
-  *stopped*.
 
-* Rounds at fixed times (`server_run.schedule`): every period (`every: 1h`) or at cron times
-  (`cron: "0 2 * * *"`, with a time zone), the server waiting between two rounds; a round in which
-  no client had new data is skipped and does not count among `num_rounds`; `maxduration` is also
-  tested while waiting, and the stop button or `SIGUSR1` ends a wait at once; the manager's
-  counter shows the rounds counted ([configuration.md](docs/configuration.md#rounds-at-fixed-times)).
+### Data arriving in lots
+
 * Data arriving between rounds, the base of rounds at fixed times: with
   `client_run.refresh_data` a client reads its data again before each round; the `hdfs` plugin
   reads lots (`train.directory`, a file each) and with `train.lots: new` only those not trained on
@@ -32,25 +31,41 @@
   weights; `pybiscus schedule preview` shows the deadlines of a period or of a cron expression
   ([configuration.md](docs/configuration.md#data-arriving-between-rounds)). New dependency:
   `cronsim`.
+* Rounds at fixed times (`server_run.schedule`): every period (`every: 1h`) or at cron times
+  (`cron: "0 2 * * *"`, with a time zone), the server waiting between two rounds; a round in which
+  no client had new data is skipped and does not count among `num_rounds`; `maxduration` is also
+  tested while waiting, and the stop button or `SIGUSR1` ends a wait at once; the manager's
+  counter shows the rounds counted ([configuration.md](docs/configuration.md#rounds-at-fixed-times)).
 * Repeated sessions: the `repeat` block of the session form (`every` or `cron`) has the manager
   launch the session again at each deadline once all its runs have ended, each one starting from
   the previous one's final weights (`server_run.weights_path: latest`, now settable in the
   configuration) and ending at once when no client has new data
   (`server_run.stop_without_new_data`); *🔁 stop repeating* launches no further session, a failed
   run stops the repetition ([sessionmanager.md](docs/sessionmanager.md#repeated-sessions)).
-* Session manager: a boolean value set by the manager in a form (`true`) no longer stops the page
-  from setting the values and locks after it.
-* A server whose session raises an exception (a plugin's defect) now ends, its clients
-  disconnected: its process and its clients used to wait for ever.
-* `visualizemodellayers` no longer fails a round in which no client trained.
-* Agent forms: the input of a locked optional value (`weights_path`) is greyed like the other locked inputs.
+
+### Reports
+
 * Reports written twice: the server's `check` refuses a configuration where two writers (the
   server, a metrics logger, a decorator) would write the same file of the reporting directory, or
   one in a directory another owns. A plugin used twice in the pipeline, to save before and after a
   transformation, takes a `tag`, the subdirectory of its files ([configuration.md](docs/configuration.md#files-of-the-reporting-directory)).
+* FedMIA's default `.npz` files are prefixed with `fedmia_`, no longer those of the save decorators.
+
+### Fixes
+
+* A server whose session raises an exception (a plugin's defect) now ends, its clients
+  disconnected: its process and its clients used to wait for ever.
+* `FileMetricsLogger`: a path given as a string no longer fails, and a second instance no longer
+  writes every line twice.
+* Session manager: a boolean value set by the manager in a form (`true`) no longer stops the page
+  from setting the values and locks after it.
+* `visualizemodellayers` no longer fails a round in which no client trained.
 * The clients' configurations given in `server_run.client_configs` are saved in the reporting
   directory again, not at the root of the file system.
-* FedMIA's default `.npz` files are prefixed with `fedmia_`, no longer those of the save decorators.
+* Agent forms: the input of a locked optional value (`weights_path`) is greyed like the other
+  locked inputs.
+* Flower's deprecation warning of `start_server()` and `start_client()`, at every launch, is no
+  longer shown: Pybiscus runs on Flower's legacy API on purpose; any other Flower warning still is.
 
 ## [Version 0.9.0]
 
