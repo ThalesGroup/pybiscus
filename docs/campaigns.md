@@ -120,6 +120,7 @@ and how long it takes.
 | `cifar10_robust_dirichlet.yml` | the same on heterogeneous (dirichlet 0.5) shares | [robust-aggregation.md](robust-aggregation.md#heterogeneous-shares-dirichlet-05) |
 | `cifar10_clipping_dirichlet.yml` | bounding the updates' norm, dirichlet shares | [robust-aggregation.md](robust-aggregation.md#norm-clipping-fedavg-with-bounded-updates) |
 | `cifar10_alie_dirichlet.yml` | the defenses against colluding ALIE attackers | [robust-aggregation.md](robust-aggregation.md#a-discreet-colluding-attack-alie) |
+| `cifar10_alie_omniscient.yml` | the worst case of ALIE: attackers who know the honest updates (`omniscientalie`), 3 seeds | [robust-aggregation.md](robust-aggregation.md#the-omniscient-attacker) |
 | `cifar10_alie_z_sweep.yml` | ALIE's z swept, 3 seeds | [robust-aggregation.md](robust-aggregation.md#sweeping-z) |
 | `cifar10_clipping_reject_alie.yml` | the clipping defense's rejection threshold against ALIE | [robust-aggregation.md](robust-aggregation.md#rejection-threshold) |
 | `cifar10_safeguard_iid.yml` | the `safeguard` defense on iid shares | [robust-aggregation.md](robust-aggregation.md#on-iid-shares) |
@@ -131,4 +132,7 @@ and how long it takes.
 | `turbofan_lstm.yml` | the LSTM regression on the turbofan engines (test MSE: lower is better) | [configuration.md](configuration.md#data) |
 
 `test-plugins-conf.yml` is not a campaign: it declares the test-only plugins (the `byzantine`
-client) that the robustness campaigns add through `plugin_manifests`.
+client and the `omniscientalie` strategy decorator) that the robustness campaigns add through
+`plugin_manifests`. They are left out of [plugins-reference.md](plugins-reference.md), generated
+from the default manifests: see [Testing them](robust-aggregation.md#testing-them-the-byzantine-client)
+and [The omniscient attacker](robust-aggregation.md#the-omniscient-attacker).

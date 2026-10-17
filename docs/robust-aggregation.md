@@ -48,6 +48,7 @@ delta = w_trained − w_global before sending it:
 | `scale` (`scale`) | w_global + scale · delta | dominates the aggregate |
 | `gaussian` (`stddev`) | w_global + noise | a faulty client |
 | `none` | the honest update | with `num_examples_factor`, lies about its size only |
+| `alie` (`colluders`, `num_clients`, `z`) | mean − z · deviation of the colluders' updates | discreet, see [ALIE](#a-discreet-colluding-attack-alie) |
 
 `from_round` delays the attack, `seed` fixes the noise; the client reports a `byzantine` metric.
 It is a test tool: it is declared in `launch/campaign/test-plugins-conf.yml` only, never in the
