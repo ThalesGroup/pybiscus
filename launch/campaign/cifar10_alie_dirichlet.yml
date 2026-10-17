@@ -9,6 +9,8 @@
 # Each client trains on its whole share (about 7 100 images), 3 local epochs: with 3000 images
 # and 1 epoch, FedAvg without attacker stayed at chance (0.107 after 5 rounds) and no strategy
 # could be told apart. About 10 minutes; do not run it next to a live session.
+# Status: a measurement of ours, not a reproduction of the paper (51 workers, 12 attackers, z 1,
+# distributed SGD there; docs/robust-aggregation.md, Limits of these measurements).
 
 server_config: configs/cifar10_cnn/distributed/without_ssl/server.yml
 client_config: configs/cifar10_cnn/distributed/without_ssl/client_1.yml

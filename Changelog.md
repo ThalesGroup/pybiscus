@@ -1,5 +1,25 @@
 # Changelog
 
+## [Unreleased]
+
+### Robustness tests
+
+* The worst case of ALIE: the `omniscientalie` strategy decorator (test manifest only) replaces the
+  updates of the clients flagged byzantine by mean − z · std of the honest updates of the round,
+  as attackers who know them would; campaign `launch/campaign/cifar10_alie_omniscient.yml` (six
+  defenses, the paper's z and z 2, 3 seeds) and its results in `docs/robust-aggregation.md`.
+
+### Documentation
+
+* References for the defenses and attacks measured (Krum, Bulyan, median and trimmed mean, norm
+  clipping, adaptive clipping, ALIE), for the server-side DP (DP-FedAvg, RDP accounting) and for
+  FedMIA.
+* The campaigns are stated to be our own measurements, not reproductions of the papers; a section
+  on their limits (few clients, rounds instead of gradient steps, one dataset) and how to extend a
+  campaign.
+* Corrected: the ALIE paper's attackers do not know the honest updates; they estimate them from
+  the corrupted workers (12 of 51).
+
 ## [Version 0.10.0]
 
 Since `v0.9.0` (2026-10-16): sessions that end before their last round — on a signal, a button or

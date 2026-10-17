@@ -254,7 +254,12 @@ The `serverdpfixed` and `serverdpadaptive` decorators (plugin `strategydecorator
 Flower's `DifferentialPrivacyServerSide*Clipping`) clip each client's update `w_client - w_global`
 to a norm C, then add Gaussian noise of standard deviation `noise_multiplier * C / n` to the
 aggregated model (n: clients per round). The server is trusted: the noise protects what the
-released models tell about each client's data.
+released models tell about each client's data. This is the user-level DP of DP-FedAvg (McMahan et
+al., [Learning Differentially Private Recurrent Language Models](https://arxiv.org/abs/1710.06963),
+ICLR 2018); the adaptive variant sets C at a quantile of the update norms (Andrew et al.,
+[Differentially Private Learning with Adaptive Clipping](https://arxiv.org/abs/1905.03871),
+NeurIPS 2021), with the correction of Flower's rule described in
+[robust-aggregation.md](robust-aggregation.md#norm-clipping-fedavg-with-bounded-updates).
 
 ```yaml
 server_strategy:
@@ -269,7 +274,9 @@ server_strategy:
 
 - Every round logs `dp_clipping_norm`, `dp_noise_stddev`, `dp_clipped_fraction` and, when every
   client takes part in every round (`fraction_fit: 1`), `dp_epsilon` for the configured `delta`
-  (Rényi DP of the Gaussian mechanism).
+  (Rényi DP of the Gaussian mechanism, composed over the rounds and converted to (ε, δ)-DP:
+  propositions 7, 1 and 3 of Mironov, [Rényi Differential Privacy](https://arxiv.org/abs/1702.07476),
+  IEEE CSF 2017).
 - C: the clients' `weight_drift` under `fedprox` with `proximal_mu: 0` gives the usual size of an
   update.
 - The guarantee assumes a plain mean with equal weights: a warning says so around a median, Krum,

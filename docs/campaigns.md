@@ -6,6 +6,11 @@ its clients as separate processes — and prints a table of the test metric roun
 how the results of [Robust aggregation](robust-aggregation.md) and
 [Privacy evaluation](privacy-evaluation.md) were measured.
 
+The bundled campaigns are measurements of Pybiscus's own defenses, not reproductions of the papers
+their methods come from: their settings (7 clients, 5 federated rounds, cifar10) are far from the
+papers' ones. The differences, and the keys that move a campaign closer to a given setting, are in
+[Limits of these measurements](robust-aggregation.md#limits-of-these-measurements).
+
 ## Running one
 
 From the repository root:

@@ -11,6 +11,12 @@ that example (cosine between the example's gradient and the client's update, and
 before and after the client's training). An analyser then compares these scores to which client
 really trained on which example, and plots ROC curves.
 
+The attack is that of Zhu et al., [FedMIA: An Effective Membership Inference Attack Exploiting "All
+for One" Principle in Federated Learning](https://arxiv.org/abs/2402.06289), CVPR 2025 (code:
+[Liar-Mask/FedMIA](https://github.com/Liar-Mask/FedMIA)), whose two scores are the loss and the
+gradient cosine. The plugin was contributed with PR #44; how closely it follows the paper's
+implementation has not been checked line by line.
+
 It measures what an honest-but-curious **server** can infer from each client's own update.
 Server-side differential privacy (`serverdpfixed`, `serverdpadaptive`) noises only the aggregated
 model, not these updates: it is not expected to lower this attack's success.

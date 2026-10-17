@@ -1,10 +1,15 @@
 # Robust aggregation against malicious clients
 
 The strategies of the `flowergeneric` plugin include aggregations meant to resist malicious
-(byzantine) clients: `fedmedian`, `fedtrimmedavg` (`beta`: fraction trimmed on each side), `krum`
-(`num_malicious_clients` f, `num_clients_to_keep` > 0 for Multi-Krum) and `bulyan`
-(`num_malicious_clients` f; needs at least 4f + 3 clients, which `server check` enforces on
-`min_fit_clients`: below, Flower fails in the middle of the aggregation).
+(byzantine) clients: `fedmedian` and `fedtrimmedavg` (coordinate-wise median and trimmed mean
+[[Yin 2018]](#references); `beta`: fraction trimmed on each side), `krum` ([[Blanchard 2017]](#references);
+`num_malicious_clients` f, `num_clients_to_keep` > 0 for Multi-Krum) and `bulyan`
+([[El Mhamdi 2018]](#references); `num_malicious_clients` f; needs at least 4f + 3 clients, which
+`server check` enforces on `min_fit_clients`: below, Flower fails in the middle of the aggregation).
+
+Every table of this page is a measurement of ours, on Pybiscus, named after the campaign file that
+produced it: none reproduces a paper's experiments. What separates them from a real deployment, and
+how to extend them, is in [Limits of these measurements](#limits-of-these-measurements).
 
 ## The `robustness` setting
 
@@ -115,8 +120,8 @@ different from one another, and a robust aggregation may discard them as outlier
 
 ## Norm clipping: FedAvg with bounded updates
 
-Bounding the norm of each client's update before the mean keeps FedAvg's accuracy while limiting
-what one client can do. `serverdpfixed` with `noise_multiplier: 0` does exactly that (clipping of
+Bounding the norm of each client's update before the mean ([[Sun 2019]](#references)) keeps
+FedAvg's accuracy while limiting what one client can do. `serverdpfixed` with `noise_multiplier: 0` does exactly that (clipping of
 `w_client - w_global` to `clipping_norm`, no noise); its log's `dp_clipped_fraction` shows how many
 clients get clipped (`launch/campaign/cifar10_clipping_dirichlet.yml`, same dirichlet shares and
 attacker as above):
@@ -137,7 +142,8 @@ attacker as above):
   sets C by itself around the median of the update norms. Flower 1.27's
   `DifferentialPrivacyServerSideAdaptiveClipping` moved C away from its target: it counts the
   clipped updates in a rule written for the unclipped ones (`C *= exp(-lr * (clipped_fraction -
-  target))`), and C decreased every round while 86 % of the updates were clipped. It also noised
+  target))`; in [[Andrew 2021]](#references), section 2.1, the indicator is 1 when the update is
+  *not* clipped), and C decreased every round while 86 % of the updates were clipped. It also noised
   the aggregate with the next round's norm. Pybiscus uses a corrected subclass
   (`CorrectedAdaptiveClipping`): C now rises to about 1.1 and the clipped fraction stays around
   50 % (43 to 57 %).
@@ -180,7 +186,8 @@ server_strategy:
   `clip_cos_median_<cid>`, `clip_cos_closest_<cid>`). It changes nothing to the aggregation and
   costs a copy of every update: a diagnostic, to look at your own clients before choosing a defense.
 
-Dirichlet shares, same attackers:
+Dirichlet shares, same attackers (`launch/campaign/cifar10_clipping_dirichlet.yml`; Bulyan from
+`launch/campaign/cifar10_robust_dirichlet.yml`):
 
 | variant | no attacker | 1 attacker | 2 attackers |
 |---|---|---|---|
@@ -213,7 +220,7 @@ costs 8 points on heterogeneous data before any attack.
 
 ## A discreet, colluding attack: ALIE
 
-`attack: alie` ("A Little Is Enough", Baruch et al., 2019): the `colluders` attackers pool their
+`attack: alie` ("A Little Is Enough", [[Baruch 2019]](#references)): the `colluders` attackers pool their
 honest updates through `shared_dir` (one file per attacker and round, a `timeout` after which an
 attacker alone sends its honest update), estimate coordinate-wise their mean and deviation, and all
 send mean - z x deviation; z comes from the number of clients and of colluders
@@ -234,8 +241,12 @@ send mean - z x deviation; z comes from the number of clients and of colluders
   about 1 (their common update often is the median one).
 - It does no measurable harm either: estimated from the colluders' two honest updates only, the
   mean is itself an honest average and the deviation small, so what they send is nearly honest.
-  The damage reported by the paper comes from attackers who know the honest distribution, or from
-  a larger z; neither is tested yet.
+- The paper's attackers do not know the honest updates either: they estimate them from the
+  corrupted workers alone, but there are 12 of them among 51 workers (here 2 of 7), they attack the
+  gradient of every step of a distributed SGD (here a model updated by 3 local epochs), with z = 1.
+  It reports, on CIFAR10, accuracy drops of about 28 % without defense and 45 to 66 % with
+  TrimmedMean, Bulyan and Krum. The worst case, attackers who know the honest updates, is measured
+  below ([The omniscient attacker](#the-omniscient-attacker)).
 
 ### Sweeping z
 
@@ -309,6 +320,45 @@ or rejected; the attackers (about 10 x) were rejected every round, in every seed
 clients of 7 out costs nothing here, as their data is much like the others' (−6.5 points on
 dirichlet shares).
 
+### The omniscient attacker
+
+The worst case of ALIE: the attackers know the honest updates of the round. Only the server sees
+them all, so the attack is simulated there: the `omniscientalie` strategy decorator (test manifest
+only) replaces the updates of the clients flagged byzantine (`byzantine`, `attack: none`: they
+train honestly) by mean − z · std of the honest updates. It must wrap the defenses (listed after
+`clipping` and the server-side DP decorators, enforced at check), so that they see the forged
+updates. `z` unset takes the paper's value for the round's numbers of clients and attackers;
+`from_round` delays the attack.
+
+`launch/campaign/cifar10_alie_omniscient.yml`: 7 clients of which 2 attackers, dirichlet shares,
+5 rounds of 3 local epochs; test accuracy at round 5, mean over 3 seeds, and the difference to the
+same defense without attacker, paired by seed (mean ± std, min to max):
+
+| defense | no attacker | omniscient, z 0.57 (paper) | Δ | omniscient, z 2 | Δ |
+|---|---|---|---|---|---|
+| FedAvg | 0.401 | 0.326 | −0.075 ± 0.007 | 0.292 | −0.109 ± 0.005 |
+| FedMedian | 0.354 | 0.266 | −0.088 ± 0.007 | 0.243 | −0.111 ± 0.007 |
+| FedTrimmedAvg, beta 0.2 | 0.366 | 0.292 | −0.075 ± 0.005 | 0.248 | −0.119 ± 0.012 |
+| Krum, f 1 | 0.276 | 0.272 | −0.005 ± 0.009 | 0.301 | +0.025 ± 0.024 |
+| Bulyan, f 1 | 0.321 | 0.266 | −0.055 ± 0.048 (−0.100 to −0.004) | 0.277 | −0.045 ± 0.075 (−0.121 to +0.030) |
+| clipping x 1.5, reject x 1.7 | 0.401 | 0.327 | −0.074 ± 0.005 | 0.291 | −0.110 ± 0.005 |
+
+- Knowing the honest updates turns a harmless attack (client-side, above) into a steady one:
+  7.5 points lost by FedAvg at the paper's z, 11 at z 2, with little spread between seeds.
+- The median and the trimmed mean do no better than FedAvg: the forged update sits inside the
+  honest range on every coordinate, which is what they keep.
+- Clipping sees nothing: no client rejected in any round, clipped in 2 rounds of 30, and its
+  results match FedAvg's.
+- Krum, f 1, picks the forged update every round at z 0.57: the two identical copies are at
+  distance 0 from each other, which lowers their score. It costs nearly nothing, though: that update
+  is built from the mean of the 5 honest ones, while Krum alone keeps a single client's update. At
+  z 2, the forged copies are too far away and Krum never picks them; its gain is within the spread
+  of the seeds. These picks were checked on 2 seeds by a temporary log of Krum's scores (DEVLOG).
+  Krum stays the weakest defense before any attack (−12 points against FedAvg).
+- Bulyan's results spread too much over 3 seeds to conclude (one seed below 0.25 without attacker).
+- These are not the paper's results: 2 attackers of 7 and federated rounds, against 12 of 51 and
+  every gradient step there ([Limits](#limits-of-these-measurements)).
+
 ## Discreet attackers: what the norm cannot see
 
 ### The limit
@@ -362,3 +412,72 @@ detector would be worth all the harm it prevents. ALIE's harm on iid shares has 
 
 Before choosing, look at your own clients with `log_directions: true` on a run without attacker:
 how far apart their directions are, and how close the closest pair gets.
+
+## Limits of these measurements
+
+The campaigns compare defenses under the same conditions; they do not say how a defense behaves in
+a given deployment, nor do they reproduce the papers' figures. What they leave out:
+
+- **Few participants**: 7 clients, every one in every round, on one machine (each client is a
+  process holding the model and its data, which bounds their number on one machine). Real
+  federations have tens to thousands of clients, sampled each round. The robust aggregations'
+  guarantees, and an attacker's estimate of the honest updates, depend on that number: the ALIE
+  paper has 12 attackers among 51 workers, here 2 among 7.
+- **Federated rounds, not gradient steps**: each update is a model trained for 3 local epochs,
+  where the papers (Krum, Bulyan, ALIE) attack and defend the gradient of every step of a
+  distributed SGD. An update is larger and noisier than a gradient, so the thresholds measured
+  here (1.5, 1.7 x the median) do not carry over.
+- **Short, unfinished training**: 5 rounds, about 0.40 test accuracy on 2 000 test images. A defense
+  may cost more, or less, once the model has converged.
+- **One dataset, two kinds of shares**: cifar10, iid or dirichlet 0.5, every client with the same
+  number of local epochs. Clients whose amounts of data or local steps differ make honest updates
+  of very different sizes, which a norm threshold then confuses with attackers.
+- **Simple attackers**: always the same clients, attacking every round, the number of attackers
+  given to Krum and Bulyan. No attacker adapts to the defense, changes over time, poisons its labels
+  or plants a backdoor; the client-side ALIE estimates the honest updates from 2 colluders only.
+- **Few repetitions**: 3 seeds; differences under about 1 point mean nothing, even paired (see
+  [Testing them](#testing-them-the-byzantine-client)).
+
+### Extending a campaign
+
+Every limit above is a key of the campaign file ([campaigns.md](campaigns.md)):
+
+| to test | change | cost |
+|---|---|---|
+| more participants | `clients: 20`, the attackers in `client_overrides` (e.g. 5 of them), `num_clients: 20` and `colluders: 5` for the client-side ALIE | memory and time grow with the clients; here, 7 clients took about 1 min per run: on a larger machine, or with `server_data.test.max_samples` lowered and a smaller model (`configs/mnist_cnn/`) |
+| the ALIE paper's setting, closer | client-side `attack: alie` (not omniscient), about 24 % of colluders (5 of 20), `z: 1.0` | as above; the attack still targets federated updates, not gradients |
+| converged models | `rounds: 20` or more | proportional to the rounds |
+| more repetitions | `seeds: [1, 2, 3, 4, 5]`; `seed_partitions: true` to draw the shares again with each seed | proportional to the seeds |
+| other heterogeneity | `client_data.train.partition`: `alpha: 0.1` (stronger) or `1.0`, `scheme: shards` | none |
+| other data and models | `server_config` and `client_config` of another use case | depends on the model |
+| an attack starting late | `from_round` of the byzantine client or of `omniscientalie` | none |
+| the honest clients' own spread | a run without attacker, `log_directions: true` on the `clipping` decorator, then `clip_ratio_<cid>` and the cosines | one run |
+
+Before a large campaign, run one variant with one seed (`--only`, `seeds: [1]`) to measure the time
+per run, and keep it away from a live session.
+
+## References
+
+- [Baruch 2019] M. Baruch, G. Baruch, Y. Goldberg. *A Little Is Enough: Circumventing Defenses For
+  Distributed Learning*. NeurIPS 2019. [arXiv:1902.06156](https://arxiv.org/abs/1902.06156) — the
+  ALIE attack (`byzantine`, `attack: alie`; `omniscientalie` is its worst-case variant, not the
+  paper's threat model).
+- [Blanchard 2017] P. Blanchard, E. M. El Mhamdi, R. Guerraoui, J. Stainer. *Machine Learning with
+  Adversaries: Byzantine Tolerant Gradient Descent*. NeurIPS 2017.
+  [Proceedings](https://papers.nips.cc/paper/2017/hash/f4b9ec30ad9f68f89b29639786cb62ef-Abstract.html)
+  — Krum and Multi-Krum (`krum`).
+- [El Mhamdi 2018] E. M. El Mhamdi, R. Guerraoui, S. Rouault. *The Hidden Vulnerability of
+  Distributed Learning in Byzantium*. ICML 2018, PMLR 80. [arXiv:1802.07927](https://arxiv.org/abs/1802.07927)
+  — Bulyan and its n ≥ 4f + 3 (`bulyan`).
+- [Yin 2018] D. Yin, Y. Chen, K. Ramchandran, P. Bartlett. *Byzantine-Robust Distributed Learning:
+  Towards Optimal Statistical Rates*. ICML 2018. [arXiv:1803.01498](https://arxiv.org/abs/1803.01498)
+  — coordinate-wise median and trimmed mean (`fedmedian`, `fedtrimmedavg`).
+- [Sun 2019] Z. Sun, P. Kairouz, A. T. Suresh, H. B. McMahan. *Can You Really Backdoor Federated
+  Learning?* FL workshop at NeurIPS 2019. [arXiv:1911.07963](https://arxiv.org/abs/1911.07963) —
+  norm clipping of the updates as a defense (`clipping`).
+- [Andrew 2021] G. Andrew, O. Thakkar, H. B. McMahan, S. Ramaswamy. *Differentially Private
+  Learning with Adaptive Clipping*. NeurIPS 2021. [arXiv:1905.03871](https://arxiv.org/abs/1905.03871)
+  — the adaptive clipping norm (`serverdpadaptive`, corrected rule).
+
+The strategies themselves are Flower's (`flwr.server.strategy`); the server-side DP and its
+references are described in [configuration.md](configuration.md#server-side-differential-privacy).

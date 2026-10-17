@@ -5,3 +5,7 @@ client:
   - path: "../../pybiscus-plugins/client"
     modules:
       - byzantine
+strategydecorator:
+  - path: "../../pybiscus-plugins/strategydecorator"
+    modules:
+      - omniscientalie
