@@ -77,10 +77,56 @@ const pybiscusCheckErrors = (function () {
     return div;
   }
 
+  // ---------- state of each section in the level-1 menu ----------
+
+  function sectionItems() {
+    return Array.from(document.querySelectorAll('.menu-item-level-1[data-target]'))
+      .map(item => ({ item, section: document.getElementById(item.getAttribute('data-target')) }))
+      .filter(entry => entry.section);
+  }
+
+  function setMark(item, state, count) {
+    let mark = item.querySelector(':scope > .pybiscus-section-mark');
+    if (!state) {
+      item.removeAttribute('data-pybiscus-check');
+      if (mark) mark.remove();
+      return;
+    }
+    if (!mark) {
+      mark = document.createElement('span');
+      mark.className = 'pybiscus-section-mark';
+      item.appendChild(mark);
+    }
+    item.setAttribute('data-pybiscus-check', state);
+    mark.textContent = state === 'error' ? String(count) : '✓';
+    mark.title = state === 'error'
+      ? `${count} error${count > 1 ? 's' : ''} at the last check`
+      : 'no error at the last check';
+  }
+
+  // checked: true after a check, every section without an error message is then valid
+  function markSections(checked) {
+    for (const { item, section } of sectionItems()) {
+      const count = section.querySelectorAll('.pybiscus-field-error').length;
+      setMark(item, count > 0 ? 'error' : (checked ? 'valid' : null), count);
+    }
+  }
+
+  // a section changed since the check: its mark no longer tells its state, except the errors left
+  function sectionEdited(target) {
+    const section = target.closest && target.closest('fieldset.foldable');
+    if (!section || !section.id) return;
+    const item = document.querySelector(`.menu-item-level-1[data-target="${section.id}"]`);
+    if (!item || !item.hasAttribute('data-pybiscus-check')) return;
+    const count = section.querySelectorAll('.pybiscus-field-error').length;
+    setMark(item, count > 0 ? 'error' : null, count);
+  }
+
   function clear(root) {
     root.querySelectorAll('.pybiscus-field-error').forEach(e => e.remove());
     root.querySelectorAll('.pybiscus-field-invalid').forEach(e => e.classList.remove('pybiscus-field-invalid'));
     root.querySelectorAll('.pybiscus-fieldset-invalid').forEach(e => e.classList.remove('pybiscus-fieldset-invalid'));
+    markSections(false);
   }
 
   // the first error is in a section the level-1 menu may hide
@@ -114,17 +160,26 @@ const pybiscusCheckErrors = (function () {
         first = first || place.fieldset;
       }
     }
+    markSections(true);
     if (first) reveal(first);
     return unplaced;
   }
 
   // a corrected value no longer carries the message of the previous check
-  document.addEventListener('input', event => {
+  function fieldEdited(event) {
     const field = event.target.closest && event.target.closest('.pybiscus-field-invalid');
-    if (!field) return;
-    field.classList.remove('pybiscus-field-invalid');
-    field.querySelectorAll(':scope > .pybiscus-field-error').forEach(e => e.remove());
+    if (field) {
+      field.classList.remove('pybiscus-field-invalid');
+      field.querySelectorAll(':scope > .pybiscus-field-error').forEach(e => e.remove());
+    }
+    sectionEdited(event.target);
+  }
+  document.addEventListener('input', fieldEdited);
+  document.addEventListener('change', fieldEdited);
+  // another option of a union, an item added to or removed from a list: no input event
+  document.addEventListener('click', event => {
+    if (event.target.closest && event.target.closest('.pybiscus-tab-button, button')) sectionEdited(event.target);
   });
 
-  return { show, clear, locate };
+  return { show, clear, locate, markSections };
 })();

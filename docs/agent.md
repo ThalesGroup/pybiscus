@@ -34,7 +34,9 @@ On each form:
   A refused configuration shows each error in red under its field, or on the block it is about
   (an unknown key, a whole section); the form opens the section of the first one. An error the form
   has no place for, or a failure that is not a validation error (a missing plugin), is shown under
-  the buttons.
+  the buttons. After a check, each entry of the section menu carries the number of its errors in red,
+  or a green ✓; the mark goes when the section is changed, its state being unknown until the next
+  check.
 - **Save to disk** downloads the YAML file, to use with the [CLI](cli.md).
 - On the server: **Pin** keeps the current form for the next visits, **Blank**
   returns to the defaults; a badge shows where the displayed configuration comes from (pinned, or

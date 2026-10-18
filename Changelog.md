@@ -18,6 +18,8 @@
   form opens the section of the first one; it used to show only "Check failure", the details being in
   the agent's console. `pybiscus server|client check` writes the errors as JSON in the file named by
   `PYBISCUS_CHECK_ERRORS_FILE`, set by the agent.
+* Section menu: after a check, each section shows the number of its errors or a ✓; the mark goes when
+  the section is changed.
 
 ### Robustness tests
 

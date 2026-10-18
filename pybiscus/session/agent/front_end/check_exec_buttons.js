@@ -103,6 +103,7 @@ check_button.addEventListener('click', function() {
         indicatorDiv.style.display = 'none';
 
         if (ok) {
+          pybiscusCheckErrors.markSections(true);
           successResultDiv.style.display = 'block';
           failureResultDiv.style.display = 'none';
           execute_button.disabled = false;
