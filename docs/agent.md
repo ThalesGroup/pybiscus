@@ -31,6 +31,10 @@ Launch the client agents, and open `http://localhost:5001/client/config` and
 On each form:
 - **Check** validates the configuration; **Execute** (enabled once it is checked)
   launches the server or the client. Launch the server first, then the clients.
+  A refused configuration shows each error in red under its field, or on the block it is about
+  (an unknown key, a whole section); the form opens the section of the first one. An error the form
+  has no place for, or a failure that is not a validation error (a missing plugin), is shown under
+  the buttons.
 - **Save to disk** downloads the YAML file, to use with the [CLI](cli.md).
 - On the server: **Pin** keeps the current form for the next visits, **Blank**
   returns to the defaults; a badge shows where the displayed configuration comes from (pinned, or

@@ -23,6 +23,9 @@ CONFIG_VALIDATION_EXIT_CODE = 65
 PORT_IN_USE_EXIT_CODE = 69
 # plugin manifest or plugin import failure (78 = EX_CONFIG)
 PLUGIN_ERROR_EXIT_CODE = 78
+# the agent asks for the Pydantic errors in this file to show each one under its field of the form:
+# the text printed for the user loses where an error is once a long line is wrapped
+CHECK_ERRORS_FILE_ENV = "PYBISCUS_CHECK_ERRORS_FILE"
 
 
 def exit_if_port_in_use(listen_address: str) -> None:
@@ -58,7 +61,19 @@ def exit_on_invalid_config(error: ValidationError) -> NoReturn:
             f"{category}/{module} (needs '{dependency}')" for category, module, dependency in skipped
         )
     logm.console.log(message)
+    write_check_errors(error)
     raise typer.Exit(code=CONFIG_VALIDATION_EXIT_CODE)
+
+
+def write_check_errors(error: ValidationError) -> None:
+    errors_file = os.environ.get(CHECK_ERRORS_FILE_ENV)
+    if not errors_file:
+        return
+    import json
+    # the input is left out: it may be a whole section of the config, and holds its secrets
+    errors = [{"loc": list(e["loc"]), "msg": e["msg"], "type": e["type"]}
+              for e in error.errors(include_url=False, include_context=False, include_input=False)]
+    Path(errors_file).write_text(json.dumps(errors), encoding="utf-8")
 
 
 def resolve_defaults(model_class, conf):

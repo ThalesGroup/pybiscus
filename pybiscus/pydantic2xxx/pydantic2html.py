@@ -672,6 +672,8 @@ def generate_model_page(model: BaseModel, templatePath: str, templateName: str, 
             pinned_state_js = file.read()
         with importlib.resources.files("pybiscus.session.agent.front_end").joinpath("ui_settings.js").open('r') as file:
             ui_settings_js = file.read()
+        with importlib.resources.files("pybiscus.session.agent.front_end").joinpath("check_errors.js").open('r') as file:
+            check_errors_js = file.read()
 
         from pybiscus.session.agent import ui_settings
 
@@ -697,6 +699,7 @@ def generate_model_page(model: BaseModel, templatePath: str, templateName: str, 
             compact_lists_js=compact_lists_js,
             pinned_state_js=pinned_state_js,
             ui_settings_js=ui_settings_js,
+            check_errors_js=check_errors_js,
             ui_settings_state=ui_settings.state(),
         )
 

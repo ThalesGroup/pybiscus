@@ -14,6 +14,10 @@
   outlined until a check passes, Save / Pin / Blank are secondary, the config's origin is a badge;
   buttons named Check, Execute, Save to disk, Pin, Blank. The session form is titled "Pybiscus session
   configuration". The attributes the YAML is read from are unchanged.
+* Check: each validation error is shown in red under its field (or on the block it is about) and the
+  form opens the section of the first one; it used to show only "Check failure", the details being in
+  the agent's console. `pybiscus server|client check` writes the errors as JSON in the file named by
+  `PYBISCUS_CHECK_ERRORS_FILE`, set by the agent.
 
 ### Robustness tests
 

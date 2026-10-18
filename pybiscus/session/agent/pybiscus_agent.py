@@ -11,7 +11,7 @@ import argparse
 
 from pybiscus.session.agent.tuples2yaml import parse_tuples_to_yaml_string
 from pybiscus.core.pybiscusexception import PybiscusInternalException, PybiscusPluginError, PybiscusValueException
-from pybiscus.commands.apps_common import CONFIG_VALIDATION_EXIT_CODE, PLUGIN_ERROR_EXIT_CODE
+from pybiscus.commands.apps_common import CHECK_ERRORS_FILE_ENV, CONFIG_VALIDATION_EXIT_CODE, PLUGIN_ERROR_EXIT_CODE
 from pybiscus.session.agent import agent_weblog
 from pybiscus.session.agent.agent_weblog import AgentState
 from pybiscus.session.auth import SESSION_TOKEN_ENV, agent_token_name, component_token, print_access, require_tokens, tokens_required
@@ -63,10 +63,11 @@ def reset_session():
 #######################################
 #######################################
 
-def run_typer_command(command: list[str]) -> str:
+def run_typer_command(command: list[str], extra_env: dict[str, str] | None = None) -> str:
 
+    env = {**os.environ, **extra_env} if extra_env else None
     # run the Typer script as a subprocess
-    process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, bufsize=1 )
+    process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, bufsize=1, env=env )
 
     lines = []
 
@@ -137,6 +138,7 @@ def saveConfigFromRequest( request ) -> bool:
 
 def checkConfigurationFile( mode: str, file_path: str ):
 
+    errors_file = Path(upload_folder) / f"{mode}-check-errors.json"
     try:            
         if not Path(file_path).is_file():
             raise PybiscusInternalException( f"Config file not found : {file_path}" )
@@ -145,18 +147,29 @@ def checkConfigurationFile( mode: str, file_path: str ):
 
             agent_weblog.agent_logger.log("checking yaml file", state=AgentState.VALIDATING)
 
-            run_typer_command( ["uv", "run", "pybiscus", mode, "check", file_path ] )
+            # a previous check's errors would be shown again under the fields of a config now valid
+            errors_file.unlink(missing_ok=True)
+            run_typer_command( ["uv", "run", "pybiscus", mode, "check", file_path ],
+                               extra_env={CHECK_ERRORS_FILE_ENV: str(errors_file.resolve())} )
         else:
             raise PybiscusInternalException( f"Invalid mode : {mode} (should be server or client)" )
 
     except PybiscusValueException as e:
-        return jsonify({"error": str(e)}), 400
+        return jsonify({"error": str(e), "fields": read_check_errors(errors_file)}), 400
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
     agent_weblog.agent_logger.log("yaml file checked successfully", state=AgentState.VALIDATED)
     return jsonify({mode: "yaml file checked successfully"}), 200
+
+
+def read_check_errors(errors_file: Path) -> list:
+    import json
+    try:
+        return json.loads(errors_file.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return []
 
 
 def interpretConfigurationFile( mode: str, file_path: str ):

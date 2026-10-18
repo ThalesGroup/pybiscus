@@ -1754,3 +1754,44 @@ fieldset:not(.foldable) > legend > .pybiscus-config {
     opacity: 0.85;
     cursor: default;
 }
+
+/* ---------- Ergonomics, step 2: check errors under their fields ---------- */
+
+.pybiscus-field-error {
+    color: var(--color-error);
+    font-size: 0.85rem;
+    margin: 2px 0 4px;
+    max-width: 32rem;
+}
+
+/* in the "names | values" grid, a third child starts a new row in the names column */
+.pybiscus-field:has(> label) > .pybiscus-field-error {
+    grid-column: 2;
+    margin-top: calc(-1 * var(--spacing-sm));
+}
+
+.pybiscus-field-invalid > input,
+.pybiscus-field-invalid > select {
+    border-color: var(--color-error) !important;
+    box-shadow: 0 0 0 1px var(--color-error);
+}
+
+fieldset.pybiscus-fieldset-invalid {
+    border-color: var(--color-error) !important;
+}
+
+.pybiscus-check-errors:empty {
+    display: none;
+}
+
+.pybiscus-check-errors pre {
+    color: var(--color-error);
+    background-color: var(--color-error-bg);
+    font-size: 0.8rem;
+    white-space: pre-wrap;
+    max-height: 12rem;
+    overflow: auto;
+    margin: 4px 0 0;
+    padding: var(--spacing-xs) var(--spacing-sm);
+    border-radius: var(--border-radius);
+}

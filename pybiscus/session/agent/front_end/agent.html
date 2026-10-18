@@ -280,6 +280,8 @@
     // before the buttons (Pin) and the load-time code (restoring a pinned configuration)
     {{ pinned_state_js | safe }}
 
+    {{ check_errors_js | safe }}
+
     {{ buttons_js | safe }}
 
     // several options of a union share their fields' names (cifar's and mnist's data.config.train…,

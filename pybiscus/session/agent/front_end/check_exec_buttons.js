@@ -70,6 +70,10 @@ check_button.addEventListener('click', function() {
     // Select top-div ided element
     const topDiv = document.getElementById('top-div');
 
+    const unplacedDiv = document.getElementById('check-errors-unplaced');
+    unplacedDiv.replaceChildren();
+    pybiscusCheckErrors.clear(topDiv);
+
     // generate configuration data
     data = traverseDOM(topDiv, []).reverse();
 
@@ -89,21 +93,40 @@ check_button.addEventListener('click', function() {
     };
 
     // post the configuration in json format
+    // the body of a refused config carries its errors: it is read before testing the status
     fetch(url_conf, options)
-      .then(response => {
-        if (!response.ok) {
-          throw new Error("Post error " + response.status);
+      .then(response => response.json()
+        .catch(() => ({ error: "Post error " + response.status }))
+        .then(body => ({ ok: response.ok, body })))
+      .then(({ ok, body }) => {
+        console.log("Server response:", body);
+        indicatorDiv.style.display = 'none';
+
+        if (ok) {
+          successResultDiv.style.display = 'block';
+          failureResultDiv.style.display = 'none';
+          execute_button.disabled = false;
+          return;
         }
-        return response.json();
-      })
-      .then(data => {
-        console.log("Server response:", data);
 
-        indicatorDiv.style.display     = 'none';
-        successResultDiv.style.display = 'block';
-        failureResultDiv.style.display = 'none';
+        successResultDiv.style.display = 'none';
+        failureResultDiv.style.display = 'block';
+        execute_button.disabled = true;
 
-        execute_button.disabled = false;
+        const fields = Array.isArray(body.fields) ? body.fields : [];
+        const unplaced = pybiscusCheckErrors.show(topDiv, fields);
+        const placed = fields.length - unplaced.length;
+        failureResultDiv.textContent = placed > 0
+          ? `Check failure: ${fields.length} error${fields.length > 1 ? 's' : ''}, shown in red in the form.`
+          : 'Check failure.';
+
+        // without field errors (missing plugin, crash...), the message of the check is the only clue
+        const lines = fields.length > 0 ? unplaced : [body.error || 'unknown error'];
+        for (const line of lines) {
+          const pre = document.createElement('pre');
+          pre.textContent = line;
+          unplacedDiv.appendChild(pre);
+        }
       })
       .catch(error => {
         console.error("Error:", error);
