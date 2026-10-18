@@ -1,6 +1,11 @@
 # Changelog
 
-## [Unreleased]
+## [Version 0.11.0]
+
+Since `version0.10.0` (2026-10-17): two more defenses against malicious clients, FLTrust (trusted
+examples on the server) and FoolsGold (clients that look alike), measured against new attacks of the
+test clients — poisoned labels, ALIE by attackers who know the honest updates —; campaigns checked
+in seconds, without running them.
 
 ### Robustness
 
@@ -14,7 +19,6 @@
   server trains on (`pybiscus_context[TRUSTED_SET]`).
 * Server configuration: a decorator may name the strategies it works over (`PYBISCUS_STRATEGIES`)
   and the data sections it needs (`PYBISCUS_DATA_SECTIONS`), refused at check otherwise.
-
 * FoolsGold (Fung et al.): the `foolsgold` strategy decorator weighs down the clients whose history
   of updates looks like another client's; over `fedavg` or `fedprox`. Measured
   (`launch/campaign/cifar10_foolsgold.yml`, `cifar10_foolsgold_iid.yml`): it leaves out colluders

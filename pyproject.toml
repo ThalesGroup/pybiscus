@@ -1,6 +1,6 @@
 [project]
 name = "pybiscus"
-version = "0.10.0"
+version = "0.11.0"
 description = "A flexible Federated Learning framework"
 readme = "README.md"
 requires-python = ">=3.12"
