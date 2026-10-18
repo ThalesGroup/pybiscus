@@ -41,6 +41,9 @@ On each form:
 - On the server: **Pin** keeps the current form for the next visits, **Blank**
   returns to the defaults; a badge shows where the displayed configuration comes from (pinned, or
   generated and not pinned).
+- Each field shows a readable label (its `title`, or its key spelled out: `num_rounds` reads
+  "Number of rounds") with its YAML key under it in small type, the name the config files, the CLI
+  and the check's errors use. A plugin gives a field a better label with `Field(title=...)`.
 - An optional field shows *optional* and a box next to its name: ticked, it takes a value; unticked,
   it is left unset.
 - The ⚙ panel sets the display (tabs, compact lists, theme).

@@ -183,6 +183,9 @@ class MyStrategyFactory(FlowerStrategyFactory):
     flower_strategy_class = fl.server.strategy.FedAvgM
 ```
 
+   The form labels `server_momentum` "Server momentum" (its key spelled out) and shows the
+   `description` on hover; `Field(title="...")` gives it a better label when the key is cryptic.
+
    A strategy of your own derives from a Flower class and keeps its `aggregate_fit` through
    `super()` (see `pybiscus-plugins/strategy/fedavgwithaggregator`): a rewritten aggregation,
    inherited, would turn any subclass into a FedAvg.

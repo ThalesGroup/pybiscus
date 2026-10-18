@@ -73,7 +73,7 @@ class ConfigServerReporting(BaseModel):
     PYBISCUS_CONFIG: ClassVar[str] = "reporting"
 
     basedir: str = Field(default="${root_dir}/experiments", description="directory of the session's reports (logs, metrics, saved weights)")
-    add_timestamp_in_path: bool = Field(default=True, description='one subdirectory per session, named after its start time (basedir/current links to the last one)')
+    add_timestamp_in_path: bool = Field(default=True, title="One directory per session", description='one subdirectory per session, named after its start time (basedir/current links to the last one)')
 
     server_config_filename : str = Field(default="config_server.yml", description="file the server's configuration is saved to, in the reporting directory")
 
@@ -116,7 +116,7 @@ class ConfigServerRun(BaseModel):
     weights_path:      Optional[str] = Field(default=None, description=
         'weights to start from: a file, or "latest": those the last session of reporting.basedir saved (save_on_train_end); '
         "--weights-path overrides it")
-    clients_fit_local_epochs: int = Field(default=1, ge=1)
+    clients_fit_local_epochs: int = Field(default=1, ge=1, title="Local epochs per round")
     client_configs:    list[str] = Field(default=[], description='configuration files of the clients, saved with the reports (command line sessions)')
     seed:              Optional[int] = None
     loggers:           list[LoggerConfig()] = Field(description="where the server's log lines go (console, the session manager's webhook...)")# pyright: ignore[reportInvalidTypeForm]

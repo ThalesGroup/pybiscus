@@ -231,7 +231,7 @@ class ConfigQFedAvgData(ConfigFlowerFailuresData):
     worst: 0.1 did best (launch/campaign, DEVLOG). Note: Flower weighs every client with the same
     loss, the global model's one evaluated by the server, so q does not favour the clients the
     global model serves badly."""
-    q_param:            float = Field(default=0.2, ge=0, description='fairness: the larger, the more weight to the clients with a high loss; 0: FedAvg-like')
+    q_param:            float = Field(default=0.2, ge=0, title="q (fairness)", description='fairness: the larger, the more weight to the clients with a high loss; 0: FedAvg-like')
     qffl_learning_rate: float = Field(default=0.1, gt=0, description="rate used to rebuild each client's gradient from its update (0.1 did best on cifar10)")
 
 

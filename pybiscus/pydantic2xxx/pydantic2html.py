@@ -7,6 +7,7 @@ from typing import Any, Dict, Iterable, List, Optional, Union, Literal, get_args
 from enum import Enum
 
 import inspect
+import re
 import html as html_module
 import importlib.resources
 import dominate
@@ -24,12 +25,45 @@ class PydanticToHtml:
     valid_status_dict   = {'data-pybiscus-status' : 'valid'}
     ignored_status_dict = {'data-pybiscus-status' : 'ignored'}
 
-def html_label( label: str, is_config: bool = False, pybiscus_info: str = '' ):
+# YAML keys are abbreviated: the label spells them out, and the key stays shown next to it (it is
+# what the config files, the CLI and the check's errors name)
+LABEL_WORDS = {
+    "lr": "learning rate", "cid": "client id", "cnx": "connection", "val": "validation",
+    "dir": "directory", "subdir": "subdirectory", "basedir": "base directory",
+    "stddev": "standard deviation", "fitin": "fit-in", "fitres": "fit result", "res": "results",
+    "cp": "checkpoint", "dim": "dimension", "env": "environment", "var": "variable",
+}
+LABEL_ACRONYMS = {"id", "url", "ssl", "onnx", "api", "rul", "cpu", "gpu", "ip"}
+NUMBER_PREFIXES = {"num", "n", "nb"}
+YAML_KEY = re.compile(r"[A-Za-z][A-Za-z0-9_]*")
+
+
+def humanize_key(key: str) -> str:
+    words = key.split("_")
+    if len(words) > 1 and words[0] in NUMBER_PREFIXES:
+        words = ["number", "of"] + words[1:]
+    words = [w.upper() if w in LABEL_ACRONYMS else LABEL_WORDS.get(w, w) for w in words if w]
+    text = " ".join(words)
+    return text[:1].upper() + text[1:]
+
+
+def config_label_inner(key: str, title: Optional[str] = None) -> str:
+    """the field's title, or its key spelled out, followed by the key when it differs"""
+    # '#' (list item, replaced by its rank), '' and '🔑' (dict key) are markers, not keys
+    if not YAML_KEY.fullmatch(key):
+        return key
+    text = title or humanize_key(key)
+    if text.lower() == key.lower():
+        return html_module.escape(text)
+    return f'{html_module.escape(text)}<span class="pybiscus-key">{key}</span>'
+
+
+def html_label( label: str, is_config: bool = False, pybiscus_info: str = '', title: Optional[str] = None ):
 
     if label == "":
         return ""
     if is_config:
-        return f'  <label class="pybiscus-config" {pybiscus_info}>{label}</label>\n'
+        return f'  <label class="pybiscus-config" {pybiscus_info}>{config_label_inner(label, title)}</label>\n'
     else:
         return f'  <label {pybiscus_info}>{label}</label>\n'
 
@@ -96,7 +130,8 @@ def is_optional(tp):       return is_optional_type(unwrap_annotated(tp))
 
 log_htmlgen = False
 
-def generate_field_html(field_name: str, field_type, field_default, field_description, inFieldSet: bool, prefix: str, ) -> str:
+def generate_field_html(field_name: str, field_type, field_default, field_description, inFieldSet: bool, prefix: str,
+                        field_title: Optional[str] = None) -> str:
 
     if log_htmlgen:
         print( f"generate_field_html({field_name})" )
@@ -115,21 +150,21 @@ def generate_field_html(field_name: str, field_type, field_default, field_descri
     # generate HTML field according to type
     if field_type is str:
         opt_value = '' if (field_default is PydanticUndefined or field_default is None ) else f' value="{html_module.escape(field_default)}" '
-        field_html += html_label( field_name, True, opt_title )
+        field_html += html_label( field_name, True, opt_title, field_title )
         field_html += f'  <input type="text" {opt_title} {opt_value} placeholder="string" {pybiscus_marker}>\n'
 
     elif field_type is int:
-        field_html += html_label( field_name, True, opt_title )
+        field_html += html_label( field_name, True, opt_title, field_title )
         field_html += f'  <input type="number" {opt_title} {opt_value} placeholder="integer" {pybiscus_marker}>\n'
 
     elif field_type is float:
-        field_html += html_label( field_name, True, opt_title )
+        field_html += html_label( field_name, True, opt_title, field_title )
         field_html += f'  <input type="number" {opt_title} {opt_value} placeholder="float" step="0.001" {pybiscus_marker}>\n'
 
     elif field_type is bool:
         opt_checked = "checked" if True == field_default else ""
         
-        field_html += html_label( field_name, True, opt_title )
+        field_html += html_label( field_name, True, opt_title, field_title )
         field_html += f'  <input type="checkbox" {opt_title} {opt_value} {opt_checked} {pybiscus_marker}> \n'
 
     elif is_enum_type(field_type):
@@ -138,7 +173,7 @@ def generate_field_html(field_name: str, field_type, field_default, field_descri
         # seule ligne dans la disposition 2 colonnes (label | valeur). Chaque radio reste
         # enveloppé dans un élément (son parentElement porte data-pybiscus-status, posé par
         # le JS radio) : traverseDOM n'émet donc que l'option sélectionnée.
-        field_html += html_label( field_name, True, opt_title )
+        field_html += html_label( field_name, True, opt_title, field_title )
 
         option_name= f"option-{new_index()}"
         # Enum members cannot carry a docstring: the enum may map each value to its meaning
@@ -181,7 +216,7 @@ def generate_field_html(field_name: str, field_type, field_default, field_descri
         with list_fieldset:
 
             with legend():
-                label(field_name, cls="pybiscus-config" )
+                label(raw(config_label_inner(field_name, field_title)), cls="pybiscus-config" )
                 label( "➕📝", cls='pybiscus-list-generator' )
 
             my_div = div( cls='pybiscus-list' )
@@ -241,7 +276,7 @@ def generate_field_html(field_name: str, field_type, field_default, field_descri
         with dict_fieldset:
                     
             with legend():
-                label(field_name, cls="pybiscus-config" )
+                label(raw(config_label_inner(field_name, field_title)), cls="pybiscus-config" )
                 label( "➕🔑📖", cls='pybiscus-list-generator' )
 
             my_div = div( cls='pybiscus-list' )
@@ -293,7 +328,7 @@ def generate_field_html(field_name: str, field_type, field_default, field_descri
     elif is_literal_type(field_type):
 
         # ### Literal ###
-        field_html += html_label( field_name, True )
+        field_html += html_label( field_name, True, title=field_title )
         field_html += f'<input type="text" value="{field_type.__args__[0]}" {pybiscus_marker} readonly>\n'
 
     elif is_sub_model(field_type):
@@ -302,7 +337,7 @@ def generate_field_html(field_name: str, field_type, field_default, field_descri
         if field_name == '#':
             field_html += generate_model_html(field_type, inFieldSet, prefix, model_contextual_name=field_name )
         else:
-            field_html += generate_model_html(field_type, inFieldSet, prefix, description=field_description )
+            field_html += generate_model_html(field_type, inFieldSet, prefix, description=field_description, title=field_title )
 
     else:
         field_is_annotated = False
@@ -422,7 +457,7 @@ def generate_field_html(field_name: str, field_type, field_default, field_descri
             field_html += f'<fieldset class="pybiscus-fieldset-container {optional_fs_class}" data-pybiscus-prefix="{prefix[:-1]}">\n'
 
             if field_name != "":
-                field_html += f'  <legend><label class="pybiscus-config" {opt_title}>{field_name}'
+                field_html += f'  <legend><label class="pybiscus-config" {opt_title}>{config_label_inner(field_name, field_title)}'
                 if is_an_option:
                     opt_checked = "checked" if active_index == 1 else ""
                     field_html += f' <span class="pybiscus-optional-mark" title="optional: tick to give it a value, untick to leave it unset">optional</span> <input type="checkbox" class="pybiscus-option-cb" {opt_checked} > '
@@ -567,7 +602,7 @@ def generate_field_html(field_name: str, field_type, field_default, field_descri
 # ---------------------------------------------------------------------
 
 def generate_model_html(model: BaseModel, inFieldSet: bool, prefix: str, model_contextual_name: Optional[str] = None,
-                        description: Optional[str] = None) -> str:
+                        description: Optional[str] = None, title: Optional[str] = None) -> str:
 
     model_html = ''
 
@@ -584,8 +619,8 @@ def generate_model_html(model: BaseModel, inFieldSet: bool, prefix: str, model_c
 
         elif hasattr(model, "PYBISCUS_CONFIG"):
             pybiscus_config = model.PYBISCUS_CONFIG
-            legend_html = f'<legend{opt_title}><div class="pybiscus-config">{pybiscus_config}</div></legend>\n'
-            display_name = pybiscus_config
+            display_name = config_label_inner(pybiscus_config, title)
+            legend_html = f'<legend{opt_title}><div class="pybiscus-config">{display_name}</div></legend>\n'
             prefix += f"{pybiscus_config}."
 
         elif hasattr(model, "PYBISCUS_ALIAS"):
@@ -635,6 +670,7 @@ def generate_model_html(model: BaseModel, inFieldSet: bool, prefix: str, model_c
                                     field_description  = get_basemodel_attribute_description(model,field_name),
                                     inFieldSet         = True,
                                     prefix             = prefix,
+                                    field_title        = field_info.title,
                                     )
    
     if inFieldSet:

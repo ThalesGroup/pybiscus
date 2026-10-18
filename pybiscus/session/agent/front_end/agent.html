@@ -540,6 +540,8 @@
                 menuItem.className = `menu-item-level-1 ${firstSection ? 'active' : ''}`;
                 menuItem.setAttribute('data-target', fieldset.id);
                 menuItem.innerHTML = legend.innerHTML;
+                // the section's YAML key stays in its legend: the menu is kept short
+                menuItem.querySelectorAll('.pybiscus-key').forEach(key => key.remove());
 
                 menuContainer.appendChild(menuItem);
 

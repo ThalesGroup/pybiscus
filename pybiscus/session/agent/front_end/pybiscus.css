@@ -1833,3 +1833,27 @@ fieldset.pybiscus-fieldset-invalid {
     box-shadow: inset 0 0 0 1px var(--color-error);
     opacity: 1;
 }
+
+/* ---------- Ergonomics, step 2.3: readable labels, the YAML key next to them ---------- */
+
+.pybiscus-key {
+    display: block;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 0.72rem;
+    font-weight: normal;
+    opacity: 0.6;
+    letter-spacing: 0;
+}
+
+/* in a legend, the key follows the title on its line */
+legend .pybiscus-key {
+    display: inline;
+    margin-left: 0.5em;
+}
+
+/* a field's label is an inline-flex row: the key went beside the text and squeezed it word by word */
+.pybiscus-field > label.pybiscus-config:has(> .pybiscus-key) {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1px;
+}

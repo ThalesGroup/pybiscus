@@ -21,7 +21,7 @@ class ConfigPersonalizeClientsFitInParamsStrategyDecoratorData(BaseModel):
     result_modifier: ResultModifierConfig() = Field(description='how the global model is changed for each client before it is sent')# pyright: ignore[reportInvalidTypeForm]
 
     protect_model_weights: bool = Field(default=True, description="restore the server's model after each client's modification, which may change it in place")
-    memo_clients_fit_res_in_context: bool = Field(default=True, description="keep the clients' trained weights of the round in the shared context (for other plugins)")
+    memo_clients_fit_res_in_context: bool = Field(default=True, title="Keep the clients' weights in context", description="keep the clients' trained weights of the round in the shared context (for other plugins)")
     debug: bool = Field(default=False, description='log the weights before and after each modification')
 
     model_config = ConfigDict(extra="forbid")

@@ -35,7 +35,7 @@ lower_session:                               # each edge's, on top of what the c
 
 takes:                                       # special captures, at: session-form:<bouquet>, form:<agent>, registered, relays, end
   - {name: edge1-session-form, at: "session-form:edge1", view: session-form, full_page: true}
-  - {name: edge1-server-form, at: "form:edge1-server", view: "agent:edge1-server", full_page: true, click_text: server_strategy}
+  - {name: edge1-server-form, at: "form:edge1-server", view: "agent:edge1-server", full_page: true, click_text: Server strategy}
   - {name: relay-edge1-form, at: "form:relay-edge1", view: "agent:relay-edge1", full_page: true}
   - {name: core-cycles, at: end, view: "manager:core@cyclesChart", tab: cycles}
   - {name: core-network, at: end, view: "manager:core", path: /pybiscus-session/network, full_page: true}
