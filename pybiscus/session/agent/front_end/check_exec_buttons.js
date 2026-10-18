@@ -25,19 +25,19 @@ function updateOrigin() {
       if (res.ok) {
 
         // config lue depuis le cache -> proposer de la vider (Blank)
-        origin_button.innerHTML = '<span class="emoji">🗂️</span> Config is read from cache';
+        origin_button.innerHTML = 'Pinned config (from cache)';
         blank_Button.style.display = '';
         pin_Button.style.display   = 'none';
 
       } else if (res.status === 404) {
 
         // config générée dynamiquement -> proposer de l'épingler en cache (Pin)
-        origin_button.innerHTML = '<span class="emoji">⚙️</span> Config is dynamically generated';
+        origin_button.innerHTML = 'Generated config, not pinned';
         blank_Button.style.display = 'none';
         pin_Button.style.display   = '';
 
       } else {
-        origin_button.innerHTML = '<span class="emoji">❓</span> Config has unknown origin';
+        origin_button.innerHTML = 'Unknown origin';
       }
     });
 }

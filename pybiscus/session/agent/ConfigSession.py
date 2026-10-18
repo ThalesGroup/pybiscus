@@ -66,6 +66,8 @@ def make_session_model(models_confs, data: list[str], data_confs):
 
     class ConfigSession(BaseModel):
 
+        PYBISCUS_ALIAS: ClassVar[str] = "Pybiscus session configuration"
+
         flower_server: FlowerServerConfiguration = Field(description="where the clients reach the Flower server")
         # the whole model and not only its plugin: models of different sizes cannot be averaged
         model:         models_confs = Field(description="model and hyperparameters of every participant, locked in their forms")  # pyright: ignore[reportInvalidTypeForm]

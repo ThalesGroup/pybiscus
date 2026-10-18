@@ -89,7 +89,7 @@ The server's form opens with the session values locked: the strategy's `min_*_cl
 robustness decorator, the data and model choices and the partition fields. Its loggers and metrics
 loggers default to the manager's webhook (`manager_url`, set and locked to this manager's
 address), so its logs and metrics appear in the manager. Set the
-other values (number of rounds, strategy, pipeline...), then *Check Config* and *Execute Config*.
+other values (number of rounds, strategy, pipeline...), then *Check* and *Execute*.
 
 ![Server form in a session](images/session_server_config.png "Server form in a session")
 
@@ -99,7 +99,7 @@ other values (number of rounds, strategy, pipeline...), then *Check Config* and 
 
 Each client's waiting page opens its form once the server runs, with the server's address and the
 session values set: its own share of the data (`partition_id`, `num_partitions`, its `cid`), the
-holdout, its number of CPU threads. *Check Config* and *Execute Config*.
+holdout, its number of CPU threads. *Check* and *Execute*.
 
 ![Client form in a session](images/session_client1.png "Client form in a session")
 

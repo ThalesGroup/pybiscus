@@ -2,6 +2,19 @@
 
 ## Unreleased
 
+### Agent pages
+
+* Registration and waiting pages in the manager's dark style, without animated particles or emojis;
+  registration fields grouped (connection, this agent, location on the map); the session token field
+  now spans the form's width (a password field missed the input style, and its hint was cut).
+* Run monitor: the agent's name and site as title; the status banner coloured by the run's status (a
+  success used to show in red).
+* Configuration forms: field names as plain text next to their value instead of framed badges; an
+  optional field shows *optional* instead of a red ❓; Check is the primary action, Execute stays
+  outlined until a check passes, Save / Pin / Blank are secondary, the config's origin is a badge;
+  buttons named Check, Execute, Save to disk, Pin, Blank. The session form is titled "Pybiscus session
+  configuration". The attributes the YAML is read from are unchanged.
+
 ### Robustness tests
 
 * ALIE at the paper's proportion of attackers, 5 of 20 clients, z 1

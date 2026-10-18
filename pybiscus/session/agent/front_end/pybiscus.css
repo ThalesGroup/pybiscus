@@ -1648,3 +1648,109 @@ input:hover, textarea:hover, select:hover {
 .pybiscus-ui-actions button, .pybiscus-ui-grid button { cursor: pointer; }
 .pybiscus-ui-save { font-weight: var(--font-weight-bold); }
 .pybiscus-ui-note { margin-top: var(--spacing-sm); min-height: 1em; }
+
+/* ============================================
+   Ergonomics, step 1: field names as plain text next to their value, one primary action
+   ============================================ */
+
+/* framed name badges read as buttons and pushed the value far away; the locked 🔒 (::after) stays */
+.pybiscus-field > label.pybiscus-config,
+fieldset:not(.foldable) > legend > .pybiscus-config {
+    background: none;
+    border: none;
+    box-shadow: none;
+    padding: var(--spacing-xs) 0;
+    margin: 0;
+    color: var(--fieldset-text);
+}
+
+.pybiscus-field > label.pybiscus-config::before,
+fieldset:not(.foldable) > legend > .pybiscus-config::before {
+    display: none;
+}
+
+fieldset:not(.foldable) > legend > .pybiscus-config {
+    font-weight: var(--font-weight-semibold);
+    padding: 0 var(--spacing-xs);
+}
+
+/* replaces a red ❓, which looked like an error */
+.pybiscus-optional-mark {
+    font-size: 0.75rem;
+    font-weight: normal;
+    padding: 0 0.45rem;
+    margin: 0 0.35rem;
+    border: 1px solid var(--fieldset-border);
+    border-radius: 999px;
+    opacity: 0.8;
+}
+
+/* action bar: Check (then Execute) is the primary action, the others are secondary; the config's
+   origin is a status, not a button */
+.pybiscus-box .pybiscus-button {
+    min-height: 44px;
+    border-radius: var(--border-radius);
+    box-shadow: none;
+}
+
+.pybiscus-box .pybiscus-button::before {
+    display: none;
+}
+
+.pybiscus-box .pybiscus-button:hover,
+.pybiscus-box .pybiscus-button:active {
+    transform: none;
+}
+
+.pybiscus-box .pybiscus-button.check,
+.pybiscus-box .pybiscus-button.execute {
+    background: var(--color-accent-dark);
+    border: 1px solid var(--color-accent-dark);
+    /* the accent is dark in light themes and light in dark ones: the page's background contrasts with it in both */
+    color: var(--body-bg);
+}
+
+.pybiscus-box .pybiscus-button.check:hover,
+.pybiscus-box .pybiscus-button.execute:hover:not(:disabled) {
+    background: var(--color-accent-dark);
+    box-shadow: none;
+    filter: brightness(1.12);
+}
+
+.pybiscus-box .pybiscus-button.execute:disabled {
+    background: transparent;
+    color: var(--fieldset-text);
+    border: 1px dashed var(--fieldset-border);
+    opacity: 0.55;
+    cursor: not-allowed;
+    filter: none;
+}
+
+.pybiscus-box .pybiscus-button.save,
+.pybiscus-box .pybiscus-button.pin,
+.pybiscus-box .pybiscus-button.blank {
+    background: transparent;
+    color: var(--fieldset-text);
+    border: 1px solid var(--fieldset-border);
+}
+
+.pybiscus-box .pybiscus-button.save:hover,
+.pybiscus-box .pybiscus-button.pin:hover,
+.pybiscus-box .pybiscus-button.blank:hover {
+    background: transparent;
+    border-color: var(--color-accent-dark);
+    box-shadow: none;
+}
+
+.pybiscus-box .pybiscus-button.pybiscus-origin {
+    background: transparent;
+    color: var(--fieldset-text);
+    border: 1px solid var(--fieldset-border);
+    border-radius: 999px;
+    min-height: 0;
+    padding: 0.35rem 0.9rem;
+    font-weight: normal;
+    font-size: 0.85rem;
+    opacity: 0.85;
+    cursor: default;
+}

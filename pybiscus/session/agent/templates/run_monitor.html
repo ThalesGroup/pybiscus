@@ -33,14 +33,18 @@
             flex-wrap: wrap;
         }
 
-        h1 {
-            font-size: 1.75rem;
-            font-weight: 700;
-            background: linear-gradient(135deg, #ff5d73, #764ba2);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
+        .title { display: flex; flex-direction: column; gap: .15rem; }
+
+        .kicker {
+            font-family: ui-monospace, 'JetBrains Mono', 'SF Mono', Menlo, Consolas, monospace;
+            font-size: .75rem;
+            letter-spacing: .14em;
+            color: #8b96a3;
         }
+
+        h1 { font-size: 1.35rem; font-weight: 600; }
+
+        h1 .where { font-weight: 400; color: #8b96a3; }
 
         .mode-badge {
             padding: .25rem .75rem;
@@ -103,7 +107,7 @@
             transition: border-color .2s, color .2s;
         }
 
-        button:hover:not(:disabled) { border-color: #ff5d73; color: #ff5d73; }
+        button:hover:not(:disabled) { border-color: #4ecdc4; color: #4ecdc4; }
         button:disabled { opacity: .4; cursor: not-allowed; }
 
         .toggle { display: flex; align-items: center; gap: .5rem; cursor: pointer; }
@@ -127,14 +131,19 @@
             color: #c9d1d9;
         }
 
+        /* coloured by the run's status (setStatus): a success used to show in the red of a failure */
         .detail {
             font-size: .875rem;
             color: #b7c2ce;
             padding: .75rem 1rem;
-            background: rgba(255, 93, 115, .06);
-            border-left: 4px solid #ff5d73;
-            border-radius: 10px;
+            background: #151a21;
+            border: 1px solid #232c37;
+            border-radius: 8px;
         }
+
+        .detail.status-success { color: #7ee2a8; background: #0f2a17; border-color: #238636; }
+        .detail.status-failure { color: #ff8a86; background: #2d1416; border-color: #8e2b2b; }
+        .detail.status-stopped { color: #e3b341; background: #2b2111; border-color: #7d5a14; }
 
         .detail:empty { display: none; }
     </style>
@@ -143,7 +152,10 @@
     <div class="container">
 
         <header>
-            <h1>Pybiscus Run</h1>
+            <div class="title">
+                <div class="kicker">PYBISCUS · RUN</div>
+                <h1>{{ agent_name or 'Pybiscus run' }}{% if location %} <span class="where">· {{ location }}</span>{% endif %}</h1>
+            </div>
             <span class="mode-badge" id="mode">{{ mode }}</span>
 
             <div class="status-pill" id="status-pill">
@@ -189,6 +201,7 @@
             statusPill.className = 'status-pill status-' + status;
             statusLabel.textContent = status;
             detailDiv.textContent = detail || '';
+            detailDiv.className = 'detail status-' + status;
             const finished = (status === 'success' || status === 'failure' || status === 'stopped');
 
             stopButton.style.display = finished ? 'none' : '';

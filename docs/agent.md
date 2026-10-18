@@ -29,11 +29,14 @@ Launch the client agents, and open `http://localhost:5001/client/config` and
 ![Client web app](images/client_webapp.png "Client web app")
 
 On each form:
-- **Check Config** validates the configuration; **Execute Config** (enabled once it is checked)
+- **Check** validates the configuration; **Execute** (enabled once it is checked)
   launches the server or the client. Launch the server first, then the clients.
-- **Save Config to disk** downloads the YAML file, to use with the [CLI](cli.md).
-- On the server: **Pin Config** keeps the current form for the next visits, **Blank Config**
-  returns to the defaults; an indicator shows where the displayed configuration comes from.
+- **Save to disk** downloads the YAML file, to use with the [CLI](cli.md).
+- On the server: **Pin** keeps the current form for the next visits, **Blank**
+  returns to the defaults; a badge shows where the displayed configuration comes from (pinned, or
+  generated and not pinned).
+- An optional field shows *optional* and a box next to its name: ticked, it takes a value; unticked,
+  it is left unset.
 - The ⚙ panel sets the display (tabs, compact lists, theme).
 
 Once launched, the page switches to the run monitor: the run's state and its log lines, live,

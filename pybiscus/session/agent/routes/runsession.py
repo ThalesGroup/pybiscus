@@ -4,6 +4,7 @@ import socket
 
 from flask import Response, jsonify, render_template, request
 
+import pybiscus.session.agent.pybiscus_agent as pybagent
 from pybiscus.session.agent.pybiscus_agent import rest_server
 from pybiscus.session.auth import session_access
 from pybiscus.session.agent.run_session import run_session
@@ -22,7 +23,9 @@ SSE_HEARTBEAT_SECONDS = 15
 def runMonitor():
     state = run_session.snapshot()
 
-    return render_template("run_monitor.html", mode=state["mode"] or "pybiscus")
+    registration = pybagent.registration_parameters
+    return render_template("run_monitor.html", mode=state["mode"] or "pybiscus",
+                           agent_name=registration.get("name"), location=registration.get("location"))
 
 # ..........................................................
 # .... GET /run/status .....................................

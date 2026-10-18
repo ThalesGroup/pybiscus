@@ -425,7 +425,7 @@ def generate_field_html(field_name: str, field_type, field_default, field_descri
                 field_html += f'  <legend><label class="pybiscus-config" {opt_title}>{field_name}'
                 if is_an_option:
                     opt_checked = "checked" if active_index == 1 else ""
-                    field_html += f' ❓ <input type="checkbox" class="pybiscus-option-cb" {opt_checked} > '
+                    field_html += f' <span class="pybiscus-optional-mark" title="optional: tick to give it a value, untick to leave it unset">optional</span> <input type="checkbox" class="pybiscus-option-cb" {opt_checked} > '
                 field_html += '</label></legend>\n'
 
             tab_nb = new_index()

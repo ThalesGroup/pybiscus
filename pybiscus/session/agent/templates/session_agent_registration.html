@@ -6,484 +6,282 @@
     <title>Pybiscus Agent Registration</title>
     <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}" type="image/x-icon">
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
+        :root {
+            --bg: #0e1116;
+            --panel: #151a21;
+            --panel-2: #1b222b;
+            --line: #232c37;
+            --text: #e6edf3;
+            --muted: #8b96a3;
+            --faint: #5d6772;
+            --accent: #4ecdc4;
+            --accent-ink: #062521;
+            --warn: #f0a04b;
+            --error: #ff8a86;
+            --mono: ui-monospace, 'JetBrains Mono', 'SFMono-Regular', Menlo, Consolas, monospace;
         }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
 
         body {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+            background: var(--bg);
+            color: var(--text);
             min-height: 100vh;
             display: flex;
-            align-items: center;
             justify-content: center;
-            padding: 2rem;
-            position: relative;
-            overflow: hidden;
+            padding: 2.5rem 1rem;
         }
 
-        .particles {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            pointer-events: none;
-            z-index: 0;
+        .container { width: 100%; max-width: 640px; }
+
+        .header { margin-bottom: 1.5rem; }
+
+        .kicker {
+            font-family: var(--mono);
+            font-size: 0.75rem;
+            letter-spacing: 0.14em;
+            color: var(--muted);
+            margin-bottom: 0.35rem;
         }
 
-        .particle {
-            position: absolute;
-            background: rgba(255, 255, 255, 0.3);
-            border-radius: 50%;
-            animation: float 6s ease-in-out infinite;
-            box-shadow: 0 0 10px rgba(255, 255, 255, 0.2);
+        h1 { font-size: 1.5rem; font-weight: 600; margin-bottom: 0.35rem; }
+
+        .subtitle { color: var(--muted); font-size: 0.95rem; }
+
+        fieldset {
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            background: var(--panel);
+            padding: 1rem 1.1rem 0.2rem;
+            margin-bottom: 1.1rem;
         }
 
-        .particle:nth-child(odd) {
-            background: rgba(255, 255, 255, 0.2);
-            animation-direction: reverse;
+        legend {
+            padding: 0 0.4rem;
+            font-family: var(--mono);
+            font-size: 0.7rem;
+            letter-spacing: 0.14em;
+            color: var(--muted);
+            text-transform: uppercase;
         }
 
-        .particle:nth-child(3n) {
-            background: rgba(102, 126, 234, 0.3);
-            animation-duration: 8s;
-            box-shadow: 0 0 15px rgba(102, 126, 234, 0.3);
-        }
+        .form-group { margin-bottom: 0.9rem; }
 
-        .particle:nth-child(4n) {
-            background: rgba(118, 75, 162, 0.3);
-            animation-duration: 10s;
-            box-shadow: 0 0 15px rgba(118, 75, 162, 0.3);
-        }
-
-        @keyframes float {
-            0%, 100% {
-                transform: translateY(0px) rotate(0deg);
-                opacity: 0.8;
-            }
-            25% {
-                transform: translateY(-30px) rotate(90deg);
-                opacity: 1;
-            }
-            50% {
-                transform: translateY(-60px) rotate(180deg);
-                opacity: 0.9;
-            }
-            75% {
-                transform: translateY(-30px) rotate(270deg);
-                opacity: 1;
-            }
-        }
-
-        .container {
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(20px);
-            border-radius: 24px;
-            padding: 3rem;
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            max-width: 600px;
-            width: 100%;
-            animation: slideUp 0.8s ease-out;
-            position: relative;
-            z-index: 1;
-        }
-
-        @keyframes slideUp {
-            from {
-                opacity: 0;
-                transform: translateY(30px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        .header {
-            text-align: center;
-            margin-bottom: 1.5rem;
-        }
-
-        .logo {
-            width: 320px;
-            height: 80px;
-            margin: 0 auto 1rem;
-            background: linear-gradient(135deg, #667eea, #764ba2);
-            border-radius: 20px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
-            animation: pulse 2s ease-in-out infinite;
-        }
-
-        @keyframes pulse {
-            0%, 100% { transform: scale(1); }
-            50% { transform: scale(1.05); }
-        }
-
-        .logo::before {
-            content: "Pybiscus Agent Registration";
-            color: white;
-            font-size: 1rem;
-            font-weight: bold;
-        }
-
-        h1 {
-            color: #2d3748;
-            font-size: 2rem;
-            font-weight: 700;
-            margin-bottom: 0.5rem;
-            background: linear-gradient(135deg, #667eea, #764ba2);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
-
-        .subtitle {
-            color: #4a5568;
-            font-size: 1.25rem;
-            margin-bottom: 1rem;
-        }
-
-        .form-group {
-            margin-bottom: 1.5rem;
-        }
+        .form-row { display: flex; flex-wrap: wrap; gap: 0 1rem; }
+        .form-row > .form-group { flex: 1 1 200px; }
 
         label {
             display: block;
-            margin-bottom: 0.5rem;
-            color: #2d3748;
-            font-weight: 500;
+            margin-bottom: 0.35rem;
+            color: #cdd6e0;
             font-size: 0.875rem;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
+            font-weight: 500;
         }
 
-        input[type="text"], input[type="url"], input[type="number"], select {
+        input, select {
             width: 100%;
-            padding: 0.875rem 1rem;
-            border: 2px solid #e2e8f0;
-            border-radius: 12px;
-            font-size: 1rem;
-            transition: all 0.3s ease;
-            background: white;
+            min-height: 2.5rem;
+            padding: 0.55rem 0.75rem;
+            font: inherit;
+            color: var(--text);
+            background: var(--bg);
+            border: 1px solid var(--line);
+            border-radius: 6px;
         }
 
-        input[type="text"]:focus, input[type="url"]:focus, input[type="number"]:focus, select:focus {
-            outline: none;
-            border-color: #667eea;
-            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-            transform: translateY(-1px);
+        input::placeholder { color: var(--faint); }
+
+        input:focus, select:focus, button:focus-visible {
+            outline: 2px solid var(--accent);
+            outline-offset: 1px;
         }
 
-        .input-group {
-            position: relative;
-            display: flex;
-            align-items: center;
-            border: 2px solid #e2e8f0;
-            border-radius: 12px;
-            background: white;
-            transition: all 0.3s ease;
-        }
+        input[readonly] { color: var(--muted); background: var(--panel-2); cursor: not-allowed; }
 
-        .input-group:focus-within {
-            border-color: #667eea;
-            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-            transform: translateY(-1px);
-        }
-
-        .input-prefix {
-            padding: 0.875rem 0 0.875rem 1rem;
-            color: #718096;
-            font-size: 1rem;
-            line-height: 1;
-            user-select: none;
-        }
-
-        .input-with-prefix {
-            border: none;
-            padding: 0.875rem 1rem 0.875rem 0.5rem;
-            flex: 1;
-            background: transparent;
-        }
-
-        .input-with-prefix:focus {
-            outline: none;
-            border: none;
-            box-shadow: none;
-            transform: none;
-        }
-
-        .geo-location-toggle {
-            display: flex;
-            gap: 0.5rem;
-            margin-bottom: 0.75rem;
-        }
+        .geo-location-toggle { display: flex; gap: 0.5rem; margin-bottom: 0.75rem; }
 
         .toggle-btn {
-            padding: 0.5rem 1rem;
-            border: 2px solid #e2e8f0;
-            border-radius: 8px;
-            background: white;
-            color: #4a5568;
-            cursor: pointer;
+            min-height: 2.25rem;
+            padding: 0 0.9rem;
+            border: 1px solid var(--line);
+            border-radius: 6px;
+            background: var(--panel-2);
+            color: #b7c2ce;
+            font: inherit;
             font-size: 0.875rem;
-            transition: all 0.3s ease;
+            cursor: pointer;
         }
 
-        .toggle-btn.active {
-            background: linear-gradient(135deg, #667eea, #764ba2);
-            color: white;
-            border-color: #667eea;
-        }
+        .toggle-btn.active { border-color: var(--accent); color: var(--text); background: #10302d; }
 
-        .coordinates-group {
-            display: none;
-            grid-template-columns: 1fr 1fr;
-            gap: 1rem;
-        }
-
-        .coordinates-group.active {
-            display: grid;
-        }
-
-        .text-location-group {
-            display: block;
-        }
-
-        .text-location-group.hidden {
-            display: none;
-        }
+        .coordinates-group { display: none; grid-template-columns: 1fr 1fr; gap: 1rem; }
+        .coordinates-group.active { display: grid; }
+        .text-location-group.hidden { display: none; }
 
         .btn {
             width: 100%;
-            padding: 1rem 2rem;
-            background: linear-gradient(135deg, #667eea, #764ba2);
-            color: white;
-            border: none;
-            border-radius: 12px;
+            min-height: 3rem;
+            padding: 0 2rem;
+            margin-top: 0.4rem;
+            background: var(--accent);
+            color: var(--accent-ink);
+            border: 1px solid var(--accent);
+            border-radius: 6px;
+            font: inherit;
             font-size: 1rem;
             font-weight: 600;
             cursor: pointer;
-            transition: all 0.3s ease;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-            position: relative;
-            overflow: hidden;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
         }
 
-        .btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.4);
-        }
-
-        .btn:active {
-            transform: translateY(0);
-        }
-
-        .btn:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
-            transform: none;
-        }
+        .btn:hover { filter: brightness(1.08); }
+        .btn:disabled { opacity: 0.6; cursor: not-allowed; }
 
         .spinner {
             display: none;
-            width: 20px;
-            height: 20px;
-            border: 2px solid rgba(255, 255, 255, 0.3);
-            border-top: 2px solid white;
+            width: 18px;
+            height: 18px;
+            border: 2px solid rgba(6, 37, 33, 0.3);
+            border-top-color: var(--accent-ink);
             border-radius: 50%;
             animation: spin 1s linear infinite;
             margin-right: 0.5rem;
         }
 
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
+        @keyframes spin { to { transform: rotate(360deg); } }
 
-        .field-hint {
-            margin-top: 0.35rem;
-            font-size: 0.8rem;
-            color: #6b7280;
-        }
-
-        .field-hint.warn {
-            color: #b45309;
-        }
-
-        input[readonly] {
-            cursor: not-allowed;
-        }
+        .field-hint { margin-top: 0.35rem; font-size: 0.8rem; color: var(--muted); }
+        .field-hint.warn { color: var(--warn); }
 
         .result {
-            margin-top: 2rem;
-            padding: 1rem;
-            border-radius: 12px;
+            margin-top: 1.25rem;
+            padding: 0.9rem 1rem;
+            border-radius: 6px;
             display: none;
         }
 
-        .result.success {
-            background: rgba(16, 185, 129, 0.1);
-            border: 1px solid rgba(16, 185, 129, 0.2);
-            color: #047857;
-        }
+        .result.success { background: #0f2a17; border: 1px solid #238636; color: #7ee2a8; }
+        .result.error { background: #2d1416; border: 1px solid #8e2b2b; color: var(--error); }
 
-        .result.error {
-            background: rgba(239, 68, 68, 0.1);
-            border: 1px solid rgba(239, 68, 68, 0.2);
-            color: #dc2626;
-        }
-
-        .result-icon {
-            display: inline-block;
-            margin-right: 0.5rem;
-            font-size: 1.125rem;
-        }
+        .result-icon { display: inline-block; margin-right: 0.5rem; }
 
         @media (max-width: 640px) {
-            .container {
-                padding: 2rem 1.5rem;
-            }
-            
-            h1 {
-                font-size: 1.5rem;
-            }
-
-            .coordinates-group {
-                grid-template-columns: 1fr;
-            }
+            .coordinates-group { grid-template-columns: 1fr; }
         }
-        /* ===== override thème sombre (comme le manager) ===== */
-        body{
-            background:radial-gradient(1000px 600px at 80% -10%, #16202b 0%, transparent 60%), #0e1116 !important;
-            color:#e6edf3;
-        }
-        .particle{ background:rgba(255,93,115,.22) !important; box-shadow:0 0 10px rgba(255,93,115,.18) !important; }
-        .particle:nth-child(odd){ background:rgba(139,124,246,.22) !important; }
-        .container{
-            background:#151a21 !important; border:1px solid #232c37 !important;
-            box-shadow:0 24px 60px rgba(0,0,0,.55) !important; backdrop-filter:none !important;
-        }
-        .subtitle{ color:#b7c2ce !important; }
-        label{ color:#cdd6e0 !important; }
-        input, select, textarea, .input-with-prefix{
-            background:#0e1116 !important; color:#e6edf3 !important; border-color:#232c37 !important;
-        }
-        input::placeholder, textarea::placeholder{ color:#4b545f !important; }
-        .input-prefix{ color:#7d8794 !important; background:#1b222b !important; border-color:#232c37 !important; }
-        .toggle-btn{ background:#1b222b !important; color:#b7c2ce !important; border-color:#232c37 !important; }
-        .toggle-btn.active{ color:#fff !important; }
-        .result{ color:#e6edf3 !important; }
-        .result.success, .success{ color:#4ecdc4 !important; }
-        .result.error, .error{ color:#ff8a86 !important; }
     </style>
 </head>
 <body>
-    <div class="particles" id="particles"></div>
-    
     <div class="container">
         <div class="header">
-            <div class="logo"></div>
+            <div class="kicker">PYBISCUS · AGENT</div>
+            <h1>Join a session</h1>
+            <p class="subtitle">Give the manager's address and its session token, then describe this agent.</p>
         </div>
 
         <form id="registrationForm">
 
-            <div class="form-group">
-                <label for="managerUrl">👨‍🌾🌐 Manager URL</label>
-                <div class="input-group">
-                    <span class="input-prefix">⚙️</span>
-                    <input type="url" id="managerUrl" name="managerUrl" class="input-with-prefix" required 
+            <fieldset>
+                <legend>Connection</legend>
+
+                <div class="form-group">
+                    <label for="managerUrl">Manager URL</label>
+                    <input type="url" id="managerUrl" name="managerUrl" required
                            value="{{ config.get('manager_url', 'http://manager.pybiscus.org:5555') }}">
                 </div>
-            </div>
 
-            <div class="form-group">
-                <label for="sessionToken">🔑 Session token</label>
-                <input type="password" id="sessionToken" name="sessionToken" autocomplete="off"
-                       placeholder="given by the manager (🔑 session token), if it requires one" value="{{ session_token }}">
-            </div>
-
-            <div class="form-group">
-                <label for="name">🤖🏷️ Agent Name</label>
-                <input type="text" id="name" name="name" required value="{{ config.get('agent_name', 'cortaix-labs-01') }}">
-            </div>
-
-            <div class="form-group">
-                <label for="baseUrl">🤖🌐 Agent URL</label>
-                <div class="input-group">
-                    <span class="input-prefix">🔗</span>
-                    <input type="url" id="baseUrl" name="baseUrl" class="input-with-prefix" required 
-                        value="{{ config.get('agent_url', 'http://agent.pybiscus.org:5001') }}">
+                <div class="form-group">
+                    <label for="sessionToken">Session token</label>
+                    <input type="password" id="sessionToken" name="sessionToken" autocomplete="off"
+                           placeholder="if the manager requires one" value="{{ session_token }}"
+                           aria-describedby="sessionTokenHint">
+                    <div class="field-hint" id="sessionTokenHint">Shown by the manager's Session token button.</div>
                 </div>
-            </div>
 
-            <div class="form-group">
-                <label for="bouquet">💐🏷️ Bouquet Tags</label>
-                <input type="text" id="bouquet" name="bouquet" required 
-                    value="{{ config.get('bouquet', '') }}">
-                <div class="field-hint" id="bouquetHint"></div>
-            </div>
-
-            <div class="form-group">
-                <label for="location">📍 Location</label>
-                <input type="text" id="location" name="location" required 
-                    value="{{ config.get('location', 'paris-dc-01') }}">
-            </div>
-
-            <div class="form-group">
-                <label>🌐 Geo Location</label>
-                <div class="geo-location-toggle">
-                    <button type="button" class="toggle-btn {% if config.get('geo_location', {}).get('type', 'text') == 'text' %}active{% endif %}" id="textToggle">📝 Text</button>
-                    <button type="button" class="toggle-btn {% if config.get('geo_location', {}).get('type', 'text') == 'coordinates' %}active{% endif %}" id="coordsToggle">🗺️ Coordinates</button>
+                <div class="form-group">
+                    <label for="bouquet">Bouquet</label>
+                    <input type="text" id="bouquet" name="bouquet" required
+                           value="{{ config.get('bouquet', '') }}" aria-describedby="bouquetHint">
+                    <div class="field-hint" id="bouquetHint"></div>
                 </div>
-                
-                <div class="text-location-group" id="textLocationGroup">
-                    <input type="text" id="geoLocationText" name="geoLocationText" required 
-                        value="{{ config.get('geo_location', {}).get('text', 'Paris, France') }}">
-                </div>
-                
-                <div class="coordinates-group" id="coordinatesGroup">
-                    <div>
-                        <label for="latitude">🌐 Latitude</label>
-                        <input type="number" id="latitude" name="latitude" step="any" 
-                            placeholder="48.8566" value="{{ config.get('geo_location', {}).get('latitude', 48.8566) }}">
+            </fieldset>
+
+            <fieldset>
+                <legend>This agent</legend>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="name">Name</label>
+                        <input type="text" id="name" name="name" required value="{{ config.get('agent_name', 'cortaix-labs-01') }}">
                     </div>
-                    <div>
-                        <label for="longitude">🌐 Longitude</label>
-                        <input type="number" id="longitude" name="longitude" step="any" 
-                            placeholder="2.3522" value="{{ config.get('geo_location', {}).get('longitude', 2.3522) }}">
+                    <div class="form-group">
+                        <label for="role">Role</label>
+                        <select id="role" name="role" required>
+                            <option value="client" {% if config.get('role', 'client') == 'client' %}selected{% endif %}>Client</option>
+                            <option value="server" {% if config.get('role', 'client') == 'server' %}selected{% endif %}>Server</option>
+                        </select>
                     </div>
                 </div>
-            </div>
 
-            <div class="form-group">
-                <label for="organisation">🏢 Organisation</label>
-                <input type="text" id="organisation" name="organisation" required 
-                    value="{{ config.get('organisation', 'CortaiX Labs') }}">
-            </div>
+                <div class="form-group">
+                    <label for="organisation">Organisation</label>
+                    <input type="text" id="organisation" name="organisation" required
+                           value="{{ config.get('organisation', 'CortaiX Labs') }}">
+                </div>
 
-            <div class="form-group">
-                <label for="role">🎭 Role</label>
-                <select id="role" name="role" required>
-                    <option value="client" {% if config.get('role', 'client') == 'client' %}selected{% endif %}>Client</option>
-                    <option value="server" {% if config.get('role', 'client') == 'server' %}selected{% endif %}>Server</option>
-                </select>
-            </div>
+                <div class="form-group">
+                    <label for="baseUrl">Agent URL</label>
+                    <input type="url" id="baseUrl" name="baseUrl" required
+                           value="{{ config.get('agent_url', 'http://agent.pybiscus.org:5001') }}" aria-describedby="baseUrlHint">
+                    <div class="field-hint" id="baseUrlHint">How the manager and the other agents reach this one.</div>
+                </div>
+            </fieldset>
+
+            <fieldset>
+                <legend>Location on the map</legend>
+
+                <div class="form-group">
+                    <label for="location">Site</label>
+                    <input type="text" id="location" name="location" required
+                           value="{{ config.get('location', 'paris-dc-01') }}">
+                </div>
+
+                <div class="form-group">
+                    <div class="geo-location-toggle" role="group" aria-label="Geo location as">
+                        <button type="button" class="toggle-btn {% if config.get('geo_location', {}).get('type', 'text') == 'text' %}active{% endif %}" id="textToggle">Place name</button>
+                        <button type="button" class="toggle-btn {% if config.get('geo_location', {}).get('type', 'text') == 'coordinates' %}active{% endif %}" id="coordsToggle">Coordinates</button>
+                    </div>
+
+                    <div class="text-location-group" id="textLocationGroup">
+                        <label for="geoLocationText">Place name</label>
+                        <input type="text" id="geoLocationText" name="geoLocationText" required
+                               value="{{ config.get('geo_location', {}).get('text', 'Paris, France') }}">
+                    </div>
+
+                    <div class="coordinates-group" id="coordinatesGroup">
+                        <div>
+                            <label for="latitude">Latitude</label>
+                            <input type="number" id="latitude" name="latitude" step="any"
+                                   placeholder="48.8566" value="{{ config.get('geo_location', {}).get('latitude', 48.8566) }}">
+                        </div>
+                        <div>
+                            <label for="longitude">Longitude</label>
+                            <input type="number" id="longitude" name="longitude" step="any"
+                                   placeholder="2.3522" value="{{ config.get('geo_location', {}).get('longitude', 2.3522) }}">
+                        </div>
+                    </div>
+                </div>
+            </fieldset>
 
             <button type="submit" class="btn" id="submitBtn">
                 <span class="spinner" id="spinner"></span>
-                Register Agent
+                Register
             </button>
         </form>
 
-        <div class="result" id="result">
+        <div class="result" id="result" role="status">
             <span class="result-icon" id="resultIcon"></span>
             <span id="resultMessage"></span>
         </div>
@@ -582,7 +380,7 @@
 
             btn.disabled = loading;
             spinner.style.display = loading ? 'inline-block' : 'none';
-            btn.textContent = loading ? ' Registering...' : 'Register Agent';
+            btn.textContent = loading ? ' Registering...' : 'Register';
             
             if (loading) {
                 btn.prepend(spinner);
@@ -785,35 +583,6 @@
             }
         });
         
-        // create animated particles
-        function createParticles() {
-            const particlesContainer = document.getElementById('particles');
-            const particleCount = 100;
-
-            for (let i = 0; i < particleCount; i++) {
-                const particle = document.createElement('div');
-                particle.className = 'particle';
-                
-                const size = Math.random() * 8 + 4;
-                particle.style.width = `${size}px`;
-                particle.style.height = `${size}px`;
-                
-                const leftPos = Math.random() * 100;
-                const topPos = Math.random() * 100;
-                particle.style.left = `${leftPos}%`;
-                particle.style.top = `${topPos}%`;
-                
-                particle.style.animationDelay = `${Math.random() * 6}s`;
-                
-                const duration = Math.random() * 4 + 6;
-                particle.style.animationDuration = `${duration}s`;
-                
-                particlesContainer.appendChild(particle);
-            }
-        }
-
-        window.addEventListener('load', createParticles);
-
         // Add some input validation and formatting
         document.getElementById('name').addEventListener('input', (e) => {
             // Auto-generate name suggestion

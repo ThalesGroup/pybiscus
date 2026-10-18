@@ -6,311 +6,98 @@
     <title>Pybiscus - Connecting</title>
     <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}" type="image/x-icon">
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
+        :root {
+            --bg: #0e1116;
+            --panel: #151a21;
+            --line: #232c37;
+            --text: #e6edf3;
+            --muted: #8b96a3;
+            --accent: #4ecdc4;
+            --mono: ui-monospace, 'JetBrains Mono', 'SFMono-Regular', Menlo, Consolas, monospace;
         }
 
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
         body {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+            background: var(--bg);
+            color: var(--text);
             min-height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
-            overflow: hidden;
-            position: relative;
-        }
-
-        /* Background particles */
-        .particles {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            pointer-events: none;
-            z-index: 1;
-        }
-
-        .particle {
-            position: absolute;
-            width: 4px;
-            height: 4px;
-            background: rgba(255, 255, 255, 0.6);
-            border-radius: 50%;
-            animation: float 6s ease-in-out infinite;
-        }
-
-        @keyframes float {
-            0%, 100% { transform: translateY(0px) rotate(0deg); opacity: 0.6; }
-            50% { transform: translateY(-20px) rotate(180deg); opacity: 1; }
+            padding: 2rem 1rem;
         }
 
         .container {
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(20px);
-            border-radius: 24px;
-            padding: 3rem 2.5rem;
-            text-align: center;
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            position: relative;
-            z-index: 2;
-            max-width: 500px;
-            width: 90%;
-            animation: slideUp 0.8s ease-out;
-        }
-
-        @keyframes slideUp {
-            from {
-                opacity: 0;
-                transform: translateY(30px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        .logo {
-            width: 160px;
-            height: 80px;
-            margin: 0 auto 2rem;
-            background: linear-gradient(135deg, #667eea, #764ba2);
-            border-radius: 20px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
-            animation: pulse 2s ease-in-out infinite;
-        }
-
-        @keyframes pulse {
-            0%, 100% { transform: scale(1); }
-            50% { transform: scale(1.05); }
-        }
-
-        .logo::before {
-            content: "Pybiscus";
-            color: white;
-            font-size: 2rem;
-            font-weight: bold;
-        }
-
-        h1 {
-            color: #2d3748;
-            font-size: 2.5rem;
-            font-weight: 700;
-            margin-bottom: 1rem;
-            background: linear-gradient(135deg, #667eea, #764ba2);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
-
-        .status-text {
-            color: #4a5568;
-            font-size: 1.125rem;
-            margin-bottom: 2.5rem;
-            font-weight: 400;
-        }
-
-        .loading-container {
-            margin: 2rem 0;
-        }
-
-        .spinner {
-            width: 50px;
-            height: 50px;
-            margin: 0 auto 1.5rem;
-            border: 4px solid #e2e8f0;
-            border-top: 4px solid #667eea;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-        }
-
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-
-        .progress-bar {
             width: 100%;
-            height: 8px;
-            background: #e2e8f0;
-            border-radius: 10px;
-            overflow: hidden;
-            margin-bottom: 1rem;
+            max-width: 520px;
+            background: var(--panel);
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            padding: 2rem;
         }
 
-        .progress-fill {
-            height: 100%;
-            background: linear-gradient(90deg, #667eea, #764ba2);
-            border-radius: 10px;
-            animation: progress 3s ease-in-out infinite;
+        .kicker {
+            font-family: var(--mono);
+            font-size: 0.75rem;
+            letter-spacing: 0.14em;
+            color: var(--muted);
+            margin-bottom: 0.5rem;
         }
 
-        @keyframes progress {
-            0% { width: 20%; }
-            50% { width: 80%; }
-            100% { width: 20%; }
-        }
+        h1 { font-size: 1.4rem; font-weight: 600; margin-bottom: 1.25rem; }
 
         .status-indicator {
             display: flex;
             align-items: center;
-            justify-content: center;
-            gap: 0.5rem;
-            color: #667eea;
-            font-weight: 500;
-            margin-top: 1rem;
+            gap: 0.6rem;
+            color: var(--text);
+            margin-bottom: 1.25rem;
         }
+
+        .dots { display: inline-flex; gap: 0.3rem; }
 
         .dot {
-            width: 8px;
-            height: 8px;
-            background: #667eea;
+            width: 7px;
+            height: 7px;
             border-radius: 50%;
-            animation: blink 1.4s ease-in-out infinite both;
+            background: var(--accent);
+            animation: blink 1.4s ease-in-out infinite;
         }
 
-        .dot:nth-child(1) { animation-delay: -0.32s; }
-        .dot:nth-child(2) { animation-delay: -0.16s; }
-        .dot:nth-child(3) { animation-delay: 0s; }
+        .dot:nth-child(2) { animation-delay: 0.2s; }
+        .dot:nth-child(3) { animation-delay: 0.4s; }
 
         @keyframes blink {
-            0%, 80%, 100% { opacity: 0.3; }
+            0%, 80%, 100% { opacity: 0.25; }
             40% { opacity: 1; }
         }
 
-        .info-text {
-            color: #718096;
-            font-size: 0.875rem;
-            margin-top: 2rem;
-            padding: 1rem;
-            background: rgba(102, 126, 234, 0.05);
-            border-radius: 12px;
-            border-left: 4px solid #667eea;
+        @media (prefers-reduced-motion: reduce) {
+            .dot { animation: none; opacity: 0.8; }
         }
 
-        /* Responsive */
-        @media (max-width: 480px) {
-            .container {
-                padding: 2rem 1.5rem;
-            }
-            
-            h1 {
-                font-size: 2rem;
-            }
-            
-            .status-text {
-                font-size: 1rem;
-            }
-        }
-
-        /* Entrance animation for elements */
-        .fade-in {
-            animation: fadeIn 0.6s ease-out forwards;
-            opacity: 0;
-        }
-
-        .fade-in:nth-child(1) { animation-delay: 0.2s; }
-        .fade-in:nth-child(2) { animation-delay: 0.4s; }
-        .fade-in:nth-child(3) { animation-delay: 0.6s; }
-
-        @keyframes fadeIn {
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-        /* ===== override thème sombre (comme la page registration) ===== */
-        body{
-            background:radial-gradient(1000px 600px at 80% -10%, #16202b 0%, transparent 60%), #0e1116 !important;
-            color:#e6edf3;
-        }
-        .particle{ background:rgba(255,93,115,.35) !important; }
-        .container{
-            background:#151a21 !important; border:1px solid #232c37 !important;
-            box-shadow:0 24px 60px rgba(0,0,0,.55) !important; backdrop-filter:none !important;
-        }
-        .status-text{ color:#e6edf3 !important; }
-        .status-indicator{ color:#b7c2ce !important; }
-        .info-text{ color:#b7c2ce !important; background:rgba(255,93,115,.06) !important; border-left-color:#ff5d73 !important; }
-        .spinner{ border-color:#232c37 !important; border-top-color:#ff5d73 !important; }
-        .progress-bar{ background:#232c37 !important; }
+        .info-text { color: var(--muted); font-size: 0.9rem; line-height: 1.5; }
     </style>
 </head>
 <body>
-    <!-- Background particles -->
-    <div class="particles" id="particles"></div>
+    <div class="container" role="status">
+        <div class="kicker">PYBISCUS · AGENT</div>
+        <h1>{{state}}</h1>
 
-    <div class="container">
-        <div class="logo"></div>
-        
-        <h1 class="fade-in">Pybiscus Session</h1>
-        
-        <p class="status-text fade-in">{{state}}</p>
-        
-        <div class="loading-container fade-in">
-            <!--
-            <div class="spinner"></div>
-            <div class="progress-bar">
-                <div class="progress-fill"></div>
-            </div>
-            -->
+        <div class="status-indicator">
+            <span>{{action}}</span>
+            <span class="dots" aria-hidden="true"><span class="dot"></span><span class="dot"></span><span class="dot"></span></span>
+        </div>
 
-            <div class="status-indicator">
-                <span>{{action}}</span>
-                <div class="dot"></div>
-                <div class="dot"></div>
-                <div class="dot"></div>
-            </div>
-        </div>
-        
-        <div class="info-text">
-            <strong>What's happening?</strong><br>
-            {{explanation}} 
-        </div>
+        <p class="info-text">{{explanation}}</p>
     </div>
 
     <script>
 
         {{callback | safe }}
 
-        // Generate background particles
-        function createParticles() {
-            const particlesContainer = document.getElementById('particles');
-            const particleCount = 50;
-
-            for (let i = 0; i < particleCount; i++) {
-                const particle = document.createElement('div');
-                particle.className = 'particle';
-                
-                // Random position
-                particle.style.left = Math.random() * 100 + '%';
-                particle.style.top = Math.random() * 100 + '%';
-                
-                // Random animation delay
-                particle.style.animationDelay = Math.random() * 6 + 's';
-                particle.style.animationDuration = (Math.random() * 3 + 4) + 's';
-                
-                particlesContainer.appendChild(particle);
-            }
-        }
-
-        // Initialize particles
-        createParticles();
-
-        // Progressive entrance animation
-        document.addEventListener('DOMContentLoaded', () => {
-            const fadeElements = document.querySelectorAll('.fade-in');
-            fadeElements.forEach(el => {
-                el.style.transform = 'translateY(20px)';
-            });
-        });
     </script>
 </body>
 </html>
