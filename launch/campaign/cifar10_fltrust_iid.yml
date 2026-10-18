@@ -1,0 +1,79 @@
+# Campaign of launch/campaign/strategy_campaign.py: FLTrust on iid shares, where the trusted examples
+# look like every client's data (measured on dirichlet shares only: cifar10_fltrust.yml,
+# cifar10_label_flip.yml). Its cost without attacker, and against 2 label flippers, 2 omniscient ALIE
+# attackers (z 2) and 2 sign flippers x10, against FedAvg under the same attacks. Each attacked
+# variant is compared to the same defense without attacker, seed by seed; FLTrust without attacker
+# to FedAvg. FLTrust with its default 500 trusted examples.
+#   uv run python launch/campaign/strategy_campaign.py launch/campaign/cifar10_fltrust_iid.yml
+# Iid shares, 7 clients, 3 local epochs, 5 rounds. 21 runs, about 25 minutes; do not run it next to
+# a live session.
+# Status: our own measurement, not a reproduction (docs/robust-aggregation.md, Limits).
+
+server_config: configs/cifar10_cnn/distributed/without_ssl/server.yml
+client_config: configs/cifar10_cnn/distributed/without_ssl/client_1.yml
+output: experiments/campaigns
+plugin_manifests: [launch/campaign/test-plugins-conf.yml]
+
+clients: 7
+rounds: 5
+local_epochs: 3
+port: 3399                 # the Flower server of each run: must be free
+threads_per_client: auto   # physical cores / clients
+timeout: 1800              # seconds per run
+seeds: [1, 2, 3]           # every variant once per seed, then mean ± std
+
+client_data:
+  train:
+    partition:
+      scheme: iid
+      seed: 42
+  val:
+    source: holdout
+    fraction: 0.1
+
+server_data:
+  test:
+    max_samples: 2000
+  trusted: {}
+
+variants:
+  - label: FedAvg, no attacker
+    strategy: {name: fedavg, config: {}}
+  - label: FedAvg, 2 label flippers
+    reference: FedAvg, no attacker
+    strategy: {name: fedavg, config: {}}
+    client_overrides:
+      0: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: label_flip}}}}
+      1: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: label_flip}}}}
+  - label: FedAvg, omniscient ALIE z 2
+    reference: FedAvg, no attacker
+    strategy: {name: fedavg, config: {}}
+    pipeline: [{name: omniscientalie, config: {z: 2.0}}]
+    client_overrides:
+      0: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: none}}}}
+      1: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: none}}}}
+  - label: FLTrust, no attacker
+    reference: FedAvg, no attacker
+    strategy: {name: fedavg, config: {}}
+    pipeline: [{name: fltrust, config: {}}]
+  - label: FLTrust, 2 label flippers
+    reference: FLTrust, no attacker
+    strategy: {name: fedavg, config: {}}
+    pipeline: [{name: fltrust, config: {}}]
+    client_overrides:
+      0: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: label_flip}}}}
+      1: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: label_flip}}}}
+  - label: FLTrust, omniscient ALIE z 2
+    reference: FLTrust, no attacker
+    strategy: {name: fedavg, config: {}}
+    pipeline: [{name: fltrust, config: {}}, {name: omniscientalie, config: {z: 2.0}}]
+    client_overrides:
+      0: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: none}}}}
+      1: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: none}}}}
+  - label: FLTrust, 2 sign flippers x10
+    reference: FLTrust, no attacker
+    strategy: {name: fedavg, config: {}}
+    pipeline: [{name: fltrust, config: {}}]
+    client_overrides:
+      0: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: sign_flip, scale: 10.0}}}}
+      1: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: sign_flip, scale: 10.0}}}}

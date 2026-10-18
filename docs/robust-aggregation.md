@@ -521,7 +521,7 @@ Trust scores over all rounds and seeds (`normalize_to: median`; the attackers ar
 **Choosing**: `safeguard` stays the default advice: no cost without attacker, and it stops the
 attackers that stand out by their norm. FLTrust is worth its cost only when the server holds data
 like the clients' and discreet attackers are expected; even then, an attacker that knows the honest
-updates and stays close to their mean passes it. Not measured: iid shares, more clients.
+updates and stays close to their mean passes it. Not measured: more clients.
 
 ### How many trusted examples
 
@@ -546,6 +546,27 @@ size without attacker), 3 seeds:
 
 Hence the default of 500 (`trusted.max_samples`), and not the paper's 100; the campaigns above set
 100 explicitly.
+
+### FLTrust on iid shares
+
+`launch/campaign/cifar10_fltrust_iid.yml`: iid shares, 7 clients, 500 trusted examples (the
+default), 3 seeds; test accuracy at round 5, and the difference to the same defense without attacker
+paired by seed (FLTrust without attacker: to FedAvg):
+
+| defense | no attacker | 2 label flippers | omniscient ALIE, z 2 | 2 sign flippers x 10 |
+|---|---|---|---|---|
+| FedAvg | 0.362 | 0.341 (−2.1 ± 0.5) | 0.355 (−0.8 ± 0.3) | (collapses) |
+| FLTrust | 0.364 (+0.2 ± 0.1 vs FedAvg) | 0.354 (−1.0 ± 0.4) | 0.354 (−1.0 ± 0.5) | 0.365 (+0.1 ± 0.6) |
+
+- Where the trusted examples look like every client's data, FLTrust costs nothing: the honest
+  clients' trust scores are high and even (0.70 on average, none left out), against 0.27 to 0.5 on
+  dirichlet shares.
+- The sign flippers were left out of every round; the label flippers kept half the honest clients'
+  weight (0.35 against 0.70), which halves their harm.
+- Omniscient ALIE passes (0.63 against 0.70): it does almost no harm on iid shares anyway (see
+  [On iid shares, honest clients look alike too](#on-iid-shares-honest-clients-look-alike-too)).
+- The attacks themselves harm little here: 2 points for label flipping, under 1 for ALIE. FLTrust's
+  case is heterogeneous data, where it costs 2 to 3 points.
 
 ## Label flipping: poisoned data
 

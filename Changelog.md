@@ -31,6 +31,8 @@
 * FLTrust's trusted examples: 500 do better than 100 (−2.2 points without attacker, +4.4 over
   FedAvg against label flippers), 2000 no better than 500
   (`launch/campaign/cifar10_fltrust_trusted_size.yml`): the default `trusted.max_samples` is 500.
+* FLTrust on iid shares costs nothing without attacker (+0.2 point), leaves the sign flippers out
+  and halves the label flippers' harm (`launch/campaign/cifar10_fltrust_iid.yml`).
 
 ### Tools
 
