@@ -37,6 +37,7 @@ strategydecorator:
       - serverdp
       - clipping
       - fltrust
+      - foolsgold
 resultmodifier:
   - path: "./resultmodifier"
     modules:

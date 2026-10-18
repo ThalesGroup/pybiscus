@@ -400,7 +400,8 @@ The colluders send the same update (similarity 1.000), while two honest clients 
 - **Defenses from the literature** (option C):
   - *FoolsGold* lowers, round after round, the weight of the clients that keep looking like each
     other. A lasting version of the above, harder to blur with one-off noise, but it may also
-    weigh down honest clients whose data are alike.
+    weigh down honest clients whose data are alike. Implemented and measured below
+    ([FoolsGold](#foolsgold-clients-that-look-alike)).
   - *FLTrust* compares each update with one the server computes itself on a small trusted dataset
     and weighs it by their similarity. It does not rely on the attackers' likeness, but the trusted
     data must resemble the clients'. Implemented and measured below ([FLTrust](#fltrust-a-direction-the-server-trusts)).
@@ -602,6 +603,53 @@ attacker and holds under attack. If poisoned data is the threat and the server h
 clients', FLTrust is the best trade-off measured: −3 points without attacker, +2.3 under attack,
 and its trust scores name the suspects.
 
+## FoolsGold: clients that look alike
+
+The `foolsgold` strategy decorator ([[Fung 2020]](#references), Algorithm 1) keeps, for each client,
+the sum of its updates so far (its history), and weighs it down when that history looks like
+another client's:
+
+- its weight is 1 − its largest cosine similarity to another client's history, lowered less when
+  that other client looks even more like a sybil (pardoning), rescaled so that the largest weight
+  is 1, then passed through a logit of confidence `kappa` (1, the paper's) and clipped to [0, 1]:
+  a client at 0 is left out of the round;
+- FedAvg averages the updates with these weights (passed as `num_examples`), where the paper adds
+  the weighted gradients of a federated SGD: `foolsgold` works over `fedavg` and `fedprox` only,
+  outside `clipping` when both are used, and not with `fltrust` (both set the weights);
+- every weight counts in the similarity, not the paper's output-layer feature importance.
+
+Every round logs each client's weight ("🪙" lines, `foolsgold_weight_<cid>`) and how many were left
+out.
+
+`launch/campaign/cifar10_foolsgold.yml` (dirichlet shares) and `cifar10_foolsgold_iid.yml` (iid), 7
+clients, 3 seeds; test accuracy at round 5 (FedAvg under the same attacks: the earlier campaigns,
+same setup):
+
+| shares | case | FedAvg | FoolsGold | attackers' weight | honest clients left out |
+|---|---|---|---|---|---|
+| dirichlet | no attacker | 0.401 | 0.290 (−11.1 ± 1.0) | | 31 of 105 |
+| dirichlet | 2 label flippers | 0.286 | 0.241 | 0.70, as the honest ones | 18 of 75 |
+| dirichlet | omniscient ALIE, z 0.57 | 0.326 | 0.271 | 0, every round | 24 of 75 |
+| dirichlet | omniscient ALIE, z 2 | 0.292 | 0.270 | 0, every round | 24 of 75 |
+| dirichlet | 2 sign flippers x 10 | (collapses) | 0.175 | 0 in 18 rounds of 30 | 18 of 75 |
+| iid | no attacker | 0.361 | 0.361 (0.0 ± 0.2) | | 10 of 105 |
+| iid | 2 label flippers | 0.341 | 0.338 | 0.99, above the honest ones (0.70) | 14 of 75 |
+
+- It catches what it was made for: the two omniscient attackers send the same update, and were
+  left out of every round.
+- It costs too much to be worth it here: on dirichlet shares, 11 points without attacker, a third
+  of the honest clients' rounds left out. Their histories, summed over rounds of 3 local epochs,
+  all point the way the task is learnt and look alike; the paper's clients take one SGD step per
+  round. Under every attack, FoolsGold ends below FedAvg, except against sign flippers.
+- Label flippers are not alike: each poisons its own data, so their histories differ as much as
+  the honest clients'. FoolsGold does not see them, on either shares.
+- On iid shares, it costs nothing (the honest clients left out now and then hold the same data as
+  the others) and helps no more.
+
+**Choosing**: not advised in these settings. FoolsGold answers many sybils sending the same thing;
+against a few attackers with data of their own, or on heterogeneous data, `safeguard` or FLTrust
+do better.
+
 ## Limits of these measurements
 
 The campaigns compare defenses under the same conditions; they do not say how a defense behaves in
@@ -651,6 +699,9 @@ per run, and keep it away from a live session.
   Trust Bootstrapping*. NDSS 2021. [arXiv:2012.13995](https://arxiv.org/abs/2012.13995) — the
   `fltrust` decorator (Algorithm 2: trust score ReLU(cos), updates scaled to the server update's
   norm; root dataset of 100 examples drawn from the clients' training data, sec. VI-A).
+- [Fung 2020] C. Fung, C. J. M. Yoon, I. Beschastnikh. *Mitigating Sybils in Federated Learning
+  Poisoning* (v5, 2020). [arXiv:1808.04866](https://arxiv.org/abs/1808.04866) — the `foolsgold`
+  decorator (Algorithm 1: history of updates, pardoning, logit of confidence κ).
 - [Baruch 2019] M. Baruch, G. Baruch, Y. Goldberg. *A Little Is Enough: Circumventing Defenses For
   Distributed Learning*. NeurIPS 2019. [arXiv:1902.06156](https://arxiv.org/abs/1902.06156) — the
   ALIE attack (`byzantine`, `attack: alie`; `omniscientalie` is its worst-case variant, not the

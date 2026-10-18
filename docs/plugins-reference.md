@@ -12,7 +12,7 @@ PR #44 (`pybiscus-plugins-privacy-evaluation/`, not finalized) is not described 
 - [Data](#data): `cifar`, `randomvector`, `turbofan`, `mnist`, `vector_`, `hdfs`
 - [Models](#models): `cifar`, `mnist_cnn`, `linearregression`, `lstm`, `noop`, `deeplog`
 - [Strategies](#strategies): `fedavg`, `fedavgm`, `fedprox`, `fedadam`, `fedyogi`, `fedadagrad`, `fedmedian`, `fedtrimmedavg`, `krum`, `bulyan`, `qfedavg`, `faulttolerantfedavg`, `fedavgwithaggregator`
-- [Strategy decorators](#strategy-decorators): `metricdiffcompute`, `timediffcompute`, `visualizemodellayers`, `saveserverfitparams`, `saveclientsfitin`, `saveclientsfitres`, `personalizeclientsfitin`, `serverdpfixed`, `serverdpadaptive`, `clipping`, `fltrust`, `upperlevellink`
+- [Strategy decorators](#strategy-decorators): `metricdiffcompute`, `timediffcompute`, `visualizemodellayers`, `saveserverfitparams`, `saveclientsfitin`, `saveclientsfitres`, `personalizeclientsfitin`, `serverdpfixed`, `serverdpadaptive`, `clipping`, `fltrust`, `foolsgold`, `upperlevellink`
 - [Clients](#clients): `relay`
 - [Loggers](#loggers): `rich`, `webhook`
 - [Metrics loggers](#metrics-loggers): `tensorboard`, `webhook`, `wandb`
@@ -718,6 +718,16 @@ FLTrust: clients weighed by the direction of their update against the server's o
 | `server_steps` | 'clients' \| 'epochs' | `'clients'` | clients: the server trains as many optimizer steps as the median client (as the paper's same number of local iterations; set the trusted batch size to the clients'); epochs: local_epochs over the trusted examples |
 | `normalize_to` | 'median' \| 'server' | `'median'` | median: every update scaled to the median client update norm; server: to the server update's norm (the paper's), whose few trusted examples may make a step much longer or shorter than the clients' |
 | `local_epochs` | int (optional) | `None` | epochs over the trusted examples (server_steps: epochs), or the clients' epochs the steps are counted on; the clients' local epochs if unset |
+
+### `foolsgold` — FoolsGold (alike clients)
+
+*plugin, `pybiscus-plugins/strategydecorator/foolsgold`*
+
+FoolsGold: clients weighed down when their history of updates looks like another client's.
+
+| field (under `config`) | type | default | description |
+|---|---|---|---|
+| `kappa` | float | `1.0` | confidence of the logit: larger, the weights go faster to 0 or 1 (the paper's 1) |
 
 ### `upperlevellink` — Upper level link
 

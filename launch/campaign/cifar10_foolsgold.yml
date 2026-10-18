@@ -1,0 +1,73 @@
+# Campaign of launch/campaign/strategy_campaign.py: FoolsGold (Fung et al., arXiv:1808.04866, the
+# foolsgold decorator), which weighs down the clients whose history of updates looks like another
+# client's, against the colluding attacks measured before on the same setup: 2 label flippers of 7
+# (cifar10_label_flip.yml), 2 omniscient ALIE attackers at the paper's z and z 2
+# (cifar10_alie_omniscient.yml) and 2 sign flippers x10. Each attacked variant is compared to
+# FoolsGold without attacker, seed by seed; FoolsGold without attacker to FedAvg.
+#   uv run python launch/campaign/strategy_campaign.py launch/campaign/cifar10_foolsgold.yml
+# Dirichlet 0.5 shares, 7 clients, 3 local epochs, 5 rounds. 18 runs, about 20 minutes; do not run
+# it next to a live session.
+# Status: our own measurement, not a reproduction (docs/robust-aggregation.md, Limits).
+
+server_config: configs/cifar10_cnn/distributed/without_ssl/server.yml
+client_config: configs/cifar10_cnn/distributed/without_ssl/client_1.yml
+output: experiments/campaigns
+plugin_manifests: [launch/campaign/test-plugins-conf.yml]
+
+clients: 7
+rounds: 5
+local_epochs: 3
+port: 3399                 # the Flower server of each run: must be free
+threads_per_client: auto   # physical cores / clients
+timeout: 1800              # seconds per run
+seeds: [1, 2, 3]           # every variant once per seed, then mean ± std
+
+client_data:
+  train:
+    partition:
+      scheme: dirichlet
+      alpha: 0.5
+      seed: 42
+  val:
+    source: holdout
+    fraction: 0.1
+
+server_data:
+  test:
+    max_samples: 2000
+
+variants:
+  - label: FedAvg, no attacker
+    strategy: {name: fedavg, config: {}}
+  - label: FoolsGold, no attacker
+    reference: FedAvg, no attacker
+    strategy: {name: fedavg, config: {}}
+    pipeline: [{name: foolsgold, config: {}}]
+  - label: FoolsGold, 2 label flippers
+    reference: FoolsGold, no attacker
+    strategy: {name: fedavg, config: {}}
+    pipeline: [{name: foolsgold, config: {}}]
+    client_overrides:
+      0: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: label_flip}}}}
+      1: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: label_flip}}}}
+  - label: FoolsGold, omniscient ALIE paper z
+    reference: FoolsGold, no attacker
+    strategy: {name: fedavg, config: {}}
+    pipeline: [{name: foolsgold, config: {}}, {name: omniscientalie, config: {}}]
+    client_overrides:
+      0: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: none}}}}
+      1: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: none}}}}
+  - label: FoolsGold, omniscient ALIE z 2
+    reference: FoolsGold, no attacker
+    strategy: {name: fedavg, config: {}}
+    pipeline: [{name: foolsgold, config: {}}, {name: omniscientalie, config: {z: 2.0}}]
+    client_overrides:
+      0: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: none}}}}
+      1: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: none}}}}
+  - label: FoolsGold, 2 sign flippers x10
+    reference: FoolsGold, no attacker
+    strategy: {name: fedavg, config: {}}
+    pipeline: [{name: foolsgold, config: {}}]
+    client_overrides:
+      0: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: sign_flip, scale: 10.0}}}}
+      1: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: sign_flip, scale: 10.0}}}}

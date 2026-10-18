@@ -1,0 +1,55 @@
+# Campaign of launch/campaign/strategy_campaign.py: FoolsGold on iid shares, where honest clients'
+# updates look alike (cosine to the closest other up to 0.99, cifar10_directions_iid.yml): does it
+# weigh honest clients down? Without attacker (compared to FedAvg) and against 2 label flippers of 7
+# (compared to the same defense without attacker), seed by seed.
+#   uv run python launch/campaign/strategy_campaign.py launch/campaign/cifar10_foolsgold_iid.yml
+# Iid shares, 7 clients, 3 local epochs, 5 rounds. 12 runs, about 13 minutes; do not run it next to
+# a live session.
+# Status: our own measurement, not a reproduction (docs/robust-aggregation.md, Limits).
+
+server_config: configs/cifar10_cnn/distributed/without_ssl/server.yml
+client_config: configs/cifar10_cnn/distributed/without_ssl/client_1.yml
+output: experiments/campaigns
+plugin_manifests: [launch/campaign/test-plugins-conf.yml]
+
+clients: 7
+rounds: 5
+local_epochs: 3
+port: 3399                 # the Flower server of each run: must be free
+threads_per_client: auto   # physical cores / clients
+timeout: 1800              # seconds per run
+seeds: [1, 2, 3]           # every variant once per seed, then mean ± std
+
+client_data:
+  train:
+    partition:
+      scheme: iid
+      seed: 42
+  val:
+    source: holdout
+    fraction: 0.1
+
+server_data:
+  test:
+    max_samples: 2000
+
+variants:
+  - label: FedAvg, no attacker
+    strategy: {name: fedavg, config: {}}
+  - label: FoolsGold, no attacker
+    reference: FedAvg, no attacker
+    strategy: {name: fedavg, config: {}}
+    pipeline: [{name: foolsgold, config: {}}]
+  - label: FedAvg, 2 label flippers
+    reference: FedAvg, no attacker
+    strategy: {name: fedavg, config: {}}
+    client_overrides:
+      0: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: label_flip}}}}
+      1: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: label_flip}}}}
+  - label: FoolsGold, 2 label flippers
+    reference: FoolsGold, no attacker
+    strategy: {name: fedavg, config: {}}
+    pipeline: [{name: foolsgold, config: {}}]
+    client_overrides:
+      0: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: label_flip}}}}
+      1: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: label_flip}}}}

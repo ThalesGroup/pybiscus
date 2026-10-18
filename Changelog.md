@@ -15,6 +15,12 @@
 * Server configuration: a decorator may name the strategies it works over (`PYBISCUS_STRATEGIES`)
   and the data sections it needs (`PYBISCUS_DATA_SECTIONS`), refused at check otherwise.
 
+* FoolsGold (Fung et al.): the `foolsgold` strategy decorator weighs down the clients whose history
+  of updates looks like another client's; over `fedavg` or `fedprox`. Measured
+  (`launch/campaign/cifar10_foolsgold.yml`, `cifar10_foolsgold_iid.yml`): it leaves out colluders
+  sending the same update, but costs 11 points without attacker on dirichlet shares and does not
+  see label flippers: not advised in these settings.
+
 ### Robustness tests
 
 * The worst case of ALIE: the `omniscientalie` strategy decorator (test manifest only) replaces the
