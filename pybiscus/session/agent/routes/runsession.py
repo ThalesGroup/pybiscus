@@ -24,8 +24,10 @@ def runMonitor():
     state = run_session.snapshot()
 
     registration = pybagent.registration_parameters
+    from pybiscus.core.gui_events import gui_log_patterns
     return render_template("run_monitor.html", mode=state["mode"] or "pybiscus",
-                           agent_name=registration.get("name"), location=registration.get("location"))
+                           agent_name=registration.get("name"), location=registration.get("location"),
+                           gui_log_patterns=gui_log_patterns())
 
 # ..........................................................
 # .... GET /run/status .....................................

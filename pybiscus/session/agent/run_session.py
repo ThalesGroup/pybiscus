@@ -1,4 +1,6 @@
+import os
 import queue
+import re
 import subprocess
 import threading
 from collections import deque
@@ -15,6 +17,12 @@ from pybiscus.session.agent.agent_weblog import AgentState
 # le buffer permet à la page de suivi de retrouver l'historique après un rechargement,
 # et borne la mémoire d'un run long (des milliers de lignes par époque)
 MAX_BUFFERED_LINES = 5000
+
+# Rich gives a process without a terminal 80 columns: a line of gui_events.py was cut in two, and the
+# monitor's patterns missed it. Wider, Rich pushes the source file to the end of the line: the padding
+# is brought back to two spaces
+RUN_CONSOLE_COLUMNS = "200"
+LOG_PATH_PADDING = re.compile(r"\s{3,}(\S+\.py:\d+)\s*$")
 
 IDLE    = "idle"
 RUNNING = "running"
@@ -141,13 +149,14 @@ class RunSession:
                 stderr=subprocess.STDOUT,
                 text=True,
                 bufsize=1,
+                env={**os.environ, "COLUMNS": RUN_CONSOLE_COLUMNS},
             )
             self._process = process
 
             for line in process.stdout:
-                rich_print(line, end="")
+                line = LOG_PATH_PADDING.sub(r"  \1", click.unstyle(line).rstrip("\n"))
 
-                line = click.unstyle(line).rstrip("\n")
+                rich_print(line)
 
                 self._append_line(line)
 

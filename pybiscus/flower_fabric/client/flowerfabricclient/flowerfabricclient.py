@@ -10,6 +10,7 @@ from pybiscus.ml.datarefresh import NoNewData, commit_refresh, count_data, refre
 from pybiscus.ml.loops_fabric import (
     SchedulerConfig, check_schedulers_monitor, squared_distance, test_loop, trainable_params, train_loop,
 )
+import pybiscus.core.gui_events as gui_events
 import pybiscus.core.pybiscus_logger as logm
 
 
@@ -190,6 +191,7 @@ class FlowerFabricClient(fl.client.NumPyClient):
             global_params = [p.detach().clone() for p in trainable_params(self.model)]
 
         logm.console.log(f"Round {config['server_round']}, training Started...")
+        gui_events.log_client_phase("fit", config['server_round'])
 
         results_train = train_loop(
             self.fabric,
@@ -203,6 +205,7 @@ class FlowerFabricClient(fl.client.NumPyClient):
         )
             
         logm.console.log(f"Training Finished! Loss is {results_train['loss']}")
+        gui_events.log_client_metric("fit", results_train, config['server_round'])
         commit_refresh(self.data)
         metrics.update(data_metrics)
         metrics["cid"] = self.cid
@@ -221,12 +224,14 @@ class FlowerFabricClient(fl.client.NumPyClient):
         self.set_parameters(parameters)
         metrics = {}
         logm.console.log(f"Round {config['server_round']}, evaluation Started...")
+        gui_events.log_client_phase("evaluate", config['server_round'])
         results_evaluate = test_loop(
             self.fabric, self.model, self._validation_dataloader
         )
         logm.console.log(
             f"Evaluation finished! Loss is {results_evaluate['loss']}, metric {list(results_evaluate.keys())[0]} is {results_evaluate[list(results_evaluate.keys())[0]]}"
         )
+        gui_events.log_client_metric("evaluate", results_evaluate, config['server_round'])
         metrics["cid"] = self.cid
         for key, val in results_evaluate.items():
             metrics[key] = val

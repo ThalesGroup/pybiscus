@@ -7,6 +7,7 @@ import typer
 from omegaconf import OmegaConf
 from pydantic import ValidationError
 
+import pybiscus.core.gui_events as gui_events
 import pybiscus.core.pybiscus_logger as logm
 from pybiscus.core.pybiscusexception import PybiscusValueException
 from pybiscus.flower_fabric.client.flowerfabricclient.flowerfabricclientfactory import FlowerFabricClientFactory
@@ -185,6 +186,7 @@ def launch_config(
     # load the model
     model_class = model_registry()[conf.model.name]
     model = model_class(**conf.model.config.model_dump())
+    gui_events.set_main_metric(gui_events.main_metric_for_model(model))
 
     # expose client context
     pcpc.pybiscus_context[pcpc.MODEL] = model

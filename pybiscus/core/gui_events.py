@@ -57,6 +57,25 @@ def log_round_metric(phase: str, metrics: Mapping[str, object], server_round: Op
     logm.console.log(f"📈 gui phase={phase} round={round_text} metric={name} value={value:.6g}")
 
 
+def log_round_start(server_round: int, counted: int, num_rounds: int) -> None:
+    """counted: the round's rank among those that count, Flower's numbers also counting the skipped ones"""
+    logm.console.log(f"▶️ gui round_start round={server_round} counted={counted}/{num_rounds}")
+
+
+# A client's lines may reach the manager's log feed too: "client_phase" / "client_metric" keep them
+# out of the patterns charting the server's rounds ("📈 gui phase=…")
+def log_client_phase(phase: str, server_round: int) -> None:
+    logm.console.log(f"▶️ gui client_phase={phase} round={server_round}")
+
+
+def log_client_metric(phase: str, metrics: Mapping[str, object], server_round: int) -> None:
+    selected = select_main_metric(metrics)
+    if selected is None:
+        return
+    name, value = selected
+    logm.console.log(f"📈 gui client_metric={phase} round={server_round} metric={name} value={value:.6g}")
+
+
 def log_metric_diff(diff: float) -> None:
     logm.console.log(f"📊⚖️📊 = 🧐🔢 metric diff is {diff:.4f}")
 
@@ -112,4 +131,10 @@ def gui_log_patterns() -> dict[str, str]:
         "session_end": r"gui session_end rounds=(\d+)/(\d+)(?: stopped: (.*))?",
         # with a schedule, the rounds counted (log_rounds_done): groups rounds done, num_rounds
         "rounds_done": r"gui rounds_done=(\d+)/(\d+)",
+        # a server's round begins (log_round_start): groups round, rank among the counted ones, num_rounds
+        "round_start": r"gui round_start round=(\d+) counted=(\d+)/(\d+)",
+        # a client's phase begins (log_client_phase): groups phase, round
+        "client_phase": r"gui client_phase=(fit|evaluate) round=(\d+)",
+        # a client's main metric (log_client_metric): groups phase, round, metric name, value
+        "client_metric": r"📈 gui client_metric=(fit|evaluate) round=(\d+) metric=(\S+) value=(-?[\d.]+(?:[eE][-+]?\d+)?|nan|inf)",
     }

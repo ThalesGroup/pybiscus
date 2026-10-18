@@ -49,7 +49,11 @@ On each form:
 - The ⚙ panel sets the display (tabs, compact lists, theme).
 
 Once launched, the page switches to the run monitor: the run's state and its log lines, live,
-with a button to stop it.
+with a button to stop it. Above the log, the progress: on a server, the round out of the session's
+rounds with a bar and the phase of the round (training on the clients, testing on the server,
+evaluating on the clients); on a client, the round and its phase (a client is not told the number
+of rounds). Next to it, the last value of the main metric of each phase and the last round's
+duration. The log shows all its lines, the rounds' events only, or the warnings and errors.
 
 ![Run monitor](images/agent_run_monitor.png "Run monitor")
 

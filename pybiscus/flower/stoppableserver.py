@@ -83,6 +83,7 @@ class StoppableServer(fl.server.Server):
                 break
             current_round += 1
             self.current_round = current_round
+            gui_events.log_round_start(current_round, self.rounds_done + 1, num_rounds)
             try:
                 counted = self._run_round(current_round, timeout, history, start_time)
             except EndSession as end:

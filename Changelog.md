@@ -24,6 +24,11 @@
   `num_`/`n_`/`nb_` read "Number of"), with the YAML key under it in small type; the section menu
   shows the label alone. A few titles added (local epochs per round, one directory per session,
   q (fairness)...). The option names, which the presets and pins compare, are unchanged.
+* Run monitor: the round (out of the session's rounds on a server, with a bar), its phase, the last
+  main metric of each phase and the last round's duration; a view of the log by rounds, or by
+  warnings and errors. New `gui_events` lines: `round_start` (server), `client_phase` and
+  `client_metric` (client, kept out of the manager's charts). A run launched by the agent gets a
+  200-column console: at 80, Rich cut those lines in two.
 * A check, a save or a pin run during the 600 ms switch between two options of a union read the
   whole union as missing (`data: Field required`): the chosen option is now recorded at the click,
   only its display waits.

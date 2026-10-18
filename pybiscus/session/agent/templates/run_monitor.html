@@ -146,6 +146,53 @@
         .detail.status-stopped { color: #e3b341; background: #2b2111; border-color: #7d5a14; }
 
         .detail:empty { display: none; }
+
+        /* progress of the run, read from the gui_events lines of its log */
+        .progress {
+            display: flex;
+            flex-direction: column;
+            gap: .75rem;
+            padding: 1rem 1.25rem;
+            background: #11161d;
+            border: 1px solid #232c37;
+            border-radius: 14px;
+        }
+
+        .progress[hidden] { display: none; }
+
+        .progress-head { display: flex; align-items: baseline; gap: 1rem; flex-wrap: wrap; }
+        .progress-round { font-size: 1.15rem; font-weight: 600; }
+        .progress-phase { color: #8b96a3; }
+        .progress-end { margin-left: auto; color: #8b96a3; font-size: .875rem; }
+
+        .progress-bar { height: 6px; border-radius: 3px; background: #1d2530; overflow: hidden; }
+        .progress-bar[hidden] { display: none; }
+        .progress-fill { height: 100%; width: 0; background: #4ecdc4; transition: width .4s; }
+
+        .figures { display: flex; gap: .75rem; flex-wrap: wrap; }
+        .figures:empty { display: none; }
+
+        .figure {
+            min-width: 9rem;
+            padding: .5rem .8rem;
+            border: 1px solid #232c37;
+            border-radius: 10px;
+            background: #151a21;
+        }
+
+        .figure-label { font-size: .72rem; letter-spacing: .06em; text-transform: uppercase; color: #8b96a3; }
+        .figure-value { font-size: 1.1rem; font-weight: 600; font-variant-numeric: tabular-nums; }
+        .figure-round { font-size: .75rem; color: #6b7682; }
+
+        select {
+            font: inherit;
+            font-size: .875rem;
+            padding: .45rem .7rem;
+            border-radius: 10px;
+            border: 1px solid #232c37;
+            background: #151a21;
+            color: #e6edf3;
+        }
     </style>
 </head>
 <body>
@@ -171,9 +218,24 @@
             <label class="toggle">
                 <input type="checkbox" id="autoscroll" checked> Auto-scroll
             </label>
+            <select id="log-filter" title="lines shown in the log">
+                <option value="all">All lines</option>
+                <option value="rounds">Rounds</option>
+                <option value="problems">Warnings and errors</option>
+            </select>
         </div>
 
         <div class="detail" id="detail"></div>
+
+        <section class="progress" id="progress" hidden>
+            <div class="progress-head">
+                <span class="progress-round" id="progress-round"></span>
+                <span class="progress-phase" id="progress-phase"></span>
+                <span class="progress-end" id="progress-end"></span>
+            </div>
+            <div class="progress-bar" id="progress-bar" hidden><div class="progress-fill" id="progress-fill"></div></div>
+            <div class="figures" id="figures"></div>
+        </section>
 
         <div class="console" id="console"><pre id="log"></pre></div>
     </div>
@@ -190,12 +252,162 @@
         const copyButton  = document.getElementById('copy-button');
         const regButton   = document.getElementById('registration-button');
 
-        function appendLines(lines) {
-            logPre.textContent += lines.join('\n') + '\n';
+        // ---------- progress, from the lines gui_events.py writes (the patterns are its own) ----------
+
+        const GUI_PATTERNS = {{ gui_log_patterns | tojson }};
+        const RE = Object.fromEntries(Object.entries(GUI_PATTERNS).map(([k, src]) => [k, new RegExp(src)]));
+
+        // a server round: fit on the clients, test on the server, evaluate on the clients (StoppableServer)
+        const SERVER_PHASES = ['fit', 'test', 'evaluate', 'done'];
+        const NEXT_SERVER_PHASE = { fit: 'test', test: 'evaluate', evaluate: 'done' };
+        const PHASE_TEXT = {
+            server: { fit: 'training on the clients', test: 'testing on the server',
+                      evaluate: 'evaluating on the clients', done: 'round finished' },
+            client: { fit: 'training', fitted: 'trained, waiting for the evaluation',
+                      evaluate: 'evaluating', done: 'round finished' },
+        };
+        const FIGURE_LABEL = { 'server fit': 'clients fit', 'server test': 'server test',
+                               'server evaluate': 'clients evaluate', 'client fit': 'fit', 'client evaluate': 'evaluate' };
+
+        let progress;
+
+        function resetProgress() {
+            progress = { side: null, round: null, counted: null, total: null, phase: null,
+                         figures: {}, duration: null, end: null };
+        }
+
+        // true when the line is one of the run's events (the "Rounds" view of the log)
+        function noteLine(line) {
+            let m;
+            if ((m = line.match(RE.round_start))) {
+                Object.assign(progress, { side: 'server', round: +m[1], counted: +m[2], total: +m[3], phase: 'fit' });
+                return true;
+            }
+            if ((m = line.match(RE.round_metric))) {
+                const round = m[2] === '-' ? progress.round : +m[2];
+                progress.figures['server ' + m[1]] = { metric: m[3], value: m[4], round };
+                // a strategy without a server-side test logs no "test" metric: a later phase moves on too
+                if (progress.side === 'server' && SERVER_PHASES.indexOf(m[1]) >= SERVER_PHASES.indexOf(progress.phase)) {
+                    progress.phase = NEXT_SERVER_PHASE[m[1]];
+                }
+                return true;
+            }
+            if ((m = line.match(RE.client_phase))) {
+                Object.assign(progress, { side: 'client', round: +m[2], phase: m[1] });
+                return true;
+            }
+            if ((m = line.match(RE.client_metric))) {
+                progress.figures['client ' + m[1]] = { metric: m[3], value: m[4], round: +m[2] };
+                progress.phase = m[1] === 'fit' ? 'fitted' : 'done';
+                return true;
+            }
+            if ((m = line.match(RE.duration))) {
+                progress.duration = { value: +m[1], round: progress.round };
+                return true;
+            }
+            if ((m = line.match(RE.rounds_done))) {
+                Object.assign(progress, { counted: +m[1], total: +m[2] });
+                return true;
+            }
+            if ((m = line.match(RE.session_end))) {
+                progress.end = { done: +m[1], total: +m[2], reason: m[3] || null };
+                return true;
+            }
+            return RE.round.test(line) || RE.stop_requested.test(line) || RE.no_evaluation.test(line) || RE.link.test(line);
+        }
+
+        function formatValue(text) {
+            const value = parseFloat(text);
+            return Number.isFinite(value) ? String(+value.toPrecision(4)) : text;
+        }
+
+        function figure(label, value, round) {
+            const div = document.createElement('div');
+            div.className = 'figure';
+            div.innerHTML = '<div class="figure-label"></div><div class="figure-value"></div><div class="figure-round"></div>';
+            div.children[0].textContent = label;
+            div.children[1].textContent = value;
+            div.children[2].textContent = round == null ? '' : `round ${round}`;
+            return div;
+        }
+
+        function renderProgress() {
+            const section = document.getElementById('progress');
+            if (progress.side === null && progress.end === null) { section.hidden = true; return; }
+            section.hidden = false;
+
+            const roundText = document.getElementById('progress-round');
+            const phaseText = document.getElementById('progress-phase');
+            const endText   = document.getElementById('progress-end');
+            const bar       = document.getElementById('progress-bar');
+
+            if (progress.side === 'server' && progress.total) {
+                roundText.textContent = `Round ${progress.counted} / ${progress.total}`;
+                const done = progress.end ? progress.end.done
+                           : progress.counted - 1 + (progress.phase === 'done' ? 1 : 0);
+                bar.hidden = false;
+                document.getElementById('progress-fill').style.width = `${Math.min(100, 100 * done / progress.total)}%`;
+            } else {
+                // a client is not told the number of rounds
+                roundText.textContent = progress.round == null ? '' : `Round ${progress.round}`;
+                bar.hidden = true;
+            }
+
+            phaseText.textContent = progress.end ? '' : (PHASE_TEXT[progress.side] || {})[progress.phase] || '';
+            endText.textContent = !progress.end ? ''
+                : progress.end.reason ? `stopped after ${progress.end.done} / ${progress.end.total} rounds: ${progress.end.reason}`
+                : `${progress.end.done} / ${progress.end.total} rounds run`;
+
+            const figures = document.getElementById('figures');
+            figures.replaceChildren();
+            for (const key of ['server fit', 'server test', 'server evaluate', 'client fit', 'client evaluate']) {
+                const f = progress.figures[key];
+                if (f) figures.appendChild(figure(`${FIGURE_LABEL[key]} · ${f.metric}`, formatValue(f.value), f.round));
+            }
+            if (progress.duration) {
+                figures.appendChild(figure('round duration', `${progress.duration.value.toFixed(1)} s`, progress.duration.round));
+            }
+        }
+
+        // ---------- log, with its views ----------
+
+        const logFilter = document.getElementById('log-filter');
+        const PROBLEM = /WARNING|ERROR|Error|Exception|Traceback|❌|failed/;
+        let allLines = [];   // [line, isEvent]
+
+        function shown([line, isEvent]) {
+            return logFilter.value === 'all' || (logFilter.value === 'rounds' ? isEvent : PROBLEM.test(line));
+        }
+
+        function scrollIfFollowing() {
             if (autoscroll.checked) {
                 consoleDiv.scrollTop = consoleDiv.scrollHeight;
             }
         }
+
+        function appendLines(lines) {
+            const entries = lines.map(line => [line, noteLine(line)]);
+            allLines.push(...entries);
+            const visible = entries.filter(shown).map(([line]) => line);
+            if (visible.length) logPre.textContent += visible.join('\n') + '\n';
+            renderProgress();
+            scrollIfFollowing();
+        }
+
+        function clearLog() {
+            allLines = [];
+            logPre.textContent = '';
+            resetProgress();
+            renderProgress();
+        }
+
+        logFilter.addEventListener('change', () => {
+            const visible = allLines.filter(shown).map(([line]) => line);
+            logPre.textContent = visible.length ? visible.join('\n') + '\n' : '';
+            scrollIfFollowing();
+        });
+
+        resetProgress();
 
         function setStatus(status, detail) {
             statusPill.className = 'status-pill status-' + status;
@@ -225,13 +437,13 @@
 
             if (data.type === 'snapshot') {
                 setMode(data.mode);
-                logPre.textContent = '';
+                clearLog();
                 appendLines(data.lines);
                 setStatus(data.status, data.detail);
 
             } else if (data.type === 'reset') {
                 setMode(data.mode);
-                logPre.textContent = '';
+                clearLog();
                 setStatus('running', '');
 
             } else if (data.type === 'log') {
@@ -259,7 +471,7 @@
         });
 
         copyButton.addEventListener('click', () => {
-            navigator.clipboard.writeText(logPre.textContent);
+            navigator.clipboard.writeText(allLines.map(([line]) => line).join('\n'));
         });
     </script>
 </body>
