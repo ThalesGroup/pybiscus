@@ -28,9 +28,13 @@
   l → num_classes − 1 − l and sends that update unchanged; campaign
   `launch/campaign/cifar10_label_flip.yml`: the norm-based `safeguard` sees nothing (−11.6 points,
   as FedAvg), FLTrust ends highest under attack (−6.3 points from its own 0.372).
+* FLTrust's trusted examples: 500 do better than 100 (−2.2 points without attacker, +4.4 over
+  FedAvg against label flippers), 2000 no better than 500
+  (`launch/campaign/cifar10_fltrust_trusted_size.yml`): the default `trusted.max_samples` is 500.
 
 ### Tools
 
+* Campaigns: a variant may set its own `server_data` (merged after the campaign's).
 * `strategy_campaign.py --check` validates the configurations of every run of a campaign, as
   `server check` and `client check` do, without running them; `launch/ci/smoke.sh check` runs it
   on every campaign of `launch/campaign/`.

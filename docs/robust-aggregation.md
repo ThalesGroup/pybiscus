@@ -465,7 +465,7 @@ server_strategy:
 data:
   config:
     trusted:
-      max_samples: 100         # drawn at random from the train split (dir), seed 0
+      max_samples: 500         # the default; drawn at random from the train split (dir), seed 0
 ```
 
 Every round logs each client's trust score ("🛡️" lines, `fltrust_score_<cid>`), the server's
@@ -521,8 +521,31 @@ Trust scores over all rounds and seeds (`normalize_to: median`; the attackers ar
 **Choosing**: `safeguard` stays the default advice: no cost without attacker, and it stops the
 attackers that stand out by their norm. FLTrust is worth its cost only when the server holds data
 like the clients' and discreet attackers are expected; even then, an attacker that knows the honest
-updates and stays close to their mean passes it. Not measured: a larger trusted set, iid shares,
-more clients.
+updates and stays close to their mean passes it. Not measured: iid shares, more clients.
+
+### How many trusted examples
+
+`launch/campaign/cifar10_fltrust_trusted_size.yml`: the same setup, `trusted.max_samples` 100 (the
+paper's), 500 and 2000 (a variant's `server_data`), without attacker (difference to FedAvg, 0.401)
+and against 2 label flippers ([Label flipping](#label-flipping-poisoned-data); difference to the same
+size without attacker), 3 seeds:
+
+| trusted examples | no attacker | Δ vs FedAvg | 2 label flippers | Δ |
+|---|---|---|---|---|
+| 100 | 0.370 | −0.030 ± 0.012 | 0.309 | −0.061 ± 0.009 |
+| 500 | 0.379 | −0.022 ± 0.003 | 0.330 | −0.048 ± 0.012 |
+| 2000 | 0.375 | −0.026 ± 0.005 | 0.323 | −0.052 ± 0.006 |
+
+- From 100 to 500, the honest clients' mean trust score, without attacker, rises from 0.22–0.31 to
+  0.35–0.52 over rounds 2 to 5: the server's direction is steadier. Under attack, FLTrust ends 4.4 points above FedAvg
+  (0.330 against 0.286), against 2.3 with 100.
+- Beyond, nothing more: 2000 does no better than 500 (the differences are within the seeds' spread).
+- The cost without attacker shrinks a little but stays, about 2 points: the trust weights, uneven
+  from one honest client to another on heterogeneous data, keep away from FedAvg's weighting by
+  number of examples.
+
+Hence the default of 500 (`trusted.max_samples`), and not the paper's 100; the campaigns above set
+100 explicitly.
 
 ## Label flipping: poisoned data
 

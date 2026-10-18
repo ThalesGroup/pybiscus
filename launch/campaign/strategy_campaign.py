@@ -123,7 +123,9 @@ def write_configs(campaign: dict, variant: dict, out: Path, seed: int = None) ->
     # first in the pipeline: closest to the strategy, so that the base decorators (saved
     # parameters, timings) see what the variant's decorators produce
     server["server_strategy"]["pipeline"] = copy.deepcopy(variant.get("pipeline", [])) + server["server_strategy"]["pipeline"]
-    server["data"]["config"] = deep_merge(server["data"]["config"], campaign.get("server_data"))
+    # the campaign's, then the variant's: a variant may change the server's data alone (FLTrust's
+    # trusted examples, for instance)
+    server["data"]["config"] = deep_merge(deep_merge(server["data"]["config"], campaign.get("server_data")), variant.get("server_data"))
     OmegaConf.save(OmegaConf.create(server), work / "server.yml")
 
     threads = campaign.get("threads_per_client", "auto")

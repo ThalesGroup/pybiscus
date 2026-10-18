@@ -212,7 +212,7 @@ split as the clients' shares, as the FLTrust paper's root dataset.
 ```yaml
     trusted:
       dir: ${root_dir}/datasets/train/
-      max_samples: 100       # the paper's size
+      max_samples: 500       # the default (the paper's: 100)
       seed: 0                # which examples, and the order of their batches
       batch_size: 32         # the clients' batch size: fltrust counts its steps with it
 ```

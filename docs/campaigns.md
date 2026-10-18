@@ -92,6 +92,7 @@ What the tool sets in the copied configurations:
 | `plugin_manifests` | appended to the default plugin manifest (`PYBISCUS_PLUGIN_CONF_PATH`) for the runs: test-only plugins, such as the `byzantine` client, never appear in a real session's forms |
 | variant `strategy` | `server_strategy.strategy`; its `min_fit_clients`, `min_evaluate_clients` and `min_available_clients` default to `clients` (every client in every round) unless the variant sets them |
 | variant `pipeline` | put in front of the base configuration's pipeline: closest to the strategy, so that the base decorators (saved parameters, timings) see what the variant's produce |
+| variant `server_data` | merged after the campaign's `server_data`: a variant changing the server's data only (the trusted examples of `fltrust`, for instance) |
 | variant `client_overrides` | merged last into the given clients' configurations, e.g. to make some of them malicious; `{work}` in a string becomes the run's directory (a shared directory of its own, without files left by an earlier run) |
 | `seeds` | `server_run.seed` = the seed, client i's `client_run.seed` = 1000 x seed + i, a byzantine client's `seed` = the seed (unless set); with `seed_partitions: true`, the partition's `seed` too |
 | `output` | where the start-dated directory goes |
@@ -132,6 +133,7 @@ and how long it takes.
 | `cifar10_safeguard_iid.yml` | the `safeguard` defense on iid shares | [robust-aggregation.md](robust-aggregation.md#on-iid-shares) |
 | `cifar10_directions_alie.yml` | the updates' directions under ALIE (`log_directions`) | [robust-aggregation.md](robust-aggregation.md#discreet-attackers-what-the-norm-cannot-see) |
 | `cifar10_fltrust.yml` | FLTrust (trusted examples) against omniscient ALIE and sign flippers, two normalizations, 3 seeds | [robust-aggregation.md](robust-aggregation.md#fltrust-a-direction-the-server-trusts) |
+| `cifar10_fltrust_trusted_size.yml` | FLTrust with 100, 500 and 2000 trusted examples, without attacker and against label flippers, 3 seeds | [robust-aggregation.md](robust-aggregation.md#how-many-trusted-examples) |
 | `cifar10_label_flip.yml` | the defenses against 2 attackers training on flipped labels (data poisoning), 3 seeds | [robust-aggregation.md](robust-aggregation.md#label-flipping-poisoned-data) |
 | `cifar10_directions_iid.yml` | the updates' directions on iid shares, client-side and omniscient ALIE | [robust-aggregation.md](robust-aggregation.md#on-iid-shares-honest-clients-look-alike-too) |
 | `cifar10_serverdp.yml` | server-side differential privacy against FedAvg | [configuration.md](configuration.md#server-side-differential-privacy) |

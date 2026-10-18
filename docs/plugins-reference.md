@@ -63,7 +63,7 @@ CIFAR-10 from torchvision: 32 x 32 colour images of 10 classes, 50,000 to train 
 | `privacy.max_samples` | int (optional) | `None` | a fixed subset of at most this many examples, whose original indices stay known; all if unset |
 | `trusted` | section | `None` | optional, the examples the server trains on to judge the clients' updates (fltrust) |
 | `trusted.dir` | str | `'${root_dir}/datasets/train/'` | directory of the official train split, from which the trusted examples are drawn |
-| `trusted.max_samples` | int | `100` | number of trusted examples, drawn at random from the train split |
+| `trusted.max_samples` | int | `500` | number of trusted examples, drawn at random from the train split |
 | `trusted.seed` | int | `0` | draw of the trusted examples and order of their batches, reproducible |
 | `trusted.batch_size` | int | `32` | examples per batch |
 | `trusted.shuffle` | bool | `True` | examples drawn in a new random order at every epoch |
@@ -178,7 +178,7 @@ MNIST from torchvision: 28 x 28 grey images of handwritten digits, 60,000 to tra
 | `privacy.max_samples` | int (optional) | `None` | a fixed subset of at most this many examples, whose original indices stay known; all if unset |
 | `trusted` | section | `None` | optional, the examples the server trains on to judge the clients' updates (fltrust) |
 | `trusted.dir` | str | `'${root_dir}/datasets/mnist/train/'` | directory of the official train split, from which the trusted examples are drawn |
-| `trusted.max_samples` | int | `100` | number of trusted examples, drawn at random from the train split |
+| `trusted.max_samples` | int | `500` | number of trusted examples, drawn at random from the train split |
 | `trusted.seed` | int | `0` | draw of the trusted examples and order of their batches, reproducible |
 | `trusted.batch_size` | int | `32` | examples per batch |
 | `trusted.shuffle` | bool | `True` | examples drawn in a new random order at every epoch |

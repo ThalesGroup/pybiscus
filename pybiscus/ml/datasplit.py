@@ -175,8 +175,8 @@ class ConfigTrustedSet(BaseModel):
     PYBISCUS_CONFIG: ClassVar[str] = "trusted"
 
     dir: str = Field(description="directory of the official train split, from which the trusted examples are drawn")
-    # 100: the paper's default; a larger set gives a steadier reference direction
-    max_samples: int = Field(default=100, ge=1, description="number of trusted examples, drawn at random from the train split")
+    # 500 and not the paper's 100: measured steadier (cifar10_fltrust_trusted_size.yml), 2000 no better
+    max_samples: int = Field(default=500, ge=1, description="number of trusted examples, drawn at random from the train split")
     seed: int = Field(default=0, description="draw of the trusted examples and order of their batches, reproducible")
     batch_size: int = Field(default=32, ge=1, description=SET_FIELDS["batch_size"])
     shuffle: bool = Field(default=True, description=SET_FIELDS["shuffle"])

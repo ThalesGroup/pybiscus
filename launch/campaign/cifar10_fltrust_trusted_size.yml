@@ -1,0 +1,81 @@
+# Campaign of launch/campaign/strategy_campaign.py: FLTrust's trusted examples, 100 (the paper's), 500
+# and 2000, drawn from the train split (variant server_data). With 100, FLTrust cost 3 points without
+# attacker and held best against 2 label flippers of 7 (cifar10_label_flip.yml): does a larger set
+# give a steadier reference direction, a smaller cost and a better detection? Each attacked variant
+# is compared to the same set size without attacker, seed by seed; without attacker, to FedAvg.
+#   uv run python launch/campaign/strategy_campaign.py launch/campaign/cifar10_fltrust_trusted_size.yml
+# Dirichlet 0.5 shares, 7 clients, 3 local epochs, 5 rounds. 21 runs, about 35 minutes; do not run
+# it next to a live session.
+# Status: our own measurement, not a reproduction (docs/robust-aggregation.md, Limits).
+
+server_config: configs/cifar10_cnn/distributed/without_ssl/server.yml
+client_config: configs/cifar10_cnn/distributed/without_ssl/client_1.yml
+output: experiments/campaigns
+plugin_manifests: [launch/campaign/test-plugins-conf.yml]
+
+clients: 7
+rounds: 5
+local_epochs: 3
+port: 3399                 # the Flower server of each run: must be free
+threads_per_client: auto   # physical cores / clients
+timeout: 1800              # seconds per run
+seeds: [1, 2, 3]           # every variant once per seed, then mean ± std
+
+client_data:
+  train:
+    partition:
+      scheme: dirichlet
+      alpha: 0.5
+      seed: 42
+  val:
+    source: holdout
+    fraction: 0.1
+
+server_data:
+  test:
+    max_samples: 2000
+  trusted:
+    max_samples: 100
+
+variants:
+  - label: FedAvg, no attacker
+    strategy: {name: fedavg, config: {}}
+  - label: FLTrust 100 trusted, no attacker
+    reference: FedAvg, no attacker
+    strategy: {name: fedavg, config: {}}
+    pipeline: [{name: fltrust, config: {}}]
+    server_data: {trusted: {max_samples: 100}}
+  - label: FLTrust 100 trusted, 2 label flippers
+    reference: FLTrust 100 trusted, no attacker
+    strategy: {name: fedavg, config: {}}
+    pipeline: [{name: fltrust, config: {}}]
+    server_data: {trusted: {max_samples: 100}}
+    client_overrides:
+      0: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: label_flip}}}}
+      1: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: label_flip}}}}
+  - label: FLTrust 500 trusted, no attacker
+    reference: FedAvg, no attacker
+    strategy: {name: fedavg, config: {}}
+    pipeline: [{name: fltrust, config: {}}]
+    server_data: {trusted: {max_samples: 500}}
+  - label: FLTrust 500 trusted, 2 label flippers
+    reference: FLTrust 500 trusted, no attacker
+    strategy: {name: fedavg, config: {}}
+    pipeline: [{name: fltrust, config: {}}]
+    server_data: {trusted: {max_samples: 500}}
+    client_overrides:
+      0: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: label_flip}}}}
+      1: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: label_flip}}}}
+  - label: FLTrust 2000 trusted, no attacker
+    reference: FedAvg, no attacker
+    strategy: {name: fedavg, config: {}}
+    pipeline: [{name: fltrust, config: {}}]
+    server_data: {trusted: {max_samples: 2000}}
+  - label: FLTrust 2000 trusted, 2 label flippers
+    reference: FLTrust 2000 trusted, no attacker
+    strategy: {name: fedavg, config: {}}
+    pipeline: [{name: fltrust, config: {}}]
+    server_data: {trusted: {max_samples: 2000}}
+    client_overrides:
+      0: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: label_flip}}}}
+      1: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: label_flip}}}}
