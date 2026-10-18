@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+### Robustness tests
+
+* ALIE at the paper's proportion of attackers, 5 of 20 clients, z 1
+  (`launch/campaign/cifar10_alie_20clients.yml`, six defenses, 3 seeds): 5 client-side colluders do
+  nearly the omniscient attacker's harm, steady but small (FedAvg −0.9 point, median −2.3, Bulyan
+  −4.0); Krum, f 5, does not learn on dirichlet shares among 20 clients.
+
 ## [Version 0.12.0]
 
 Since `version0.11.0` (2026-10-18): Flower 1.40, and the dependencies with known vulnerabilities

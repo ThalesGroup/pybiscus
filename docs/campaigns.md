@@ -128,6 +128,7 @@ and how long it takes.
 | `cifar10_clipping_dirichlet.yml` | bounding the updates' norm, dirichlet shares | [robust-aggregation.md](robust-aggregation.md#norm-clipping-fedavg-with-bounded-updates) |
 | `cifar10_alie_dirichlet.yml` | the defenses against colluding ALIE attackers | [robust-aggregation.md](robust-aggregation.md#a-discreet-colluding-attack-alie) |
 | `cifar10_alie_omniscient.yml` | the worst case of ALIE: attackers who know the honest updates (`omniscientalie`), 3 seeds | [robust-aggregation.md](robust-aggregation.md#the-omniscient-attacker) |
+| `cifar10_alie_20clients.yml` | ALIE at the paper's proportion: 5 attackers of 20, z 1, client-side and omniscient, six defenses, 3 seeds | [robust-aggregation.md](robust-aggregation.md#at-the-papers-proportion-5-attackers-of-20) |
 | `cifar10_alie_z_sweep.yml` | ALIE's z swept, 3 seeds | [robust-aggregation.md](robust-aggregation.md#sweeping-z) |
 | `cifar10_clipping_reject_alie.yml` | the clipping defense's rejection threshold against ALIE | [robust-aggregation.md](robust-aggregation.md#rejection-threshold) |
 | `cifar10_safeguard_iid.yml` | the `safeguard` defense on iid shares | [robust-aggregation.md](robust-aggregation.md#on-iid-shares) |

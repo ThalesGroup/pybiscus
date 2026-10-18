@@ -361,6 +361,41 @@ same defense without attacker, paired by seed (mean ± std, min to max):
 - These are not the paper's results: 2 attackers of 7 and federated rounds, against 12 of 51 and
   every gradient step there ([Limits](#limits-of-these-measurements)).
 
+### At the paper's proportion: 5 attackers of 20
+
+`launch/campaign/cifar10_alie_20clients.yml`: 20 clients of which 5 attackers (about the paper's
+12 of 51), its z 1, dirichlet 0.5 shares, 10 rounds of 3 local epochs, every defense set for 5
+attackers (Bulyan f 4: it needs 4 f + 3 clients). Each defense without attacker, against 5
+client-side colluders (`attack: alie`, `colluders: 5`) and against the omniscient attacker at the
+same z; test accuracy at round 10, mean over 3 seeds, and the difference to the same defense without
+attacker, paired by seed (mean ± std, min to max):
+
+| defense | no attacker | 5 colluders, z 1 | Δ | omniscient, z 1 | Δ |
+|---|---|---|---|---|---|
+| FedAvg | 0.364 | 0.355 | −0.009 ± 0.002 | 0.349 | −0.015 ± 0.002 |
+| FedMedian | 0.302 | 0.280 | −0.023 ± 0.001 | 0.277 | −0.026 ± 0.011 |
+| FedTrimmedAvg, beta 0.25 | 0.307 | 0.290 | −0.017 ± 0.009 | 0.288 | −0.019 ± 0.019 (−0.038 to +0.001) |
+| Krum, f 5 | 0.147 | 0.162 | +0.015 ± 0.043 | 0.249 | +0.102 ± 0.023 |
+| Bulyan, f 4 | 0.256 | 0.216 | −0.040 ± 0.006 | 0.197 | −0.059 ± 0.031 (−0.089 to −0.028) |
+| clipping x 1.5, reject x 1.7 | 0.343 | 0.326 | −0.017 ± 0.004 | 0.321 | −0.022 ± 0.004 |
+
+- With 5 colluders, the client-side attack does measurable harm, steady over the seeds: their
+  estimate of the honest distribution, from 5 updates, comes close to the omniscient attacker's
+  (within a point everywhere but Bulyan). At 2 of 7 it did nothing.
+- The harm is smaller than at 7 clients (omniscient: 7.5 points lost by FedAvg at the paper's z):
+  each attacker weighs 1/20 of the mean, and z 1 is a small deviation.
+- The defenses that select or sort the updates suffer most, as in the paper, and FedAvg least:
+  Bulyan loses 4 to 6 points, from an accuracy already 11 points below FedAvg's; the median and the
+  trimmed mean 2 to 2.5. Under attack, every defense ends below FedAvg under the same attack.
+- Krum, f 5, does not learn on these shares (0.147 without attacker, chance with one seed): it keeps
+  a single update of 20, one client's skewed share. The omniscient attacker "helps" it by 10 points:
+  the 5 identical forged copies get the best score, and that update is built from the mean of the 15
+  honest ones. Its gain is no defense.
+- Clipping never clips nor rejects an attacker. It rejects one honest client (cid 15) in 7 to 10
+  rounds of 10, with or without attacker: on dirichlet shares, a skewed client looks like an outlier.
+- 20 clients take about 1.2 GB of memory each (24 GB and 4.6 GB of swap here) and 2.5 minutes per
+  run of 10 rounds; 54 runs took 3 h 10, including the machine's pauses.
+
 ## Discreet attackers: what the norm cannot see
 
 ### The limit
@@ -659,7 +694,8 @@ a given deployment, nor do they reproduce the papers' figures. What they leave o
   process holding the model and its data, which bounds their number on one machine). Real
   federations have tens to thousands of clients, sampled each round. The robust aggregations'
   guarantees, and an attacker's estimate of the honest updates, depend on that number: the ALIE
-  paper has 12 attackers among 51 workers, here 2 among 7.
+  paper has 12 attackers among 51 workers, here 2 among 7 (5 among 20 in
+  [At the paper's proportion](#at-the-papers-proportion-5-attackers-of-20)).
 - **Federated rounds, not gradient steps**: each update is a model trained for 3 local epochs,
   where the papers (Krum, Bulyan, ALIE) attack and defend the gradient of every step of a
   distributed SGD. An update is larger and noisier than a gradient, so the thresholds measured
@@ -671,7 +707,7 @@ a given deployment, nor do they reproduce the papers' figures. What they leave o
   of very different sizes, which a norm threshold then confuses with attackers.
 - **Simple attackers**: always the same clients, attacking every round, the number of attackers
   given to Krum and Bulyan. No attacker adapts to the defense, changes over time, poisons its labels
-  or plants a backdoor; the client-side ALIE estimates the honest updates from 2 colluders only.
+  or plants a backdoor; the client-side ALIE estimates the honest updates from 2 colluders only (5 at 20 clients).
 - **Few repetitions**: 3 seeds; differences under about 1 point mean nothing, even paired (see
   [Testing them](#testing-them-the-byzantine-client)).
 
@@ -681,7 +717,7 @@ Every limit above is a key of the campaign file ([campaigns.md](campaigns.md)):
 
 | to test | change | cost |
 |---|---|---|
-| more participants | `clients: 20`, the attackers in `client_overrides` (e.g. 5 of them), `num_clients: 20` and `colluders: 5` for the client-side ALIE | memory and time grow with the clients; here, 7 clients took about 1 min per run: on a larger machine, or with `server_data.test.max_samples` lowered and a smaller model (`configs/mnist_cnn/`) |
+| more participants | `clients: 20`, the attackers in `client_overrides` (e.g. 5 of them), `num_clients: 20` and `colluders: 5` for the client-side ALIE | memory and time grow with the clients; here, 7 clients took about 1 min per run, 20 clients about 1.2 GB each and 2.5 min per run of 10 rounds (`cifar10_alie_20clients.yml`): on a larger machine, or with `server_data.test.max_samples` lowered and a smaller model (`configs/mnist_cnn/`) |
 | the ALIE paper's setting, closer | client-side `attack: alie` (not omniscient), about 24 % of colluders (5 of 20), `z: 1.0` | as above; the attack still targets federated updates, not gradients |
 | converged models | `rounds: 20` or more | proportional to the rounds |
 | more repetitions | `seeds: [1, 2, 3, 4, 5]`; `seed_partitions: true` to draw the shares again with each seed | proportional to the seeds |

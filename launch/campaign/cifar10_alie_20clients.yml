@@ -1,0 +1,170 @@
+# Campaign of launch/campaign/strategy_campaign.py: ALIE ("A Little Is Enough", Baruch et al., 2019)
+# at the paper's proportion of attackers, 5 of 20 clients (12 of 51 there), and its z 1. At 2 of 7
+# (cifar10_alie_dirichlet.yml) the client-side colluders estimated the honest distribution from their
+# own 2 updates and did no measurable harm: do 5 colluders estimate it well enough? Each defense is
+# set for 5 attackers (Bulyan f 4: it needs 4 f + 3 clients), and run without attacker, against the
+# client-side colluders (byzantine client, attack alie, shared directory) and against the omniscient
+# attacker at the same z (omniscientalie decorator, the worst case). Each attacked variant is compared
+# to the same defense without attacker, seed by seed.
+#   uv run python launch/campaign/strategy_campaign.py launch/campaign/cifar10_alie_20clients.yml
+# Dirichlet 0.5 shares, 20 clients, 3 local epochs, 10 rounds. 54 runs, about 2 h 30 (2.5 min per
+# run). About 1.2 GB of memory per client: 20 clients fill 24 GB and a few GB of swap; run it alone,
+# never next to a live session or a browser.
+# Status: our own measurement, not a reproduction (docs/robust-aggregation.md, Limits).
+
+server_config: configs/cifar10_cnn/distributed/without_ssl/server.yml
+client_config: configs/cifar10_cnn/distributed/without_ssl/client_1.yml
+output: experiments/campaigns
+plugin_manifests: [launch/campaign/test-plugins-conf.yml]
+
+clients: 20
+rounds: 10
+local_epochs: 3
+port: 3399                 # the Flower server of each run: must be free
+threads_per_client: auto   # physical cores / clients
+timeout: 3600              # seconds per run
+seeds: [1, 2, 3]           # every variant once per seed, then mean ± std
+
+client_data:
+  train:
+    partition:
+      scheme: dirichlet
+      alpha: 0.5
+      seed: 42
+  val:
+    source: holdout
+    fraction: 0.1
+
+server_data:
+  test:
+    max_samples: 2000
+
+variants:
+  - label: FedAvg, no attacker
+    strategy: {name: fedavg, config: {}}
+  - label: FedAvg, 5 ALIE colluders z 1
+    reference: FedAvg, no attacker
+    strategy: {name: fedavg, config: {}}
+    client_overrides:
+      0: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: alie, colluders: 5, z: 1.0, shared_dir: "{work}/alie"}}}}
+      1: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: alie, colluders: 5, z: 1.0, shared_dir: "{work}/alie"}}}}
+      2: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: alie, colluders: 5, z: 1.0, shared_dir: "{work}/alie"}}}}
+      3: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: alie, colluders: 5, z: 1.0, shared_dir: "{work}/alie"}}}}
+      4: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: alie, colluders: 5, z: 1.0, shared_dir: "{work}/alie"}}}}
+  - label: FedAvg, omniscient ALIE z 1
+    reference: FedAvg, no attacker
+    strategy: {name: fedavg, config: {}}
+    pipeline: [{name: omniscientalie, config: {z: 1.0}}]
+    client_overrides:
+      0: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: none}}}}
+      1: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: none}}}}
+      2: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: none}}}}
+      3: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: none}}}}
+      4: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: none}}}}
+  - label: FedMedian, no attacker
+    strategy: {name: fedmedian, config: {}}
+  - label: FedMedian, 5 ALIE colluders z 1
+    reference: FedMedian, no attacker
+    strategy: {name: fedmedian, config: {}}
+    client_overrides:
+      0: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: alie, colluders: 5, z: 1.0, shared_dir: "{work}/alie"}}}}
+      1: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: alie, colluders: 5, z: 1.0, shared_dir: "{work}/alie"}}}}
+      2: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: alie, colluders: 5, z: 1.0, shared_dir: "{work}/alie"}}}}
+      3: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: alie, colluders: 5, z: 1.0, shared_dir: "{work}/alie"}}}}
+      4: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: alie, colluders: 5, z: 1.0, shared_dir: "{work}/alie"}}}}
+  - label: FedMedian, omniscient ALIE z 1
+    reference: FedMedian, no attacker
+    strategy: {name: fedmedian, config: {}}
+    pipeline: [{name: omniscientalie, config: {z: 1.0}}]
+    client_overrides:
+      0: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: none}}}}
+      1: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: none}}}}
+      2: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: none}}}}
+      3: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: none}}}}
+      4: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: none}}}}
+  - label: FedTrimmedAvg beta 0.25, no attacker
+    strategy: {name: fedtrimmedavg, config: {beta: 0.25}}
+  - label: FedTrimmedAvg beta 0.25, 5 ALIE colluders z 1
+    reference: FedTrimmedAvg beta 0.25, no attacker
+    strategy: {name: fedtrimmedavg, config: {beta: 0.25}}
+    client_overrides:
+      0: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: alie, colluders: 5, z: 1.0, shared_dir: "{work}/alie"}}}}
+      1: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: alie, colluders: 5, z: 1.0, shared_dir: "{work}/alie"}}}}
+      2: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: alie, colluders: 5, z: 1.0, shared_dir: "{work}/alie"}}}}
+      3: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: alie, colluders: 5, z: 1.0, shared_dir: "{work}/alie"}}}}
+      4: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: alie, colluders: 5, z: 1.0, shared_dir: "{work}/alie"}}}}
+  - label: FedTrimmedAvg beta 0.25, omniscient ALIE z 1
+    reference: FedTrimmedAvg beta 0.25, no attacker
+    strategy: {name: fedtrimmedavg, config: {beta: 0.25}}
+    pipeline: [{name: omniscientalie, config: {z: 1.0}}]
+    client_overrides:
+      0: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: none}}}}
+      1: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: none}}}}
+      2: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: none}}}}
+      3: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: none}}}}
+      4: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: none}}}}
+  - label: Krum f 5, no attacker
+    strategy: {name: krum, config: {num_malicious_clients: 5}}
+  - label: Krum f 5, 5 ALIE colluders z 1
+    reference: Krum f 5, no attacker
+    strategy: {name: krum, config: {num_malicious_clients: 5}}
+    client_overrides:
+      0: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: alie, colluders: 5, z: 1.0, shared_dir: "{work}/alie"}}}}
+      1: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: alie, colluders: 5, z: 1.0, shared_dir: "{work}/alie"}}}}
+      2: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: alie, colluders: 5, z: 1.0, shared_dir: "{work}/alie"}}}}
+      3: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: alie, colluders: 5, z: 1.0, shared_dir: "{work}/alie"}}}}
+      4: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: alie, colluders: 5, z: 1.0, shared_dir: "{work}/alie"}}}}
+  - label: Krum f 5, omniscient ALIE z 1
+    reference: Krum f 5, no attacker
+    strategy: {name: krum, config: {num_malicious_clients: 5}}
+    pipeline: [{name: omniscientalie, config: {z: 1.0}}]
+    client_overrides:
+      0: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: none}}}}
+      1: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: none}}}}
+      2: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: none}}}}
+      3: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: none}}}}
+      4: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: none}}}}
+  - label: Bulyan f 4, no attacker
+    strategy: {name: bulyan, config: {num_malicious_clients: 4}}
+  - label: Bulyan f 4, 5 ALIE colluders z 1
+    reference: Bulyan f 4, no attacker
+    strategy: {name: bulyan, config: {num_malicious_clients: 4}}
+    client_overrides:
+      0: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: alie, colluders: 5, z: 1.0, shared_dir: "{work}/alie"}}}}
+      1: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: alie, colluders: 5, z: 1.0, shared_dir: "{work}/alie"}}}}
+      2: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: alie, colluders: 5, z: 1.0, shared_dir: "{work}/alie"}}}}
+      3: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: alie, colluders: 5, z: 1.0, shared_dir: "{work}/alie"}}}}
+      4: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: alie, colluders: 5, z: 1.0, shared_dir: "{work}/alie"}}}}
+  - label: Bulyan f 4, omniscient ALIE z 1
+    reference: Bulyan f 4, no attacker
+    strategy: {name: bulyan, config: {num_malicious_clients: 4}}
+    pipeline: [{name: omniscientalie, config: {z: 1.0}}]
+    client_overrides:
+      0: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: none}}}}
+      1: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: none}}}}
+      2: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: none}}}}
+      3: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: none}}}}
+      4: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: none}}}}
+  - label: clipping x1.5 reject x1.7, no attacker
+    strategy: {name: fedavg, config: {}}
+    pipeline: [{name: clipping, config: {mode: median, median_factor: 1.5, reject_factor: 1.7}}]
+  - label: clipping x1.5 reject x1.7, 5 ALIE colluders z 1
+    reference: clipping x1.5 reject x1.7, no attacker
+    strategy: {name: fedavg, config: {}}
+    pipeline: [{name: clipping, config: {mode: median, median_factor: 1.5, reject_factor: 1.7}}]
+    client_overrides:
+      0: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: alie, colluders: 5, z: 1.0, shared_dir: "{work}/alie"}}}}
+      1: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: alie, colluders: 5, z: 1.0, shared_dir: "{work}/alie"}}}}
+      2: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: alie, colluders: 5, z: 1.0, shared_dir: "{work}/alie"}}}}
+      3: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: alie, colluders: 5, z: 1.0, shared_dir: "{work}/alie"}}}}
+      4: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: alie, colluders: 5, z: 1.0, shared_dir: "{work}/alie"}}}}
+  - label: clipping x1.5 reject x1.7, omniscient ALIE z 1
+    reference: clipping x1.5 reject x1.7, no attacker
+    strategy: {name: fedavg, config: {}}
+    pipeline: [{name: clipping, config: {mode: median, median_factor: 1.5, reject_factor: 1.7}}, {name: omniscientalie, config: {z: 1.0}}]
+    client_overrides:
+      0: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: none}}}}
+      1: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: none}}}}
+      2: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: none}}}}
+      3: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: none}}}}
+      4: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: none}}}}
