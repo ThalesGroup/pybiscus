@@ -4,7 +4,7 @@ from typing import ClassVar, Literal, Optional
 import flwr as fl
 import numpy as np
 from flwr.common import ndarrays_to_parameters, parameters_to_ndarrays
-from flwr.common.differential_privacy import (
+from flwr.supercore.differential_privacy import (
     adaptive_clip_inputs_inplace, add_gaussian_noise_to_params, get_norm,
 )
 from flwr.server.strategy import (

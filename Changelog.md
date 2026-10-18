@@ -1,5 +1,21 @@
 # Changelog
 
+## [Version 0.12.0]
+
+Since `version0.11.0` (2026-10-18): Flower 1.40, and the dependencies with known vulnerabilities
+updated; no change of behavior.
+
+### Dependencies
+
+* Flower 1.27.0 → 1.40.0 (`flwr>=1.40.0`): its DP functions moved to
+  `flwr.supercore.differential_privacy`, which the `serverdp` plugin now imports; Pybiscus stays on
+  Flower's legacy API (`start_server`, `start_client`), unchanged in 1.40.
+* Known vulnerabilities fixed: `cryptography` 46.0.7 → 50.0.2 (no longer capped by Flower:
+  GHSA-537c-gmf6-5ccf and three others), `fsspec` 2026.2.0 → 2026.9.0 (GHSA-27vj-qcqg-25rc, high:
+  code execution through `ReferenceFileSystem` templates), `mako` 1.4.1 → 1.4.3
+  (GHSA-5639-2j2p-m4mx), `multidict` 6.7.1 → 6.9.1 (GHSA-54p9-h82j-f925), `werkzeug` 3.1.6 →
+  3.1.9 (GHSA-g6x2-hccm-hh4m); `pip-audit` finds none left in `uv.lock`.
+
 ## [Version 0.11.0]
 
 Since `version0.10.0` (2026-10-17): two more defenses against malicious clients, FLTrust (trusted

@@ -1,6 +1,6 @@
 [project]
 name = "pybiscus"
-version = "0.11.0"
+version = "0.12.0"
 description = "A flexible Federated Learning framework"
 readme = "README.md"
 requires-python = ">=3.12"
@@ -12,7 +12,7 @@ dependencies = [
     "einops>=0.8.0",
     "flask-cors>=5.0.1",
     "flask>=3.1.0",
-    "flwr>=1.7.0,<2",
+    "flwr>=1.40.0,<2",
     "lightning[pytorch-extra]>=2.4.0",
     "pandas>=2.2.3",
     "pydantic>=2.10.4",
