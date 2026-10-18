@@ -20,6 +20,9 @@
   `PYBISCUS_CHECK_ERRORS_FILE`, set by the agent.
 * Section menu: after a check, each section shows the number of its errors or a ✓; the mark goes when
   the section is changed.
+* A check, a save or a pin run during the 600 ms switch between two options of a union read the
+  whole union as missing (`data: Field required`): the chosen option is now recorded at the click,
+  only its display waits.
 
 ### Robustness tests
 

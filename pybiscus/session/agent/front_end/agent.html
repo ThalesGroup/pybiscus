@@ -89,6 +89,12 @@
                     }
                 });
 
+                // the choice is recorded at once, only its display waits for the switch: no tab
+                // was valid during the 600 ms, and a check then read the whole union as missing
+                button.classList.add('active');
+                button.setAttribute('data-pybiscus-status', 'valid');
+                target.setAttribute('data-pybiscus-status', 'valid');
+
                 container._pybiscusSwitch = setTimeout(() => {
                     container._pybiscusSwitch = undefined;
 
@@ -99,11 +105,6 @@
                         }
                     });
 
-                    // activate the clicked tab and its associated content
-                    button.classList.add('active');
-                    button.setAttribute('data-pybiscus-status', 'valid');
-
-                    target.setAttribute('data-pybiscus-status', 'valid');
                     target.classList.add('active');
                     target.classList.add('hidden');
 

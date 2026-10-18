@@ -63,8 +63,7 @@ window.pybiscusLargeUnions = (() => {
             }
             family.members.push(labels[i]);
         });
-        // the page activates a clicked tab only after its 600 ms switch: remember the request
-        // so that the representation shows the choice at once
+        // a request whose tab is not active yet (its click still to come) is shown at once
         let requested = null;
         const selectedIndex = () => {
             if (requested !== null && !buttons[requested].classList.contains("active")) {
