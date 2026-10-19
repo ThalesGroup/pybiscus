@@ -1,6 +1,18 @@
 # Changelog
 
-## Unreleased
+## [Version 0.13.0]
+
+Since `version0.12.0` (2026-10-18): the GUI reworked — one dark theme (with a light one) shared by
+the manager and the agents' pages; configuration forms with a section menu, readable labels,
+descriptions shown, the check's errors under their fields, compact lists and the server's pipeline
+drawn as chains; the run's progress on the agent, the session's state, metrics table and curves in
+the manager —; ALIE measured at the paper's proportion of attackers; screenshots of the docs taken
+again.
+
+### Dependencies
+
+* Known vulnerabilities fixed: `aiohttp` 3.14.3 → 3.14.5 (GHSA-2g87-pp6c-29x5, CVE-2026-111063,
+  CVE-2026-111064; `yarl` 1.23.0 → 1.25.1 with it); `pip-audit` finds none left in `uv.lock`.
 
 ### Agent pages
 
