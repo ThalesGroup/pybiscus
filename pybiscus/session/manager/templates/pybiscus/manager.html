@@ -100,7 +100,8 @@
 
   .panel{border:1px solid var(--border); border-radius:var(--r); background:var(--panel);
     display:flex; flex-direction:column; min-height:0; overflow:hidden}
-  .panel>header{display:flex; align-items:center; gap:10px; padding:9px 13px; border-bottom:1px solid var(--border); background:var(--panel-2)}
+  /* wraps when narrow: the loss panel's tabs, legend and options cut its last buttons off */
+  .panel>header{display:flex; flex-wrap:wrap; row-gap:6px; align-items:center; gap:10px; padding:9px 13px; border-bottom:1px solid var(--border); background:var(--panel-2)}
   .panel>header .eyebrow{flex:1}
   .panel .body{padding:12px; flex:1; min-height:0; display:flex; flex-direction:column}
   .chip{font-size:10px; padding:1px 7px; border-radius:999px; border:1px solid var(--border); color:var(--muted)}
@@ -321,6 +322,8 @@
             <span class="it"><span class="sw" style="background:var(--eval)"></span>Eval <span class="v num" id="loss-eval">—</span></span>
           </span>
           <span class="acc-tools" id="loss-tools">
+            <button class="tool" id="loss-r0-btn" title="round 0: the server's test of the model before any training, whose loss sets the scale">r0</button>
+            <button class="tool" id="loss-log-btn" title="logarithmic scale">log</button>
             <button class="tool" id="loss-clients-btn" title="each client's loss around the average: a point per client, the band from the lowest to the highest">clients</button>
             <span id="loss-clients-phase" class="clients-phase" hidden><button class="tool" data-phase="fit">fit</button><button class="tool" data-phase="evaluate">evaluate</button></span>
           </span>
@@ -666,8 +669,24 @@
   const CLIENT_POINTS_MAX = 12;     // past it, the quartiles and the hovered round's points only: 40 clients made a bar of points per round
   const TIP_ENDS = 5;               // past 2 × TIP_ENDS + 1 values, the tooltip lists the highest and lowest only
   const quantile = (sorted, p) => { const i = (sorted.length - 1) * p, k = Math.floor(i); return sorted[k] + (sorted[Math.min(k + 1, sorted.length - 1)] - sorted[k]) * (i - k); };
-  function phaseChart({svg, tip, button, phaseBox, storeKey, series, metric}){
+  // round0Button: the server's test before any training (round 0), hidden by default: its loss set
+  // the scale and flattened the rounds after it; scaleButton: linear (default) or logarithmic
+  function phaseChart({svg, tip, button, phaseBox, storeKey, series, metric, round0Button = null, scaleButton = null}){
     let phase = null, view = null, mouseX = null;
+    const stored = (suffix, fallback) => { try { return localStorage.getItem(`${storeKey}:${suffix}`) ?? fallback; } catch(e) { return fallback; } };
+    let showRound0 = !round0Button || stored('round0', 'hidden') === 'shown';
+    let logScale = !!scaleButton && stored('scale', 'linear') === 'log';
+    function option(btn, suffix, get, set, values){
+      if(!btn) return;
+      btn.classList.toggle('active', get());
+      btn.onclick = () => {
+        set(!get()); btn.classList.toggle('active', get());
+        try { localStorage.setItem(`${storeKey}:${suffix}`, values[get() ? 1 : 0]); } catch(e) { /* not kept */ }
+        render();
+      };
+    }
+    option(round0Button, 'round0', () => showRound0, v => { showRound0 = v; }, ['hidden', 'shown']);
+    option(scaleButton, 'scale', () => logScale, v => { logScale = v; }, ['linear', 'log']);
     // out of its panel, which clips what overflows it: the clients of a round may outgrow the chart
     document.body.appendChild(tip);
     try { phase = ['fit', 'evaluate'].includes(localStorage.getItem(storeKey)) ? localStorage.getItem(storeKey) : null; } catch(e) { /* off */ }
@@ -692,8 +711,9 @@
       const avg = series(), name = metric();
       const lines = {fit: avg.fit, test: avg.test, eval: avg.evaluate};
       const colors = {fit: tok('--fit'), test: tok('--test'), eval: tok('--eval')};
-      const allRounds = Object.values(lines).flatMap(o => Object.keys(o).map(Number));
-      const rmax = allRounds.length ? Math.max(...allRounds) : 1, rmin = Math.max(allRounds.length ? Math.min(...allRounds) : 0, rmax - CHART_ROUNDS + 1);
+      const first = showRound0 ? 0 : 1;
+      const allRounds = Object.values(lines).flatMap(o => Object.keys(o).map(Number)).filter(r => r >= first);
+      const rmax = allRounds.length ? Math.max(...allRounds) : 1, rmin = Math.max(allRounds.length ? Math.min(...allRounds) : first, rmax - CHART_ROUNDS + 1);
       const inView = o => Object.entries(o).map(([r, v]) => [Number(r), v]).filter(([r]) => r >= rmin).sort((a, b) => a[0] - b[0]);
       const points = Object.fromEntries(Object.entries(lines).map(([k, o]) => [k, inView(o)]));
       // the clients of the chosen phase: round -> [[id, value]]
@@ -701,14 +721,22 @@
       const clients = Object.entries(byRound).map(([r, ids]) => [Number(r), Object.entries(ids)]).filter(([r]) => r >= rmin && r <= rmax).sort((a, b) => a[0] - b[0]);
       // 0 -> 1 for a rate (accuracy, f1…); otherwise (a loss…) the range of the values
       const all = Object.values(points).flatMap(p => p.map(([, v]) => v)).concat(clients.flatMap(([, ids]) => ids.map(([, v]) => v)));
-      const unit = all.every(v => v >= 0 && v <= 1);
+      const unit = !logScale && all.every(v => v >= 0 && v <= 1);
       const vmin = all.length ? Math.min(...all) : 0, vmax = all.length ? Math.max(...all) : 1, span = (vmax - vmin) || 1;
       const [W, H] = chartSize(svg, 600, 200);
-      const padL=30,padR=8,padT=10,padB=16, lo=unit?0:Math.max(0,vmin-span*0.1), hi=unit?1:vmax+span*0.1;
-      const x = r => padL + (W-padL-padR) * (rmax > rmin ? (r - rmin) / (rmax - rmin) : 0), y = v => padT + (H-padT-padB) * (1 - (v-lo)/(hi-lo));
+      const padL=30,padR=8,padT=10,padB=16;
+      // logarithmic: the decimal logarithm is drawn linearly, a value ≤ 0 at the bottom
+      const positive = all.filter(v => v > 0), lmin = positive.length ? Math.log10(Math.min(...positive)) : -1, lmax = positive.length ? Math.log10(Math.max(...positive)) : 0;
+      const lspan = (lmax - lmin) || 1;
+      const lo = logScale ? lmin - lspan*0.1 : (unit ? 0 : Math.max(0, vmin-span*0.1)), hi = logScale ? lmax + lspan*0.1 : (unit ? 1 : vmax+span*0.1);
+      const scaled = v => logScale ? Math.log10(Math.max(v, 10 ** lo)) : v;
+      const x = r => padL + (W-padL-padR) * (rmax > rmin ? (r - rmin) / (rmax - rmin) : 0), y = v => padT + (H-padT-padB) * (1 - (scaled(v)-lo)/(hi-lo));
       view = {rmin, rmax, x, lines, name, clients: Object.fromEntries(clients)};
       let s='';
-      for(let g=0;g<=5;g++){const v=lo+(hi-lo)*g/5; s+=`<line class="grid-l" x1="${padL}" y1="${y(v)}" x2="${W-padR}" y2="${y(v)}"/><text class="axis" x="3" y="${y(v)+3}">${v.toFixed(unit?1:2)}</text>`;}
+      for(let g=0;g<=5;g++){
+        const t = lo+(hi-lo)*g/5, v = logScale ? 10 ** t : t, label = logScale ? Number(v.toPrecision(2)).toString() : v.toFixed(unit?1:2);
+        s+=`<line class="grid-l" x1="${padL}" y1="${y(v)}" x2="${W-padR}" y2="${y(v)}"/><text class="axis" x="3" y="${y(v)+3}">${label}</text>`;
+      }
       for(let r=rmin;r<=rmax;r++) s+=`<line class="round-l" x1="${x(r)}" y1="${padT}" x2="${x(r)}" y2="${H-padB}"/>`;   // marques de round
       if(clients.length){
         const colour = phase === 'fit' ? colors.fit : colors.eval;
@@ -801,7 +829,8 @@
   };
   charts.loss = phaseChart({svg: document.getElementById('lossCurves'), tip: document.getElementById('loss-tip'),
     button: document.getElementById('loss-clients-btn'), phaseBox: document.getElementById('loss-clients-phase'),
-    storeKey: `pybiscus-manager-loss-clients:${location.host}`, series: () => lossSeries, metric: () => 'loss'});
+    storeKey: `pybiscus-manager-loss-clients:${location.host}`, series: () => lossSeries, metric: () => 'loss',
+    round0Button: document.getElementById('loss-r0-btn'), scaleButton: document.getElementById('loss-log-btn')});
   function renderLossCurves(){
     charts.loss.render();
     const latest = o => { const r = Object.keys(o).map(Number); return r.length ? o[Math.max(...r)] : null; };

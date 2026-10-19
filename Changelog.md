@@ -72,7 +72,10 @@
 * Manager: the loss per round in the middle panel's *loss* tab, as the main metric: fit and evaluate
   averages, the server's test, each client's loss with *clients*; the former chart, the change of
   the evaluation loss, under *diff*; *cycles* and *constraints* shown in a hierarchical session
-  only. The server logs the loss of each phase in a line of its own (`round_loss`). Each value is placed by its round: the server's fit
+  only. The server logs the loss of each phase in a line of its own (`round_loss`). The loss of round 0
+  (the untrained model's test, which flattened the later rounds) hidden by default, shown with *r0*;
+  a logarithmic scale with *log*. A panel's header wraps when narrow (the loss panel's last buttons
+  were cut off). Each value is placed by its round: the server's fit
   and evaluate averages now log theirs (`round=-` before), and past 40 rounds the training and
   evaluation curves were drawn one round off the test's.
 * Config forms: an optional field's checkbox replaced by *unset | set*, unset showing the field's
