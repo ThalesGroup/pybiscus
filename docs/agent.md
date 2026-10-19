@@ -56,6 +56,9 @@ evaluating on the clients); on a client, the round and its phase (a client is no
 of rounds). Next to it, the last value of the main metric of each phase and the last round's
 duration. The log shows all its lines, the rounds' events only, or the warnings and errors.
 
+The registration, waiting and run monitor pages are dark by default; their 🌓 button switches to
+light, kept by the browser for this agent (the configuration form keeps its own ⚙ themes for now).
+
 ![Run monitor](images/agent_run_monitor.png "Run monitor")
 
 The agent listens on 127.0.0.1 by default; see [Access tokens](sessionmanager.md#access-tokens)

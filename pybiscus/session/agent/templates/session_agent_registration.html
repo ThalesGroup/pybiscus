@@ -5,26 +5,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Pybiscus Agent Registration</title>
     <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}" type="image/x-icon">
+    {{ pybiscus_theme_head() | safe }}
     <style>
-        :root {
-            --bg: #0e1116;
-            --panel: #151a21;
-            --panel-2: #1b222b;
-            --line: #232c37;
-            --text: #e6edf3;
-            --muted: #8b96a3;
-            --faint: #5d6772;
-            --accent: #4ecdc4;
-            --accent-ink: #062521;
-            --warn: #f0a04b;
-            --error: #ff8a86;
-            --mono: ui-monospace, 'JetBrains Mono', 'SFMono-Regular', Menlo, Consolas, monospace;
-        }
+        :root { --line: var(--border); --faint: var(--dim); --accent-ink: var(--on-ok);
+                --error: var(--danger-text); }
 
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
         body {
-            font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+            font-family: var(--sans);
             background: var(--bg);
             color: var(--text);
             min-height: 100vh;
@@ -36,6 +25,8 @@
         .container { width: 100%; max-width: 640px; }
 
         .header { margin-bottom: 1.5rem; }
+        .top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.35rem; }
+        .top .kicker { margin-bottom: 0; }
 
         .kicker {
             font-family: var(--mono);
@@ -74,7 +65,7 @@
         label {
             display: block;
             margin-bottom: 0.35rem;
-            color: #cdd6e0;
+            color: var(--text-soft);
             font-size: 0.875rem;
             font-weight: 500;
         }
@@ -93,7 +84,7 @@
         input::placeholder { color: var(--faint); }
 
         input:focus, select:focus, button:focus-visible {
-            outline: 2px solid var(--accent);
+            outline: 2px solid var(--ok);
             outline-offset: 1px;
         }
 
@@ -107,13 +98,13 @@
             border: 1px solid var(--line);
             border-radius: 6px;
             background: var(--panel-2);
-            color: #b7c2ce;
+            color: var(--label);
             font: inherit;
             font-size: 0.875rem;
             cursor: pointer;
         }
 
-        .toggle-btn.active { border-color: var(--accent); color: var(--text); background: #10302d; }
+        .toggle-btn.active { border-color: var(--ok); color: var(--text); background: var(--ok-tint); }
 
         .coordinates-group { display: none; grid-template-columns: 1fr 1fr; gap: 1rem; }
         .coordinates-group.active { display: grid; }
@@ -124,9 +115,9 @@
             min-height: 3rem;
             padding: 0 2rem;
             margin-top: 0.4rem;
-            background: var(--accent);
+            background: var(--ok);
             color: var(--accent-ink);
-            border: 1px solid var(--accent);
+            border: 1px solid var(--ok);
             border-radius: 6px;
             font: inherit;
             font-size: 1rem;
@@ -144,7 +135,7 @@
             display: none;
             width: 18px;
             height: 18px;
-            border: 2px solid rgba(6, 37, 33, 0.3);
+            border: 2px solid color-mix(in srgb, var(--accent-ink) 30%, transparent);
             border-top-color: var(--accent-ink);
             border-radius: 50%;
             animation: spin 1s linear infinite;
@@ -163,8 +154,8 @@
             display: none;
         }
 
-        .result.success { background: #0f2a17; border: 1px solid #238636; color: #7ee2a8; }
-        .result.error { background: #2d1416; border: 1px solid #8e2b2b; color: var(--error); }
+        .result.success { background: var(--done-bg); border: 1px solid var(--done-line); color: var(--done-text); }
+        .result.error { background: var(--err-bg); border: 1px solid var(--danger-border); color: var(--error); }
 
         .result-icon { display: inline-block; margin-right: 0.5rem; }
 
@@ -176,7 +167,7 @@
 <body>
     <div class="container">
         <div class="header">
-            <div class="kicker">PYBISCUS · AGENT</div>
+            <div class="top"><div class="kicker">PYBISCUS · AGENT</div><button type="button" class="pybiscus-theme-toggle" title="dark / light theme">🌓</button></div>
             <h1>Join a session</h1>
             <p class="subtitle">Give the manager's address and its session token, then describe this agent.</p>
         </div>

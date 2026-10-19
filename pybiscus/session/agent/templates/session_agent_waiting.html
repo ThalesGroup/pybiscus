@@ -5,21 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Pybiscus - Connecting</title>
     <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}" type="image/x-icon">
+    {{ pybiscus_theme_head() | safe }}
     <style>
-        :root {
-            --bg: #0e1116;
-            --panel: #151a21;
-            --line: #232c37;
-            --text: #e6edf3;
-            --muted: #8b96a3;
-            --accent: #4ecdc4;
-            --mono: ui-monospace, 'JetBrains Mono', 'SFMono-Regular', Menlo, Consolas, monospace;
-        }
+        :root { --line: var(--border); }
 
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
         body {
-            font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+            font-family: var(--sans);
             background: var(--bg);
             color: var(--text);
             min-height: 100vh;
@@ -37,6 +30,9 @@
             border-radius: 8px;
             padding: 2rem;
         }
+
+        .top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.5rem; }
+        .top .kicker { margin-bottom: 0; }
 
         .kicker {
             font-family: var(--mono);
@@ -62,7 +58,7 @@
             width: 7px;
             height: 7px;
             border-radius: 50%;
-            background: var(--accent);
+            background: var(--ok);
             animation: blink 1.4s ease-in-out infinite;
         }
 
@@ -83,7 +79,7 @@
 </head>
 <body>
     <div class="container" role="status">
-        <div class="kicker">PYBISCUS · AGENT</div>
+        <div class="top"><div class="kicker">PYBISCUS · AGENT</div><button type="button" class="pybiscus-theme-toggle" title="dark / light theme">🌓</button></div>
         <h1>{{state}}</h1>
 
         <div class="status-indicator">

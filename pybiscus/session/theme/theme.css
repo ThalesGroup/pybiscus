@@ -11,6 +11,9 @@
   --danger-border: #8e2b2b; --danger-text: #ff8a86; --danger-hover: #d9534f;
   --warn-bg: rgba(255,180,84,.14); --ok-glow: rgba(78,205,196,.5);
   --map-bg-1: #12202a; --map-bg-2: #0c1116; --map-link: #2b3947;
+  --done-bg: #0f2a17; --done-line: #238636; --done-text: #7ee2a8; --err-bg: #2d1416;
+  --stopped-bg: #2b2111; --stopped-line: #7d5a14; --stopped-text: #e3b341;
+  --on-ok: #062521; --ok-tint: #10302d; --console: #0b0f14; --panel-sunk: #11161d;
   --overlay: rgba(6,9,13,.72); --label-bg: rgba(10,14,20,.55); --shadow: rgba(0,0,0,.8);
   --mono: ui-monospace, "JetBrains Mono", "SF Mono", Menlo, Consolas, monospace;
   --sans: system-ui, -apple-system, "Segoe UI", sans-serif;
@@ -27,6 +30,9 @@
   --danger-border: #e8a3a3; --danger-text: #b42318; --danger-hover: #cf222e;
   --warn-bg: rgba(154,103,0,.10); --ok-glow: rgba(14,138,130,.35);
   --map-bg-1: #eef3f7; --map-bg-2: #dfe7ee; --map-link: #b6c3cf;
+  --done-bg: #dafbe1; --done-line: #4ac26b; --done-text: #116329; --err-bg: #ffebe9;
+  --stopped-bg: #fff8c5; --stopped-line: #d4a72c; --stopped-text: #7d4e00;
+  --on-ok: #ffffff; --ok-tint: #d8f3f1; --console: #f6f8fa; --panel-sunk: #f8fafb;
   --overlay: rgba(31,35,40,.45); --label-bg: rgba(255,255,255,.75); --shadow: rgba(31,35,40,.25);
 }
 .pybiscus-theme-toggle {
