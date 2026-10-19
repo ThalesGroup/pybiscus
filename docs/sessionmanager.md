@@ -110,7 +110,12 @@ Every agent's page then switches to its run monitor (state, live log, stop butto
 ### 7. Follow the session
 
 The manager shows, live:
-- the topology (each agent's state, a 🏁 once its run has finished) and the map of the sites;
+- in its top bar, the session's state: waiting (for agents), not ready, ready (to be configured),
+  running, stopping, finished, stopped, failed (an agent failed or was given an invalid
+  configuration); its tooltip gives the details;
+- the topology, a table of the agents: role, name, site, state (registered, checking, checked,
+  running, finished, failed, stopped, invalid config), and for the server the round and the last
+  test value of the main metric; the map of the sites;
 - the accuracy per round (clients' training, server's test, clients' evaluation) and the loss;
 - the vignettes of the model's layers per round (from the `VisualizeModelLayers` decorator of the
   server's pipeline);

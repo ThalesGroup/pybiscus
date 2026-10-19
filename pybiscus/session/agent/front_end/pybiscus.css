@@ -1851,9 +1851,19 @@ legend .pybiscus-key {
     margin-left: 0.5em;
 }
 
-/* a field's label is an inline-flex row: the key went beside the text and squeezed it word by word */
+/* a field's label is an inline-flex row: the key went beside the text and squeezed it word by word;
+   in a column, a locked label's lock took a third line */
 .pybiscus-field > label.pybiscus-config:has(> .pybiscus-key) {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 1px;
+    display: inline-grid;
+    grid-template-columns: auto auto;
+    justify-content: start;
+    align-items: center;
+    column-gap: 0.3em;
+    row-gap: 1px;
+}
+
+/* the key under the text; the lock (::after of a locked label) stays on the text's line */
+.pybiscus-field > label.pybiscus-config > .pybiscus-key {
+    grid-column: 1 / -1;
+    grid-row: 2;
 }

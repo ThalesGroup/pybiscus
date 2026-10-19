@@ -29,6 +29,11 @@
   warnings and errors. New `gui_events` lines: `round_start` (server), `client_phase` and
   `client_metric` (client, kept out of the manager's charts). A run launched by the agent gets a
   200-column console: at 80, Rich cut those lines in two.
+* Manager: the session's state in the top bar (waiting, ready, running, finished, stopped, failed…)
+  in place of a "live" mark that went on blinking once the page had stopped reading; Drop session in
+  red; the topology as a table of the agents (site, state in words and colour, the server's round
+  and last test value).
+* Config forms: a locked field's lock back on its label's line (it took a third line under the key).
 * A check, a save or a pin run during the 600 ms switch between two options of a union read the
   whole union as missing (`data: Field required`): the chosen option is now recorded at the click,
   only its display waits.

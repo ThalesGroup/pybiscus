@@ -44,7 +44,20 @@
   a.btn{text-decoration:none}
     font-family:var(--mono); font-size:11px; letter-spacing:.12em; text-transform:uppercase; background:var(--panel-2)}
   .btn:hover{border-color:var(--accent); color:var(--accent)}
+  /* the one destructive action of the page */
+  .btn.danger{border-color:#8e2b2b; color:#ff8a86}
   .btn.danger:hover{border-color:#d9534f; color:#ff6b66}
+  /* the session's state (renderSessionState), in place of a "live" mark that went on blinking once
+     the page had stopped reading */
+  .session-state{display:flex; align-items:center; gap:7px; font-size:11px; letter-spacing:.16em; text-transform:uppercase;
+    color:var(--muted); white-space:nowrap}
+  .session-state .dot{width:8px; height:8px; border-radius:50%; background:currentColor}
+  .session-state[data-state="ready"]{color:#79c0ff}
+  .session-state[data-state="running"]{color:var(--test)}
+  .session-state[data-state="running"] .dot{animation:pulse 1.8s ease-out infinite}
+  .session-state[data-state="finished"]{color:#3fb950}
+  .session-state[data-state="stopped"]{color:#d29922}
+  .session-state[data-state="failed"]{color:#ff6b66}
   .btn:disabled{opacity:.4; cursor:not-allowed} .btn:disabled:hover{border-color:var(--border); color:var(--text)}
 
   /* grid : ligne haute (1fr), splitter (8px), feeds (hauteur ajustable) */
@@ -55,6 +68,8 @@
   .col-left{grid-column:1; grid-row:1; display:grid; grid-template-rows:auto 1fr; gap:12px; min-height:0}
   .col-mid{grid-column:3; grid-row:1; display:grid; grid-template-rows:1.4fr 1fr; gap:12px; min-height:0}
   .col-right{grid-column:5; grid-row:1; min-height:0}
+  /* the agents' table must not widen its column, and the page with it, past the screen */
+  .col-left, .col-mid, .col-right{min-width:0}
   .vsplit{grid-row:1; cursor:col-resize; background:var(--border); border-radius:6px; display:flex; align-items:center; justify-content:center}
   .vsplit::before{content:''; height:48px; width:3px; border-radius:3px; background:var(--dim)}
   .vsplit:hover{background:#2a3644} .vsplit:hover::before{background:var(--accent)}
@@ -86,12 +101,29 @@
   .tier.stale{opacity:.5}
   /* wrapped: in a narrow topology panel the relay picker and its warning were clipped off to the right */
   .tier-head{display:flex; align-items:center; gap:8px; flex-wrap:wrap}
-  .node{display:flex; align-items:center; gap:9px; padding:7px 9px; border:1px solid var(--border); border-radius:8px; background:var(--panel-2)}
+  /* one row per agent, its columns aligned with the header's (.node-head) */
+  .node, .node-head{display:grid; grid-template-columns:9px 16px minmax(0,1.5fr) minmax(0,1fr) auto 3.4em 4.6em; align-items:center; column-gap:8px}
+  .node{padding:7px 9px; border:1px solid var(--border); border-radius:8px; background:var(--panel-2)}
+  .node-head{padding:0 10px; font-size:10px; letter-spacing:.04em; text-transform:uppercase; color:var(--muted)}
+  .node-head span{overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+  .node:has(.state[data-state="terminated"]) .st{background:#3fb950}
+  .node:has(.state[data-state="failed"]) .st, .node:has(.state[data-state="not validated"]) .st{background:#ff6b66}
+  .node:has(.state[data-state="stopped"]) .st{background:#d29922}
+  .node .name, .node .site{overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+  .node .site{color:var(--muted); font-size:12px}
+  .node .state{font-size:11.5px; white-space:nowrap}
+  .node .round, .node .metric{font-size:12px; text-align:right; font-variant-numeric:tabular-nums}
+  .node-head .round, .node-head .metric{text-align:right}
+  .node .state[data-state="executing"], .node .state[data-state="validated"]{color:var(--ok)}
+  .node .state[data-state="terminated"]{color:#3fb950}
+  .node .state[data-state="failed"], .node .state[data-state="not validated"]{color:#ff6b66}
+  .node .state[data-state="stopped"]{color:#d29922}
+  .node .state[data-state="declared"], .node .state[data-state="validating"]{color:var(--muted)}
   .node .st{width:9px;height:9px;border-radius:50%;flex:0 0 auto;background:var(--down)}
   .node.up .st{background:var(--ok); box-shadow:0 0 8px rgba(78,205,196,.5)}
   .node.wait .st{background:var(--warn)} .node.down .st{background:var(--down)}
-  .node .ico{font-size:15px; line-height:1; flex:0 0 auto} .node .name{flex:1}
-  .node .kpi{font-size:15px; line-height:1} .node[title]{cursor:default}
+  .node .ico{font-size:15px; line-height:1}
+  .node[title]{cursor:default}
   .empty{color:var(--dim); font-size:12px; padding:6px}
   .geo{flex:1; min-height:0; display:flex}
   .geomap{position:relative; flex:1; min-height:120px; border:1px solid var(--border); border-radius:8px;
@@ -168,7 +200,7 @@
   <div class="topbar">
     <div class="brand"><span class="mark">✳</span> Pybiscus · Session</div>
     <span class="bouquet-pill" id="bouquet-pill" hidden></span>
-    <div class="live"><span class="dot"></span> live</div>
+    <div class="session-state" id="session-state" data-state="waiting"><span class="dot"></span><span id="session-state-text">waiting</span></div>
     <div class="sep"></div>
     <div class="server-url">server <b id="server-url-display">—</b></div>
     <div class="sep"></div>
@@ -547,7 +579,30 @@
     });
     svg.innerHTML = s;
   }
-  function renderCharts(){ renderAccuracy(); renderLoss(); renderDround(); renderCycles(); renderConstraints(); renderRound(); }
+  function renderCharts(){ renderAccuracy(); renderLoss(); renderDround(); renderCycles(); renderConstraints(); renderRound(); renderSessionState(); }
+
+  // read from what the page already follows: registered agents, the server's end line, the agents'
+  // states (AgentState); no state of its own to drift from them
+  let agentCount = 0, configMissing = [];
+  function sessionStateOf(){
+    if(sessionEnd) return sessionEnd.reason
+      ? {key:'stopped', text:'stopped', title:`after ${sessionEnd.done}/${sessionEnd.total} rounds: ${sessionEnd.reason}`}
+      : {key:'finished', text:'finished', title:`${sessionEnd.done}/${sessionEnd.total} rounds run`};
+    const failed = Object.entries(session.agentStates).filter(([, st]) => st === 'failed' || st === 'not validated').map(([name]) => name);
+    // short texts: the top bar is full; the details are in the tooltip
+    if(failed.length) return {key:'failed', text:'failed', title:`${failed.join(', ')}: failed or invalid configuration`};
+    if(sessionRunning) return (stopPending || stopRound !== null)
+      ? {key:'running', text:'stopping', title:'the server ends the session after its current round'}
+      : {key:'running', text:'running'};
+    if(!agentCount) return {key:'waiting', text:'waiting', title:'no agent registered yet'};
+    if(configMissing.length) return {key:'waiting', text:'not ready', title:'the session can be configured once it has ' + configMissing.join(', and ')};
+    return {key:'ready', text:'ready', title:'ready to be configured and launched (config)'};
+  }
+  function renderSessionState(){
+    const state = sessionStateOf(), el = document.getElementById('session-state');
+    el.dataset.state = state.key; el.title = state.title || '';
+    setTxt('session-state-text', state.text);
+  }
   function renderRound(){
     const el = document.getElementById('round-num');
     if(!sessionEnd){ el.textContent = session.roundNumber; el.title = ''; return; }
@@ -560,10 +615,11 @@
   // "declared" is the manager's own state for an agent that has not reported yet
   const STATE_ICON  = { declared:'⚪', validating:'🔍', validated:'☑️', executing:'▶️', terminated:'🏁', failed:'💥', stopped:'⏹️', 'not validated':'❌' };
   const STATE_CLASS = { declared:'wait', validating:'wait', validated:'up', executing:'up', terminated:'down', failed:'down', stopped:'down', 'not validated':'down' };
+  const STATE_TEXT  = { declared:'registered', validating:'checking', validated:'checked', executing:'running', terminated:'finished', failed:'failed', stopped:'stopped', 'not validated':'invalid config' };
   const stateClass = st => STATE_CLASS[st] || 'wait';
   // a state added to AgentState without its display would silently show as "waiting"
-  AGENT_STATE_PROTOCOL.states.filter(st => !(st in STATE_ICON && st in STATE_CLASS))
-    .forEach(st => console.warn(`agent state "${st}" has no icon or class in manager.html`));
+  AGENT_STATE_PROTOCOL.states.filter(st => !(st in STATE_ICON && st in STATE_CLASS && st in STATE_TEXT))
+    .forEach(st => console.warn(`agent state "${st}" has no icon, class or text in manager.html`));
   const esc = s => String(s).replace(/[<>&"]/g, c=>({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c]));
   // ============ map layout: nodes moved with the mouse ============
   // sites a few tens of km apart overlapped their labels: each label takes the first free place
@@ -675,12 +731,20 @@
     groups.forEach(gr=>{ const relayed = relayedBy(gr.relays); gr.nodes.forEach(nd=>{ nd.relays = relayed[nd.name]; }); });
     nodes.forEach(nd=>{ nd.relays = ownRelayed[nd.name]; });
     const colourOf = bouquet => (groups.find(gr=>gr.bouquet===bouquet) || {}).color || '#7d8794';
+    // the round and the main metric are this session's server's: a client's come with the metrics table
+    const ownServer = nd => nd.role === 'server' && !nd.group;
+    const roundOf = nd => !ownServer(nd) ? '' : sessionEnd ? `${sessionEnd.done}/${sessionEnd.total}` : (session.roundNumber || '');
+    const metricOf = nd => ownServer(nd) && test_accuracies.latest !== undefined ? fmt(test_accuracies.latest) : '';
     const row = nd =>
       `<div class="node ${stateClass(nd.state)}" title="${esc(tip(nd))}">`+
         `<span class="st"></span><span class="ico">${nd.relays ? '🔁' : (ROLE_ICON[nd.role]||'❔')}</span>`+
         `<span class="name">${esc(nd.name)}`+
         (nd.relays ? ` <span class="bouquet-pill" style="--session-color:${esc(colourOf(nd.relays))}" title="relays this lower level">→ ${esc(nd.relays)}</span>` : '')+
-        `</span><span class="kpi">${STATE_ICON[nd.state]||'⚪'}</span></div>`;
+        `</span><span class="site">${esc(nd.loc || nd.org || '')}</span>`+
+        `<span class="state" data-state="${esc(nd.state)}">${STATE_ICON[nd.state]||'⚪'} ${esc(STATE_TEXT[nd.state] || nd.state)}</span>`+
+        `<span class="round">${esc(roundOf(nd))}</span><span class="metric" title="${ownServer(nd) ? esc((mainMetricName || 'main metric') + ', test on the server') : ''}">${esc(metricOf(nd))}</span></div>`;
+    const head = `<div class="node-head"><span></span><span></span><span>agent</span><span>site</span><span>state</span>`+
+      `<span class="round">round</span><span class="metric" title="${esc(mainMetricName || 'main metric')}">${esc(mainMetricName || 'metric')}</span></div>`;
     // how the link to a direct lower level is made, chosen with its relay before the launch
     const TRANSPORT_HINT = {directory: 'files in a directory: its relay runs on the machine of its server',
                             manager: "this manager's mailbox, over HTTP: its relay and its server on any machines"};
@@ -709,7 +773,7 @@
       `<div class="tier-head"><span class="bouquet-pill" style="--session-color:${esc(color)}"${url ? ` title="manager: ${esc(url)}"` : ''}>💐 ${esc(name)}</span>`+
       `<span class="chip">${count} agent${count===1?'':'s'}</span>`+ (extra || '') +
       (stale ? '<span class="chip" title="its manager has stopped reporting">unreachable</span>' : '')+`</div>`;
-    let list = nodes.map(row).join('');
+    let list = head + nodes.map(row).join('');
     // the upper level this manager reports to (--upper-url): its bouquet, and whether it is reached
     const upper = upperLevel ? {...upperLevel, name: upperLevel.bouquet || upperLevel.url,
       // literal colours: also used in SVG attributes, where var(--…) does not resolve
@@ -721,8 +785,8 @@
       (upper.dropped ? `<span class="chip alert" title="${esc(upper.dropped)}">⚠ session dropped</span>` : '')+`</div>` : '';
     if(groups.length || upper){
       // the tree: this session, then each lower level indented under its parent
-      list = upperHead + `<div class="tier" style="--tier-color:${esc(SESSION_COLOR || 'var(--border)')}">`+
-               tierHead(MANAGER_BOUQUET || 'this session', SESSION_COLOR || 'var(--muted)', nodes.length, null, false)+list+`</div>`+
+      list = upperHead + head + `<div class="tier" style="--tier-color:${esc(SESSION_COLOR || 'var(--border)')}">`+
+               tierHead(MANAGER_BOUQUET || 'this session', SESSION_COLOR || 'var(--muted)', nodes.length, null, false)+nodes.map(row).join('')+`</div>`+
              groups.map(gr=>`<div class="tier${gr.stale?' stale':''}" style="--tier-color:${esc(gr.color)}; margin-left:${gr.depth*14}px">`+
                tierHead('↳ '+gr.bouquet, gr.color, gr.nodes.length, gr.url, gr.stale, relayPicker(gr))+gr.nodes.map(row).join('')+`</div>`).join('');
     }
@@ -880,6 +944,9 @@
       if(serverUrl === "") missing.push('its server agent registered');
       if(withoutRelay.length) missing.push('a relay for ' + withoutRelay.join(', ') + ' (Topology)');
       if(waitsForUpperSession()) missing.push(`the upper-level session ${upperState.bouquet || upperState.url} configured`);
+      agentCount = Object.keys(servers).length + registeredClients;
+      configMissing = missing;
+      renderSessionState();
       const cfgBtn = document.getElementById('cfg-btn');
       cfgBtn.disabled = missing.length > 0;
       cfgBtn.title = missing.length ? 'the session can be configured once it has ' + missing.join(', and ') : 'configure and launch the session';
