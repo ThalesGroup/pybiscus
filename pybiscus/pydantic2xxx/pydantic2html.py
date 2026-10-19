@@ -7,6 +7,7 @@ from typing import Any, Dict, Iterable, List, Optional, Union, Literal, get_args
 from enum import Enum
 
 import inspect
+import json
 import re
 import html as html_module
 import importlib.resources
@@ -142,8 +143,29 @@ def is_optional(tp):       return is_optional_type(unwrap_annotated(tp))
 
 log_htmlgen = False
 
+# an option's rules among the items of a list (a pipeline's decorators), checked live by the
+# compact view before the check refuses them
+OPTION_RULES = {"PYBISCUS_AFTER": "after", "PYBISCUS_INCOMPATIBLE_WITH": "incompatible", "PYBISCUS_STRATEGIES": "strategies"}
+
+def option_name(option_type) -> Optional[str]:
+    name_field = getattr(option_type, "model_fields", {}).get("name")
+    if name_field is None:
+        return None
+    if isinstance(name_field.default, str):
+        return name_field.default
+    values = get_args(name_field.annotation)
+    return values[0] if len(values) == 1 and isinstance(values[0], str) else None
+
+# the tab's text is a label (MetricDiffCompute), the rules name the options by their `name` value
+def option_rules_attrs(option_type) -> str:
+    name = option_name(option_type)
+    attrs = f' data-pybiscus-option="{html_module.escape(name, quote=True)}"' if name else ""
+    attrs += "".join(f' data-pybiscus-{key}="{html_module.escape(" ".join(getattr(option_type, rule)), quote=True)}"'
+                    for rule, key in OPTION_RULES.items() if getattr(option_type, rule, None) is not None)
+    return attrs + (' data-pybiscus-last="true"' if getattr(option_type, "PYBISCUS_LAST", False) else "")
+
 def generate_field_html(field_name: str, field_type, field_default, field_description, inFieldSet: bool, prefix: str,
-                        field_title: Optional[str] = None) -> str:
+                        field_title: Optional[str] = None, field_chain: Optional[dict] = None) -> str:
 
     if log_htmlgen:
         print( f"generate_field_html({field_name})" )
@@ -239,7 +261,8 @@ def generate_field_html(field_name: str, field_type, field_default, field_descri
                                     prefix            = f"{prefix}{field_name}.",
                                     )
 
-        list_fieldset = fieldset( cls='pybiscus-list-fs' )
+        chain_attr = {'data-pybiscus-chain': json.dumps(field_chain)} if field_chain else {}
+        list_fieldset = fieldset( cls='pybiscus-list-fs', **chain_attr )
 
         with list_fieldset:
 
@@ -540,6 +563,7 @@ def generate_field_html(field_name: str, field_type, field_default, field_descri
                     # family of the option (config metadata), used to group large unions
                     group = getattr(sub_type, "PYBISCUS_GROUP", None)
                     group_attr = f' data-pybiscus-group="{html_module.escape(group, quote=True)}"' if group else ""
+                    group_attr += option_rules_attrs(sub_type)
 
                     field_html += f'        <div class="pybiscus-tab-button {active}" data-tab="tab{tab_nb}-{index}" {status}{group_attr}>{tab_name}</div>\n'
 
@@ -669,14 +693,14 @@ def generate_model_html(model: BaseModel, inFieldSet: bool, prefix: str, model_c
             display_name = model.__name__
 
         # Un modèle dont l'unique champ est le placeholder `empty_configuration` ne porte
-        # aucun paramètre réel : on le rend comme une simple ligne "label : empty configuration"
+        # aucun paramètre réel : on le rend comme une simple ligne "label : no settings"
         # (comme un champ, sans fieldset). La case à cocher cachée reste présente pour que
         # traverseDOM émette toujours la valeur empty_configuration.
         if list(model.model_fields.keys()) == ["empty_configuration"]:
             return (
                 '<div class="pybiscus-field">\n'
                 f'  <label class="pybiscus-config"{opt_title}>{display_name}</label>\n'
-                '  <span class="pybiscus-empty-config">⚙️🈳 empty configuration</span>\n'
+                '  <span class="pybiscus-empty-config">no settings</span>\n'
                 f'  <input type="checkbox" checked hidden data-pybiscus-name="{prefix}empty_configuration">\n'
                 '</div>\n'
             )
@@ -710,6 +734,7 @@ def generate_model_html(model: BaseModel, inFieldSet: bool, prefix: str, model_c
                                     inFieldSet         = True,
                                     prefix             = prefix,
                                     field_title        = field_info.title,
+                                    field_chain        = getattr(model, "PYBISCUS_CHAINS", {}).get(field_name),
                                     )
    
     if inFieldSet:

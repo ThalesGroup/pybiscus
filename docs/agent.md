@@ -60,6 +60,11 @@ On each form:
 - An optional field shows *unset | set* next to its name: *set* shows its value to fill; *unset*
   leaves it unset (None) and folds it, with its description to say what that means (from
   `Field(description=...)`). A field the session locks shows its choice, without changing it.
+- A list of decorators (the server's pipeline) is drawn as a chain from the strategy, the first
+  decorator closest to it, with the decorators added for you in dashed outline (`robustness:
+  safeguard`'s clipping, `upper_level_link`'s decorator) where they will run. A decorator breaking a
+  rule (incompatible with another, out of order, not over this strategy) is outlined in orange,
+  with the check's message under the chain. A decorator without settings says so.
 - 🌓 switches between the dark theme (the default) and the light one; ◉ ◎ ☰ choose how long
   option lists are shown; the ⚙ panel sets the display (tabs, compact lists).
 

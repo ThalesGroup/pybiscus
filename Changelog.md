@@ -114,6 +114,12 @@
   tint and bar), more as chips with the chosen one in teal (the others keep their family's colour);
   the white fill of the chosen option, the dimmed others and the sweeping sheen are gone. The
   options' names, which the presets and pins compare, are unchanged.
+* Config forms: the pipeline drawn from its strategy (a node that leads to it), with the decorators
+  `robustness: safeguard` and `upper_level_link` add, dashed, where they run; the decorators' rules
+  (incompatible, order, last, strategies) flagged as the pipeline is edited, with the check's
+  messages, in both views of the list; "no settings" for a decorator without any (was "⚙️🈳 empty
+  configuration"). The options carry their `name` and rules as attributes; a configuration class
+  declares its chains with `PYBISCUS_CHAINS`.
 * Config forms: descriptions shown: each field's under its value, each block's (model, union,
   option once set, list) under its title, an unset option's in full (it was cut at one line); they
   were on hover only. Widths by type: integers and floats narrow, paths, directories, files and URLs

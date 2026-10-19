@@ -206,6 +206,15 @@ MERGED_STRATEGIES = {
 class ConfigServerStrategy(BaseModel):
 
     PYBISCUS_CONFIG: ClassVar[str] = "server_strategy"
+    # the forms draw the pipeline from the strategy, with the decorators the validators below add
+    # (fields of this model, by name): what runs, not only what is listed
+    PYBISCUS_CHAINS: ClassVar[dict] = {"pipeline": {
+        "anchor": "strategy",
+        "implicit": [
+            {"name": SAFEGUARD_DECORATOR["name"], "field": "robustness", "value": Robustness.safeguard.value},
+            {"name": UPPER_LEVEL_LINK_DECORATOR, "field": "upper_level_link", "value": "set", "place": "last"},
+        ],
+    }}
 
     pipeline: list[StrategyDecoratorConfig()] = Field(description='decorators around the strategy (metrics, saving, robustness...), the first one closest to the strategy')# pyright: ignore[reportInvalidTypeForm]
     strategy: StrategyConfig() = Field(description="how the clients' updates are aggregated")# pyright: ignore[reportInvalidTypeForm]

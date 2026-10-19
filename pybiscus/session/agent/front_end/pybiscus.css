@@ -1267,8 +1267,26 @@ input:hover, textarea:hover, select:hover {
 }
 .pybiscus-cl-action:hover:not(:disabled) { border-color: var(--color-accent-light); }
 .pybiscus-cl-action:disabled { opacity: 0.35; cursor: default; }
-.pybiscus-cl-node:focus-visible, .pybiscus-cl-action:focus-visible, .pybiscus-cl-toggle:focus-visible {
+.pybiscus-cl-node:focus-visible, .pybiscus-cl-action:focus-visible, .pybiscus-cl-toggle:focus-visible,
+.pybiscus-cl-anchor:focus-visible {
     outline: 3px solid var(--color-accent-light); outline-offset: 2px;
+}
+/* 3.3f: the strategy the items wrap, the items the validators add, the rules broken */
+.pybiscus-cl-anchor {
+    flex: none; padding: 0.45rem 0.9rem; border-radius: var(--border-radius); cursor: pointer; font: inherit;
+    background: var(--panel-sunk); color: var(--muted); border: 1px solid var(--fieldset-border);
+}
+.pybiscus-cl-anchor:hover { color: var(--theme-color); border-color: var(--color-accent-light); }
+.pybiscus-cl-node.pybiscus-cl-implicit { border-style: dashed; color: var(--muted); }
+.pybiscus-cl-node.pybiscus-cl-implicit .pybiscus-cl-rank {
+    font-size: 0.62rem; border-radius: 999px; padding: 0 0.3rem;
+    background: transparent; color: var(--muted); border: 1px dashed var(--fieldset-border);
+}
+#top-div .pybiscus-cl-node.pybiscus-cl-issue { border-color: var(--color-warning); }
+.pybiscus-cl-issues {
+    margin: 0 var(--spacing-xs) var(--spacing-sm); padding: var(--spacing-xs) var(--spacing-sm);
+    border-radius: var(--border-radius); font-size: 0.85rem; line-height: 1.4;
+    color: var(--color-warning-light); background: var(--color-warning-bg);
 }
 
 /* ---------- display settings panel (ui_settings.js) ---------- */

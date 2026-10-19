@@ -37,6 +37,106 @@ window.pybiscusCompactLists = (() => {
         return { name: name || `item ${rank}`, type: "" };
     }
 
+    // ---- rules of a list's options (data-pybiscus-after…), its anchor and implicit items
+    // (data-pybiscus-chain): the same rules as the check's validators, shown before it runs
+
+    const words = value => (value || "").split(" ").filter(Boolean);
+    const scopeOf = fs => fs.closest("#top-div") || document;
+    const parentPrefix = fs => listPrefix(fs).split(".").slice(0, -1).join(".");
+    const siblingName = (fs, field) => (parentPrefix(fs) ? parentPrefix(fs) + "." : "") + field;
+    const activeOption = container => container?.querySelector(".pybiscus-tab-buttons > .pybiscus-tab-button.active");
+
+    function optionRules(fs) {
+        const buttons = fs.querySelector(":scope > .pybiscus-list > .pybiscus-list-template .pybiscus-tab-buttons");
+        const rules = new Map();
+        buttons?.querySelectorAll(":scope > .pybiscus-tab-button[data-pybiscus-option]").forEach(b => rules.set(b.dataset.pybiscusOption, {
+            after: words(b.dataset.pybiscusAfter),
+            incompatible: words(b.dataset.pybiscusIncompatible),
+            strategies: b.hasAttribute("data-pybiscus-strategies") ? words(b.dataset.pybiscusStrategies) : null,
+            last: b.dataset.pybiscusLast === "true",
+            label: b.textContent.trim(),
+        }));
+        return rules;
+    }
+
+    function anchorOf(fs, spec) {
+        if (!spec?.anchor) return null;
+        const container = scopeOf(fs).querySelector(`fieldset[data-pybiscus-prefix="${siblingName(fs, spec.anchor)}"]`);
+        const active = activeOption(container);
+        return container && active ? { container, label: active.textContent.trim(), option: active.dataset.pybiscusOption } : null;
+    }
+
+    function implicitSource(fs, field) {
+        const name = siblingName(fs, field);
+        const scope = scopeOf(fs);
+        return scope.querySelector(`fieldset.pybiscus-option-fs[data-pybiscus-prefix="${name}"]`)
+            || scope.querySelector(`input[data-pybiscus-name="${name}"]`)?.closest(".pybiscus-field");
+    }
+
+    function implicitActive(fs, { field, value }) {
+        const name = siblingName(fs, field);
+        const scope = scopeOf(fs);
+        if (value === "set") {
+            return !!scope.querySelector(`fieldset.pybiscus-option-fs[data-pybiscus-prefix="${name}"] > legend .pybiscus-option-cb`)?.checked;
+        }
+        const input = scope.querySelector(`input[data-pybiscus-name="${name}"]:checked, select[data-pybiscus-name="${name}"]`);
+        return input?.value === value;
+    }
+
+    // the items in the order they run: the listed ones, with the implicit ones where the
+    // validators insert them (last when the spec or the option says so, else right after the ones
+    // it must follow, else first)
+    function sequence(fs, items, rules, spec) {
+        const entries = items.map(item => ({ item, name: activeOption(item)?.dataset.pybiscusOption }));
+        (spec?.implicit || []).forEach(implicit => {
+            if (!implicitActive(fs, implicit) || entries.some(e => e.name === implicit.name)) return;
+            const rule = rules.get(implicit.name) || { after: [] };
+            const entry = { implicit, name: implicit.name };
+            if (implicit.place === "last" || rule.last) { entries.push(entry); return; }
+            const after = entries.map((e, i) => rule.after.includes(e.name) ? i : -1).filter(i => i >= 0);
+            entries.splice(after.length ? Math.max(...after) + 1 : 0, 0, entry);
+        });
+        return entries;
+    }
+
+    // check_compatible_decorators (config_server.py), message for message
+    function issues(entries, rules, anchor) {
+        const names = entries.map(e => e.name);
+        const found = [];
+        entries.forEach((entry, index) => {
+            const rule = rules.get(entry.name);
+            const flag = text => { found.push(text); (entry.issues ||= []).push(text); };
+            if (!rule) {
+                if (entry.implicit) flag(`${entry.name} needs its plugin, which is not loaded`);
+                return;
+            }
+            rule.incompatible.forEach(other => {
+                const others = names.filter(n => n === other).length - (other === entry.name ? 1 : 0);
+                if (others > 0) flag(`${entry.name} cannot be combined with ${other}`);
+            });
+            rule.after.forEach(other => {
+                if (names.includes(other) && names.indexOf(other) > index) flag(`${entry.name} must come after ${other}`);
+            });
+            if (rule.last && index !== names.length - 1) flag(`${entry.name} must come last`);
+            if (rule.strategies && anchor?.option && !rule.strategies.includes(anchor.option)) {
+                flag(`${entry.name} works over the strategies ${rule.strategies.join(", ")}, not ${anchor.option}`);
+            }
+        });
+        return [...new Set(found)];
+    }
+
+    function renderIssues(fs) {
+        const state = fs._pybiscusCompact;
+        const items = itemsOf(fs);
+        const entries = sequence(fs, items, state.rules, state.spec);
+        const anchor = anchorOf(fs, state.spec);
+        const found = issues(entries, state.rules, anchor);
+        state.issues.textContent = "";
+        state.issues.hidden = !found.length;
+        found.forEach(text => state.issues.append(Object.assign(document.createElement("div"), { textContent: "⚠ " + text })));
+        return { entries, anchor };
+    }
+
     function button(className, text, title, onClick) {
         const b = document.createElement("button");
         b.type = "button";
@@ -48,6 +148,7 @@ window.pybiscusCompactLists = (() => {
     }
 
     function render(fs) {
+        const { entries, anchor } = renderIssues(fs);
         // the expanded view shows every item: never hide items nor draw outside the compact view
         if (!fs.classList.contains("pybiscus-cl-compact")) return;
         const state = fs._pybiscusCompact;
@@ -72,11 +173,35 @@ window.pybiscusCompactLists = (() => {
         if (!items.length) {
             chain.append(Object.assign(document.createElement("span"), { className: "pybiscus-cl-empty", textContent: "empty list: ➕📝 adds an item" }));
         }
-        items.forEach((item, rank) => {
-            if (rank > 0) chain.append(Object.assign(document.createElement("span"), { className: "pybiscus-cl-link", textContent: "→" }));
+        const link = () => chain.append(Object.assign(document.createElement("span"), { className: "pybiscus-cl-link", textContent: "→" }));
+        if (anchor) {
+            const node = button("pybiscus-cl-anchor", "", `${anchor.label}: the strategy, wrapped by the items in this order`,
+                                () => anchor.container.scrollIntoView({ block: "start", behavior: "smooth" }));
+            node.append(Object.assign(document.createElement("span"), { className: "pybiscus-cl-name", textContent: anchor.label }));
+            chain.append(node);
+            if (entries.length) link();
+        }
+        entries.forEach((entry, position) => {
+            if (position > 0) link();
+            const marked = entry.issues ? " pybiscus-cl-issue" : "";
+            const why = entry.issues ? "\n⚠ " + entry.issues.join("\n⚠ ") : "";
+            if (entry.implicit) {
+                const source = implicitSource(fs, entry.implicit.field);
+                const label = state.rules.get(entry.name)?.label || entry.name;
+                const node = button("pybiscus-cl-node pybiscus-cl-implicit" + marked, "",
+                                    `${label}: added by ${entry.implicit.field}` + why,
+                                    () => source?.scrollIntoView({ block: "center", behavior: "smooth" }));
+                node.append(Object.assign(document.createElement("span"), { className: "pybiscus-cl-rank", textContent: "auto" }),
+                            Object.assign(document.createElement("span"), { className: "pybiscus-cl-name", textContent: label }),
+                            Object.assign(document.createElement("span"), { className: "pybiscus-cl-type", textContent: entry.implicit.field }));
+                chain.append(node);
+                return;
+            }
+            const item = entry.item;
+            const rank = items.indexOf(item);
             const { name, type, hue } = describe(item, rank);
-            const node = button("pybiscus-cl-node" + (item === state.current ? " current" : "") + (hue !== undefined ? " pybiscus-cl-family" : ""),
-                                "", `${rank} · ${name}` + (type ? ` (${type})` : ""), () => { state.current = item; render(fs); });
+            const node = button("pybiscus-cl-node" + (item === state.current ? " current" : "") + (hue !== undefined ? " pybiscus-cl-family" : "") + marked,
+                                "", `${rank} · ${name}` + (type ? ` (${type})` : "") + why, () => { state.current = item; render(fs); });
             if (hue !== undefined) node.style.setProperty("--lu-hue", hue);
             node.append(Object.assign(document.createElement("span"), { className: "pybiscus-cl-rank", textContent: rank }),
                         Object.assign(document.createElement("span"), { className: "pybiscus-cl-name", textContent: name }));
@@ -154,6 +279,11 @@ window.pybiscusCompactLists = (() => {
         state.graph = document.createElement("div");
         state.graph.className = "pybiscus-cl-graph";
         contentsOf(fs).before(state.graph);
+        state.rules = optionRules(fs);
+        state.spec = fs.dataset.pybiscusChain ? JSON.parse(fs.dataset.pybiscusChain) : null;
+        state.issues = Object.assign(document.createElement("div"), { className: "pybiscus-cl-issues", hidden: true });
+        state.issues.setAttribute("role", "status");
+        state.graph.after(state.issues);
 
         // follow additions (the new item becomes current), removals, moves, option and value changes
         const contents = contentsOf(fs);
@@ -161,7 +291,7 @@ window.pybiscusCompactLists = (() => {
         // one pending render at a time, never postponed: restarting the delay on every mutation
         // starved the rendering while tab classes kept changing
         const rerender = () => {
-            if (!fs.classList.contains("pybiscus-cl-compact") || state.pending) return;
+            if (state.pending) return;
             state.pending = setTimeout(() => { state.pending = null; render(fs); }, 20);
         };
         new MutationObserver(records => {
@@ -178,6 +308,18 @@ window.pybiscusCompactLists = (() => {
             rerender();
         }).observe(contents, { childList: true, subtree: true, attributes: true, attributeFilter: ["class"] });
         contents.addEventListener("input", rerender);
+        // the anchor and the fields adding implicit items live outside the list
+        if (state.spec) {
+            const anchor = anchorOf(fs, state.spec);
+            if (anchor) new MutationObserver(records => {
+                if (records.some(r => r.target.classList.contains("pybiscus-tab-button"))) rerender();
+            }).observe(anchor.container, { subtree: true, attributes: true, attributeFilter: ["class"] });
+            (state.spec.implicit || []).forEach(({ field }) => {
+                const source = implicitSource(fs, field);
+                source?.addEventListener("change", rerender);
+                source?.addEventListener("click", rerender);
+            });
+        }
 
         setCompact(fs, storedCompact(fs));
     }

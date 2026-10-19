@@ -67,9 +67,15 @@ Class attributes (`ClassVar`) of the configuration classes, read by the forms an
 | `PYBISCUS_DESCRIPTIONS` | an `Enum` (set after the class) | description of each value, shown on hover |
 | `PYBISCUS_INCOMPATIBLE_WITH` | a strategy decorator | decorators it cannot be combined with in a pipeline: refused at `check` |
 | `PYBISCUS_AFTER` | a strategy decorator | decorators that must come before it in the pipeline: refused at `check` otherwise |
+| `PYBISCUS_LAST` | a strategy decorator | must be the pipeline's last (outermost) decorator: refused at `check` otherwise |
+| `PYBISCUS_STRATEGIES` | a strategy decorator | the strategies it works over: refused at `check` with another one |
+| `PYBISCUS_CHAINS` | a configuration class | per list field, how the forms draw it as a chain: the field it wraps (`anchor`) and the items its validators add (`implicit`) |
 | `PYBISCUS_SERVER_SECTIONS` | a data plugin's configuration | sections the server reads (`test` and `privacy` by default): the server warns when another one differs from its defaults |
 
-Describe every field with `Field(description=...)`: it is shown on hover in the forms (see the
+The four decorator rules are also flagged in the form as the pipeline is edited, with the check's
+messages.
+
+Describe every field with `Field(description=...)`: it is shown under the field in the forms (see the
 [integration guide](pybiscus_model_guide.md)), and in the [plugins reference](plugins-reference.md).
 
 ## The plugins reference
