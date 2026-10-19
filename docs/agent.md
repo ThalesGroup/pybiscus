@@ -47,7 +47,8 @@ On each form:
 - An optional field shows *unset | set* next to its name: *set* shows its value to fill; *unset*
   leaves it unset (None) and folds it, with its description to say what that means (from
   `Field(description=...)`). A field the session locks shows its choice, without changing it.
-- The ⚙ panel sets the display (tabs, compact lists, theme).
+- 🌓 switches between the dark theme (the default) and the light one; ◉ ◎ ☰ choose how long
+  option lists are shown; the ⚙ panel sets the display (tabs, compact lists).
 
 Once launched, the page switches to the run monitor: the run's state and its log lines, live,
 with a button to stop it. Above the log, the progress: on a server, the round out of the session's
@@ -56,8 +57,9 @@ evaluating on the clients); on a client, the round and its phase (a client is no
 of rounds). Next to it, the last value of the main metric of each phase and the last round's
 duration. The log shows all its lines, the rounds' events only, or the warnings and errors.
 
-The registration, waiting and run monitor pages are dark by default; their 🌓 button switches to
-light, kept by the browser for this agent (the configuration form keeps its own ⚙ themes for now).
+Every page of the agent is dark by default; its 🌓 button switches to light, kept by the browser for
+this agent and followed by its other open pages. A form shown in the manager (the server's
+configuration) takes the manager's theme.
 
 ![Run monitor](images/agent_run_monitor.png "Run monitor")
 

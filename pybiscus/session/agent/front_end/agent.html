@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <title>Pybiscus Node</title>
+    {{ theme_head | safe }}
 
     <style>
         
@@ -746,112 +747,6 @@
         }
     });
 
-
-    // **************************************
-    // ******* theme management *************
-    // **************************************
-    
-    // current theme
-    let currentTheme = 'light-default';
-    let currentMode = 'light';
-
-
-    // Function to set current thema
-    function setTheme(theme) {
-        currentTheme = theme;
-        document.documentElement.setAttribute('data-theme', theme);
-    }
-
-    // themes by mode
-    const themesByMode = {
-        light: [
-            'light-default',
-            'light-warm', 
-            'light-cool', 
-            'light-green', 
-            'light-soft', 
-            'light-lavender', 
-            'light-peach', 
-            'light-mint'
-        ],
-        dark: [
-            'dark',
-            'dark-blue', 
-            'dark-purple', 
-            'dark-green', 
-            'dark-amber',
-            'dark-cyan', 
-            'dark-rose', 
-            'dark-black'
-        ]
-    };
-
-    // Function to set current theme
-    function setTheme(theme) {
-        currentTheme = theme;
-        document.documentElement.setAttribute('data-theme', theme);
-    }
-
-    // Update active state of mode buttons
-    function updateModeButtons() {
-        const lightBtn = document.getElementById('lightModeButton');
-        const darkBtn = document.getElementById('darkModeButton');
-        
-        if (currentMode === 'light') {
-            lightBtn.classList.add('active');
-            darkBtn.classList.remove('active');
-        } else {
-            darkBtn.classList.add('active');
-            lightBtn.classList.remove('active');
-        }
-    }
-
-    // mode switching
-    function setMode(mode) {
-        currentMode = mode;
-        const themesInMode = themesByMode[mode];
-        
-        if (!themesInMode.includes(currentTheme)) {
-            setTheme(themesInMode[0]);
-        }
-        
-        updateModeButtons();
-    }
-
-    // theme cycle management
-    function themeCycle() {
-        const themesInMode = themesByMode[currentMode];
-        const currentIndex = themesInMode.indexOf(currentTheme);
-        const nextIndex = (currentIndex + 1) % themesInMode.length;
-        const newTheme = themesInMode[nextIndex];
-        setTheme(newTheme);
-    }
-
-    // mode dark par défaut (server & client). currentTheme initial = 'light-default'
-    // (une catégorie 'light'), donc setMode('dark') déclenche bien setTheme -> data-theme.
-    // La préférence système n'est plus imposée ; le toggle light/dark reste manuel.
-    window.addEventListener('DOMContentLoaded', () => {
-        setMode('dark');
-    });
-
-    // Manual mode toggle
-    // no page has this checkbox any more: without "?." the TypeError stopped the rest of this script
-    document.getElementById('modeToggle')?.addEventListener('change', (e) => {
-        setMode(e.target.checked ? 'dark' : 'light');
-    });
-
-
-    
-    // Manual mode buttons
-    document.getElementById('lightModeButton').addEventListener('click', () => {
-        console.log('light');
-        setMode('light');
-    });
-
-    document.getElementById('darkModeButton').addEventListener('click', () => {
-        console.log('dark');
-        setMode('dark');
-    });
 
     // **************************************
     // ***** long option lists (unions) *****

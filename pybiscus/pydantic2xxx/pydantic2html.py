@@ -720,6 +720,7 @@ def generate_model_page(model: BaseModel, templatePath: str, templateName: str, 
             check_errors_js = file.read()
 
         from pybiscus.session.agent import ui_settings
+        from pybiscus.session.theme import theme_head
 
         body = generate_model_html(model, True, "")
 
@@ -745,6 +746,7 @@ def generate_model_page(model: BaseModel, templatePath: str, templateName: str, 
             ui_settings_js=ui_settings_js,
             check_errors_js=check_errors_js,
             ui_settings_state=ui_settings.state(),
+            theme_head=theme_head(),
         )
 
         return rendered_html        

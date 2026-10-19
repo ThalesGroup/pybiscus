@@ -39,4 +39,5 @@
   cursor: pointer; background: transparent; color: var(--text); border: 1px solid var(--border);
   border-radius: 8px; padding: 4px 8px; font-size: 13px; line-height: 1;
 }
-.pybiscus-theme-toggle:hover { border-color: var(--accent); }
+/* --toggle-accent: a page's own accent, a name the themes do not set (they would win over its :root) */
+.pybiscus-theme-toggle:hover { border-color: var(--toggle-accent, var(--accent)); }

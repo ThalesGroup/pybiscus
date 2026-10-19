@@ -56,7 +56,10 @@
   forces it for one display without keeping it. The server's config page shown in the manager (an
   agent's page) receives the manager's theme.
 * Theme: the agent's registration, waiting and run monitor pages on the same tokens, with their 🌓;
-  the success, failure and stopped banners have their light version. The metrics table missed its main metric column when
+  the success, failure and stopped banners have their light version.
+* Theme: the configuration forms on the same tokens; their 16 themes and the 🌞 / 🌙 / cycling 🌓
+  buttons replaced by one 🌓 (dark by default, teal accent as on the other agent pages); the server's
+  config shown in the manager follows the manager's theme (URL, then message on each switch). The metrics table missed its main metric column when
   the line naming it came after the first metrics.
 * Config forms: an optional field's checkbox replaced by *unset | set*, unset showing the field's
   description (what None means); the checkbox stays, hidden, driven by the switch: YAML, presets,
