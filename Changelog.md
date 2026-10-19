@@ -109,6 +109,11 @@
   script being loaded by the server form only (the session form loads it as well).
 * Config forms: a compact list's removed item fades out before it goes (among identical items,
   removing one in the middle looked like removing the last one).
+* Config forms: a union's options restyled: two options as a segmented control (one track, the
+  chosen segment in teal, like *unset | set*), up to eight as a list like the section menu (a teal
+  tint and bar), more as chips with the chosen one in teal (the others keep their family's colour);
+  the white fill of the chosen option, the dimmed others and the sweeping sheen are gone. The
+  options' names, which the presets and pins compare, are unchanged.
 * Config forms: a locked field's value readable in the dark theme (the faintest grey, dimmed twice).
 * Config forms: a locked field's lock back on its label's line (it took a third line under the key).
 * A check, a save or a pin run during the 600 ms switch between two options of a union read the

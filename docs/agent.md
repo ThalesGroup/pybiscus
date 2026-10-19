@@ -35,6 +35,8 @@ name. A nested block is marked by a rule on its left, in teal for the block unde
 pointer; a list has a sunk background.
 A list shows its items as a chain, the current one's values under it: ← ➖ → under the current item
 move it or remove it, ➕📝 next to the list's name adds an item at the end, ⊞ shows every item.
+The options of a union show as a segmented control (two options), a list like the section menu (up
+to 8) or chips (more); the chosen one is in teal.
 
 On each form:
 - **Check** validates the configuration; **Execute** (enabled once it is checked)

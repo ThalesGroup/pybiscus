@@ -1793,3 +1793,77 @@ body > div > fieldset > legend {
     min-width: 0;
     max-width: 100%;
 }
+
+/* ---------- Ergonomics, step 3.3e: union options as segmented controls ---------- */
+/* an Optional is a hidden union of its own, driven by unset | set: kept out (its rules would lose
+   to these ones) */
+
+/* 2 options: one track, the chosen segment in teal, like unset | set */
+#top-div .pybiscus-fieldset-container:not(.pybiscus-option-fs) > .pybiscus-tab-container:not(.pybiscus-tab-vertical) > .pybiscus-tab-buttons {
+    display: inline-flex;
+    /* the container is a stretching column: the track keeps its own width */
+    align-self: flex-start;
+    width: fit-content;
+    max-width: 100%;
+    flex-wrap: wrap;
+    gap: 0;
+    padding: 2px;
+    margin: 0.15rem 0 0;
+    border: 1px solid var(--fieldset-border);
+    border-radius: 999px;
+    background: var(--panel-sunk);
+}
+#top-div .pybiscus-fieldset-container:not(.pybiscus-option-fs) > .pybiscus-tab-container:not(.pybiscus-tab-vertical) > .pybiscus-tab-buttons > .pybiscus-tab-button {
+    border: 0;
+    box-shadow: none;
+    border-radius: 999px;
+    padding: 0.3rem 0.95rem;
+    opacity: 1;
+    background: transparent;
+    color: var(--text-soft);
+}
+
+/* 3 to 8 options: a list like the section menu, the chosen one tinted with a teal bar */
+#top-div .pybiscus-fieldset-container:not(.pybiscus-option-fs) > .pybiscus-tab-container.pybiscus-tab-vertical > .pybiscus-tab-buttons {
+    border: 0;
+    border-radius: 0;
+    background: none;
+    margin: 0 0.75rem 0 0;
+    padding: var(--spacing-xl) 0 0;
+    gap: 2px;
+}
+#top-div .pybiscus-fieldset-container:not(.pybiscus-option-fs) > .pybiscus-tab-container.pybiscus-tab-vertical > .pybiscus-tab-buttons > .pybiscus-tab-button {
+    border: 0;
+    border-left: 3px solid transparent;
+    border-radius: 6px;
+    box-shadow: none;
+    padding: 0.45rem 0.75rem;
+    opacity: 1;
+    background: none;
+    color: var(--text-soft);
+}
+#top-div .pybiscus-fieldset-container:not(.pybiscus-option-fs) > .pybiscus-tab-container.pybiscus-tab-vertical > .pybiscus-tab-buttons > .pybiscus-tab-button.active {
+    border-left-color: var(--ok);
+    background: var(--ok-tint);
+    color: var(--text);
+}
+
+/* both: hover and choice; the sweeping sheen goes */
+#top-div .pybiscus-fieldset-container:not(.pybiscus-option-fs) > .pybiscus-tab-container > .pybiscus-tab-buttons > .pybiscus-tab-button::before { content: none; }
+#top-div .pybiscus-fieldset-container:not(.pybiscus-option-fs) > .pybiscus-tab-container > .pybiscus-tab-buttons > .pybiscus-tab-button:not(.active):hover {
+    background: color-mix(in srgb, var(--ok) 12%, transparent);
+    color: var(--text);
+}
+#top-div .pybiscus-fieldset-container:not(.pybiscus-option-fs) > .pybiscus-tab-container:not(.pybiscus-tab-vertical) > .pybiscus-tab-buttons > .pybiscus-tab-button.active {
+    background: var(--ok);
+    color: var(--on-ok);
+}
+
+/* 9 options and more: the chosen chip in the same teal, the others keeping their family's colour */
+.pybiscus-lu-chip.selected {
+    background: var(--ok);
+    border-color: var(--ok);
+    color: var(--on-ok);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--ok) 30%, transparent);
+}
+.pybiscus-lu-bubble.current { background: var(--ok); color: var(--on-ok); }
