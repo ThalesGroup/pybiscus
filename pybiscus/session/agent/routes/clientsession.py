@@ -50,7 +50,12 @@ def clientConfigDownload():
     with importlib.resources.files("pybiscus.session.agent.front_end").joinpath("fold_fieldset.js").open('r') as file:
         fold_fieldsets = file.read()
 
-    return generate_model_page(ConfigClient,'pybiscus.session.agent.front_end','agent.html','check_exec_buttons', fold_fieldsets + presets_js,
+    # without it, the ➕📝 of the client's lists (a dataset's engines...) did nothing
+    with importlib.resources.files("pybiscus.session.agent.front_end").joinpath("lists_management.js").open('r') as file:
+        lists_management = file.read()
+
+    # before the session presets, which may fill the lists
+    return generate_model_page(ConfigClient,'pybiscus.session.agent.front_end','agent.html','check_exec_buttons', fold_fieldsets + lists_management + presets_js,
                                identity=pybagent.agent_identity())
 
 # ..........................................................

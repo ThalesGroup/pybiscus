@@ -105,8 +105,15 @@ window.pybiscusCompactLists = (() => {
         const act = control => () => { control(); render(fs); };
         const left = button("pybiscus-cl-action", "←", "Move the current item earlier", act(() => current._moveUp && current._moveUp.click()));
         const right = button("pybiscus-cl-action", "→", "Move the current item later", act(() => current._moveDown && current._moveDown.click()));
-        const remove = button("pybiscus-cl-action remove", "➖", "Remove the current item",
-                              act(() => ownControls(current, ".pybiscus-list-eraser")[0]?.click()));
+        // the item fades out before it goes: among identical items, removing one in the middle
+        // looked like removing the last one (the ranks are renumbered)
+        const erase = act(() => ownControls(current, ".pybiscus-list-eraser")[0]?.click());
+        const remove = button("pybiscus-cl-action remove", "➖", "Remove the current item", () => {
+            if (remove.disabled) return;
+            remove.disabled = true;
+            remove.closest(".pybiscus-cl-current")?.classList.add("pybiscus-cl-leaving");
+            setTimeout(erase, matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : 220);
+        });
         // hidden, not removed: ➖ stays centred under the item
         left.style.visibility = index === 0 ? "hidden" : "";
         right.style.visibility = index === items.length - 1 ? "hidden" : "";

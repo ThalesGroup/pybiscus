@@ -225,7 +225,11 @@ def sessionConfigDownload():
     from pybiscus.session.agent.pybiscus_agent import PRESETS
     presets_js = PRESETS(generate_param_js(json.loads(urllib.parse.unquote(presets_raw)))) if presets_raw else ""
 
-    return generate_model_page(config_session,'pybiscus.session.agent.front_end','agent.html','launch_session_button', presets_js,
+    # no list in the session form today; a plugin's model holding one would get a ➕📝 doing nothing
+    with importlib.resources.files("pybiscus.session.agent.front_end").joinpath("lists_management.js").open('r') as file:
+        lists_management = file.read()
+
+    return generate_model_page(config_session,'pybiscus.session.agent.front_end','agent.html','launch_session_button', lists_management + presets_js,
                                identity=pybagent.agent_identity())
 
 # ..........................................................

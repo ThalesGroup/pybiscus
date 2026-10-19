@@ -1257,6 +1257,9 @@ input:hover, textarea:hover, select:hover {
     display: flex; gap: 0.25rem;
 }
 .pybiscus-cl-actions .pybiscus-cl-action { min-width: 30px; min-height: 28px; padding: 0 0.4rem; font-size: 0.95em; }
+.pybiscus-cl-current { transition: opacity 0.2s ease, transform 0.2s ease; }
+.pybiscus-cl-current.pybiscus-cl-leaving { opacity: 0; transform: scale(0.8); }
+@media (prefers-reduced-motion: reduce) { .pybiscus-cl-current { transition: none; } }
 .pybiscus-cl-action {
     min-width: 40px; min-height: 40px; font: inherit; font-size: 1.1em; cursor: pointer;
     background: var(--fieldset-bg); color: var(--theme-color);
