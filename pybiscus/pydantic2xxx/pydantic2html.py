@@ -67,6 +67,18 @@ def html_label( label: str, is_config: bool = False, pybiscus_info: str = '', ti
     else:
         return f'  <label {pybiscus_info}>{label}</label>\n'
 
+# a path, a directory, a file or a URL gets a wide input: the default width cut them off
+WIDE_TEXT_NAME = re.compile(r"(^|_)(dir|directory|path|file|filename|url|uri)(_|$)|(dir|path|file|url)$")
+
+def text_width_class(field_name: str, default) -> str:
+    wide = bool(WIDE_TEXT_NAME.search(field_name.lower())) or (isinstance(default, str) and ("/" in default or "${" in default))
+    return "pybiscus-w-wide" if wide else "pybiscus-w-text"
+
+def html_description(description, cls: str = "pybiscus-desc") -> str:
+    if description is None or description is PydanticUndefined:
+        return ""
+    return f'  <div class="{cls}">{html_module.escape(description)}</div>\n'
+
 def index_generator():
     counter = 1
 
@@ -151,21 +163,25 @@ def generate_field_html(field_name: str, field_type, field_default, field_descri
     if field_type is str:
         opt_value = '' if (field_default is PydanticUndefined or field_default is None ) else f' value="{html_module.escape(field_default)}" '
         field_html += html_label( field_name, True, opt_title, field_title )
-        field_html += f'  <input type="text" {opt_title} {opt_value} placeholder="string" {pybiscus_marker}>\n'
+        field_html += f'  <input type="text" class="{text_width_class(field_name, field_default)}" {opt_title} {opt_value} placeholder="string" {pybiscus_marker}>\n'
+        field_html += html_description(field_description)
 
     elif field_type is int:
         field_html += html_label( field_name, True, opt_title, field_title )
-        field_html += f'  <input type="number" {opt_title} {opt_value} placeholder="integer" {pybiscus_marker}>\n'
+        field_html += f'  <input type="number" class="pybiscus-w-int" {opt_title} {opt_value} placeholder="integer" {pybiscus_marker}>\n'
+        field_html += html_description(field_description)
 
     elif field_type is float:
         field_html += html_label( field_name, True, opt_title, field_title )
-        field_html += f'  <input type="number" {opt_title} {opt_value} placeholder="float" step="0.001" {pybiscus_marker}>\n'
+        field_html += f'  <input type="number" class="pybiscus-w-float" {opt_title} {opt_value} placeholder="float" step="0.001" {pybiscus_marker}>\n'
+        field_html += html_description(field_description)
 
     elif field_type is bool:
         opt_checked = "checked" if True == field_default else ""
         
         field_html += html_label( field_name, True, opt_title, field_title )
         field_html += f'  <input type="checkbox" {opt_title} {opt_value} {opt_checked} {pybiscus_marker}> \n'
+        field_html += html_description(field_description)
 
     elif is_enum_type(field_type):
 
@@ -193,6 +209,7 @@ def generate_field_html(field_name: str, field_type, field_default, field_descri
             )
 
         field_html += '</span>\n'
+        field_html += html_description(field_description)
 
     elif is_none_type(field_type):
 
@@ -229,6 +246,8 @@ def generate_field_html(field_name: str, field_type, field_default, field_descri
             with legend():
                 label(raw(config_label_inner(field_name, field_title)), cls="pybiscus-config" )
                 label( "➕📝", cls='pybiscus-list-generator' )
+
+            raw( html_description(field_description, "pybiscus-fieldset-desc") )
 
             my_div = div( cls='pybiscus-list' )
 
@@ -318,6 +337,8 @@ def generate_field_html(field_name: str, field_type, field_default, field_descri
                 label(raw(config_label_inner(field_name, field_title)), cls="pybiscus-config" )
                 label( "➕🔑📖", cls='pybiscus-list-generator' )
 
+            raw( html_description(field_description, "pybiscus-fieldset-desc") )
+
             my_div = div( cls='pybiscus-list' )
 
             with my_div:
@@ -334,7 +355,8 @@ def generate_field_html(field_name: str, field_type, field_default, field_descri
 
         # ### Literal ###
         field_html += html_label( field_name, True, title=field_title )
-        field_html += f'<input type="text" value="{field_type.__args__[0]}" {pybiscus_marker} readonly>\n'
+        field_html += f'<input type="text" class="pybiscus-w-fit" value="{field_type.__args__[0]}" {pybiscus_marker} readonly>\n'
+        field_html += html_description(field_description)
 
     elif is_sub_model(field_type):
 
@@ -475,6 +497,7 @@ def generate_field_html(field_name: str, field_type, field_default, field_descri
                                    f' <input type="checkbox" class="pybiscus-option-cb" {opt_checked} hidden >'
                                    f' <span class="pybiscus-option-hint">{hint}</span> ')
                 field_html += '</label></legend>\n'
+                field_html += html_description(field_description, "pybiscus-fieldset-desc")
 
             tab_nb = new_index()
 

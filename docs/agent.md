@@ -5,7 +5,7 @@ Install Pybiscus first ([Getting started](getting_started.md#installation)).
 
 The agent (`pybiscus_agent`) is a small web application, one per site: it generates the server or
 client configuration form from the configuration models (every plugin included, every field
-described on hover), checks the configuration and launches the server or the client. It can be
+with its description), checks the configuration and launches the server or the client. It can be
 used alone, as below, or driven by the session manager
 ([Session using the manager](sessionmanager.md)).
 
@@ -54,6 +54,9 @@ On each form:
 - Each field shows a readable label (its `title`, or its key spelled out: `num_rounds` reads
   "Number of rounds") with its YAML key under it in small type, the name the config files, the CLI
   and the check's errors use. A plugin gives a field a better label with `Field(title=...)`.
+- Each field's description (`Field(description=...)`) shows under its value, a block's under its
+  title. A field's width follows its type: narrow for a number, wide for a path, a directory, a
+  file or a URL (from its name or its default value).
 - An optional field shows *unset | set* next to its name: *set* shows its value to fill; *unset*
   leaves it unset (None) and folds it, with its description to say what that means (from
   `Field(description=...)`). A field the session locks shows its choice, without changing it.

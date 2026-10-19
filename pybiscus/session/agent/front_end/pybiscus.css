@@ -1629,7 +1629,6 @@ body > div > fieldset > legend {
 
 /* ---------- Ergonomics, step 3.3b: the section menu as a sidebar ---------- */
 
-.pybiscus-fieldset-desc { display: none; }
 
 #top-div > fieldset.pybiscus-sections {
     display: grid;
@@ -1867,3 +1866,44 @@ body > div > fieldset > legend {
     box-shadow: 0 0 0 3px color-mix(in srgb, var(--ok) 30%, transparent);
 }
 .pybiscus-lu-bubble.current { background: var(--ok); color: var(--on-ok); }
+
+/* ---------- Ergonomics, step 3.3d: descriptions shown, widths by type ---------- */
+
+/* a field's description under its value (third child of the names | values grid), a block's
+   under its title; the title on hover stays */
+.pybiscus-desc,
+.pybiscus-fieldset-desc {
+    color: var(--muted);
+    font-size: 0.82rem;
+    line-height: 1.35;
+    max-width: 70ch;
+}
+.pybiscus-field:has(> label) > .pybiscus-desc {
+    grid-column: 2;
+    margin-top: calc(-1 * var(--spacing-sm) + 2px);
+}
+.pybiscus-fieldset-desc {
+    display: block;
+    margin: 0 0 var(--spacing-sm);
+}
+/* a checkbox is pushed right in its column: its description follows it */
+.pybiscus-field > input[type="checkbox"] + .pybiscus-desc { margin-left: var(--spacing-xl); }
+
+#top-div input.pybiscus-w-int { width: 7rem; }
+#top-div input.pybiscus-w-float { width: 9rem; }
+#top-div input.pybiscus-w-text { width: 16rem; }
+#top-div input.pybiscus-w-wide { width: 32rem; }
+#top-div input.pybiscus-w-fit { field-sizing: content; min-width: 4rem; }
+#top-div input[class*="pybiscus-w-"] { max-width: 100%; box-sizing: border-box; }
+/* the label (name and key, often two lines) spans the value's row and the description's: the
+   description then sits right under its input, not under the whole label */
+.pybiscus-field:has(> label):has(> .pybiscus-desc) { align-items: start; }
+.pybiscus-field:has(> .pybiscus-desc) > label { grid-row: span 2; }
+.pybiscus-field:has(> label) > .pybiscus-desc { margin-top: -2px; }
+.pybiscus-field:has(> .pybiscus-desc) > input[type="checkbox"] { margin-top: 0.35rem; }
+
+/* an unset option's description in full, like the others: it was cut at one line */
+.pybiscus-option-hint { white-space: normal; vertical-align: top; }
+/* a union's container is a flex row: its description takes a line of its own above the options */
+.pybiscus-fieldset-container:has(> .pybiscus-fieldset-desc) { flex-wrap: wrap; }
+.pybiscus-fieldset-container > .pybiscus-fieldset-desc { flex: 1 1 100%; }

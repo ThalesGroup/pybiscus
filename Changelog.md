@@ -114,6 +114,11 @@
   tint and bar), more as chips with the chosen one in teal (the others keep their family's colour);
   the white fill of the chosen option, the dimmed others and the sweeping sheen are gone. The
   options' names, which the presets and pins compare, are unchanged.
+* Config forms: descriptions shown: each field's under its value, each block's (model, union,
+  option once set, list) under its title, an unset option's in full (it was cut at one line); they
+  were on hover only. Widths by type: integers and floats narrow, paths, directories, files and URLs
+  wide (from the field's name or its default value, which were cut off), fixed values at their
+  text's width.
 * Config forms: a locked field's value readable in the dark theme (the faintest grey, dimmed twice).
 * Config forms: a locked field's lock back on its label's line (it took a third line under the key).
 * A check, a save or a pin run during the 600 ms switch between two options of a union read the
