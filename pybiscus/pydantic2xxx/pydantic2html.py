@@ -460,7 +460,15 @@ def generate_field_html(field_name: str, field_type, field_default, field_descri
                 field_html += f'  <legend><label class="pybiscus-config" {opt_title}>{config_label_inner(field_name, field_title)}'
                 if is_an_option:
                     opt_checked = "checked" if active_index == 1 else ""
-                    field_html += f' <span class="pybiscus-optional-mark" title="optional: tick to give it a value, untick to leave it unset">optional</span> <input type="checkbox" class="pybiscus-option-cb" {opt_checked} > '
+                    # the checkbox stays, hidden: the form's scripts, presets and pins drive the
+                    # Optional through it; the switch only clicks it
+                    has_description = field_description not in (None, PydanticUndefined)
+                    hint = "not set" + (f" · {html_module.escape(field_description)}" if has_description else "")
+                    field_html += (' <span class="pybiscus-option-switch" role="group" aria-label="optional value">'
+                                   '<button type="button" class="pybiscus-option-unset" title="leave it unset (None)">unset</button>'
+                                   '<button type="button" class="pybiscus-option-set" title="give it a value">set</button></span>'
+                                   f' <input type="checkbox" class="pybiscus-option-cb" {opt_checked} hidden >'
+                                   f' <span class="pybiscus-option-hint">{hint}</span> ')
                 field_html += '</label></legend>\n'
 
             tab_nb = new_index()

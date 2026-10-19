@@ -50,6 +50,9 @@
   the detached panels and their windows' places kept by the browser, the main page offering to
   reopen them. The charts are drawn at their size on screen: their axis figures were stretched with
   the panel.
+* Config forms: an optional field's checkbox replaced by *unset | set*, unset showing the field's
+  description (what None means); the checkbox stays, hidden, driven by the switch: YAML, presets,
+  pins and locks unchanged.
 * Config forms: a locked field's lock back on its label's line (it took a third line under the key).
 * A check, a save or a pin run during the 600 ms switch between two options of a union read the
   whole union as missing (`data: Field required`): the chosen option is now recorded at the click,

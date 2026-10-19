@@ -44,8 +44,9 @@ On each form:
 - Each field shows a readable label (its `title`, or its key spelled out: `num_rounds` reads
   "Number of rounds") with its YAML key under it in small type, the name the config files, the CLI
   and the check's errors use. A plugin gives a field a better label with `Field(title=...)`.
-- An optional field shows *optional* and a box next to its name: ticked, it takes a value; unticked,
-  it is left unset.
+- An optional field shows *unset | set* next to its name: *set* shows its value to fill; *unset*
+  leaves it unset (None) and folds it, with its description to say what that means (from
+  `Field(description=...)`). A field the session locks shows its choice, without changing it.
 - The ⚙ panel sets the display (tabs, compact lists, theme).
 
 Once launched, the page switches to the run monitor: the run's state and its log lines, live,

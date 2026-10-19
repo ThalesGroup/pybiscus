@@ -51,6 +51,26 @@
         cb.dispatchEvent(new Event('change'));
     });
 
+    // unset | set of an Optional: in the capture phase, before a foldable legend takes the click,
+    // and for the list items cloned after this script ran
+    document.addEventListener('click', event => {
+        const button = event.target.closest && event.target.closest('.pybiscus-option-switch button');
+        if (!button) return;
+        event.preventDefault();
+        event.stopPropagation();
+        const fieldset = button.closest('fieldset');
+        if (fieldset.closest('.pybiscus-locked')) return;
+        const cb = fieldset.querySelector(':scope > legend input.pybiscus-option-cb');
+        const wanted = button.classList.contains('pybiscus-option-set');
+        // not cb.click(): its click would reach a foldable legend and fold the section
+        if (cb.checked !== wanted) { cb.checked = wanted; cb.dispatchEvent(new Event('change', {bubbles: true})); }
+        // a cloned item's checkbox has no change listener: the same switch, done here too
+        fieldset.classList.toggle('pybiscus-camouflaged-fieldset', !wanted);
+        const tabs = fieldset.querySelectorAll(':scope > .pybiscus-tab-container > .pybiscus-tab-buttons > .pybiscus-tab-button');
+        const tab = tabs[wanted ? 0 : 1];
+        if (tab && !tab.classList.contains('active')) tab.click();
+    }, true);
+
     // *** tab selection management ***
 
     function handlePybiscusTabContainer(container) {

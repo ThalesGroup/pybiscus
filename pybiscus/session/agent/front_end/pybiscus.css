@@ -1674,15 +1674,49 @@ fieldset:not(.foldable) > legend > .pybiscus-config {
     padding: 0 var(--spacing-xs);
 }
 
-/* replaces a red ❓, which looked like an error */
-.pybiscus-optional-mark {
-    font-size: 0.75rem;
-    font-weight: normal;
-    padding: 0 0.45rem;
+/* an Optional: unset | set, its state read from the fieldset (pins set the hidden checkbox without
+   any event); replaces a checkbox whose meaning was not shown */
+.pybiscus-option-switch {
+    display: inline-flex;
     margin: 0 0.35rem;
     border: 1px solid var(--fieldset-border);
     border-radius: 999px;
-    opacity: 0.8;
+    overflow: hidden;
+    vertical-align: middle;
+    font-size: 0.75rem;
+    font-weight: normal;
+}
+.pybiscus-option-switch button {
+    border: none;
+    background: none;
+    color: inherit;
+    font: inherit;
+    padding: 0.05rem 0.6rem;
+    cursor: pointer;
+    opacity: 0.7;
+}
+.pybiscus-option-switch button:hover { opacity: 1; }
+.pybiscus-option-fs.pybiscus-camouflaged-fieldset > legend .pybiscus-option-unset,
+.pybiscus-option-fs:not(.pybiscus-camouflaged-fieldset) > legend .pybiscus-option-set {
+    background: var(--color-accent);
+    color: #fff;
+    opacity: 1;
+}
+.pybiscus-option-hint {
+    display: none;
+    font-size: 0.75rem;
+    font-weight: normal;
+    opacity: 0.65;
+    max-width: 40em;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    vertical-align: middle;
+}
+.pybiscus-option-fs.pybiscus-camouflaged-fieldset > legend .pybiscus-option-hint { display: inline-block; }
+.pybiscus-fieldset-container.pybiscus-locked .pybiscus-option-switch {
+    pointer-events: none;
+    opacity: 0.6;
 }
 
 /* action bar: Check (then Execute) is the primary action, the others are secondary; the config's
