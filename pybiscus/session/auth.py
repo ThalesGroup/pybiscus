@@ -121,10 +121,12 @@ def _login_page(component: str) -> str:
         f'<input type="hidden" name="{html.escape(k)}" value="{html.escape(v)}">'
         for k, v in request.args.items(multi=True) if k != "token"
     )
+    from pybiscus.session.theme import theme_head
     return f"""<!doctype html><html><head><meta charset="utf-8"><title>Pybiscus {html.escape(component)}</title>
-<style>body{{font-family:system-ui,sans-serif;background:#0e1116;color:#e6edf3;display:flex;justify-content:center;padding-top:15vh}}
-form{{background:#161b22;padding:2rem;border-radius:12px;max-width:34rem}}input{{width:100%;padding:.5rem;margin:.8rem 0;box-sizing:border-box}}
-code{{color:#ff9e64}}</style></head><body><form method="get" action="{html.escape(request.path)}">
+{theme_head()}
+<style>body{{font-family:var(--sans);background:var(--bg);color:var(--text);display:flex;justify-content:center;padding-top:15vh}}
+form{{background:var(--panel);border:1px solid var(--border);padding:2rem;border-radius:12px;max-width:34rem}}input{{width:100%;padding:.5rem;margin:.8rem 0;box-sizing:border-box}}
+code{{color:var(--eval)}}</style></head><body><form method="get" action="{html.escape(request.path)}">
 <h2>🔑 Pybiscus {html.escape(component)}: access token required</h2>
 <p>Open the URL printed by the {html.escape(component)} when it started (it ends with <code>?token=…</code>),
 or paste its token (also in <code>{html.escape(str(TOKENS_DIR))}/</code> where it was started).</p>

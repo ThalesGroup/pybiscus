@@ -50,6 +50,12 @@
   the detached panels and their windows' places kept by the browser, the main page offering to
   reopen them. The charts are drawn at their size on screen: their axis figures were stretched with
   the panel.
+* Theme: the manager, its network page and the access-token page share one set of colour tokens
+  (`pybiscus/session/theme`), dark by default, light with the 🌓 button of the top bar; the choice is
+  kept by the browser for each manager and followed by its other open pages; `?theme=dark|light`
+  forces it for one display without keeping it. The server's config page shown in the manager (an
+  agent's page) receives the manager's theme. The metrics table missed its main metric column when
+  the line naming it came after the first metrics.
 * Config forms: an optional field's checkbox replaced by *unset | set*, unset showing the field's
   description (what None means); the checkbox stays, hidden, driven by the switch: YAML, presets,
   pins and locks unchanged.

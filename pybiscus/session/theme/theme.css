@@ -1,0 +1,36 @@
+/* tokens shared by every page; a page adds its own only for what is its alone */
+:root, :root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #0e1116; --bg-glow: #16202b; --panel: #151a21; --panel-2: #1b222b;
+  --border: #232c37; --border-strong: #2a3644; --grid-line: #18222c;
+  --text: #e6edf3; --text-soft: #cdd6e0; --label: #b7c2ce; --muted: #7d8794; --dim: #4b545f;
+  --accent: #ff5d73;
+  --fit: #ff5d73; --test: #4ecdc4; --eval: #ffb454; --loss: #8b7cf6;
+  --ok: #4ecdc4; --warn: #ffb454; --err: #ff6b66; --done: #3fb950; --stopped: #d29922;
+  --info: #79c0ff; --down: #5a6470; --idle: #39424e;
+  --danger-border: #8e2b2b; --danger-text: #ff8a86; --danger-hover: #d9534f;
+  --warn-bg: rgba(255,180,84,.14); --ok-glow: rgba(78,205,196,.5);
+  --map-bg-1: #12202a; --map-bg-2: #0c1116; --map-link: #2b3947;
+  --overlay: rgba(6,9,13,.72); --label-bg: rgba(10,14,20,.55); --shadow: rgba(0,0,0,.8);
+  --mono: ui-monospace, "JetBrains Mono", "SF Mono", Menlo, Consolas, monospace;
+  --sans: system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+:root[data-theme="light"] {
+  color-scheme: light;
+  --bg: #f4f6f8; --bg-glow: #e3ebf3; --panel: #ffffff; --panel-2: #f0f3f6;
+  --border: #d0d7de; --border-strong: #b6c0ca; --grid-line: #e1e6eb;
+  --text: #1f2328; --text-soft: #2f3640; --label: #424a53; --muted: #59636e; --dim: #8c959f;
+  --accent: #cf2a4a;
+  --fit: #cf2a4a; --test: #0e8a82; --eval: #b45f06; --loss: #6a55d0;
+  --ok: #0e8a82; --warn: #9a6700; --err: #cf222e; --done: #1a7f37; --stopped: #9a6700;
+  --info: #0969da; --down: #8c959f; --idle: #c5ccd3;
+  --danger-border: #e8a3a3; --danger-text: #b42318; --danger-hover: #cf222e;
+  --warn-bg: rgba(154,103,0,.10); --ok-glow: rgba(14,138,130,.35);
+  --map-bg-1: #eef3f7; --map-bg-2: #dfe7ee; --map-link: #b6c3cf;
+  --overlay: rgba(31,35,40,.45); --label-bg: rgba(255,255,255,.75); --shadow: rgba(31,35,40,.25);
+}
+.pybiscus-theme-toggle {
+  cursor: pointer; background: transparent; color: var(--text); border: 1px solid var(--border);
+  border-radius: 8px; padding: 4px 8px; font-size: 13px; line-height: 1;
+}
+.pybiscus-theme-toggle:hover { border-color: var(--accent); }

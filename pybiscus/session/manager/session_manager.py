@@ -2,6 +2,7 @@ import argparse
 import os
 import socket
 from threading import Lock
+import pybiscus.session.theme
 from flask import Flask
 from flask_cors import CORS
 
@@ -16,6 +17,7 @@ from pybiscus.session.csrf import HEADER, require_pybiscus_header
 
 pybiscus_manager_app = Flask(__name__)
 require_pybiscus_header(pybiscus_manager_app)
+pybiscus.session.theme.install(pybiscus_manager_app)
 
 admin_token = None     # the operator's: the manager's pages and actions
 # the participants': registration, session parameters, webhooks. Created even when the manager

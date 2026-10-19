@@ -146,6 +146,11 @@ without them, offers *⧉ reopen name* (a browser opens a window only on a click
 in the page. A window reopens on the screen it was on only where the browser allows it; else on the
 current screen, to move once.
 
+The manager's pages are dark by default; the 🌓 button of the top bar switches to light. The browser
+keeps the choice for each manager and its other open pages (network, detached panels) follow it;
+`?theme=dark` or `?theme=light` in the URL forces a theme for that display without keeping it. The
+config page of an agent shown in the manager takes the manager's theme.
+
 ![Finished session](images/session_manager_run.png "Finished session")
 
 *⏹ stop after round* ends the session after its current round: the server is sent `SIGUSR1`

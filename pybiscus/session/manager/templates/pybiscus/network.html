@@ -3,21 +3,18 @@
 <head>
 <meta charset="utf-8">
 <title>Pybiscus network{% if bouquet %} · {{ bouquet }}{% endif %}</title>
+{{ pybiscus_theme_head() | safe }}
 <style>
-  :root{
-    --bg:#0e1116; --panel:#151a21; --panel-2:#1b222b; --border:#232c37;
-    --text:#e6edf3; --muted:#7d8794; --dim:#4b545f; --accent:#ff5d73; --warn:#ffb454;
-    --http:#4ecdc4; --grpc:#ff5d73; --files:#ffb454;
-    --mono:ui-monospace,"JetBrains Mono","SF Mono",Menlo,Consolas,monospace; --r:10px;
-  }
+  /* colours: pybiscus/session/theme; the protocols take the phases' */
+  :root{ --http:var(--test); --grpc:var(--fit); --files:var(--eval); --r:10px; }
   *{box-sizing:border-box}
-  body{margin:0; background:radial-gradient(1200px 700px at 82% -12%, #16202b 0%, transparent 60%), var(--bg);
+  body{margin:0; background:radial-gradient(1200px 700px at 82% -12%, var(--bg-glow) 0%, transparent 60%), var(--bg);
     color:var(--text); font-family:var(--mono); font-size:13px; line-height:1.5}
   .app{padding:12px; display:grid; gap:12px}
   .topbar{display:flex; align-items:center; gap:14px; padding:10px 14px; border:1px solid var(--border);
     border-radius:var(--r); background:linear-gradient(180deg,var(--panel-2),var(--panel))}
   .topbar .right{margin-left:auto; display:flex; gap:8px}
-  .eyebrow{font-size:10.5px; letter-spacing:.22em; text-transform:uppercase; color:#cdd6e0; font-weight:600}
+  .eyebrow{font-size:10.5px; letter-spacing:.22em; text-transform:uppercase; color:var(--text-soft); font-weight:600}
   .btn{background:var(--panel-2); color:var(--text); border:1px solid var(--border); border-radius:8px; padding:5px 10px;
     font:inherit; text-decoration:none; cursor:pointer}
   .panel{border:1px solid var(--border); border-radius:var(--r); background:var(--panel); padding:10px 14px}
@@ -41,6 +38,7 @@
     <span class="eyebrow">Pybiscus · network</span>
     <span id="scope" class="note"></span>
     <div class="right">
+      <button class="btn pybiscus-theme-toggle" title="light or dark theme, kept by this browser for this manager">🌓</button>
       <a class="btn" href="/pybiscus-session/network.csv" title="the flows between two machines, as a firewall request needs them">⬇ flows (CSV)</a>
       <a class="btn" href="/pybiscus-session/manage">← session</a>
     </div>
@@ -132,7 +130,7 @@
     const width = x + 10;
     const LANE_TOP = height + 18, LANE_GAP = 9;
     let lanes = 0;
-    const colour = p => getComputedStyle(document.documentElement).getPropertyValue(`--${p.toLowerCase()}`).trim() || '#7d8794';
+    const colour = p => getComputedStyle(document.documentElement).getPropertyValue(`--${p.toLowerCase()}`).trim() || pybiscusTheme.color('--muted');
     let arcs = '', boxes = '', arcIndex = {};
     view.flows.forEach(f => {
       const a = pos[f.from], b = pos[f.to];
@@ -159,9 +157,9 @@
       procs.forEach(p => {
         const {x, y} = pos[p.id];
         boxes += `<g><title>${esc(p.role)}${p.listen ? ' · listens on ' + esc(p.listen) : ''}</title>` +
-          `<rect x="${x}" y="${y}" width="${BOX_W}" height="${BOX_H}" rx="6" fill="#1b222b" stroke="${p.external ? '#4b545f' : '#2d3845'}"${p.external ? ' stroke-dasharray="4 3"' : ''}/>` +
+          `<rect x="${x}" y="${y}" width="${BOX_W}" height="${BOX_H}" rx="6" fill="${pybiscusTheme.color('--panel-2')}" stroke="${pybiscusTheme.color(p.external ? '--dim' : '--border-strong')}"${p.external ? ' stroke-dasharray="4 3"' : ''}/>` +
           `<text x="${x + 8}" y="${y + 17}" font-size="11.5">${KIND_ICON[p.kind] || ''} ${esc(p.name)}</text>` +
-          `<text x="${x + BOX_W - 8}" y="${y + 17}" font-size="11" text-anchor="end" fill="#7d8794">${p.port ? esc(p.protocol) + ' :' + esc(p.port) : ''}</text></g>`;
+          `<text x="${x + BOX_W - 8}" y="${y + 17}" font-size="11" text-anchor="end" fill="${pybiscusTheme.color('--muted')}">${p.port ? esc(p.protocol) + ' :' + esc(p.port) : ''}</text></g>`;
       });
     });
     const markers = ['HTTP', 'gRPC', 'files'].map(p =>
@@ -175,6 +173,7 @@
   }
   refresh();
   setInterval(refresh, 5000);
+  addEventListener('pybiscus-theme', refresh);
 </script>
 </body>
 </html>

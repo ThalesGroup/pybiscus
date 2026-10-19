@@ -3,20 +3,16 @@
 <head>
 <meta charset="UTF-8">
 <title>{% if bouquet %}{{ bouquet }} · Pybiscus{% else %}Pybiscus — Session Monitor{% endif %}</title>
+{{ pybiscus_theme_head() | safe }}
 <style>
-  :root{
-    --bg:#0e1116; --panel:#151a21; --panel-2:#1b222b; --border:#232c37;
-    --text:#e6edf3; --muted:#7d8794; --dim:#4b545f;
-    --accent:#ff5d73; --fit:#ff5d73; --test:#4ecdc4; --eval:#ffb454; --loss:#8b7cf6;
-    --ok:#4ecdc4; --warn:#ffb454; --down:#5a6470;
-    --mono:ui-monospace,"JetBrains Mono","SF Mono",Menlo,Consolas,monospace; --r:10px;
-  }
+  /* colours: pybiscus/session/theme (dark and light) */
+  :root{ --r:10px; }
   *{box-sizing:border-box}
   html,body{margin:0;height:100%}
-  body{background:radial-gradient(1200px 700px at 82% -12%, #16202b 0%, transparent 60%), var(--bg);
+  body{background:radial-gradient(1200px 700px at 82% -12%, var(--bg-glow) 0%, transparent 60%), var(--bg);
     color:var(--text); font-family:var(--mono); font-size:13px; line-height:1.5; letter-spacing:.2px}
-  .eyebrow{font-size:10.5px; letter-spacing:.22em; text-transform:uppercase; color:#b7c2ce; font-weight:600}
-  .panel>header .eyebrow{color:#cdd6e0}   /* en-têtes de panneaux : plus lisibles */
+  .eyebrow{font-size:10.5px; letter-spacing:.22em; text-transform:uppercase; color:var(--label); font-weight:600}
+  .panel>header .eyebrow{color:var(--text-soft)}   /* en-têtes de panneaux : plus lisibles */
   .num{font-variant-numeric:tabular-nums}
 
   .app{height:100vh; display:grid; grid-template-rows:auto 1fr; gap:12px; padding:12px}
@@ -30,11 +26,11 @@
      tuned for the charts on the dark background */
   .topbar.marked{border-top:3px solid var(--session-color)}
   .bouquet-pill{font-size:11px; letter-spacing:.06em; padding:2px 10px; border-radius:999px; white-space:nowrap;
-    color:color-mix(in srgb, var(--session-color) 65%, white); border:1px solid var(--session-color);
+    color:color-mix(in srgb, var(--session-color) 65%, var(--text)); border:1px solid var(--session-color);
     background:color-mix(in srgb, var(--session-color) 14%, transparent)}
   .live{display:flex; align-items:center; gap:7px; color:var(--test); font-size:11px; letter-spacing:.16em; text-transform:uppercase}
   .live .dot{width:8px;height:8px;border-radius:50%;background:var(--test);animation:pulse 1.8s ease-out infinite}
-  @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(78,205,196,.55)}70%{box-shadow:0 0 0 7px rgba(78,205,196,0)}100%{box-shadow:0 0 0 0 rgba(78,205,196,0)}}
+  @keyframes pulse{0%{box-shadow:0 0 0 0 var(--ok-glow)}70%{box-shadow:0 0 0 7px transparent}100%{box-shadow:0 0 0 0 transparent}}
   .server-url{color:var(--muted); letter-spacing:.14em; text-transform:uppercase; font-size:10.5px}
   .server-url b{color:var(--text)}
   .sep{width:1px; height:22px; background:var(--border)}
@@ -45,19 +41,19 @@
     font-family:var(--mono); font-size:11px; letter-spacing:.12em; text-transform:uppercase; background:var(--panel-2)}
   .btn:hover{border-color:var(--accent); color:var(--accent)}
   /* the one destructive action of the page */
-  .btn.danger{border-color:#8e2b2b; color:#ff8a86}
-  .btn.danger:hover{border-color:#d9534f; color:#ff6b66}
+  .btn.danger{border-color:var(--danger-border); color:var(--danger-text)}
+  .btn.danger:hover{border-color:var(--danger-hover); color:var(--err)}
   /* the session's state (renderSessionState), in place of a "live" mark that went on blinking once
      the page had stopped reading */
   .session-state{display:flex; align-items:center; gap:7px; font-size:11px; letter-spacing:.16em; text-transform:uppercase;
     color:var(--muted); white-space:nowrap}
   .session-state .dot{width:8px; height:8px; border-radius:50%; background:currentColor}
-  .session-state[data-state="ready"]{color:#79c0ff}
+  .session-state[data-state="ready"]{color:var(--info)}
   .session-state[data-state="running"]{color:var(--test)}
   .session-state[data-state="running"] .dot{animation:pulse 1.8s ease-out infinite}
-  .session-state[data-state="finished"]{color:#3fb950}
-  .session-state[data-state="stopped"]{color:#d29922}
-  .session-state[data-state="failed"]{color:#ff6b66}
+  .session-state[data-state="finished"]{color:var(--done)}
+  .session-state[data-state="stopped"]{color:var(--stopped)}
+  .session-state[data-state="failed"]{color:var(--err)}
   .btn:disabled{opacity:.4; cursor:not-allowed} .btn:disabled:hover{border-color:var(--border); color:var(--text)}
 
   /* grid : ligne haute (1fr), splitter (8px), feeds (hauteur ajustable) */
@@ -72,7 +68,7 @@
   .col-left, .col-mid, .col-right{min-width:0}
   .vsplit{grid-row:1; cursor:col-resize; background:var(--border); border-radius:6px; display:flex; align-items:center; justify-content:center}
   .vsplit::before{content:''; height:48px; width:3px; border-radius:3px; background:var(--dim)}
-  .vsplit:hover{background:#2a3644} .vsplit:hover::before{background:var(--accent)}
+  .vsplit:hover{background:var(--border-strong)} .vsplit:hover::before{background:var(--accent)}
   .vsplit-1{grid-column:2} .vsplit-2{grid-column:4}
   /* vignettes folded: a strip (the columns' widths: applyLayout) */
   .grid.vignettes-folded .col-right>.panel, .grid:not(.vignettes-folded) .vstrip{display:none}
@@ -99,7 +95,7 @@
   .splitter{grid-column:1 / -1; grid-row:2; cursor:row-resize; border-radius:6px; background:var(--border);
     display:flex; align-items:center; justify-content:center}
   .splitter::before{content:''; width:48px; height:3px; border-radius:3px; background:var(--dim)}
-  .splitter:hover{background:#2a3644} .splitter:hover::before{background:var(--accent)}
+  .splitter:hover{background:var(--border-strong)} .splitter:hover::before{background:var(--accent)}
   .feeds{grid-column:1 / -1; grid-row:3; display:grid; grid-template-columns:repeat(3,1fr); gap:12px; min-height:0}
 
   .panel{border:1px solid var(--border); border-radius:var(--r); background:var(--panel);
@@ -108,7 +104,7 @@
   .panel>header .eyebrow{flex:1}
   .panel .body{padding:12px; flex:1; min-height:0; display:flex; flex-direction:column}
   .chip{font-size:10px; padding:1px 7px; border-radius:999px; border:1px solid var(--border); color:var(--muted)}
-  .chip.alert{color:var(--warn); border-color:var(--warn); background:rgba(255,180,84,.14); font-weight:600}
+  .chip.alert{color:var(--warn); border-color:var(--warn); background:var(--warn-bg); font-weight:600}
   .relay-select.missing{color:var(--warn); border-color:var(--warn)}
   /* the open list is drawn by the browser on a light background unless told otherwise, and inherits the select's colour */
   .relay-select,.transport-select{color-scheme:dark} .relay-select option,.transport-select option{background:var(--panel-2); color:var(--text)}
@@ -128,9 +124,9 @@
   .node{padding:7px 9px; border:1px solid var(--border); border-radius:8px; background:var(--panel-2)}
   .node-head{padding:0 10px; font-size:10px; letter-spacing:.04em; text-transform:uppercase; color:var(--muted)}
   .node-head span{overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
-  .node:has(.state[data-state="terminated"]) .st{background:#3fb950}
-  .node:has(.state[data-state="failed"]) .st, .node:has(.state[data-state="not validated"]) .st{background:#ff6b66}
-  .node:has(.state[data-state="stopped"]) .st{background:#d29922}
+  .node:has(.state[data-state="terminated"]) .st{background:var(--done)}
+  .node:has(.state[data-state="failed"]) .st, .node:has(.state[data-state="not validated"]) .st{background:var(--err)}
+  .node:has(.state[data-state="stopped"]) .st{background:var(--stopped)}
   .node .name, .node .site{overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
   /* under the name: beside it, the pill took the column and cut both */
   .node .name .bouquet-pill{display:block; width:fit-content; max-width:100%; overflow:hidden; text-overflow:ellipsis;
@@ -140,28 +136,28 @@
   .node .round, .node .metric{font-size:12px; text-align:right; font-variant-numeric:tabular-nums}
   .node-head .round, .node-head .metric{text-align:right}
   .node .state[data-state="executing"], .node .state[data-state="validated"]{color:var(--ok)}
-  .node .state[data-state="terminated"]{color:#3fb950}
-  .node .state[data-state="failed"], .node .state[data-state="not validated"]{color:#ff6b66}
-  .node .state[data-state="stopped"]{color:#d29922}
+  .node .state[data-state="terminated"]{color:var(--done)}
+  .node .state[data-state="failed"], .node .state[data-state="not validated"]{color:var(--err)}
+  .node .state[data-state="stopped"]{color:var(--stopped)}
   .node .state[data-state="declared"], .node .state[data-state="validating"]{color:var(--muted)}
   .node .st{width:9px;height:9px;border-radius:50%;flex:0 0 auto;background:var(--down)}
-  .node.up .st{background:var(--ok); box-shadow:0 0 8px rgba(78,205,196,.5)}
+  .node.up .st{background:var(--ok); box-shadow:0 0 8px var(--ok-glow)}
   .node.wait .st{background:var(--warn)} .node.down .st{background:var(--down)}
   .node .ico{font-size:15px; line-height:1}
   .node[title]{cursor:default}
   .empty{color:var(--dim); font-size:12px; padding:6px}
   .geo{flex:1; min-height:0; display:flex}
   .geomap{position:relative; flex:1; min-height:120px; border:1px solid var(--border); border-radius:8px;
-    background:radial-gradient(700px 400px at 50% 40%, #12202a, #0c1116); overflow:hidden}
+    background:radial-gradient(700px 400px at 50% 40%, var(--map-bg-1), var(--map-bg-2)); overflow:hidden}
   #geo{position:absolute; inset:0; width:100%; height:100%} #geo g{cursor:default}
   .geolabels{position:absolute; inset:0; pointer-events:none}
   .geolabels .lbl{position:absolute; transform:translate(7px,-50%); font-size:10px; color:var(--text);
-    white-space:nowrap; text-shadow:0 1px 3px #000,0 0 2px #000; pointer-events:auto; cursor:default}
+    white-space:nowrap; text-shadow:0 1px 3px var(--bg),0 0 2px var(--bg); pointer-events:auto; cursor:default}
   .geolabels .lbl.unplaced{visibility:hidden}
   #geo g[data-key], .geolabels .lbl[data-key]{cursor:grab}
   body.dragging-node, body.dragging-node *{cursor:grabbing !important; user-select:none}
-  .cluster-tag{position:absolute; top:7px; left:8px; font-size:10px; color:#cdd6e0; letter-spacing:.04em;
-    background:rgba(10,14,20,.55); border:1px solid var(--border); border-radius:999px; padding:2px 9px}
+  .cluster-tag{position:absolute; top:7px; left:8px; font-size:10px; color:var(--text-soft); letter-spacing:.04em;
+    background:var(--label-bg); border:1px solid var(--border); border-radius:999px; padding:2px 9px}
 
   /* charts */
   .acc-legend{display:flex; gap:14px; margin-left:auto}
@@ -175,15 +171,15 @@
   .cons td{padding:3px 5px; border-bottom:1px solid var(--border); white-space:nowrap}
   .cons .ok{color:var(--ok)} .cons .ko{color:var(--accent); font-weight:600} .cons .na{color:var(--dim)}
   .chart .grid-l{stroke:var(--border); stroke-width:1}
-  .chart .round-l{stroke:#2a3644; stroke-width:1; stroke-dasharray:2 4}   /* marque verticale par round */
+  .chart .round-l{stroke:var(--border-strong); stroke-width:1; stroke-dasharray:2 4}   /* marque verticale par round */
   .chart text.axis{fill:var(--muted); font-size:9px; letter-spacing:.1em}
 
   /* vignettes : matrice layers (lignes) × rounds (colonnes), min-size + scroll */
   .vignettes-wrapper{flex:1; min-height:0; overflow:auto}
   .vmatrix{display:grid; gap:4px; align-content:start; width:max-content; grid-auto-rows:auto}
   .vm-corner{font-size:9px; color:var(--muted); align-self:end; padding:2px 4px; white-space:nowrap}
-  .vm-col{font-size:10px; color:#cdd6e0; text-align:center; align-self:end; font-variant-numeric:tabular-nums}
-  .vm-row{font-size:10px; color:#cdd6e0; align-self:center; padding-right:6px; white-space:nowrap}
+  .vm-col{font-size:10px; color:var(--text-soft); text-align:center; align-self:end; font-variant-numeric:tabular-nums}
+  .vm-row{font-size:10px; color:var(--text-soft); align-self:center; padding-right:6px; white-space:nowrap}
   /* the layers and the rounds stay in sight when the matrix scrolls: the labels fill their cell and
      their shadow the gap after it, the vignettes passed under them in sight */
   .vm-corner, .vm-col{position:sticky; top:0; z-index:1; background:var(--panel); box-shadow:0 4px 0 var(--panel)}
@@ -196,8 +192,8 @@
   img.vm-cell:hover{border-color:var(--accent); transform:scale(1.08)}
   .empty-cell{opacity:.25}
   .preview-float{position:fixed; top:56px; right:24px; max-width:min(64vw,820px); max-height:min(74vh,660px);
-    width:auto; height:auto; border-radius:10px; box-shadow:0 14px 50px #000d; pointer-events:none; opacity:0;
-    transition:opacity .2s; z-index:50; border:1px solid var(--border); background:#0e1116}
+    width:auto; height:auto; border-radius:10px; box-shadow:0 14px 50px var(--shadow); pointer-events:none; opacity:0;
+    transition:opacity .2s; z-index:50; border:1px solid var(--border); background:var(--bg)}
 
   /* feeds */
   .list{flex:1; min-height:0; overflow:auto; display:flex; flex-direction:column; gap:2px; padding-right:4px}
@@ -225,13 +221,13 @@
   ::-webkit-scrollbar{width:8px;height:8px} ::-webkit-scrollbar-thumb{background:var(--border); border-radius:8px}
 
   /* session config modal */
-  .overlay{position:fixed; inset:0; background:rgba(6,9,13,.72); backdrop-filter:blur(3px); display:none; align-items:center; justify-content:center; z-index:60}
+  .overlay{position:fixed; inset:0; background:var(--overlay); backdrop-filter:blur(3px); display:none; align-items:center; justify-content:center; z-index:60}
   .overlay.open{display:flex}
   .modal{width:min(900px,94vw); max-height:88vh; overflow:hidden; border:1px solid var(--border); border-radius:12px;
-    background:var(--panel); box-shadow:0 20px 60px #000a; display:flex; flex-direction:column}
+    background:var(--panel); box-shadow:0 20px 60px var(--shadow); display:flex; flex-direction:column}
   .modal header{display:flex; align-items:center; padding:12px 15px; border-bottom:1px solid var(--border); background:var(--panel-2)}
   .modal header .eyebrow{flex:1}
-  .modal header .cfg-clients{flex:2; font-size:11.5px; color:#9fb0c0; padding:0 12px}
+  .modal header .cfg-clients{flex:2; font-size:11.5px; color:var(--muted); padding:0 12px}
   .modal .x{cursor:pointer; color:var(--muted); border:1px solid var(--border); border-radius:6px; padding:3px 10px; background:transparent; font-family:var(--mono)}
   .modal .mbody{padding:0; min-height:0; overflow:auto}
 </style>
@@ -259,6 +255,7 @@
       <button class="btn" id="dock-btn" hidden title="close this window, the panel goes back to the main page">⧉ dock</button>
       <span class="eyebrow">Δ round</span><span class="num" id="dround-val">—</span>
       <svg id="droundSpark" width="76" height="22"></svg>
+      <button class="btn pybiscus-theme-toggle" title="light or dark theme, kept by this browser for this manager">🌓</button>
       <a class="btn" href="/pybiscus-session/network" target="_blank" title="the machines, ports and flows of the session">🌐 network</a>
       <button class="btn" id="token-btn" title="Copy the session token: the agents give it at registration">🔑 session token</button>
       <button class="btn" id="cfg-btn" disabled title="the session can be configured once its server agent is registered">⚙ config</button>
@@ -372,6 +369,8 @@
   let serverUrl = "";
   const setTxt = (id,v)=>{const e=document.getElementById(id); if(e) e.textContent=v;};
   const fmt = v => (v==null||isNaN(v)) ? '—' : Number(v).toFixed(2);
+  // SVG attributes do not resolve var(--…): the theme's colour, read when drawn
+  const tok = name => pybiscusTheme.color(name);
 
   // ============ endpoints (relatifs) ============
   const AGENTS_URL='/pybiscus-session/agents_logs', LOGS_URL='/pybiscus-session/logs', METRICS_URL='/pybiscus-session/metrics';
@@ -480,7 +479,8 @@
       if(mDone){ roundsCounted = true; session.roundNumber = parseInt(mDone[1],10); return; }
       const mMetric = item.message.match(RE.round_metric);
       if(mMetric){
-        mainMetricName = mMetric[3];
+        // the metrics table's columns follow it: metrics read before this line showed loss alone
+        if(mainMetricName !== mMetric[3]){ mainMetricName = mMetric[3]; renderMetricsTable(); }
         PHASE_BUFFER[mMetric[1]].add(parseFloat(mMetric[4]));
         return;
       }
@@ -619,7 +619,7 @@
     return [W, H];
   }
   function renderAccuracy(){
-    const arrs={fit:fit_accuracies.all,test:test_accuracies.all,eval:evaluate_accuracies.all}, colors={fit:'#ff5d73',test:'#4ecdc4',eval:'#ffb454'};
+    const arrs={fit:fit_accuracies.all,test:test_accuracies.all,eval:evaluate_accuracies.all}, colors={fit:tok('--fit'),test:tok('--test'),eval:tok('--eval')};
     if(mainMetricName) setTxt('main-metric-name', mainMetricName);
     // 0 -> 1 for a rate (accuracy, f1…); otherwise (a loss…) the range of the values
     const all=[...arrs.fit,...arrs.test,...arrs.eval];
@@ -635,7 +635,7 @@
     for(let i=0;i<nRef;i++) s+=`<line class="round-l" x1="${x(i)}" y1="${padT}" x2="${x(i)}" y2="${H-padB}"/>`;   // marques de round
     ['eval','test','fit'].forEach(k=>{const arr=arrs[k]; if(arr.length<1)return; const o=off[k]; const pts=arr.map((v,i)=>`${x(i+o)},${y(v)}`).join(' ');
       s+=`<polyline points="${pts}" fill="none" stroke="${colors[k]}" stroke-width="1.5" stroke-linejoin="round"/>`;
-      const i=arr.length-1; s+=`<circle cx="${x(i+o)}" cy="${y(arr[i])}" r="3" fill="${colors[k]}" stroke="#0e1116" stroke-width="1.4"/>`;});
+      const i=arr.length-1; s+=`<circle cx="${x(i+o)}" cy="${y(arr[i])}" r="3" fill="${colors[k]}" stroke="${tok('--bg')}" stroke-width="1.4"/>`;});
     s+=`<text class="axis" x="${padL}" y="${H-3}">round →</text>`;
     document.getElementById('accChart').innerHTML=s;
     setTxt('acc-fit',fmt(fit_accuracies.latest)); setTxt('acc-test',fmt(test_accuracies.latest)); setTxt('acc-eval',fmt(evaluate_accuracies.latest));
@@ -656,15 +656,15 @@
     for(let g=0;g<3;g++){const v=lo+(hi-lo)*g/2; s+=`<line class="grid-l" x1="${padL}" y1="${y(v)}" x2="${W-padR}" y2="${y(v)}"/><text class="axis" x="3" y="${y(v)+3}">${v.toFixed(2)}</text>`;}
     for(let i=0;i<n;i++) s+=`<line class="round-l" x1="${x(i)}" y1="${padT}" x2="${x(i)}" y2="${H-padB}"/>`;   // marques de round
     const pts=arr.map((v,i)=>`${x(i)},${y(v)}`).join(' ');
-    s+=`<polyline points="${pts}" fill="none" stroke="#8b7cf6" stroke-width="1.5" stroke-linejoin="round"/>`;
-    s+=`<circle cx="${x(n-1)}" cy="${y(arr[n-1])}" r="3" fill="#8b7cf6" stroke="#0e1116" stroke-width="1.4"/>`;
+    s+=`<polyline points="${pts}" fill="none" stroke="${tok('--loss')}" stroke-width="1.5" stroke-linejoin="round"/>`;
+    s+=`<circle cx="${x(n-1)}" cy="${y(arr[n-1])}" r="3" fill="${tok('--loss')}" stroke="${tok('--bg')}" stroke-width="1.4"/>`;
     svg.innerHTML=s;
   }
   function renderDround(){
     const arr=durations.all; setTxt('dround-val', arr.length ? arr[arr.length-1].toFixed(1)+'s' : '—');
     const el=document.getElementById('droundSpark'); if(!arr.length){ el.innerHTML=''; return; }
     const w=76,h=22,mx=Math.max(...arr)||1,bw=w/Math.max(arr.length,1);
-    el.innerHTML=arr.map((v,i)=>{const bh=(h-2)*v/mx; return `<rect x="${i*bw+0.5}" y="${h-bh}" width="${Math.max(1,bw-1.5)}" height="${bh}" fill="${i===arr.length-1?'#ff5d73':'#39424e'}"/>`;}).join('');
+    el.innerHTML=arr.map((v,i)=>{const bh=(h-2)*v/mx; return `<rect x="${i*bw+0.5}" y="${h-bh}" width="${Math.max(1,bw-1.5)}" height="${bh}" fill="${i===arr.length-1?tok('--accent'):tok('--idle')}"/>`;}).join('');
   }
   // ============ cycles of a hierarchical session ============
   // one row per level, this session first, then each lower one indented: a bar per round, the
@@ -716,7 +716,7 @@
   function renderCycles(){
     const svg = document.getElementById('cyclesChart');
     if(midTab !== 'cycles' || !lastCycles) return;
-    const rows = [{label: MANAGER_BOUQUET || 'this session', color: SESSION_COLOR || '#7d8794', depth: 0, cycles: lastCycles.own}]
+    const rows = [{label: MANAGER_BOUQUET || 'this session', color: SESSION_COLOR || tok('--muted'), depth: 0, cycles: lastCycles.own}]
       .concat(lastCycles.groups.map(gr => ({label: gr.bouquet, color: gr.color, depth: gr.depth, cycles: gr.cycles, stale: gr.stale})));
     // this session's round: the whole round; a lower level's: its work, from the model's arrival
     const seconds = (row, c) => row.depth ? (c.work_s ?? c.round_s) : c.round_s;
@@ -741,7 +741,7 @@
         const tip = `${row.label} · round ${c.round}: ` + (c.failed ? 'failed' :
           `${sec.toFixed(1)} s${row.depth ? ' of work' : ''}${c.examples ? `, ${c.examples} examples` : ''}`);
         // literal colours: var(--…) does not resolve in SVG attributes
-        s += `<rect x="${start[c.round]}" y="${y+rowH*0.2}" width="${w}" height="${rowH*0.6}" rx="1" fill="${c.failed ? '#ff5d73' : esc(row.color)}" opacity="${row.stale ? .4 : .85}"><title>${esc(tip)}</title></rect>`;
+        s += `<rect x="${start[c.round]}" y="${y+rowH*0.2}" width="${w}" height="${rowH*0.6}" rx="1" fill="${c.failed ? tok('--err') : esc(row.color)}" opacity="${row.stale ? .4 : .85}"><title>${esc(tip)}</title></rect>`;
       });
     });
     svg.innerHTML = s;
@@ -901,7 +901,7 @@
     const ownRelayed = relayedBy(relays);
     groups.forEach(gr=>{ const relayed = relayedBy(gr.relays); gr.nodes.forEach(nd=>{ nd.relays = relayed[nd.name]; }); });
     nodes.forEach(nd=>{ nd.relays = ownRelayed[nd.name]; });
-    const colourOf = bouquet => (groups.find(gr=>gr.bouquet===bouquet) || {}).color || '#7d8794';
+    const colourOf = bouquet => (groups.find(gr=>gr.bouquet===bouquet) || {}).color || tok('--muted');
     // this session's server: its round and its test; this session's clients: from the metrics table
     // (the lower levels' agents report to their own manager)
     const ownServer = nd => nd.role === 'server' && !nd.group;
@@ -955,7 +955,7 @@
     // the upper level this manager reports to (--upper-url): its bouquet, and whether it is reached
     const upper = upperLevel ? {...upperLevel, name: upperLevel.bouquet || upperLevel.url,
       // literal colours: also used in SVG attributes, where var(--…) does not resolve
-      colour: upperLevel.reached === false ? '#5a6470' : (upperLevel.color || (upperLevel.bouquet ? bouquetColor(upperLevel.bouquet) : '#7d8794'))} : null;
+      colour: upperLevel.reached === false ? tok('--down') : (upperLevel.color || (upperLevel.bouquet ? bouquetColor(upperLevel.bouquet) : tok('--muted')))} : null;
     const upperHead = upper ? `<div class="tier-head"><span class="bouquet-pill" style="--session-color:${esc(upper.colour)}" title="manager: ${esc(upper.url)}">↑ 💐 ${esc(upper.name)}</span>`+
       `<span class="chip" title="${esc(upper.problem || '')}">${upper.reached ? 'connected' : upper.reached === false ? 'not reached' : 'connecting…'}</span>`+
       `<span class="chip" title="this session's model (with its hyperparameters), data and number of rounds follow the upper level's session">${upper.session && upper.session.running ? 'session configured' : 'session not configured'}</span>`+
@@ -982,7 +982,7 @@
     // their own; where they say they are (--geo), else next to their session's server
     const managerNodes = [];
     const ownManager = {key:'^manager', bouquet:MANAGER_BOUQUET, loc:(manager||{}).location, geo:(manager||{}).geo_location,
-                        colour:SESSION_COLOR || '#cdd6e0', serverKey:server && server.key};
+                        colour:SESSION_COLOR || tok('--text-soft'), serverKey:server && server.key};
     if(groups.length || upper) managerNodes.push(ownManager);
     groups.forEach(gr=>{ const lowerServer = gr.nodes.find(n=>n.role==='server');
       gr.managerNode = {key:`${gr.bouquet}/^manager`, bouquet:gr.bouquet, loc:gr.manager.location, geo:gr.manager.geo_location,
@@ -1024,8 +1024,8 @@
     const inMap = q => ({x:Math.min(98, Math.max(2, q.x)), y:Math.min(60, Math.max(2, q.y))});
     const at = nd => manualLayout[nd.key] || inMap(pos[nd.key] || {x:cx,y:cy});
     let g='';
-    for(let i=1;i<10;i++) g+=`<line x1="${i*10}" y1="0" x2="${i*10}" y2="62" stroke="#18222c" stroke-width=".3"/>`;
-    for(let i=1;i<6;i++)  g+=`<line x1="0" y1="${i*10}" x2="100" y2="${i*10}" stroke="#18222c" stroke-width=".3"/>`;
+    for(let i=1;i<10;i++) g+=`<line x1="${i*10}" y1="0" x2="${i*10}" y2="62" stroke="${tok('--grid-line')}" stroke-width=".3"/>`;
+    for(let i=1;i<6;i++)  g+=`<line x1="0" y1="${i*10}" x2="100" y2="${i*10}" stroke="${tok('--grid-line')}" stroke-width=".3"/>`;
     // each lower level: its own star in its colour (federated learning), and a dashed link from its
     // manager to its parent's (supervision: the servers of two levels are not linked)
     groups.forEach(gr=>{
@@ -1054,12 +1054,12 @@
     const diamond=[[0,0],[0,-1.3],[0,1.3],[-1.3,0],[1.3,0],[-0.65,-0.65],[0.65,-0.65],[-0.65,0.65],[0.65,0.65]];
     // this session's nodes in its bouquet's colour, as the lower levels' are in theirs; without a
     // bouquet, the former colours (server, client up or waiting)
-    const localColour = nd => SESSION_COLOR ? esc(SESSION_COLOR) : (nd.role==='server'?'#ff5d73':(stateClass(nd.state)==='up'?'#4ecdc4':'#ffb454'));
+    const localColour = nd => SESSION_COLOR ? esc(SESSION_COLOR) : (nd.role==='server'?tok('--fit'):(stateClass(nd.state)==='up'?tok('--ok'):tok('--warn')));
     if(server) clientNodes.forEach((c,i)=>{ const s=at(server), p=at(c);
       g+= SESSION_COLOR ? `<line x1="${s.x}" y1="${s.y}" x2="${p.x}" y2="${p.y}" stroke="${esc(SESSION_COLOR)}" stroke-width=".45" opacity=".55"/>`
-                        : `<line x1="${s.x}" y1="${s.y}" x2="${p.x}" y2="${p.y}" stroke="#2b3947" stroke-width=".5"/>`;
+                        : `<line x1="${s.x}" y1="${s.y}" x2="${p.x}" y2="${p.y}" stroke="${tok('--map-link')}" stroke-width=".5"/>`;
       if(c.state==='terminated' || c.state==='stopped') return;   // client terminé (🏁) ou arrêté (⏹️) : on garde le lien mais plus d'étincelles
-      const cloud=diamond.map((d,k)=>`<rect x="${(d[0]-0.3).toFixed(2)}" y="${(d[1]-0.3).toFixed(2)}" width="0.6" height="0.6" fill="#ff5d73"><animate attributeName="opacity" values="0.12;1;0.12" dur="${(0.45+0.11*k).toFixed(2)}s" repeatCount="indefinite"/></rect>`).join('');
+      const cloud=diamond.map((d,k)=>`<rect x="${(d[0]-0.3).toFixed(2)}" y="${(d[1]-0.3).toFixed(2)}" width="0.6" height="0.6" fill="${tok('--accent')}"><animate attributeName="opacity" values="0.12;1;0.12" dur="${(0.45+0.11*k).toFixed(2)}s" repeatCount="indefinite"/></rect>`).join('');
       g+=`<g><animateMotion dur="${(2.8+0.35*i).toFixed(2)}s" repeatCount="indefinite" keyPoints="0;1;0" keyTimes="0;0.5;1" calcMode="linear" path="M ${s.x} ${s.y} L ${p.x} ${p.y}"/>${cloud}</g>`;});
     nodes.forEach(nd=>{ const p=at(nd), c=localColour(nd), r = SESSION_COLOR && nd.role!=='server' ? 1.2 : 1.6;
       g+=`<g data-key="${esc(nd.key)}"><title>${esc(tip(nd))}</title>`+
@@ -1076,7 +1076,7 @@
       g+=`<line x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}" stroke="${esc(m.colour)}" stroke-width=".35" stroke-dasharray=".25 .7" stroke-linecap="round" opacity="${m.group && m.group.stale ? .3 : .8}"/>`; });
     managerNodes.forEach(m=>{ const p=at(m), c=esc(m.colour), op = m.group && m.group.stale ? .35 : 1, d=1.9;
       g+=`<g data-key="${esc(m.key)}" opacity="${op}"><title>${esc(['manager', m.bouquet && ('💐 '+m.bouquet), m.loc].filter(Boolean).join(' · '))}</title>`+
-         `<polygon points="${p.x},${p.y-d} ${p.x+d},${p.y} ${p.x},${p.y+d} ${p.x-d},${p.y}" fill="${c}" stroke="#0e1116" stroke-width=".3"/></g>`; });
+         `<polygon points="${p.x},${p.y-d} ${p.x+d},${p.y} ${p.x},${p.y+d} ${p.x-d},${p.y}" fill="${c}" stroke="${tok('--bg')}" stroke-width=".3"/></g>`; });
     geo.innerHTML=g;
     // libellés en overlay HTML (nets) + tooltip (autres infos de registration à brancher côté back)
     const upperLabel = upper ? (u => `<span class="lbl" data-rank="0" data-key="^upper" style="left:${u.x}%; top:${(u.y/62*100).toFixed(1)}%; color:${esc(upper.colour)}"`+
@@ -1146,8 +1146,10 @@
   function openSessionConfig(url){
     const body=document.getElementById('cfg-body');
     if(url && !body.querySelector('iframe')){
-      const f=document.createElement('iframe'); f.src=url;
-      f.style.cssText='width:min(900px,94vw);height:78vh;border:none;background:#0e1116;display:block';
+      // the server agent's page, another origin: it takes this page's theme from its URL, then by message
+      const themed = new URL(url, location.href); themed.searchParams.set('theme', pybiscusTheme.get());
+      const f=document.createElement('iframe'); f.src=themed;
+      f.style.cssText='width:min(900px,94vw);height:78vh;border:none;background:var(--bg);display:block';
       body.appendChild(f);
     }
     document.getElementById('cfg-modal').classList.add('open');
@@ -1457,6 +1459,13 @@
     setTimeout(() => { pendingReopen = detachPrefs.detached.filter(p => !away.has(p)); renderDetachedChips(); }, 800);
   }
   window.applyLayout();
+
+  addEventListener('pybiscus-theme', e => {
+    renderCharts();
+    if(lastTopology) renderTopology(...lastTopology);
+    const frame = document.querySelector('#cfg-body iframe');
+    if(frame && frame.contentWindow) frame.contentWindow.postMessage({pybiscusTheme: e.detail}, '*');
+  });
 
   // ============ start loops ============
   session.startCallback(fetchAgents, 5000);

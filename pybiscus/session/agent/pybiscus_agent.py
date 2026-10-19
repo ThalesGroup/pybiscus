@@ -1,4 +1,5 @@
 import sys
+import pybiscus.session.theme
 from flask import Flask, jsonify, request
 
 from rich import print as rich_print
@@ -19,6 +20,7 @@ from pybiscus.session.csrf import require_pybiscus_header
 
 rest_server = Flask(__name__)
 require_pybiscus_header(rest_server)
+pybiscus.session.theme.install(rest_server)
 
 agent_port  = None
 agent_token = None
