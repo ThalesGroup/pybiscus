@@ -189,7 +189,9 @@
   .mtable .start{border-left:1px solid var(--border)}
   .mtable tr.server td{color:var(--test); border-bottom:1px solid var(--border)}
   .mtable td.old{color:var(--dim)}
-  .mtable td.low{color:var(--warn); font-weight:600; background:rgba(255,180,84,.12)}
+  /* the main metric's extremes: ▼ ▲ say nothing of better or worse, a loss reads the other way */
+  .mtable .mk{display:inline-block; width:1.1em; text-align:right; font-size:9px; color:var(--text)}
+  .mtable tr.spread td{color:var(--muted); border-top:1px solid var(--border); font-style:italic}
   .metric-row{display:flex; align-items:center; gap:10px; padding:6px 6px}
   ::-webkit-scrollbar{width:8px;height:8px} ::-webkit-scrollbar-thumb{background:var(--border); border-radius:8px}
 
@@ -509,6 +511,20 @@
     return allMetrics ? first.concat([...names].filter(n => !first.includes(n)).sort()) : first;
   }
 
+  // ▼ / ▲ for the clients at the lowest / highest main metric, ties included, equal as displayed;
+  // not when all show the same figures, nor for a group of more than half of them (then the norm)
+  function mainExtremes(entries){
+    const shown = entries.map(([id, e]) => [id, fmtMetric(e.value), e.value]);
+    if(new Set(shown.map(([, f]) => f)).size < 2) return {};
+    const marks = {};
+    [['▼', Math.min], ['▲', Math.max]].forEach(([mark, pick]) => {
+      const f = fmtMetric(pick(...shown.map(([, , v]) => v)));
+      const group = shown.filter(([, g]) => g === f).map(([id]) => id);
+      if(group.length * 2 <= shown.length) group.forEach(id => { marks[id] = mark; });
+    });
+    return marks;
+  }
+
   function renderMetricsTable(){
     const ids = Object.keys(clientMetrics);
     if(!ids.length){ metricsTable.innerHTML = '<div class="empty">no metrics yet</div>'; return; }
@@ -518,13 +534,13 @@
     const phases = METRIC_PHASES.map(phase => {
       const columns = metricColumns(phase);
       const latest = Math.max(0, ...ids.map(id => lastRoundOf(id, phase)));
-      // the lowest main metric of the clients at the last round: the client to look at
-      const atLatest = ids.filter(id => !isServerTest(id)).map(id => [id, ((clientMetrics[id][phase] || {})[mainMetricName])])
-                          .filter(([, e]) => e && e.round === latest);
-      atLatest.sort((a, b) => a[1].value - b[1].value);
-      // not when it shows the same figures as the next one
-      const lowest = atLatest.length > 1 && fmtMetric(atLatest[0][1].value) !== fmtMetric(atLatest[1][1].value) ? atLatest[0][0] : null;
-      return {phase, columns, latest, lowest};
+      const atLatest = c => ids.filter(id => !isServerTest(id)).map(id => [id, ((clientMetrics[id][phase] || {})[c])])
+                               .filter(([, e]) => e && e.round === latest);
+      const spread = Object.fromEntries(columns.map(c => {
+        const values = atLatest(c).map(([, e]) => e.value);
+        return [c, values.length > 1 ? Math.max(...values) - Math.min(...values) : null];
+      }));
+      return {phase, columns, latest, extremes: mainExtremes(atLatest(mainMetricName)), spread};
     }).filter(p => p.columns.length);
     const head1 = '<tr><th class="agent"></th>' + phases.map(p =>
       `<th class="group ${p.phase} start" colspan="${p.columns.length}">${p.phase}${p.latest ? ' · round ' + p.latest : ''}</th>`).join('') + '</tr>';
@@ -534,11 +550,18 @@
       phases.map(p => p.columns.map((c, i) => {
         const e = ((clientMetrics[id] || {})[p.phase] || {})[c];
         if(!e) return `<td class="${i ? '' : 'start'}"></td>`;
-        const cls = [i ? '' : 'start', e.round < p.latest ? 'old' : '', c === mainMetricName && id === p.lowest ? 'low' : ''].filter(Boolean).join(' ');
-        const tip = `round ${e.round}` + (cls.includes('low') ? `: the lowest ${c} of round ${p.latest}` : '');
-        return `<td class="${cls}" title="${esc(tip)}">${esc(fmtMetric(e.value))}</td>`;
+        const cls = [i ? '' : 'start', e.round < p.latest ? 'old' : ''].filter(Boolean).join(' ');
+        const extreme = c === mainMetricName ? p.extremes[id] : undefined;
+        const tip = `round ${e.round}` + (extreme ? `: the ${extreme === '▼' ? 'lowest' : 'highest'} ${c} of the clients at round ${p.latest}` : '');
+        // an empty mark in the other cells of the column keeps the figures aligned
+        const mark = c === mainMetricName ? `<span class="mk">${extreme || ''}</span>` : '';
+        return `<td class="${cls}" title="${esc(tip)}">${esc(fmtMetric(e.value))}${mark}</td>`;
       }).join('')).join('') + '</tr>').join('');
-    metricsTable.innerHTML = `<table class="mtable"><thead>${head1}${head2}</thead><tbody>${body}</tbody></table>`;
+    const spreadRow = phases.some(p => p.columns.some(c => p.spread[c] != null)) ?
+      `<tr class="spread"><td class="agent" title="max − min of the clients at the last round">spread</td>` +
+      phases.map(p => p.columns.map((c, i) => `<td class="${i ? '' : 'start'}">${p.spread[c] != null ? esc(fmtMetric(p.spread[c])) : ''}` +
+        `${c === mainMetricName ? '<span class="mk"></span>' : ''}</td>`).join('')).join('') + '</tr>' : '';
+    metricsTable.innerHTML = `<table class="mtable"><thead>${head1}${head2}</thead><tbody>${body}${spreadRow}</tbody></table>`;
   }
 
   document.getElementById('all-metrics-btn').onclick = e => { allMetrics = !allMetrics; e.target.classList.toggle('active', allMetrics); renderMetricsTable(); };

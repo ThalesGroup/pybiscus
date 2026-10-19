@@ -35,7 +35,8 @@
   and last test value).
 * Manager metrics: a table, one row per client and one for the server's test, the loss and main
   metric of the last round for fit and evaluation (*all metrics* for the others), older values
-  greyed, the clients' lowest main metric highlighted; *raw* keeps the former list. The clients are
+  greyed, ▼ ▲ on the clients at the lowest and highest main metric (ties included, not for more than
+  half of them), a *spread* row (max − min); *raw* keeps the former list. The clients are
   named from their cid: `/pybiscus-session/agents` returns the session's cids, a relay now returns
   its cid in its fit metrics (its rows showed Flower's id). The agents table shows a client's round
   and last evaluation value; a relay's "→ lower level" mark sits under its name, no longer cut.

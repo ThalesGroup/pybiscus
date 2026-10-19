@@ -123,8 +123,10 @@ The manager shows, live:
 - the metrics, a table with one row per client (named from the cid the session gave it; a cid it
   did not give shows as `#…`) and one for the server's test: for training (fit) and evaluation, the
   loss and the main metric of the last round, *all metrics* adding the others; a value from an
-  earlier round is greyed, its round in its tooltip; the clients' lowest main metric of the last
-  round is highlighted, the client to look at. *raw* shows the metrics as the server logs them
+  earlier round is greyed, its round in its tooltip; ▼ and ▲ mark the clients at the lowest and
+  highest main metric of the last round (ties included, equal as displayed; no mark when all show the
+  same figures, nor for a group of more than half the clients, then the norm); a *spread* row gives
+  max − min of the clients for each column. *raw* shows the metrics as the server logs them
   (`fit_<metric>_<cid>`, `val_<metric>_<cid>`, `val_<metric>_glob`, built by
   `pybiscus.core.gui_events`).
 
