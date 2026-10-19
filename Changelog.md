@@ -102,6 +102,9 @@
   an added item works (a cloned button had no listener).
 * Config forms: a long list's chain scrolls within the form's width, its ←/→/➖/➕ staying in view;
   the chain widened the whole section past the window, the controls after it out of reach.
+* Config forms: a compact list's ← ➖ → under the current item, which they act on, scrolling with it
+  (at the end of the line they could be out of view); its ➕, the same as the ➕📝 next to the list's
+  name, removed; a move that cannot be made is hidden instead of greyed.
 * Config forms: a locked field's value readable in the dark theme (the faintest grey, dimmed twice).
 * Config forms: a locked field's lock back on its label's line (it took a third line under the key).
 * A check, a save or a pin run during the 600 ms switch between two options of a union read the

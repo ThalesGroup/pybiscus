@@ -70,7 +70,7 @@ window.pybiscusCompactLists = (() => {
         const chain = document.createElement("div");
         chain.className = "pybiscus-cl-chain";
         if (!items.length) {
-            chain.append(Object.assign(document.createElement("span"), { className: "pybiscus-cl-empty", textContent: "empty list: ➕ adds an item" }));
+            chain.append(Object.assign(document.createElement("span"), { className: "pybiscus-cl-empty", textContent: "empty list: ➕📝 adds an item" }));
         }
         items.forEach((item, rank) => {
             if (rank > 0) chain.append(Object.assign(document.createElement("span"), { className: "pybiscus-cl-link", textContent: "→" }));
@@ -81,11 +81,23 @@ window.pybiscusCompactLists = (() => {
             node.append(Object.assign(document.createElement("span"), { className: "pybiscus-cl-rank", textContent: rank }),
                         Object.assign(document.createElement("span"), { className: "pybiscus-cl-name", textContent: name }));
             if (type) node.append(Object.assign(document.createElement("span"), { className: "pybiscus-cl-type", textContent: type }));
-            chain.append(node);
+            if (item !== state.current) { chain.append(node); return; }
+            // the current item's controls under it: at the end of a long chain they went out of view
+            const slot = Object.assign(document.createElement("span"), { className: "pybiscus-cl-current" });
+            slot.append(node, currentActions(fs, items, index));
+            chain.append(slot);
         });
 
-        const current = state.current;
-        const actions = document.createElement("div");
+        graph.append(chain);
+        // horizontal only: scrollIntoView could also move the page while a value is typed
+        const shown = chain.querySelector(".pybiscus-cl-current");
+        if (shown) chain.scrollLeft = shown.offsetLeft - (chain.clientWidth - shown.offsetWidth) / 2;
+    }
+
+    // adding is the legend's ➕📝: it appends at the end, whatever the current item
+    function currentActions(fs, items, index) {
+        const current = items[index];
+        const actions = document.createElement("span");
         actions.className = "pybiscus-cl-actions";
         // the original controls act synchronously (move / remove / add, then renumbering): redraw
         // right after them instead of relying on the mutation observer alone, which reported
@@ -95,19 +107,11 @@ window.pybiscusCompactLists = (() => {
         const right = button("pybiscus-cl-action", "→", "Move the current item later", act(() => current._moveDown && current._moveDown.click()));
         const remove = button("pybiscus-cl-action remove", "➖", "Remove the current item",
                               act(() => ownControls(current, ".pybiscus-list-eraser")[0]?.click()));
-        const add = button("pybiscus-cl-action add", "➕", "Add an item", act(() => {
-            fs.querySelector(":scope > legend .pybiscus-list-generator").click();
-            state.current = itemsOf(fs).pop() || null;
-        }));
-        left.disabled = !current || index === 0;
-        right.disabled = !current || index === items.length - 1;
-        remove.disabled = !current;
-        actions.append(left, right, remove, add);
-
-        graph.append(chain, actions);
-        // horizontal only: scrollIntoView could also move the page while a value is typed
-        const shown = chain.querySelector(".current");
-        if (shown) chain.scrollLeft = shown.offsetLeft - (chain.clientWidth - shown.offsetWidth) / 2;
+        // hidden, not removed: ➖ stays centred under the item
+        left.style.visibility = index === 0 ? "hidden" : "";
+        right.style.visibility = index === items.length - 1 ? "hidden" : "";
+        actions.append(left, remove, right);
+        return actions;
     }
 
     function setCompact(fs, compact) {

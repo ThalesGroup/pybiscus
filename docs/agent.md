@@ -33,6 +33,8 @@ role, site and bouquet when it is registered in a session, then the buttons. The
 listed on the left (on top when the window is narrow); the shown one has its description under its
 name. A nested block is marked by a rule on its left, in teal for the block under the
 pointer; a list has a sunk background.
+A list shows its items as a chain, the current one's values under it: ← ➖ → under the current item
+move it or remove it, ➕📝 next to the list's name adds an item at the end, ⊞ shows every item.
 
 On each form:
 - **Check** validates the configuration; **Execute** (enabled once it is checked)

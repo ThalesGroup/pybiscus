@@ -1248,7 +1248,15 @@ input:hover, textarea:hover, select:hover {
 .pybiscus-cl-node.pybiscus-cl-family .pybiscus-cl-rank { background: hsl(var(--lu-hue, 210) 70% 52%); }
 .pybiscus-cl-type { font-size: 0.72rem; font-weight: 400; opacity: 0.75; white-space: nowrap; }
 .pybiscus-cl-empty { color: var(--theme-color); opacity: 0.7; font-style: italic; }
-.pybiscus-cl-actions { display: flex; gap: var(--spacing-xs); flex: none; }
+/* the current item's ← ➖ → under it, out of the flow (in the chain's bottom padding): the other
+   nodes and links stay aligned on one line, and the bar scrolls with its item */
+.pybiscus-cl-current { position: relative; flex: none; display: inline-flex; }
+.pybiscus-cl-chain:has(.pybiscus-cl-current) { padding-bottom: 2.6rem; }
+.pybiscus-cl-actions {
+    position: absolute; top: calc(100% + 0.3rem); left: 50%; transform: translateX(-50%);
+    display: flex; gap: 0.25rem;
+}
+.pybiscus-cl-actions .pybiscus-cl-action { min-width: 30px; min-height: 28px; padding: 0 0.4rem; font-size: 0.95em; }
 .pybiscus-cl-action {
     min-width: 40px; min-height: 40px; font: inherit; font-size: 1.1em; cursor: pointer;
     background: var(--fieldset-bg); color: var(--theme-color);
