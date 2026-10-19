@@ -64,12 +64,15 @@
 * Manager charts: curves that coincide (evaluation = test, the clients validating on the official test
   set) drawn in dashes of their colours in turn, the last drawn hid the others; *clients* shows each
   client's main metric around the average of a phase (evaluate by default, or fit): a point per
-  client named on hover, and the min–max band. Each value is placed by its round: the server's fit
+  client and the min–max band; hovering the chart shows the nearest round, its averages and every
+  client's value, sorted (a point hovered alone missed those under a curve, and of clients at the
+  same value showed one at random). Each value is placed by its round: the server's fit
   and evaluate averages now log theirs (`round=-` before), and past 40 rounds the training and
   evaluation curves were drawn one round off the test's.
 * Config forms: an optional field's checkbox replaced by *unset | set*, unset showing the field's
   description (what None means); the checkbox stays, hidden, driven by the switch: YAML, presets,
   pins and locks unchanged.
+* Config forms: a locked field's value readable in the dark theme (the faintest grey, dimmed twice).
 * Config forms: a locked field's lock back on its label's line (it took a third line under the key).
 * A check, a save or a pin run during the 600 ms switch between two options of a union read the
   whole union as missing (`data: Field required`): the chosen option is now recorded at the click,

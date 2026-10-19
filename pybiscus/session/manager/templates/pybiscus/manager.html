@@ -163,6 +163,11 @@
   .acc-legend{display:flex; gap:14px; margin-left:auto}
   .acc-legend .it{display:flex; align-items:center; gap:6px; font-size:11.5px}
   .acc-legend .sw{width:9px;height:9px;border-radius:2px} .acc-legend .v{color:var(--text); font-weight:600}
+  .acc-body{position:relative}
+  .acc-tip{position:absolute; z-index:5; pointer-events:none; background:var(--panel-2); border:1px solid var(--border-strong); border-radius:6px; padding:6px 8px; font-family:var(--mono); font-size:11px; line-height:1.45; white-space:nowrap; box-shadow:0 6px 18px var(--shadow)}
+  .acc-tip[hidden]{display:none} .acc-tip .h{color:var(--muted)} .acc-tip .tip-sep{border-top:1px solid var(--border); margin:3px 0}
+  .acc-tip .row{display:flex; gap:12px; justify-content:space-between} .acc-tip .row b{font-weight:600}
+  #accChart .hot{stroke:var(--text); stroke-width:1.2}
   .acc-tools{display:flex; gap:4px; margin-left:12px} #clients-phase{display:flex; gap:2px} #clients-phase[hidden]{display:none}
   .chart{width:100%; flex:1; min-height:0; display:block}
   .chart[hidden], .acc-legend[hidden], .cons[hidden]{display:none}
@@ -303,7 +308,7 @@
             <span id="clients-phase" hidden><button class="tool" data-phase="fit">fit</button><button class="tool" data-phase="evaluate">evaluate</button></span>
           </span>
         </header>
-        <div class="body"><svg class="chart" id="accChart" viewBox="0 0 600 200" preserveAspectRatio="none"></svg></div>
+        <div class="body acc-body"><svg class="chart" id="accChart" viewBox="0 0 600 200" preserveAspectRatio="none"></svg><div class="acc-tip" id="acc-tip" hidden></div></div>
       </section>
       <section class="panel" data-panel="loss">
         <header><span class="eyebrow" id="mid-title">Loss · metric diff</span>
@@ -673,6 +678,7 @@
     const [W, H] = chartSize(document.getElementById('accChart'), 600, 200);
     const padL=30,padR=8,padT=10,padB=16, lo=unit?0:Math.max(0,vmin-span*0.1), hi=unit?1:vmax+span*0.1;
     const x = r => padL + (W-padL-padR) * (rmax > rmin ? (r - rmin) / (rmax - rmin) : 0), y = v => padT + (H-padT-padB) * (1 - (v-lo)/(hi-lo));
+    accView = {rmin, rmax, x, series, clients: Object.fromEntries(clients)};
     let s='';
     for(let g=0;g<=5;g++){const v=lo+(hi-lo)*g/5; s+=`<line class="grid-l" x1="${padL}" y1="${y(v)}" x2="${W-padR}" y2="${y(v)}"/><text class="axis" x="3" y="${y(v)+3}">${v.toFixed(unit?1:2)}</text>`;}
     for(let r=rmin;r<=rmax;r++) s+=`<line class="round-l" x1="${x(r)}" y1="${padT}" x2="${x(r)}" y2="${H-padB}"/>`;   // marques de round
@@ -681,8 +687,6 @@
       const lows = clients.map(([r, ids]) => [r, Math.min(...ids.map(([, v]) => v))]), highs = clients.map(([r, ids]) => [r, Math.max(...ids.map(([, v]) => v))]);
       const band = highs.map(([r, v]) => `${x(r)},${y(v)}`).concat(lows.reverse().map(([r, v]) => `${x(r)},${y(v)}`)).join(' ');
       s += `<polygon points="${band}" fill="${colour}" fill-opacity=".14" stroke="${colour}" stroke-opacity=".35" stroke-width="1"/>`;
-      clients.forEach(([r, ids]) => ids.forEach(([id, v]) =>
-        s += `<circle cx="${x(r)}" cy="${y(v)}" r="2.6" fill="${colour}" fill-opacity=".75"><title>${esc(`${metricRowName(id)} · round ${r} · ${clientsPhase}: ${fmtMetric(v)}`)}</title></circle>`));
     }
     // a segment several curves share (eval = test when the clients validate on the official test
     // set): drawn in dashes of their colours in turn, the last drawn hid the others
@@ -699,9 +703,53 @@
     }));
     order.forEach(k => { const p = points[k]; if(!p.length) return; const [r, v] = p[p.length - 1];
       s += `<circle cx="${x(r)}" cy="${y(v)}" r="3" fill="${colors[k]}" stroke="${tok('--bg')}" stroke-width="1.4"/>`; });
+    // the clients above the curves; their values are read by round (see the tooltip): equal values
+    // put their points on one another, and a point of 2.6 px under a curve was hard to hover
+    if(clients.length){
+      const colour = clientsPhase === 'fit' ? colors.fit : colors.eval;
+      clients.forEach(([r, ids]) => ids.forEach(([, v]) =>
+        s += `<circle class="cpt" data-r="${r}" cx="${x(r)}" cy="${y(v)}" r="2.6" fill="${colour}" fill-opacity=".8"/>`));
+    }
+    s += `<line id="acc-hover-line" class="round-l" x1="0" y1="${padT}" x2="0" y2="${H-padB}" stroke="${tok('--muted')}" visibility="hidden"/>`;
     s+=`<text class="axis" x="${padL}" y="${H-3}">round →</text>`;
     document.getElementById('accChart').innerHTML=s;
+    if(typeof showAccTip === 'function') showAccTip();
     setTxt('acc-fit',fmt(fit_accuracies.latest)); setTxt('acc-test',fmt(test_accuracies.latest)); setTxt('acc-eval',fmt(evaluate_accuracies.latest));
+  }
+  // the hover: the nearest round, its averages and each client of the shown phase, sorted, ties together
+  let accView = null;
+  const accSvg = document.getElementById('accChart'), accTip = document.getElementById('acc-tip');
+  function hideAccTip(){
+    accTip.hidden = true;
+    accSvg.querySelectorAll('.hot').forEach(c => c.classList.remove('hot'));
+    const line = document.getElementById('acc-hover-line'); if(line) line.setAttribute('visibility', 'hidden');
+  }
+  // the chart is redrawn at each poll: the hover is shown again where the mouse stays
+  let accMouseX = null;
+  accSvg.addEventListener('mouseleave', () => { accMouseX = null; hideAccTip(); });
+  accSvg.addEventListener('mousemove', e => { accMouseX = e.clientX - accSvg.getBoundingClientRect().left; showAccTip(); });
+  function showAccTip(){
+    if(!accView || accMouseX == null) return;
+    const box = accSvg.getBoundingClientRect(), mx = accMouseX;
+    let r = accView.rmin, best = Infinity;
+    for(let k = accView.rmin; k <= accView.rmax; k++){ const d = Math.abs(accView.x(k) - mx); if(d < best){ best = d; r = k; } }
+    const averages = [['fit', 'fit', '--fit'], ['test', 'test', '--test'], ['eval', 'evaluate', '--eval']]
+      .filter(([k]) => accView.series[k][r] != null)
+      .map(([k, label, colour]) => `<div class="row"><span style="color:${tok(colour)}">${label}</span><b>${esc(fmtMetric(accView.series[k][r]))}</b></div>`);
+    const ids = (accView.clients[r] || []).slice().sort((a, b) => b[1] - a[1] || metricRowName(a[0]).localeCompare(metricRowName(b[0])));
+    const clientRows = ids.map(([id, v]) => `<div class="row"><span>${esc(metricRowName(id))}</span><b>${esc(fmtMetric(v))}</b></div>`);
+    if(!averages.length && !clientRows.length){ hideAccTip(); return; }
+    accTip.innerHTML = `<div class="h">round ${r}${mainMetricName ? ' · ' + esc(mainMetricName) : ''}</div>` + averages.join('')
+      + (clientRows.length ? `<div class="tip-sep"></div><div class="h">clients · ${clientsPhase}</div>` + clientRows.join('') : '');
+    accTip.hidden = false;
+    // beside the round, on the side with room
+    const body = accTip.parentElement.getBoundingClientRect(), left = box.left - body.left + accView.x(r);
+    const w = accTip.offsetWidth, place = left + 12 + w < body.width ? left + 12 : left - 12 - w;
+    accTip.style.left = `${Math.max(0, place)}px`; accTip.style.top = `${box.top - body.top + 8}px`;
+    accSvg.querySelectorAll('.hot').forEach(c => c.classList.remove('hot'));
+    accSvg.querySelectorAll(`.cpt[data-r="${r}"]`).forEach(c => c.classList.add('hot'));
+    const line = document.getElementById('acc-hover-line');
+    if(line){ line.setAttribute('x1', accView.x(r)); line.setAttribute('x2', accView.x(r)); line.setAttribute('visibility', 'visible'); }
   }
   function renderLoss(){
     const arr=metricDiffs.all, svg=document.getElementById('lossChart');

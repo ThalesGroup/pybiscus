@@ -120,8 +120,9 @@ The manager shows, live:
   all the clients, weighted by their examples), the server's test; curves that coincide (evaluation
   and test when the clients validate on the official test set) are drawn in dashes of their colours
   in turn. *clients* adds each client's value around the average of one phase (*evaluate* by
-  default, or *fit*): a point per client, its name on hover, and the band from the lowest to the
-  highest; the choice is kept by the browser. Then the loss;
+  default, or *fit*): a point per client and the band from the lowest to the highest; the choice is
+  kept by the browser. Hovering the chart shows the nearest round: its averages and, with *clients*,
+  each client's value, sorted (clients at the same value listed together). Then the loss;
 - the vignettes of the model's layers per round (from the `VisualizeModelLayers` decorator of the
   server's pipeline), folded by default into a strip on the right that counts the rounds received
   (a dot when new ones came while folded): a click shows them, *hide* folds them again, and the
