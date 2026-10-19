@@ -66,7 +66,9 @@
   client's main metric around the average of a phase (evaluate by default, or fit): a point per
   client and the min–max band; hovering the chart shows the nearest round, its averages and every
   client's value, sorted (a point hovered alone missed those under a curve, and of clients at the
-  same value showed one at random). Each value is placed by its round: the server's fit
+  same value showed one at random). Past 12 clients, the points of the hovered round only and the quartiles'
+  band (40 clients made a bar of points per round, hiding the averages); the tooltip lists the 5
+  highest, the median and the 5 lowest (with 40 clients it outgrew the chart, clipped). Each value is placed by its round: the server's fit
   and evaluate averages now log theirs (`round=-` before), and past 40 rounds the training and
   evaluation curves were drawn one round off the test's.
 * Config forms: an optional field's checkbox replaced by *unset | set*, unset showing the field's

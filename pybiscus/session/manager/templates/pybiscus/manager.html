@@ -164,10 +164,12 @@
   .acc-legend .it{display:flex; align-items:center; gap:6px; font-size:11.5px}
   .acc-legend .sw{width:9px;height:9px;border-radius:2px} .acc-legend .v{color:var(--text); font-weight:600}
   .acc-body{position:relative}
-  .acc-tip{position:absolute; z-index:5; pointer-events:none; background:var(--panel-2); border:1px solid var(--border-strong); border-radius:6px; padding:6px 8px; font-family:var(--mono); font-size:11px; line-height:1.45; white-space:nowrap; box-shadow:0 6px 18px var(--shadow)}
+  .acc-tip{position:fixed; z-index:50; pointer-events:none; background:var(--panel-2); border:1px solid var(--border-strong); border-radius:6px; padding:6px 8px; font-family:var(--mono); font-size:11px; line-height:1.45; white-space:nowrap; box-shadow:0 6px 18px var(--shadow)}
   .acc-tip[hidden]{display:none} .acc-tip .h{color:var(--muted)} .acc-tip .tip-sep{border-top:1px solid var(--border); margin:3px 0}
   .acc-tip .row{display:flex; gap:12px; justify-content:space-between} .acc-tip .row b{font-weight:600}
-  #accChart .hot{stroke:var(--text); stroke-width:1.2}
+  .acc-tip .avg{display:flex; gap:10px} .acc-tip .avg b{font-weight:600; color:var(--text)}
+  .chart .cpt.hot{stroke:var(--text); stroke-width:1.2} .chart .cpt.many{display:none} .chart .cpt.many.hot{display:inline}
+  .acc-tip .more{color:var(--muted); font-style:italic}
   .acc-tools{display:flex; gap:4px; margin-left:12px} #clients-phase{display:flex; gap:2px} #clients-phase[hidden]{display:none}
   .chart{width:100%; flex:1; min-height:0; display:block}
   .chart[hidden], .acc-legend[hidden], .cons[hidden]{display:none}
@@ -638,118 +640,150 @@
     svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
     return [W, H];
   }
-  // the clients around the averages, one phase at a time: off, 'fit' or 'evaluate'
-  const CLIENTS_KEY = `pybiscus-manager-clients:${location.host}`;
-  let clientsPhase = null;
-  try { clientsPhase = ['fit', 'evaluate'].includes(localStorage.getItem(CLIENTS_KEY)) ? localStorage.getItem(CLIENTS_KEY) : null; } catch(e) { /* off */ }
-  let clientsLastPhase = clientsPhase || 'evaluate';
-  function showClientsPhase(){
-    document.getElementById('clients-btn').classList.toggle('active', !!clientsPhase);
-    document.getElementById('clients-phase').hidden = !clientsPhase;
-    document.querySelectorAll('#clients-phase .tool').forEach(b => b.classList.toggle('active', b.dataset.phase === clientsPhase));
-  }
-  function setClientsPhase(phase){
-    clientsPhase = phase;
-    if(phase) clientsLastPhase = phase;
-    showClientsPhase();
-    try { localStorage.setItem(CLIENTS_KEY, phase || 'off'); } catch(e) { /* not kept */ }
-    renderAccuracy();
-  }
-  showClientsPhase();
-  document.getElementById('clients-btn').onclick = () => setClientsPhase(clientsPhase ? null : clientsLastPhase);
-  document.querySelectorAll('#clients-phase .tool').forEach(b => b.onclick = () => setClientsPhase(b.dataset.phase));
+  // a metric per round: the averages of fit and evaluate, the server's test and, on demand, the
+  // clients of one phase (evaluate by default, or fit): a point per client and the min–max band;
+  // hovering shows the nearest round, its averages and its clients
+  const CHART_ROUNDS = 40;          // the last rounds shown
+  const CLIENT_POINTS_MAX = 12;     // past it, the quartiles and the hovered round's points only: 40 clients made a bar of points per round
+  const TIP_ENDS = 5;               // past 2 × TIP_ENDS + 1 values, the tooltip lists the highest and lowest only
+  const quantile = (sorted, p) => { const i = (sorted.length - 1) * p, k = Math.floor(i); return sorted[k] + (sorted[Math.min(k + 1, sorted.length - 1)] - sorted[k]) * (i - k); };
+  function phaseChart({svg, tip, button, phaseBox, storeKey, series, metric}){
+    let phase = null, view = null, mouseX = null;
+    // out of its panel, which clips what overflows it: the clients of a round may outgrow the chart
+    document.body.appendChild(tip);
+    try { phase = ['fit', 'evaluate'].includes(localStorage.getItem(storeKey)) ? localStorage.getItem(storeKey) : null; } catch(e) { /* off */ }
+    let lastPhase = phase || 'evaluate';
+    function showPhase(){
+      button.classList.toggle('active', !!phase);
+      phaseBox.hidden = !phase;
+      phaseBox.querySelectorAll('.tool').forEach(b => b.classList.toggle('active', b.dataset.phase === phase));
+    }
+    function setPhase(p){
+      phase = p;
+      if(p) lastPhase = p;
+      showPhase();
+      try { localStorage.setItem(storeKey, p || 'off'); } catch(e) { /* not kept */ }
+      render();
+    }
+    showPhase();
+    button.onclick = () => setPhase(phase ? null : lastPhase);
+    phaseBox.querySelectorAll('.tool').forEach(b => b.onclick = () => setPhase(b.dataset.phase));
 
-  const ACC_ROUNDS = 40;   // the last rounds shown
+    function render(){
+      const avg = series(), name = metric();
+      const lines = {fit: avg.fit, test: avg.test, eval: avg.evaluate};
+      const colors = {fit: tok('--fit'), test: tok('--test'), eval: tok('--eval')};
+      const allRounds = Object.values(lines).flatMap(o => Object.keys(o).map(Number));
+      const rmax = allRounds.length ? Math.max(...allRounds) : 1, rmin = Math.max(allRounds.length ? Math.min(...allRounds) : 0, rmax - CHART_ROUNDS + 1);
+      const inView = o => Object.entries(o).map(([r, v]) => [Number(r), v]).filter(([r]) => r >= rmin).sort((a, b) => a[0] - b[0]);
+      const points = Object.fromEntries(Object.entries(lines).map(([k, o]) => [k, inView(o)]));
+      // the clients of the chosen phase: round -> [[id, value]]
+      const byRound = phase && name ? ((clientRounds[phase] || {})[name] || {}) : {};
+      const clients = Object.entries(byRound).map(([r, ids]) => [Number(r), Object.entries(ids)]).filter(([r]) => r >= rmin && r <= rmax).sort((a, b) => a[0] - b[0]);
+      // 0 -> 1 for a rate (accuracy, f1…); otherwise (a loss…) the range of the values
+      const all = Object.values(points).flatMap(p => p.map(([, v]) => v)).concat(clients.flatMap(([, ids]) => ids.map(([, v]) => v)));
+      const unit = all.every(v => v >= 0 && v <= 1);
+      const vmin = all.length ? Math.min(...all) : 0, vmax = all.length ? Math.max(...all) : 1, span = (vmax - vmin) || 1;
+      const [W, H] = chartSize(svg, 600, 200);
+      const padL=30,padR=8,padT=10,padB=16, lo=unit?0:Math.max(0,vmin-span*0.1), hi=unit?1:vmax+span*0.1;
+      const x = r => padL + (W-padL-padR) * (rmax > rmin ? (r - rmin) / (rmax - rmin) : 0), y = v => padT + (H-padT-padB) * (1 - (v-lo)/(hi-lo));
+      view = {rmin, rmax, x, lines, name, clients: Object.fromEntries(clients)};
+      let s='';
+      for(let g=0;g<=5;g++){const v=lo+(hi-lo)*g/5; s+=`<line class="grid-l" x1="${padL}" y1="${y(v)}" x2="${W-padR}" y2="${y(v)}"/><text class="axis" x="3" y="${y(v)+3}">${v.toFixed(unit?1:2)}</text>`;}
+      for(let r=rmin;r<=rmax;r++) s+=`<line class="round-l" x1="${x(r)}" y1="${padT}" x2="${x(r)}" y2="${H-padB}"/>`;   // marques de round
+      if(clients.length){
+        const colour = phase === 'fit' ? colors.fit : colors.eval;
+        const sorted = clients.map(([r, ids]) => [r, ids.map(([, v]) => v).sort((a, b) => a - b)]);
+        const many = Math.max(...sorted.map(([, v]) => v.length)) > CLIENT_POINTS_MAX;
+        const band = (pLow, pHigh) => sorted.map(([r, v]) => `${x(r)},${y(quantile(v, pHigh))}`)
+          .concat(sorted.slice().reverse().map(([r, v]) => `${x(r)},${y(quantile(v, pLow))}`)).join(' ');
+        s += `<polygon points="${band(0, 1)}" fill="${colour}" fill-opacity=".14" stroke="${colour}" stroke-opacity=".35" stroke-width="1"/>`;
+        // many clients: where half of them are, from the first to the third quartile
+        if(many) s += `<polygon points="${band(.25, .75)}" fill="${colour}" fill-opacity=".3"/>`;
+        // under the curves: the tooltip reads the values by round, the points need no hover
+        clients.forEach(([r, ids]) => ids.forEach(([, v]) =>
+          s += `<circle class="cpt${many ? ' many' : ''}" data-r="${r}" cx="${x(r)}" cy="${y(v)}" r="2.6" fill="${colour}" fill-opacity=".8"/>`));
+      }
+      // a segment several curves share (eval = test when the clients validate on the official test
+      // set): drawn in dashes of their colours in turn, the last drawn hid the others
+      const order = ['eval', 'test', 'fit'], D = 5, near = 1.2;
+      const segments = Object.fromEntries(order.map(k => [k, points[k].slice(1).map(([r, v], i) => {
+        const [r0, v0] = points[k][i];
+        return {r0, r, x1: x(r0), y1: y(v0), x2: x(r), y2: y(v)};
+      })]));
+      const same = (a, b) => a.r0 === b.r0 && a.r === b.r && Math.abs(a.y1 - b.y1) < near && Math.abs(a.y2 - b.y2) < near;
+      order.forEach(k => segments[k].forEach(seg => {
+        const sharing = order.filter(o => segments[o].some(other => same(seg, other)));
+        const dash = sharing.length > 1 ? ` stroke-dasharray="${D} ${D * (sharing.length - 1)}" stroke-dashoffset="${-D * sharing.indexOf(k)}"` : ' stroke-linecap="round"';
+        s += `<line x1="${seg.x1}" y1="${seg.y1}" x2="${seg.x2}" y2="${seg.y2}" stroke="${colors[k]}" stroke-width="1.5"${dash}/>`;
+      }));
+      order.forEach(k => { const p = points[k]; if(!p.length) return; const [r, v] = p[p.length - 1];
+        s += `<circle cx="${x(r)}" cy="${y(v)}" r="3" fill="${colors[k]}" stroke="${tok('--bg')}" stroke-width="1.4"/>`; });
+      s += `<line class="hover-line round-l" x1="0" y1="${padT}" x2="0" y2="${H-padB}" stroke="${tok('--muted')}" visibility="hidden"/>`;
+      s+=`<text class="axis" x="${padL}" y="${H-3}">round →</text>`;
+      svg.innerHTML=s;
+      showTip();
+    }
+
+    function hideTip(){
+      tip.hidden = true;
+      svg.querySelectorAll('.hot').forEach(c => c.classList.remove('hot'));
+      const line = svg.querySelector('.hover-line'); if(line) line.setAttribute('visibility', 'hidden');
+    }
+    // the chart is redrawn at each poll: the hover is shown again where the mouse stays
+    svg.addEventListener('mouseleave', () => { mouseX = null; hideTip(); });
+    svg.addEventListener('mousemove', e => { mouseX = e.clientX - svg.getBoundingClientRect().left; showTip(); });
+    const row = (label, value, style = '') => `<div class="row"><span${style}>${esc(label)}</span><b>${esc(value)}</b></div>`;
+    // clients at the same value as displayed on one row; past 2 × TIP_ENDS + 1 rows, the ends and the median
+    function clientRows(ids){
+      const groups = [];
+      ids.slice().sort((a, b) => b[1] - a[1] || metricRowName(a[0]).localeCompare(metricRowName(b[0]))).forEach(([id, v]) => {
+        const text = fmtMetric(v), last = groups[groups.length - 1];
+        if(last && last.text === text) last.names.push(metricRowName(id)); else groups.push({text, names: [metricRowName(id)]});
+      });
+      const label = g => g.names.length <= 3 ? g.names.join(', ') : `${g.names.slice(0, 2).join(', ')} +${g.names.length - 2}`;
+      const rows = g => row(label(g), g.text, g.names.length > 3 ? ` title="${esc(g.names.join(', '))}"` : '');
+      if(groups.length <= 2 * TIP_ENDS + 1) return groups.map(rows).join('');
+      const middle = groups.slice(TIP_ENDS, -TIP_ENDS).reduce((n, g) => n + g.names.length, 0);
+      const median = fmtMetric(quantile(ids.map(([, v]) => v).sort((a, b) => a - b), .5));
+      return groups.slice(0, TIP_ENDS).map(rows).join('')
+        + `<div class="row more"><span>… ${middle} others · median</span><b>${esc(median)}</b></div>`
+        + groups.slice(-TIP_ENDS).map(rows).join('');
+    }
+    function showTip(){
+      if(!view || mouseX == null) return;
+      const box = svg.getBoundingClientRect();
+      let r = view.rmin, best = Infinity;
+      for(let k = view.rmin; k <= view.rmax; k++){ const d = Math.abs(view.x(k) - mouseX); if(d < best){ best = d; r = k; } }
+      const averages = [['fit', 'fit', '--fit'], ['test', 'test', '--test'], ['eval', 'eval', '--eval']]
+        .filter(([k]) => view.lines[k][r] != null)
+        .map(([k, label, colour]) => `<span style="color:${tok(colour)}">${label} <b>${esc(fmtMetric(view.lines[k][r]))}</b></span>`);
+      const ids = view.clients[r] || [];
+      if(!averages.length && !ids.length){ hideTip(); return; }
+      tip.innerHTML = `<div class="h">round ${r}${view.name ? ' · ' + esc(view.name) : ''}</div>` + (averages.length ? `<div class="avg">${averages.join('')}</div>` : '')
+        + (ids.length ? `<div class="tip-sep"></div><div class="h">clients · ${phase} · ${ids.length}</div>` + clientRows(ids) : '');
+      tip.hidden = false;
+      // beside the round, on the side with room, inside the window
+      const left = box.left + view.x(r), w = tip.offsetWidth, h = tip.offsetHeight;
+      const place = left + 12 + w < box.right ? left + 12 : left - 12 - w;
+      tip.style.left = `${Math.max(4, place)}px`; tip.style.top = `${Math.max(4, Math.min(box.top + 8, innerHeight - h - 4))}px`;
+      svg.querySelectorAll('.hot').forEach(c => c.classList.remove('hot'));
+      svg.querySelectorAll(`.cpt[data-r="${r}"]`).forEach(c => c.classList.add('hot'));
+      const line = svg.querySelector('.hover-line');
+      if(line){ line.setAttribute('x1', view.x(r)); line.setAttribute('x2', view.x(r)); line.setAttribute('visibility', 'visible'); }
+    }
+    return {render, get view(){ return view; }};
+  }
+
+  const charts = {
+    accuracy: phaseChart({svg: document.getElementById('accChart'), tip: document.getElementById('acc-tip'),
+      button: document.getElementById('clients-btn'), phaseBox: document.getElementById('clients-phase'),
+      storeKey: `pybiscus-manager-clients:${location.host}`, series: () => roundSeries, metric: () => mainMetricName}),
+  };
   function renderAccuracy(){
-    const series = {fit: roundSeries.fit, test: roundSeries.test, eval: roundSeries.evaluate};
-    const colors = {fit: tok('--fit'), test: tok('--test'), eval: tok('--eval')};
     if(mainMetricName) setTxt('main-metric-name', mainMetricName);
-    const allRounds = Object.values(series).flatMap(o => Object.keys(o).map(Number));
-    const rmax = allRounds.length ? Math.max(...allRounds) : 1, rmin = Math.max(allRounds.length ? Math.min(...allRounds) : 0, rmax - ACC_ROUNDS + 1);
-    const inView = o => Object.entries(o).map(([r, v]) => [Number(r), v]).filter(([r]) => r >= rmin).sort((a, b) => a[0] - b[0]);
-    const points = Object.fromEntries(Object.entries(series).map(([k, o]) => [k, inView(o)]));
-    // the clients of the chosen phase: round -> [[id, value]]
-    const byRound = clientsPhase && mainMetricName ? ((clientRounds[clientsPhase] || {})[mainMetricName] || {}) : {};
-    const clients = Object.entries(byRound).map(([r, ids]) => [Number(r), Object.entries(ids)]).filter(([r]) => r >= rmin && r <= rmax).sort((a, b) => a[0] - b[0]);
-    // 0 -> 1 for a rate (accuracy, f1…); otherwise (a loss…) the range of the values
-    const all = Object.values(points).flatMap(p => p.map(([, v]) => v)).concat(clients.flatMap(([, ids]) => ids.map(([, v]) => v)));
-    const unit = all.every(v => v >= 0 && v <= 1);
-    const vmin = all.length ? Math.min(...all) : 0, vmax = all.length ? Math.max(...all) : 1, span = (vmax - vmin) || 1;
-    const [W, H] = chartSize(document.getElementById('accChart'), 600, 200);
-    const padL=30,padR=8,padT=10,padB=16, lo=unit?0:Math.max(0,vmin-span*0.1), hi=unit?1:vmax+span*0.1;
-    const x = r => padL + (W-padL-padR) * (rmax > rmin ? (r - rmin) / (rmax - rmin) : 0), y = v => padT + (H-padT-padB) * (1 - (v-lo)/(hi-lo));
-    accView = {rmin, rmax, x, series, clients: Object.fromEntries(clients)};
-    let s='';
-    for(let g=0;g<=5;g++){const v=lo+(hi-lo)*g/5; s+=`<line class="grid-l" x1="${padL}" y1="${y(v)}" x2="${W-padR}" y2="${y(v)}"/><text class="axis" x="3" y="${y(v)+3}">${v.toFixed(unit?1:2)}</text>`;}
-    for(let r=rmin;r<=rmax;r++) s+=`<line class="round-l" x1="${x(r)}" y1="${padT}" x2="${x(r)}" y2="${H-padB}"/>`;   // marques de round
-    if(clients.length){
-      const colour = clientsPhase === 'fit' ? colors.fit : colors.eval;
-      const lows = clients.map(([r, ids]) => [r, Math.min(...ids.map(([, v]) => v))]), highs = clients.map(([r, ids]) => [r, Math.max(...ids.map(([, v]) => v))]);
-      const band = highs.map(([r, v]) => `${x(r)},${y(v)}`).concat(lows.reverse().map(([r, v]) => `${x(r)},${y(v)}`)).join(' ');
-      s += `<polygon points="${band}" fill="${colour}" fill-opacity=".14" stroke="${colour}" stroke-opacity=".35" stroke-width="1"/>`;
-    }
-    // a segment several curves share (eval = test when the clients validate on the official test
-    // set): drawn in dashes of their colours in turn, the last drawn hid the others
-    const order = ['eval', 'test', 'fit'], D = 5, near = 1.2;
-    const segments = Object.fromEntries(order.map(k => [k, points[k].slice(1).map(([r, v], i) => {
-      const [r0, v0] = points[k][i];
-      return {r0, r, x1: x(r0), y1: y(v0), x2: x(r), y2: y(v)};
-    })]));
-    const same = (a, b) => a.r0 === b.r0 && a.r === b.r && Math.abs(a.y1 - b.y1) < near && Math.abs(a.y2 - b.y2) < near;
-    order.forEach(k => segments[k].forEach(seg => {
-      const sharing = order.filter(o => segments[o].some(other => same(seg, other)));
-      const dash = sharing.length > 1 ? ` stroke-dasharray="${D} ${D * (sharing.length - 1)}" stroke-dashoffset="${-D * sharing.indexOf(k)}"` : ' stroke-linecap="round"';
-      s += `<line x1="${seg.x1}" y1="${seg.y1}" x2="${seg.x2}" y2="${seg.y2}" stroke="${colors[k]}" stroke-width="1.5"${dash}/>`;
-    }));
-    order.forEach(k => { const p = points[k]; if(!p.length) return; const [r, v] = p[p.length - 1];
-      s += `<circle cx="${x(r)}" cy="${y(v)}" r="3" fill="${colors[k]}" stroke="${tok('--bg')}" stroke-width="1.4"/>`; });
-    // the clients above the curves; their values are read by round (see the tooltip): equal values
-    // put their points on one another, and a point of 2.6 px under a curve was hard to hover
-    if(clients.length){
-      const colour = clientsPhase === 'fit' ? colors.fit : colors.eval;
-      clients.forEach(([r, ids]) => ids.forEach(([, v]) =>
-        s += `<circle class="cpt" data-r="${r}" cx="${x(r)}" cy="${y(v)}" r="2.6" fill="${colour}" fill-opacity=".8"/>`));
-    }
-    s += `<line id="acc-hover-line" class="round-l" x1="0" y1="${padT}" x2="0" y2="${H-padB}" stroke="${tok('--muted')}" visibility="hidden"/>`;
-    s+=`<text class="axis" x="${padL}" y="${H-3}">round →</text>`;
-    document.getElementById('accChart').innerHTML=s;
-    if(typeof showAccTip === 'function') showAccTip();
+    charts.accuracy.render();
     setTxt('acc-fit',fmt(fit_accuracies.latest)); setTxt('acc-test',fmt(test_accuracies.latest)); setTxt('acc-eval',fmt(evaluate_accuracies.latest));
-  }
-  // the hover: the nearest round, its averages and each client of the shown phase, sorted, ties together
-  let accView = null;
-  const accSvg = document.getElementById('accChart'), accTip = document.getElementById('acc-tip');
-  function hideAccTip(){
-    accTip.hidden = true;
-    accSvg.querySelectorAll('.hot').forEach(c => c.classList.remove('hot'));
-    const line = document.getElementById('acc-hover-line'); if(line) line.setAttribute('visibility', 'hidden');
-  }
-  // the chart is redrawn at each poll: the hover is shown again where the mouse stays
-  let accMouseX = null;
-  accSvg.addEventListener('mouseleave', () => { accMouseX = null; hideAccTip(); });
-  accSvg.addEventListener('mousemove', e => { accMouseX = e.clientX - accSvg.getBoundingClientRect().left; showAccTip(); });
-  function showAccTip(){
-    if(!accView || accMouseX == null) return;
-    const box = accSvg.getBoundingClientRect(), mx = accMouseX;
-    let r = accView.rmin, best = Infinity;
-    for(let k = accView.rmin; k <= accView.rmax; k++){ const d = Math.abs(accView.x(k) - mx); if(d < best){ best = d; r = k; } }
-    const averages = [['fit', 'fit', '--fit'], ['test', 'test', '--test'], ['eval', 'evaluate', '--eval']]
-      .filter(([k]) => accView.series[k][r] != null)
-      .map(([k, label, colour]) => `<div class="row"><span style="color:${tok(colour)}">${label}</span><b>${esc(fmtMetric(accView.series[k][r]))}</b></div>`);
-    const ids = (accView.clients[r] || []).slice().sort((a, b) => b[1] - a[1] || metricRowName(a[0]).localeCompare(metricRowName(b[0])));
-    const clientRows = ids.map(([id, v]) => `<div class="row"><span>${esc(metricRowName(id))}</span><b>${esc(fmtMetric(v))}</b></div>`);
-    if(!averages.length && !clientRows.length){ hideAccTip(); return; }
-    accTip.innerHTML = `<div class="h">round ${r}${mainMetricName ? ' · ' + esc(mainMetricName) : ''}</div>` + averages.join('')
-      + (clientRows.length ? `<div class="tip-sep"></div><div class="h">clients · ${clientsPhase}</div>` + clientRows.join('') : '');
-    accTip.hidden = false;
-    // beside the round, on the side with room
-    const body = accTip.parentElement.getBoundingClientRect(), left = box.left - body.left + accView.x(r);
-    const w = accTip.offsetWidth, place = left + 12 + w < body.width ? left + 12 : left - 12 - w;
-    accTip.style.left = `${Math.max(0, place)}px`; accTip.style.top = `${box.top - body.top + 8}px`;
-    accSvg.querySelectorAll('.hot').forEach(c => c.classList.remove('hot'));
-    accSvg.querySelectorAll(`.cpt[data-r="${r}"]`).forEach(c => c.classList.add('hot'));
-    const line = document.getElementById('acc-hover-line');
-    if(line){ line.setAttribute('x1', accView.x(r)); line.setAttribute('x2', accView.x(r)); line.setAttribute('visibility', 'visible'); }
   }
   function renderLoss(){
     const arr=metricDiffs.all, svg=document.getElementById('lossChart');
