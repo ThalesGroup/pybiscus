@@ -61,6 +61,12 @@
   buttons replaced by one 🌓 (dark by default, teal accent as on the other agent pages); the server's
   config shown in the manager follows the manager's theme (URL, then message on each switch). The metrics table missed its main metric column when
   the line naming it came after the first metrics.
+* Manager charts: curves that coincide (evaluation = test, the clients validating on the official test
+  set) drawn in dashes of their colours in turn, the last drawn hid the others; *clients* shows each
+  client's main metric around the average of a phase (evaluate by default, or fit): a point per
+  client named on hover, and the min–max band. Each value is placed by its round: the server's fit
+  and evaluate averages now log theirs (`round=-` before), and past 40 rounds the training and
+  evaluation curves were drawn one round off the test's.
 * Config forms: an optional field's checkbox replaced by *unset | set*, unset showing the field's
   description (what None means); the checkbox stays, hidden, driven by the switch: YAML, presets,
   pins and locks unchanged.

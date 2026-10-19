@@ -63,7 +63,8 @@ def get_evaluate_fn(
 
     return evaluate
 
-def weighted_average(metrics: list[tuple[int, Metrics]], context="") -> Metrics:
+def weighted_average(metrics: list[tuple[int, Metrics]], context="", round_of=None) -> Metrics:
+    """round_of: returns the round being aggregated, which Flower does not give this function"""
     logm.console.log(f"{context} metrics (num_examples, metrics): {metrics}")
 
     # a client without metrics empties the intersection: taken for "not started yet", it let the
@@ -105,6 +106,6 @@ def weighted_average(metrics: list[tuple[int, Metrics]], context="") -> Metrics:
 
     # print(f"Final outputs before logging: {outputs}")
     logm.console.log(f"Averaged {context} metrics: {outputs}")
-    gui_events.log_round_metric(context, outputs)
+    gui_events.log_round_metric(context, outputs, round_of() if round_of else None)
     
     return outputs

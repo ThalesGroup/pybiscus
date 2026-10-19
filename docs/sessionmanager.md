@@ -116,7 +116,12 @@ The manager shows, live:
 - the topology, a table of the agents: role, name, site, state (registered, checking, checked,
   running, finished, failed, stopped, invalid config), the round and the last value of the main
   metric (the server's test, a client's evaluation on its data); the map of the sites;
-- the accuracy per round (clients' training, server's test, clients' evaluation) and the loss;
+- the main metric per round, its last 40 rounds: the clients' training and evaluation (the average of
+  all the clients, weighted by their examples), the server's test; curves that coincide (evaluation
+  and test when the clients validate on the official test set) are drawn in dashes of their colours
+  in turn. *clients* adds each client's value around the average of one phase (*evaluate* by
+  default, or *fit*): a point per client, its name on hover, and the band from the lowest to the
+  highest; the choice is kept by the browser. Then the loss;
 - the vignettes of the model's layers per round (from the `VisualizeModelLayers` decorator of the
   server's pipeline), folded by default into a strip on the right that counts the rounds received
   (a dot when new ones came while folded): a click shows them, *hide* folds them again, and the

@@ -163,6 +163,7 @@
   .acc-legend{display:flex; gap:14px; margin-left:auto}
   .acc-legend .it{display:flex; align-items:center; gap:6px; font-size:11.5px}
   .acc-legend .sw{width:9px;height:9px;border-radius:2px} .acc-legend .v{color:var(--text); font-weight:600}
+  .acc-tools{display:flex; gap:4px; margin-left:12px} #clients-phase{display:flex; gap:2px} #clients-phase[hidden]{display:none}
   .chart{width:100%; flex:1; min-height:0; display:block}
   .chart[hidden], .acc-legend[hidden], .cons[hidden]{display:none}
   .cons{overflow:auto; flex:1; min-height:0}
@@ -297,6 +298,10 @@
             <span class="it"><span class="sw" style="background:var(--test)"></span>Test <span class="v num" id="acc-test">—</span></span>
             <span class="it"><span class="sw" style="background:var(--eval)"></span>Eval <span class="v num" id="acc-eval">—</span></span>
           </div>
+          <span class="acc-tools">
+            <button class="tool" id="clients-btn" title="each client's value around the average: a point per client (its name on hover), the band from the lowest to the highest">clients</button>
+            <span id="clients-phase" hidden><button class="tool" data-phase="fit">fit</button><button class="tool" data-phase="evaluate">evaluate</button></span>
+          </span>
         </header>
         <div class="body"><svg class="chart" id="accChart" viewBox="0 0 600 200" preserveAspectRatio="none"></svg></div>
       </section>
@@ -432,7 +437,7 @@
   bindFeed('reset-agents-btn','pause-agents-btn', agentsList, displayedAgents, ()=> (agentsPaused=!agentsPaused));
   bindFeed('reset-logs-btn','pause-logs-btn', logList, displayedLogs, ()=> (logsPaused=!logsPaused));
   bindFeed('reset-metrics-btn','pause-metrics-btn', metricsList, displayedMetrics, ()=> (metricsPaused=!metricsPaused));
-  document.getElementById('reset-metrics-btn').addEventListener('click', ()=>{ clientMetrics = {}; renderMetricsTable(); });
+  document.getElementById('reset-metrics-btn').addEventListener('click', ()=>{ clientMetrics = {}; clientRounds = {}; renderMetricsTable(); renderAccuracy(); });
 
   function addEntries(container, arr, items){
     items.forEach(item=>{
@@ -466,6 +471,9 @@
   const GUI_PATTERNS = {{ gui_log_patterns | tojson }};
   const RE = Object.fromEntries(Object.entries(GUI_PATTERNS).map(([k, src]) => [k, new RegExp(src)]));
   const PHASE_BUFFER = { fit: fit_accuracies, test: test_accuracies, evaluate: evaluate_accuracies };
+  // phase -> round -> value: placed by their round, the averages of fit and evaluate stayed one round
+  // off the test's once the buffers above dropped their first values
+  const roundSeries = { fit: {}, test: {}, evaluate: {} };
   let mainMetricName = null;
   // stopRound: the last round run when a stop after it was asked for; sessionEnd: {done, total, reason}
   let stopRound = null, sessionEnd = null, stopPending = false, roundsCounted = false;
@@ -482,6 +490,10 @@
         // the metrics table's columns follow it: metrics read before this line showed loss alone
         if(mainMetricName !== mMetric[3]){ mainMetricName = mMetric[3]; renderMetricsTable(); }
         PHASE_BUFFER[mMetric[1]].add(parseFloat(mMetric[4]));
+        // a strategy outside FlowerStrategyFactory may log no round: the next one of its phase
+        const known = Object.keys(roundSeries[mMetric[1]]).map(Number);
+        const r = mMetric[2] === '-' ? (known.length ? Math.max(...known) : (mMetric[1] === 'test' ? -1 : 0)) + 1 : parseInt(mMetric[2], 10);
+        roundSeries[mMetric[1]][r] = parseFloat(mMetric[4]);
         return;
       }
       const mDur = item.message.match(RE.duration);
@@ -518,6 +530,7 @@
   const METRIC_KEYS = {{ metric_key_protocol | tojson }};
   const METRIC_PHASES = ['fit', 'evaluate'];
   let clientMetrics = {};   // id (cid or server_test_id) -> phase -> metric -> {value, round}
+  let clientRounds = {};    // phase -> metric -> round -> id -> value, the clients only
   let agentCids = {};       // agent -> cid, from /pybiscus-session/agents
   let allMetrics = false;
   const metricsTable = document.getElementById('metrics-table');
@@ -532,6 +545,8 @@
         const phase = METRIC_KEYS.phases[m[1]];
         const byPhase = (clientMetrics[m[3]] ||= {});
         (byPhase[phase] ||= {})[m[2]] = {value, round};
+        if(m[3] !== METRIC_KEYS.server_test_id && round != null)
+          ((((clientRounds[phase] ||= {})[m[2]] ||= {})[round] ||= {}))[m[3]] = value;
       });
     });
   }
@@ -618,24 +633,72 @@
     svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
     return [W, H];
   }
+  // the clients around the averages, one phase at a time: off, 'fit' or 'evaluate'
+  const CLIENTS_KEY = `pybiscus-manager-clients:${location.host}`;
+  let clientsPhase = null;
+  try { clientsPhase = ['fit', 'evaluate'].includes(localStorage.getItem(CLIENTS_KEY)) ? localStorage.getItem(CLIENTS_KEY) : null; } catch(e) { /* off */ }
+  let clientsLastPhase = clientsPhase || 'evaluate';
+  function showClientsPhase(){
+    document.getElementById('clients-btn').classList.toggle('active', !!clientsPhase);
+    document.getElementById('clients-phase').hidden = !clientsPhase;
+    document.querySelectorAll('#clients-phase .tool').forEach(b => b.classList.toggle('active', b.dataset.phase === clientsPhase));
+  }
+  function setClientsPhase(phase){
+    clientsPhase = phase;
+    if(phase) clientsLastPhase = phase;
+    showClientsPhase();
+    try { localStorage.setItem(CLIENTS_KEY, phase || 'off'); } catch(e) { /* not kept */ }
+    renderAccuracy();
+  }
+  showClientsPhase();
+  document.getElementById('clients-btn').onclick = () => setClientsPhase(clientsPhase ? null : clientsLastPhase);
+  document.querySelectorAll('#clients-phase .tool').forEach(b => b.onclick = () => setClientsPhase(b.dataset.phase));
+
+  const ACC_ROUNDS = 40;   // the last rounds shown
   function renderAccuracy(){
-    const arrs={fit:fit_accuracies.all,test:test_accuracies.all,eval:evaluate_accuracies.all}, colors={fit:tok('--fit'),test:tok('--test'),eval:tok('--eval')};
+    const series = {fit: roundSeries.fit, test: roundSeries.test, eval: roundSeries.evaluate};
+    const colors = {fit: tok('--fit'), test: tok('--test'), eval: tok('--eval')};
     if(mainMetricName) setTxt('main-metric-name', mainMetricName);
+    const allRounds = Object.values(series).flatMap(o => Object.keys(o).map(Number));
+    const rmax = allRounds.length ? Math.max(...allRounds) : 1, rmin = Math.max(allRounds.length ? Math.min(...allRounds) : 0, rmax - ACC_ROUNDS + 1);
+    const inView = o => Object.entries(o).map(([r, v]) => [Number(r), v]).filter(([r]) => r >= rmin).sort((a, b) => a[0] - b[0]);
+    const points = Object.fromEntries(Object.entries(series).map(([k, o]) => [k, inView(o)]));
+    // the clients of the chosen phase: round -> [[id, value]]
+    const byRound = clientsPhase && mainMetricName ? ((clientRounds[clientsPhase] || {})[mainMetricName] || {}) : {};
+    const clients = Object.entries(byRound).map(([r, ids]) => [Number(r), Object.entries(ids)]).filter(([r]) => r >= rmin && r <= rmax).sort((a, b) => a[0] - b[0]);
     // 0 -> 1 for a rate (accuracy, f1…); otherwise (a loss…) the range of the values
-    const all=[...arrs.fit,...arrs.test,...arrs.eval];
-    const unit=all.every(v=>v>=0 && v<=1);
-    const vmin=all.length?Math.min(...all):0, vmax=all.length?Math.max(...all):1, span=(vmax-vmin)||1;
+    const all = Object.values(points).flatMap(p => p.map(([, v]) => v)).concat(clients.flatMap(([, ids]) => ids.map(([, v]) => v)));
+    const unit = all.every(v => v >= 0 && v <= 1);
+    const vmin = all.length ? Math.min(...all) : 0, vmax = all.length ? Math.max(...all) : 1, span = (vmax - vmin) || 1;
     const [W, H] = chartSize(document.getElementById('accChart'), 600, 200);
     const padL=30,padR=8,padT=10,padB=16, lo=unit?0:Math.max(0,vmin-span*0.1), hi=unit?1:vmax+span*0.1;
-    const off={fit:1, test:0, eval:1};   // fit/eval décalés d'un round (le serveur calcule fit/test avant le round 1)
-    const nRef=Math.max(arrs.test.length, arrs.fit.length+1, arrs.eval.length+1);
-    const x=i=>padL+(W-padL-padR)*(nRef>1? i/(nRef-1):0), y=v=>padT+(H-padT-padB)*(1-(v-lo)/(hi-lo));
+    const x = r => padL + (W-padL-padR) * (rmax > rmin ? (r - rmin) / (rmax - rmin) : 0), y = v => padT + (H-padT-padB) * (1 - (v-lo)/(hi-lo));
     let s='';
     for(let g=0;g<=5;g++){const v=lo+(hi-lo)*g/5; s+=`<line class="grid-l" x1="${padL}" y1="${y(v)}" x2="${W-padR}" y2="${y(v)}"/><text class="axis" x="3" y="${y(v)+3}">${v.toFixed(unit?1:2)}</text>`;}
-    for(let i=0;i<nRef;i++) s+=`<line class="round-l" x1="${x(i)}" y1="${padT}" x2="${x(i)}" y2="${H-padB}"/>`;   // marques de round
-    ['eval','test','fit'].forEach(k=>{const arr=arrs[k]; if(arr.length<1)return; const o=off[k]; const pts=arr.map((v,i)=>`${x(i+o)},${y(v)}`).join(' ');
-      s+=`<polyline points="${pts}" fill="none" stroke="${colors[k]}" stroke-width="1.5" stroke-linejoin="round"/>`;
-      const i=arr.length-1; s+=`<circle cx="${x(i+o)}" cy="${y(arr[i])}" r="3" fill="${colors[k]}" stroke="${tok('--bg')}" stroke-width="1.4"/>`;});
+    for(let r=rmin;r<=rmax;r++) s+=`<line class="round-l" x1="${x(r)}" y1="${padT}" x2="${x(r)}" y2="${H-padB}"/>`;   // marques de round
+    if(clients.length){
+      const colour = clientsPhase === 'fit' ? colors.fit : colors.eval;
+      const lows = clients.map(([r, ids]) => [r, Math.min(...ids.map(([, v]) => v))]), highs = clients.map(([r, ids]) => [r, Math.max(...ids.map(([, v]) => v))]);
+      const band = highs.map(([r, v]) => `${x(r)},${y(v)}`).concat(lows.reverse().map(([r, v]) => `${x(r)},${y(v)}`)).join(' ');
+      s += `<polygon points="${band}" fill="${colour}" fill-opacity=".14" stroke="${colour}" stroke-opacity=".35" stroke-width="1"/>`;
+      clients.forEach(([r, ids]) => ids.forEach(([id, v]) =>
+        s += `<circle cx="${x(r)}" cy="${y(v)}" r="2.6" fill="${colour}" fill-opacity=".75"><title>${esc(`${metricRowName(id)} · round ${r} · ${clientsPhase}: ${fmtMetric(v)}`)}</title></circle>`));
+    }
+    // a segment several curves share (eval = test when the clients validate on the official test
+    // set): drawn in dashes of their colours in turn, the last drawn hid the others
+    const order = ['eval', 'test', 'fit'], D = 5, near = 1.2;
+    const segments = Object.fromEntries(order.map(k => [k, points[k].slice(1).map(([r, v], i) => {
+      const [r0, v0] = points[k][i];
+      return {r0, r, x1: x(r0), y1: y(v0), x2: x(r), y2: y(v)};
+    })]));
+    const same = (a, b) => a.r0 === b.r0 && a.r === b.r && Math.abs(a.y1 - b.y1) < near && Math.abs(a.y2 - b.y2) < near;
+    order.forEach(k => segments[k].forEach(seg => {
+      const sharing = order.filter(o => segments[o].some(other => same(seg, other)));
+      const dash = sharing.length > 1 ? ` stroke-dasharray="${D} ${D * (sharing.length - 1)}" stroke-dashoffset="${-D * sharing.indexOf(k)}"` : ' stroke-linecap="round"';
+      s += `<line x1="${seg.x1}" y1="${seg.y1}" x2="${seg.x2}" y2="${seg.y2}" stroke="${colors[k]}" stroke-width="1.5"${dash}/>`;
+    }));
+    order.forEach(k => { const p = points[k]; if(!p.length) return; const [r, v] = p[p.length - 1];
+      s += `<circle cx="${x(r)}" cy="${y(v)}" r="3" fill="${colors[k]}" stroke="${tok('--bg')}" stroke-width="1.4"/>`; });
     s+=`<text class="axis" x="${padL}" y="${H-3}">round →</text>`;
     document.getElementById('accChart').innerHTML=s;
     setTxt('acc-fit',fmt(fit_accuracies.latest)); setTxt('acc-test',fmt(test_accuracies.latest)); setTxt('acc-eval',fmt(evaluate_accuracies.latest));

@@ -26,6 +26,8 @@ class FabricLoggingMixin:
 
     # set by the factory after construction: Flower strategies reject unknown constructor arguments
     fabric = None
+    # the round the metrics aggregation functions are called for (Flower gives them only the metrics)
+    aggregating_round = None
 
     def evaluate(self, server_round: int, parameters: Parameters) -> Optional[tuple[float, dict[str, Scalar]]]:
         eval_res = super().evaluate(server_round, parameters)
@@ -51,6 +53,7 @@ class FabricLoggingMixin:
     ) -> tuple[Optional[Parameters], dict[str, Scalar]]:
         # the Flower class aggregates: logging after super() keeps each strategy's own rule,
         # overriding the aggregation here would turn every strategy into a FedAvg
+        self.aggregating_round = server_round
         aggregated = super().aggregate_fit(server_round, results, failures)
 
         # a client that withdrew (no new data) says why, its cid included: Flower's line only
@@ -74,6 +77,7 @@ class FabricLoggingMixin:
         results: list[tuple[ClientProxy, EvaluateRes]],
         failures: list[Union[tuple[ClientProxy, EvaluateRes], BaseException]],
     ) -> tuple[Optional[float], dict[str, Scalar]]:
+        self.aggregating_round = server_round
         aggregated = super().aggregate_evaluate(server_round, results, failures)
         self._log_client_metrics("evaluate", server_round, results)
         return aggregated
@@ -108,8 +112,9 @@ class FlowerStrategyFactory(FabricStrategyFactory):
             evaluate_fn=get_evaluate_fn(testset=self.testset, model=self.model, fabric=self.fabric),
             on_fit_config_fn=make_fit_config(clients_fit_local_epochs),
             on_evaluate_config_fn=evaluate_config,
-            fit_metrics_aggregation_fn=partial(weighted_average, context="fit"),
-            evaluate_metrics_aggregation_fn=partial(weighted_average, context="evaluate"),
+            # called once the strategy exists: the closures read it then
+            fit_metrics_aggregation_fn=partial(weighted_average, context="fit", round_of=lambda: strategy.aggregating_round),
+            evaluate_metrics_aggregation_fn=partial(weighted_average, context="evaluate", round_of=lambda: strategy.aggregating_round),
             initial_parameters=self.initial_parameters,
             **self.strategy_kwargs(),
         )
