@@ -44,6 +44,12 @@
   have no `VisualizeModelLayers`, and the empty panel took a third of the width), the charts taking
   the width; *hide* / a click on the strip, the choice kept by the browser. Shown, the matrix follows
   the last round unless scrolled back, its layer and round labels stuck to its edges.
+* Manager panels in windows of their own (several screens): the ⧉ of a panel opens it alone (the page
+  with `?panel=<name>`), the main page giving its place to the others; its mark in the top bar, its
+  window's *dock* button, or closing the window, brings it back; the actions stay in the main page;
+  the detached panels and their windows' places kept by the browser, the main page offering to
+  reopen them. The charts are drawn at their size on screen: their axis figures were stretched with
+  the panel.
 * Config forms: a locked field's lock back on its label's line (it took a third line under the key).
 * A check, a save or a pin run during the 600 ms switch between two options of a union read the
   whole union as missing (`data: Field required`): the chosen option is now recorded at the click,

@@ -134,6 +134,18 @@ The manager shows, live:
   (`fit_<metric>_<cid>`, `val_<metric>_<cid>`, `val_<metric>_glob`, built by
   `pybiscus.core.gui_events`).
 
+With several screens, the ⧉ of a panel opens it alone in a window of its own (the same page with
+`?panel=<name>`: `topology`, `geo`, `accuracy`, `loss`, `vignettes`, `agents-log`, `server-log`,
+`metrics`), to put on another screen; the vignettes folded into their strip have their ⧉ under it.
+The main page gives the panel's place to the others of its column or row (a column left empty goes,
+the charts take the height when no log is left) and shows a *⧉ name* mark in its top bar: a click on
+it, or closing the window, or its *⧉ dock* button, brings the panel back. A detached window shows the
+session's name, state and round; the actions (config, stop, drop, the choice of the relays) stay in
+the main page. The browser keeps which panels were detached, and where: the main page, opened again
+without them, offers *⧉ reopen name* (a browser opens a window only on a click), ✕ to keep them all
+in the page. A window reopens on the screen it was on only where the browser allows it; else on the
+current screen, to move once.
+
 ![Finished session](images/session_manager_run.png "Finished session")
 
 *⏹ stop after round* ends the session after its current round: the server is sent `SIGUSR1`

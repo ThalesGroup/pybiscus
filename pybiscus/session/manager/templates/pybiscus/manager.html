@@ -74,9 +74,7 @@
   .vsplit::before{content:''; height:48px; width:3px; border-radius:3px; background:var(--dim)}
   .vsplit:hover{background:#2a3644} .vsplit:hover::before{background:var(--accent)}
   .vsplit-1{grid-column:2} .vsplit-2{grid-column:4}
-  /* vignettes folded: a strip; the charts take the width, whatever the drag left in --cw2 */
-  .grid.vignettes-folded{grid-template-columns:var(--cw1,1fr) 10px 1fr 10px 36px}
-  .grid.vignettes-folded .vsplit-2{visibility:hidden}
+  /* vignettes folded: a strip (the columns' widths: applyLayout) */
   .grid.vignettes-folded .col-right>.panel, .grid:not(.vignettes-folded) .vstrip{display:none}
   .vstrip{height:100%; width:100%; display:flex; flex-direction:column; align-items:center; gap:10px; padding:12px 0;
     border:1px solid var(--border); border-radius:var(--r); background:var(--panel); color:var(--muted); cursor:pointer; font-family:var(--mono)}
@@ -84,6 +82,20 @@
   .vstrip .label{writing-mode:vertical-rl; transform:rotate(180deg); font-size:10.5px; letter-spacing:.14em; text-transform:uppercase; white-space:nowrap}
   .vstrip .dot{width:7px; height:7px; border-radius:50%; background:var(--accent); visibility:hidden}
   .vstrip.fresh .dot{visibility:visible}
+  /* a panel opened in its own window leaves its place to the others of its column */
+  .panel.away{display:none}
+  .col-left:has(>.panel.away), .col-mid:has(>.panel.away){grid-template-rows:1fr}
+  .detach-btn{padding:0 6px; font-size:12px}
+  /* folded, the vignettes' own ⧉ is hidden with their panel: the strip has one under it */
+  .col-right{display:flex; flex-direction:column; gap:6px}
+  .col-right>.panel, .vstrip{flex:1; min-height:0}
+  .strip-detach{padding:4px 0}
+  .grid:not(.vignettes-folded) .strip-detach{display:none}
+  #detached-chips{display:flex; flex-wrap:wrap; gap:4px; max-width:360px}
+  .detached-chip{font-size:10.5px; padding:3px 7px; white-space:nowrap}
+  .detached-chip.pending{border-style:dashed; color:var(--muted)}
+  /* a detached window: its panel, the session's name, state and round; the actions stay in the main page */
+  body.detached .topbar .right > :not(#dock-btn), body.detached .detach-btn, body.detached #vignettes-fold{display:none}
   .splitter{grid-column:1 / -1; grid-row:2; cursor:row-resize; border-radius:6px; background:var(--border);
     display:flex; align-items:center; justify-content:center}
   .splitter::before{content:''; width:48px; height:3px; border-radius:3px; background:var(--dim)}
@@ -243,6 +255,8 @@
     <div class="kv"><span class="eyebrow">round</span><span class="num"><b id="round-num">0</b></span></div>
     <div class="kv" id="repeat-kv" hidden><span class="eyebrow">session</span><span class="num"><b id="repeat-num">1</b></span></div>
     <div class="right">
+      <span id="detached-chips"></span>
+      <button class="btn" id="dock-btn" hidden title="close this window, the panel goes back to the main page">⧉ dock</button>
       <span class="eyebrow">Δ round</span><span class="num" id="dround-val">—</span>
       <svg id="droundSpark" width="76" height="22"></svg>
       <a class="btn" href="/pybiscus-session/network" target="_blank" title="the machines, ports and flows of the session">🌐 network</a>
@@ -258,11 +272,11 @@
 
     <!-- LEFT : topology + geo -->
     <div class="col-left">
-      <section class="panel">
+      <section class="panel" data-panel="topology">
         <header><span class="eyebrow">Topology</span><span class="chip" id="agents-count">0 agents</span></header>
         <div class="body"><div class="nodes" id="nodes"><div class="empty">no agents yet</div></div></div>
       </section>
-      <section class="panel">
+      <section class="panel" data-panel="geo">
         <header><span class="eyebrow">Registration · geo</span>
           <button class="tool" id="layout-reset" title="Back to the registered positions (a double click resets one node)">⟲ layout</button></header>
         <div class="body"><div class="geo">
@@ -279,7 +293,7 @@
 
     <!-- MID : accuracy (hero) + loss -->
     <div class="col-mid">
-      <section class="panel">
+      <section class="panel" data-panel="accuracy">
         <header><span class="eyebrow" id="main-metric-name">Accuracy</span>
           <div class="acc-legend">
             <span class="it"><span class="sw" style="background:var(--fit)"></span>Fit <span class="v num" id="acc-fit">—</span></span>
@@ -289,7 +303,7 @@
         </header>
         <div class="body"><svg class="chart" id="accChart" viewBox="0 0 600 200" preserveAspectRatio="none"></svg></div>
       </section>
-      <section class="panel">
+      <section class="panel" data-panel="loss">
         <header><span class="eyebrow" id="mid-title">Loss · metric diff</span>
           <span id="mid-tabs" hidden><button class="tool active" data-tab="loss">loss</button> <button class="tool" data-tab="cycles" title="where each level of the hierarchical session spends its rounds">cycles</button> <button class="tool" data-tab="constraints" title="whether each lower level applies what its upper level imposes">constraints</button></span>
           <span class="acc-legend" id="loss-legend"><span class="it"><span class="sw" style="background:var(--loss)"></span><span class="v num" id="loss-val">—</span></span></span>
@@ -304,7 +318,7 @@
 
     <!-- RIGHT : vignettes -->
     <div class="col-right">
-      <section class="panel" style="height:100%">
+      <section class="panel" data-panel="vignettes" style="height:100%">
         <header><span class="eyebrow">Model vignettes</span><span class="chip">layers</span>
           <button class="tool" id="vignettes-fold" title="fold the vignettes into a strip, the charts take the width">hide</button></header>
         <div class="body"><div class="vignettes-wrapper" id="vignettes-wrapper"><div class="vmatrix" id="vmatrix"></div></div></div>
@@ -317,13 +331,13 @@
 
     <!-- FEEDS -->
     <div class="feeds">
-      <section class="panel"><header><span class="eyebrow">Agents log</span>
+      <section class="panel" data-panel="agents-log"><header><span class="eyebrow">Agents log</span>
         <button class="tool" id="pause-agents-btn">pause</button><button class="tool" id="reset-agents-btn">clear</button></header>
         <div class="body"><div class="list" id="agents-list"></div></div></section>
-      <section class="panel"><header><span class="eyebrow">Server log</span>
+      <section class="panel" data-panel="server-log"><header><span class="eyebrow">Server log</span>
         <button class="tool" id="pause-logs-btn">pause</button><button class="tool" id="reset-logs-btn">clear</button></header>
         <div class="body"><div class="list" id="log-list"></div></div></section>
-      <section class="panel"><header><span class="eyebrow">Metrics</span>
+      <section class="panel" data-panel="metrics"><header><span class="eyebrow">Metrics</span>
         <button class="tool" id="all-metrics-btn" title="every metric the clients return, not only the loss and the main metric">all metrics</button>
         <button class="tool" id="raw-metrics-btn" title="the metrics as the server logs them">raw</button>
         <button class="tool" id="pause-metrics-btn">pause</button><button class="tool" id="reset-metrics-btn">clear</button></header>
@@ -364,6 +378,10 @@
   // opens the server agent's session form, and is given to the agents at their registration
   const SESSION_TOKEN = {{ session_token | tojson }};
   const MANAGER_BOUQUET = {{ bouquet | tojson }};
+  // the panels a window can show alone (?panel=…): a detached window, on another screen
+  const PANEL_LABELS = {topology: 'topology', geo: 'map', accuracy: 'accuracy', loss: 'loss', vignettes: 'vignettes',
+                        'agents-log': 'agents log', 'server-log': 'server log', metrics: 'metrics'};
+  const DETACHED_PANEL = (p => p in PANEL_LABELS ? p : null)(new URLSearchParams(location.search).get('panel'));
   const SESSION_COLOR = {{ bouquet_color | tojson }} || (MANAGER_BOUQUET ? bouquetColor(MANAGER_BOUQUET) : null);
   if (SESSION_COLOR) {
     document.documentElement.style.setProperty('--session-color', SESSION_COLOR);
@@ -593,6 +611,13 @@
   };
 
   // ============ charts (nouveau rendu SVG à partir des buffers) ============
+  // drawn at their size on screen: a fixed viewBox stretched with the panel, and with it the axis
+  // figures, once a chart got the width of a column or of a window of its own
+  function chartSize(svg, W0, H0){
+    const r = svg.getBoundingClientRect(), W = Math.round(r.width) || W0, H = Math.round(r.height) || H0;
+    svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+    return [W, H];
+  }
   function renderAccuracy(){
     const arrs={fit:fit_accuracies.all,test:test_accuracies.all,eval:evaluate_accuracies.all}, colors={fit:'#ff5d73',test:'#4ecdc4',eval:'#ffb454'};
     if(mainMetricName) setTxt('main-metric-name', mainMetricName);
@@ -600,7 +625,8 @@
     const all=[...arrs.fit,...arrs.test,...arrs.eval];
     const unit=all.every(v=>v>=0 && v<=1);
     const vmin=all.length?Math.min(...all):0, vmax=all.length?Math.max(...all):1, span=(vmax-vmin)||1;
-    const W=600,H=200,padL=30,padR=8,padT=10,padB=16, lo=unit?0:Math.max(0,vmin-span*0.1), hi=unit?1:vmax+span*0.1;
+    const [W, H] = chartSize(document.getElementById('accChart'), 600, 200);
+    const padL=30,padR=8,padT=10,padB=16, lo=unit?0:Math.max(0,vmin-span*0.1), hi=unit?1:vmax+span*0.1;
     const off={fit:1, test:0, eval:1};   // fit/eval décalés d'un round (le serveur calcule fit/test avant le round 1)
     const nRef=Math.max(arrs.test.length, arrs.fit.length+1, arrs.eval.length+1);
     const x=i=>padL+(W-padL-padR)*(nRef>1? i/(nRef-1):0), y=v=>padT+(H-padT-padB)*(1-(v-lo)/(hi-lo));
@@ -622,7 +648,8 @@
         : `<text class="axis" x="10" y="20">no federated evaluation result (round ${noEvaluationRound}): no client evaluated the model</text>`;
       return;
     }
-    const W=600,H=140,padL=30,padR=8,padT=10,padB=16;
+    const [W, H] = chartSize(svg, 600, 140);
+    const padL=30,padR=8,padT=10,padB=16;
     const mn=Math.min(...arr), mx=Math.max(...arr), span=(mx-mn)||1, lo=Math.max(0, mn-span*0.1), hi=mx+span*0.1;   // borne basse >= 0
     const n=arr.length, x=i=>padL+(W-padL-padR)*(n>1?i/(n-1):0), y=v=>padT+(H-padT-padB)*(1-(v-lo)/(hi-lo));
     let s='';
@@ -700,7 +727,8 @@
       const own = rows[0].cycles.find(c => c.round === n);
       return [n, (own && own.round_s) || Math.max(0.001, ...rows.map(r => { const c = r.cycles.find(c => c.round === n); return c ? (seconds(r, c) || 0) : 0; }))];
     }));
-    const W=600, H=140, padL=112, padR=6, padT=6, padB=14, rowH=(H-padT-padB)/rows.length, slotW=(W-padL-padR)/rounds.length;
+    const [W, H] = chartSize(svg, 600, 140);
+    const padL=112, padR=6, padT=6, padB=14, rowH=(H-padT-padB)/rows.length, slotW=(W-padL-padR)/rounds.length;
     let s = ''; const start = {};
     rounds.forEach((n, i) => { const x = padL + i*slotW; start[n] = x; s += `<line class="round-l" x1="${x}" y1="${padT}" x2="${x}" y2="${H-padB}"/><text class="axis" x="${x+2}" y="${H-3}">r${n}</text>`; });
     rows.forEach((row, i) => {
@@ -719,6 +747,10 @@
     svg.innerHTML = s;
   }
   function renderCharts(){ renderAccuracy(); renderLoss(); renderDround(); renderCycles(); renderConstraints(); renderRound(); renderSessionState(); }
+  if('ResizeObserver' in window){
+    const redraw = new ResizeObserver(() => { renderAccuracy(); renderLoss(); renderCycles(); });
+    ['accChart', 'lossChart', 'cyclesChart'].forEach(id => redraw.observe(document.getElementById(id)));
+  }
 
   // read from what the page already follows: registered agents, the server's end line, the agents'
   // states (AgentState); no state of its own to drift from them
@@ -895,7 +927,7 @@
     const TRANSPORT_HINT = {directory: 'files in a directory: its relay runs on the machine of its server',
                             manager: "this manager's mailbox, over HTTP: its relay and its server on any machines"};
     const transportPicker = gr => linkTransportChoices.length ?
-      `<select class="transport-select tool" data-bouquet="${esc(gr.bouquet)}"${sessionRunning ? ' disabled' : ''}`+
+      `<select class="transport-select tool" data-bouquet="${esc(gr.bouquet)}"${sessionRunning || DETACHED_PANEL ? ' disabled' : ''}`+
       ` title="${sessionRunning ? 'the session is running: its links no longer change' : 'how the link to ' + esc(gr.bouquet) + ' is made'}">`+
       linkTransportChoices.map(t=>`<option value="${esc(t)}"${t===linkTransports[gr.bouquet]?' selected':''} title="${esc(TRANSPORT_HINT[t] || t)}">link: ${esc(t)}</option>`).join('')+
       `</select>` : '';
@@ -903,7 +935,7 @@
     const relayPicker = gr => {
       if(gr.depth === 1){
         const chosen = relays[gr.bouquet], missing = !(chosen && chosen in clients);
-        return `<select class="relay-select tool${missing ? ' missing' : ''}" data-bouquet="${esc(gr.bouquet)}"${sessionRunning ? ' disabled' : ''}`+
+        return `<select class="relay-select tool${missing ? ' missing' : ''}" data-bouquet="${esc(gr.bouquet)}"${sessionRunning || DETACHED_PANEL ? ' disabled' : ''}`+
           ` title="${sessionRunning ? 'the session is running: its relays no longer change' : 'the client of this session that relays ' + esc(gr.bouquet)}">`+
           `<option value="">relay: —</option>`+
           nodes.filter(n=>n.role==='client').map(c=>`<option value="${esc(c.name)}"${c.name===chosen?' selected':''}>relay: ${esc(c.name)}</option>`).join('')+`</select>`+
@@ -1221,13 +1253,15 @@
   const VIGNETTES_KEY = `pybiscus-manager-vignettes:${location.host}`;
   const vgrid = document.querySelector('.grid'), vwrapper = document.getElementById('vignettes-wrapper');
   const vstrip = document.getElementById('vignettes-strip');
-  let vignettesOpen = false;
-  try { vignettesOpen = localStorage.getItem(VIGNETTES_KEY) === 'open'; } catch(e) { /* folded */ }
+  let vignettesOpen = DETACHED_PANEL === 'vignettes';
+  try { vignettesOpen = vignettesOpen || localStorage.getItem(VIGNETTES_KEY) === 'open'; } catch(e) { /* folded */ }
   function setVignettesOpen(open){
     vignettesOpen = open;
     vgrid.classList.toggle('vignettes-folded', !open);
+    // defined further down: not yet at the first call
+    if(window.applyLayout) window.applyLayout();
     if(open){ vstrip.classList.remove('fresh'); vwrapper.scrollLeft = vwrapper.scrollWidth; }
-    try { localStorage.setItem(VIGNETTES_KEY, open ? 'open' : 'folded'); } catch(e) { /* not kept */ }
+    if(!DETACHED_PANEL) try { localStorage.setItem(VIGNETTES_KEY, open ? 'open' : 'folded'); } catch(e) { /* not kept */ }
   }
   setVignettesOpen(vignettesOpen);
   document.getElementById('vignettes-fold').onclick = () => setVignettesOpen(false);
@@ -1309,6 +1343,120 @@
       grid.style.setProperty('--cw2', w+'px');
     });
   })();
+
+  // ============ panels: compact layout, detached windows ============
+  // A detached panel is this same page opened with ?panel=…, reading the feeds from its own cursors.
+  // The windows tell each other over a BroadcastChannel: opened, closed (the panel comes back), dock.
+  const away = new Set();                 // panels this window does not show
+  const panelEl = name => document.querySelector(`section[data-panel="${name}"]`);
+  const FEED_PANELS = ['agents-log', 'server-log', 'metrics'];
+
+  window.applyLayout = function(){
+    Object.keys(PANEL_LABELS).forEach(n => panelEl(n).classList.toggle('away', away.has(n)));
+    const shown = n => !away.has(n);
+    const left = shown('topology') || shown('geo'), mid = shown('accuracy') || shown('loss'), right = shown('vignettes');
+    const feeds = FEED_PANELS.filter(shown).length, top = left || mid || right;
+    // a dragged width (--cw1, --cw2) holds only beside the column it was dragged against
+    const leftW = !left ? '0px' : (mid ? 'var(--cw1,1fr)' : '1fr');
+    // with no column on top, the logs' row (spanning them all) still needs a width
+    const midW = !mid ? (top ? '0px' : '1fr') : (right && vignettesOpen ? 'var(--cw2,1fr)' : '1fr');
+    const rightW = !right ? '0px' : (vignettesOpen ? '1fr' : '36px');
+    const grid = document.querySelector('.grid');
+    grid.style.gridTemplateColumns = [leftW, left && (mid || right) ? '10px' : '0px', midW, mid && right ? '10px' : '0px', rightW].join(' ');
+    grid.style.gridTemplateRows = top && feeds ? '1fr 8px var(--feeds-h,230px)' : top ? '1fr 0px 0px' : '0px 0px 1fr';
+    grid.style.rowGap = top && feeds ? '' : '0px';
+    const show = (selector, on) => { document.querySelector(selector).style.display = on ? '' : 'none'; };
+    show('.col-left', left); show('.col-mid', mid); show('.col-right', right);
+    show('#vsplit1', left && mid); show('#vsplit2', mid && right && vignettesOpen);
+    show('#splitter', top && feeds); show('.feeds', feeds);
+    document.querySelector('.feeds').style.gridTemplateColumns = `repeat(${Math.max(feeds, 1)},1fr)`;
+  };
+
+  const channel = 'BroadcastChannel' in window ? new BroadcastChannel(`pybiscus-manager:${location.host}`) : null;
+  const DETACH_KEY = `pybiscus-manager-detached:${location.host}`;
+  // detached: the panels to reopen with the page (a window opens only on a click); geometry: where each was
+  let detachPrefs = {detached: [], geometry: {}};
+  try { detachPrefs = {...detachPrefs, ...JSON.parse(localStorage.getItem(DETACH_KEY) || '{}')}; } catch(e) { /* none */ }
+  const saveDetachPrefs = () => { try { localStorage.setItem(DETACH_KEY, JSON.stringify(detachPrefs)); } catch(e) { /* not kept */ } };
+  const remember = (panel, on) => {
+    detachPrefs.detached = detachPrefs.detached.filter(p => p !== panel).concat(on ? [panel] : []);
+    saveDetachPrefs();
+  };
+  let pendingReopen = [], popupBlocked = false;
+
+  function renderDetachedChips(){
+    const chip = (panel, cls, text, title) => `<button class="btn detached-chip ${cls}" data-panel="${panel}" title="${esc(title)}">${esc(text)}</button>`;
+    document.getElementById('detached-chips').innerHTML =
+      [...away].map(p => chip(p, 'docked', '⧉ ' + PANEL_LABELS[p], 'in its own window: click to bring it back here')).join('') +
+      pendingReopen.map(p => chip(p, 'pending', '⧉ reopen ' + PANEL_LABELS[p], 'was in its own window: click to open it again')).join('') +
+      (pendingReopen.length ? '<button class="btn detached-chip pending" id="forget-detached" title="keep every panel in this page">✕</button>' : '') +
+      (popupBlocked ? '<span class="chip alert" title="allow the pop-ups of this page to open a panel in its own window">⚠ pop-up blocked</span>' : '');
+  }
+
+  function detach(panel){
+    const url = new URL(location.href); url.searchParams.set('panel', panel);
+    const g = detachPrefs.geometry[panel];
+    const features = g ? `popup,left=${g.left},top=${g.top},width=${g.width},height=${g.height}` : 'popup,width=900,height=620';
+    const win = window.open(url, `pybiscus-${location.host}-${panel}`, features);
+    popupBlocked = !win;
+    if(win){ away.add(panel); remember(panel, true); pendingReopen = pendingReopen.filter(p => p !== panel); window.applyLayout(); }
+    renderDetachedChips();
+  }
+  function docked(panel){
+    away.delete(panel); window.applyLayout(); renderDetachedChips();
+  }
+
+  if(DETACHED_PANEL){
+    document.body.classList.add('detached');
+    Object.keys(PANEL_LABELS).filter(p => p !== DETACHED_PANEL).forEach(p => away.add(p));
+    document.title = `${PANEL_LABELS[DETACHED_PANEL]} · ${MANAGER_BOUQUET || 'Pybiscus session'}`;
+    const dockBtn = document.getElementById('dock-btn');
+    dockBtn.hidden = false;
+    // a window the user opened by its URL cannot be closed by script: it becomes the main page
+    const leave = () => { window.close(); setTimeout(() => { const u = new URL(location.href); u.searchParams.delete('panel'); location.href = u; }, 300); };
+    dockBtn.onclick = leave;
+    const announce = () => channel && channel.postMessage({type: 'opened', panel: DETACHED_PANEL});
+    announce();
+    if(channel) channel.onmessage = e => {
+      if(e.data.type === 'ping') announce();
+      if(e.data.type === 'dock' && e.data.panel === DETACHED_PANEL) leave();
+    };
+    addEventListener('pagehide', () => channel && channel.postMessage({type: 'closed', panel: DETACHED_PANEL,
+      geometry: {left: screenX, top: screenY, width: outerWidth, height: outerHeight}}));
+  } else {
+    document.querySelectorAll('section[data-panel] > header').forEach(header => {
+      const btn = document.createElement('button');
+      btn.className = 'tool detach-btn'; btn.textContent = '⧉';
+      btn.title = 'open this panel in its own window (another screen); closing it brings the panel back';
+      btn.onclick = () => detach(header.parentElement.dataset.panel);
+      header.appendChild(btn);
+    });
+    const stripDetach = document.createElement('button');
+    stripDetach.className = 'tool detach-btn strip-detach'; stripDetach.textContent = '⧉';
+    stripDetach.title = 'open the vignettes in their own window (another screen)';
+    stripDetach.onclick = () => detach('vignettes');
+    document.querySelector('.col-right').appendChild(stripDetach);
+    document.getElementById('detached-chips').addEventListener('click', e => {
+      const btn = e.target.closest('button'); if(!btn) return;
+      if(btn.id === 'forget-detached'){ pendingReopen.forEach(p => remember(p, false)); pendingReopen = []; renderDetachedChips(); return; }
+      const panel = btn.dataset.panel;
+      if(btn.classList.contains('pending')) return detach(panel);
+      if(channel) channel.postMessage({type: 'dock', panel});
+      remember(panel, false); docked(panel);
+    });
+    if(channel){
+      channel.onmessage = e => {
+        const {type, panel, geometry} = e.data;
+        if(!(panel in PANEL_LABELS)) return;
+        if(type === 'opened'){ away.add(panel); remember(panel, true); pendingReopen = pendingReopen.filter(p => p !== panel); window.applyLayout(); renderDetachedChips(); }
+        if(type === 'closed'){ if(geometry) detachPrefs.geometry[panel] = geometry; remember(panel, false); docked(panel); }
+      };
+      channel.postMessage({type: 'ping'});
+    }
+    // the windows still open answer the ping; the others were closed with the browser
+    setTimeout(() => { pendingReopen = detachPrefs.detached.filter(p => !away.has(p)); renderDetachedChips(); }, 800);
+  }
+  window.applyLayout();
 
   // ============ start loops ============
   session.startCallback(fetchAgents, 5000);
