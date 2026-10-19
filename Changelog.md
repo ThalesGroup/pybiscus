@@ -40,6 +40,10 @@
   named from their cid: `/pybiscus-session/agents` returns the session's cids, a relay now returns
   its cid in its fit metrics (its rows showed Flower's id). The agents table shows a client's round
   and last evaluation value; a relay's "→ lower level" mark sits under its name, no longer cut.
+* Manager vignettes: folded by default into a strip that counts the rounds received (many sessions
+  have no `VisualizeModelLayers`, and the empty panel took a third of the width), the charts taking
+  the width; *hide* / a click on the strip, the choice kept by the browser. Shown, the matrix follows
+  the last round unless scrolled back, its layer and round labels stuck to its edges.
 * Config forms: a locked field's lock back on its label's line (it took a third line under the key).
 * A check, a save or a pin run during the 600 ms switch between two options of a union read the
   whole union as missing (`data: Field required`): the chosen option is now recorded at the click,

@@ -118,7 +118,11 @@ The manager shows, live:
   metric (the server's test, a client's evaluation on its data); the map of the sites;
 - the accuracy per round (clients' training, server's test, clients' evaluation) and the loss;
 - the vignettes of the model's layers per round (from the `VisualizeModelLayers` decorator of the
-  server's pipeline);
+  server's pipeline), folded by default into a strip on the right that counts the rounds received
+  (a dot when new ones came while folded): a click shows them, *hide* folds them again, and the
+  charts take the width; the choice is kept by the browser, for this manager. Shown, the matrix
+  follows the last round, unless you scrolled back to earlier ones; the layers and the rounds stay
+  in sight when it scrolls;
 - the agents' and the server's logs;
 - the metrics, a table with one row per client (named from the cid the session gave it; a cid it
   did not give shows as `#…`) and one for the server's test: for training (fit) and evaluation, the

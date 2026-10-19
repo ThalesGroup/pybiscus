@@ -74,6 +74,16 @@
   .vsplit::before{content:''; height:48px; width:3px; border-radius:3px; background:var(--dim)}
   .vsplit:hover{background:#2a3644} .vsplit:hover::before{background:var(--accent)}
   .vsplit-1{grid-column:2} .vsplit-2{grid-column:4}
+  /* vignettes folded: a strip; the charts take the width, whatever the drag left in --cw2 */
+  .grid.vignettes-folded{grid-template-columns:var(--cw1,1fr) 10px 1fr 10px 36px}
+  .grid.vignettes-folded .vsplit-2{visibility:hidden}
+  .grid.vignettes-folded .col-right>.panel, .grid:not(.vignettes-folded) .vstrip{display:none}
+  .vstrip{height:100%; width:100%; display:flex; flex-direction:column; align-items:center; gap:10px; padding:12px 0;
+    border:1px solid var(--border); border-radius:var(--r); background:var(--panel); color:var(--muted); cursor:pointer; font-family:var(--mono)}
+  .vstrip:hover{border-color:var(--accent); color:var(--text)}
+  .vstrip .label{writing-mode:vertical-rl; transform:rotate(180deg); font-size:10.5px; letter-spacing:.14em; text-transform:uppercase; white-space:nowrap}
+  .vstrip .dot{width:7px; height:7px; border-radius:50%; background:var(--accent); visibility:hidden}
+  .vstrip.fresh .dot{visibility:visible}
   .splitter{grid-column:1 / -1; grid-row:2; cursor:row-resize; border-radius:6px; background:var(--border);
     display:flex; align-items:center; justify-content:center}
   .splitter::before{content:''; width:48px; height:3px; border-radius:3px; background:var(--dim)}
@@ -162,6 +172,13 @@
   .vm-corner{font-size:9px; color:var(--muted); align-self:end; padding:2px 4px; white-space:nowrap}
   .vm-col{font-size:10px; color:#cdd6e0; text-align:center; align-self:end; font-variant-numeric:tabular-nums}
   .vm-row{font-size:10px; color:#cdd6e0; align-self:center; padding-right:6px; white-space:nowrap}
+  /* the layers and the rounds stay in sight when the matrix scrolls: the labels fill their cell and
+     their shadow the gap after it, the vignettes passed under them in sight */
+  .vm-corner, .vm-col{position:sticky; top:0; z-index:1; background:var(--panel); box-shadow:0 4px 0 var(--panel)}
+  .vm-corner, .vm-row{position:sticky; left:0; z-index:1; background:var(--panel)}
+  .vm-row{align-self:stretch; display:flex; align-items:center; box-shadow:4px 0 0 var(--panel), 0 4px 0 var(--panel), 4px 4px 0 var(--panel)}
+  .vm-col{align-self:stretch; display:flex; align-items:flex-end; justify-content:center}
+  .vm-corner{z-index:2; align-self:stretch; display:flex; align-items:flex-end; box-shadow:4px 0 0 var(--panel), 0 4px 0 var(--panel), 4px 4px 0 var(--panel)}
   .vm-cell{width:100%; min-width:46px; aspect-ratio:1; object-fit:cover; border-radius:5px; border:1px solid var(--border); background:var(--panel-2)}
   img.vm-cell{cursor:pointer; transition:border-color .15s, transform .15s}
   img.vm-cell:hover{border-color:var(--accent); transform:scale(1.08)}
@@ -288,9 +305,11 @@
     <!-- RIGHT : vignettes -->
     <div class="col-right">
       <section class="panel" style="height:100%">
-        <header><span class="eyebrow">Model vignettes</span><span class="chip">layers</span></header>
-        <div class="body"><div class="vignettes-wrapper"><div class="vmatrix" id="vmatrix"></div></div></div>
+        <header><span class="eyebrow">Model vignettes</span><span class="chip">layers</span>
+          <button class="tool" id="vignettes-fold" title="fold the vignettes into a strip, the charts take the width">hide</button></header>
+        <div class="body"><div class="vignettes-wrapper" id="vignettes-wrapper"><div class="vmatrix" id="vmatrix"></div></div></div>
       </section>
+      <button class="vstrip" id="vignettes-strip" title="show the model vignettes"><span class="dot"></span><span class="label">vignettes · <span id="vignettes-rounds">no round</span></span></button>
     </div>
 
     <!-- draggable splitter : ajuste la hauteur des feeds -->
@@ -1197,8 +1216,28 @@
   const vign = { seen:new Set(), maxCol:-1, maxRow:-1 };
   const vmatrix = document.getElementById('vmatrix');
 
+  // folded by default: many sessions have no VisualizeModelLayers, and the panel took a third of
+  // the width; not opened by the first vignette either, the layout would move during the run
+  const VIGNETTES_KEY = `pybiscus-manager-vignettes:${location.host}`;
+  const vgrid = document.querySelector('.grid'), vwrapper = document.getElementById('vignettes-wrapper');
+  const vstrip = document.getElementById('vignettes-strip');
+  let vignettesOpen = false;
+  try { vignettesOpen = localStorage.getItem(VIGNETTES_KEY) === 'open'; } catch(e) { /* folded */ }
+  function setVignettesOpen(open){
+    vignettesOpen = open;
+    vgrid.classList.toggle('vignettes-folded', !open);
+    if(open){ vstrip.classList.remove('fresh'); vwrapper.scrollLeft = vwrapper.scrollWidth; }
+    try { localStorage.setItem(VIGNETTES_KEY, open ? 'open' : 'folded'); } catch(e) { /* not kept */ }
+  }
+  setVignettesOpen(vignettesOpen);
+  document.getElementById('vignettes-fold').onclick = () => setVignettesOpen(false);
+  vstrip.onclick = () => setVignettesOpen(true);
+
   function renderVignetteMatrix(){
     const cols=vign.maxCol+1, rows=vign.maxRow+1;
+    setTxt('vignettes-rounds', cols < 1 ? 'no round' : `${cols} round${cols === 1 ? '' : 's'}`);
+    // follows the last round, unless the viewer went back to earlier ones
+    const atEnd = vwrapper.scrollLeft + vwrapper.clientWidth >= vwrapper.scrollWidth - 4;
     if(cols<1 || rows<1){ vmatrix.innerHTML='<div class="empty">no vignettes yet</div>'; vmatrix.style.gridTemplateColumns=''; return; }
     vmatrix.style.gridTemplateColumns=`auto repeat(${cols}, minmax(46px,56px))`;
     let h='<div class="vm-corner">layer \\ round</div>';
@@ -1213,6 +1252,7 @@
       }
     }
     vmatrix.innerHTML=h;
+    if(atEnd) vwrapper.scrollLeft = vwrapper.scrollWidth;
   }
 
   function updateVignettes(){
@@ -1224,7 +1264,7 @@
         if(isNaN(c)||isNaN(r)) return;
         vign.seen.add(id); vign.maxCol=Math.max(vign.maxCol,c); vign.maxRow=Math.max(vign.maxRow,r); changed=true;
       });
-      if(changed) renderVignetteMatrix();
+      if(changed){ renderVignetteMatrix(); if(!vignettesOpen) vstrip.classList.add('fresh'); }
     }).catch(console.error);
   }
 
