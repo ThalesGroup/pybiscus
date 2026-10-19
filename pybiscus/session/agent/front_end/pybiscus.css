@@ -1774,3 +1774,11 @@ body > div > fieldset > legend {
 .pybiscus-cl-compact > .pybiscus-list > .pybiscus-list-contents > .pybiscus-list-content > fieldset > legend > .pybiscus-config:first-child {
     display: none;
 }
+
+/* a fieldset that is a flex item does not shrink below its content (min-width: 0 is not enough in
+   Chromium): a long list's chain then widened the whole section past the window, its own scrollbar
+   never engaged and the ←/→/➖/➕ after it went out of reach */
+#top-div fieldset {
+    min-width: 0;
+    max-width: 100%;
+}

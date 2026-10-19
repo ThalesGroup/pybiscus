@@ -100,6 +100,8 @@
   the outer one's context); ➕ on the outer list no longer clones the inner list's template (an
   unscoped search found it first), nor does the numbering read its paths; the ➕ of an inner list in
   an added item works (a cloned button had no listener).
+* Config forms: a long list's chain scrolls within the form's width, its ←/→/➖/➕ staying in view;
+  the chain widened the whole section past the window, the controls after it out of reach.
 * Config forms: a locked field's value readable in the dark theme (the faintest grey, dimmed twice).
 * Config forms: a locked field's lock back on its label's line (it took a third line under the key).
 * A check, a save or a pin run during the 600 ms switch between two options of a union read the
