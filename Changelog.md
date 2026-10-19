@@ -85,6 +85,9 @@
   name, role, site and bouquet when it is registered in a session, the config's origin and the
   buttons on one line (two when narrow); the check's messages show under Check without moving the
   bar. A scroll to a field (an error, the menu) stops under the bar.
+* Config forms: the section menu in a column on the left, staying in view when scrolling (back on
+  top when the window is narrow); the shown section titled by its name, with its description under
+  it (it was only on hover).
 * Config forms: a locked field's value readable in the dark theme (the faintest grey, dimmed twice).
 * Config forms: a locked field's lock back on its label's line (it took a third line under the key).
 * A check, a save or a pin run during the 600 ms switch between two options of a union read the

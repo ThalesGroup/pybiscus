@@ -1615,3 +1615,94 @@ body > div > fieldset > legend {
     padding: 0;
     border: 0;
 }
+
+/* ---------- Ergonomics, step 3.3b: the section menu as a sidebar ---------- */
+
+.pybiscus-fieldset-desc { display: none; }
+
+#top-div > fieldset.pybiscus-sections {
+    display: grid;
+    grid-template-columns: minmax(10rem, 14rem) minmax(0, 1fr);
+    column-gap: 1.5rem;
+    row-gap: var(--spacing-md);
+    align-items: start;
+}
+#top-div > fieldset.pybiscus-sections > * { grid-column: 2; }
+/* a hidden section's wrapper kept an 80px row */
+#top-div > fieldset.pybiscus-sections > div:has(> fieldset.foldable.collapsed) { display: none; }
+
+#top-div > fieldset.pybiscus-sections > .level-1-menu {
+    grid-column: 1;
+    position: sticky;
+    /* under the top bar */
+    top: 76px;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    gap: 2px;
+    margin: 0;
+    padding: 6px;
+    max-height: calc(100vh - 92px);
+    overflow-y: auto;
+}
+.pybiscus-sections > .level-1-menu .menu-item-level-1 { padding: 0; }
+.pybiscus-sections > .level-1-menu .menu-item-level-1 .pybiscus-config {
+    display: block;
+    padding: 0.45rem 2.2rem 0.45rem 0.75rem;
+    border-width: 0 0 0 3px;
+    border-radius: 6px;
+    text-align: left;
+}
+.pybiscus-sections > .level-1-menu .menu-item-level-1.active .pybiscus-config {
+    border-color: var(--ok);
+    background: var(--ok-tint);
+    color: var(--text);
+}
+.pybiscus-sections > .level-1-menu .menu-item-level-1:not(.active) .pybiscus-config { box-shadow: none; }
+.pybiscus-sections > .level-1-menu .pybiscus-config::before { content: none; }
+.pybiscus-sections > .level-1-menu .pybiscus-config { margin: 0; }
+.pybiscus-sections > .level-1-menu .pybiscus-section-mark {
+    top: 50%;
+    right: 0.5rem;
+    transform: translateY(-50%);
+}
+
+/* the shown section: its name as a title, its description under it; the menu replaces its fold */
+.pybiscus-sections fieldset.foldable > legend {
+    cursor: default;
+    pointer-events: none;
+    font-size: 1.15rem;
+    font-weight: var(--font-weight-bold);
+    padding: 0 var(--spacing-sm);
+    border: 0;
+    background: none;
+    box-shadow: none;
+}
+.pybiscus-sections fieldset.foldable > legend .pybiscus-config {
+    font-size: 1.15rem;
+    font-weight: var(--font-weight-bold);
+    border: 0;
+    background: none;
+    box-shadow: none;
+    padding: 0;
+}
+.pybiscus-sections fieldset.foldable > legend .pybiscus-config::before { content: none; }
+.pybiscus-sections fieldset.foldable > .pybiscus-fieldset-desc {
+    display: block;
+    flex: 1 1 100%;
+    margin: 0 0 var(--spacing-sm);
+    color: var(--text-soft);
+    font-size: 0.9rem;
+}
+
+/* narrow: the menu back on top, in a row */
+@media (max-width: 860px) {
+    #top-div > fieldset.pybiscus-sections { display: block; }
+    #top-div > fieldset.pybiscus-sections > .level-1-menu {
+        position: static;
+        flex-direction: row;
+        flex-wrap: wrap;
+        max-height: none;
+        margin-bottom: var(--spacing-md);
+    }
+    .pybiscus-sections > .level-1-menu .menu-item-level-1 { flex: 0 0 auto; }
+}

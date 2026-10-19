@@ -655,6 +655,9 @@ def generate_model_html(model: BaseModel, inFieldSet: bool, prefix: str, model_c
 
         model_html += '<fieldset class="__model__">\n'
         model_html += legend_html
+        # the description as text, the title on hover being missed: the CSS chooses where it shows
+        if description not in (None, PydanticUndefined):
+            model_html += f'<div class="pybiscus-fieldset-desc">{html_module.escape(description)}</div>\n'
 
     type_hints = get_type_hints(model, include_extras=True)
 

@@ -29,7 +29,9 @@ Launch the client agents, and open `http://localhost:5001/client/config` and
 ![Client web app](images/client_webapp.png "Client web app")
 
 On each form, the top bar stays in view when scrolling: the form's name, and the agent's name,
-role, site and bouquet when it is registered in a session, then the buttons.
+role, site and bouquet when it is registered in a session, then the buttons. The sections are
+listed on the left (on top when the window is narrow); the shown one has its description under its
+name.
 
 On each form:
 - **Check** validates the configuration; **Execute** (enabled once it is checked)

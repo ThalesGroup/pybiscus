@@ -549,9 +549,14 @@
                 menuContainer = document.createElement('div');
                 menuContainer.className = 'level-1-menu';
                 
-                // Insert menu before first fieldset
+                // first in the form's root, beside the sections (a sidebar, or on top when narrow)
                 const firstFieldset = foldableFieldsets[0];
-                firstFieldset.parentNode.insertBefore(menuContainer, firstFieldset);
+                const root = firstFieldset.parentNode.parentNode;
+                root.insertBefore(menuContainer, root.querySelector(':scope > :not(legend)'));
+                root.classList.add('pybiscus-sections');
+                // the grid has no explicit rows: the menu's column spans the root's other items
+                const items = root.querySelectorAll(':scope > :not(legend)').length;
+                menuContainer.style.gridRow = `1 / span ${Math.max(items - 1, 1)}`;
             }
 
             let firstSection = true;
