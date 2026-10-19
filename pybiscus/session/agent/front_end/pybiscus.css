@@ -1532,3 +1532,86 @@ legend .pybiscus-key {
     grid-column: 1 / -1;
     grid-row: 2;
 }
+
+/* ---------- Ergonomics, step 3.3a: one top bar, kept in view ---------- */
+
+/* the title, the agent and the actions on one line that stays at the top: the actions were in a
+   block of their own, scrolled away with the form */
+.pybiscus-bar {
+    position: sticky;
+    top: 0;
+    z-index: 200;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--spacing-sm) var(--spacing-md);
+    margin: -8px -8px var(--spacing-md);
+    padding: var(--spacing-sm) var(--spacing-lg);
+    background: var(--body-bg);
+    border-bottom: 1px solid var(--fieldset-border);
+}
+
+/* the buttons' own boxes, generated for the former block, give their items to the bar */
+.pybiscus-bar .pybiscus-box,
+.pybiscus-bar .pybiscus-columns {
+    display: contents;
+}
+
+.pybiscus-identity { order: 0; flex: 1 1 auto; display: flex; flex-direction: column; min-width: 0; }
+.pybiscus-bar-kicker {
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--muted);
+}
+.pybiscus-bar-who { font-weight: var(--font-weight-semibold); font-size: 1.05rem; }
+.pybiscus-bar-who span { font-weight: normal; color: var(--muted); }
+
+.pybiscus-bar .pybiscus-control-stack:has(#origin-config-button) { order: 1; }
+.pybiscus-bar .pybiscus-control-stack:has(#pin-config-button) { order: 2; flex-direction: row; gap: var(--spacing-sm); }
+.pybiscus-bar .pybiscus-control-stack:has(#save-config-button) { order: 3; }
+.pybiscus-bar .pybiscus-control-stack:has(#check-config-button) { order: 4; }
+.pybiscus-bar .pybiscus-control-stack:has(#execute-button) { order: 5; }
+.pybiscus-bar .pybiscus-control-stack:has(#launch-session-button) { order: 4; }
+.pybiscus-bar #themeButton { order: 6; }
+.pybiscus-bar .pybiscus-lu-setting { order: 7; margin-left: 0; }
+.pybiscus-bar #uiSettingsButton { order: 8; }
+
+/* a scroll to a field (the first error, the menu) stops under the bar, not behind it */
+html { scroll-padding-top: 80px; }
+
+/* the messages of a button under it, out of the bar's flow: they changed its height */
+.pybiscus-bar .pybiscus-control-stack { position: relative; }
+.pybiscus-bar .pybiscus-indicator,
+.pybiscus-bar .pybiscus-success,
+.pybiscus-bar .pybiscus-failure {
+    position: absolute;
+    top: calc(100% + 6px);
+    right: 0;
+    white-space: nowrap;
+    z-index: 5;
+}
+.pybiscus-bar .pybiscus-check-errors {
+    position: absolute;
+    top: calc(100% + 44px);
+    right: 0;
+    width: min(36rem, 80vw);
+    z-index: 5;
+}
+
+.pybiscus-bar .pybiscus-button { min-height: 36px; padding: 0.35rem 1rem; }
+.pybiscus-bar .themes_button,
+.pybiscus-bar .pybiscus-lu-setting .themes_button { font-size: 16px; min-width: 32px; padding: 3px 6px; }
+
+/* the root block's title is in the bar; the legend stays, out of sight, for the structure */
+body > div > fieldset > legend {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+    padding: 0;
+    border: 0;
+}

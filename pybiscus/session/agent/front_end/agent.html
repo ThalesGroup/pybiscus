@@ -14,7 +14,17 @@
 
 <body>
 
-    {{ buttons_html | safe }}
+    <header class="pybiscus-bar">
+        <div class="pybiscus-identity">
+            <div class="pybiscus-bar-kicker">Pybiscus · {{ form_title | e }}</div>
+            {% if identity.name %}
+            <div class="pybiscus-bar-who">{{ identity.name | e }}<span>{% for key in ['role', 'location', 'bouquet'] if identity[key] and identity[key] != identity.name %} · {{ identity[key] | e }}{% endfor %}</span></div>
+            {% else %}
+            <div class="pybiscus-bar-who"><span>agent not registered in a session</span></div>
+            {% endif %}
+        </div>
+        {{ buttons_html | safe }}
+    </header>
 
     <div id="top-div" data-pybiscus-status="valid">
 

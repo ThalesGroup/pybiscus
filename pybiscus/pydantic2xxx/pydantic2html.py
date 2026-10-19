@@ -690,7 +690,7 @@ def generate_model_html(model: BaseModel, inFieldSet: bool, prefix: str, model_c
 # ---------------------------------------------------------------------
 # ---------------------------------------------------------------------
 
-def generate_model_page(model: BaseModel, templatePath: str, templateName: str, buttons_type: str, on_document_load_js: str = "" ) -> str:
+def generate_model_page(model: BaseModel, templatePath: str, templateName: str, buttons_type: str, on_document_load_js: str = "", identity: Optional[dict] = None) -> str:
 
     modelName = model.__name__
 
@@ -747,6 +747,9 @@ def generate_model_page(model: BaseModel, templatePath: str, templateName: str, 
             check_errors_js=check_errors_js,
             ui_settings_state=ui_settings.state(),
             theme_head=theme_head(),
+            # the root block's legend, in the top bar: "server configuration" under PYBISCUS
+            form_title=re.sub(r"^Pybiscus\s+", "", getattr(model, "PYBISCUS_ALIAS", modelName)),
+            identity=identity or {},
         )
 
         return rendered_html        

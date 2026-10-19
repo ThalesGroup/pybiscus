@@ -50,7 +50,8 @@ def clientConfigDownload():
     with importlib.resources.files("pybiscus.session.agent.front_end").joinpath("fold_fieldset.js").open('r') as file:
         fold_fieldsets = file.read()
 
-    return generate_model_page(ConfigClient,'pybiscus.session.agent.front_end','agent.html','check_exec_buttons', fold_fieldsets + presets_js)
+    return generate_model_page(ConfigClient,'pybiscus.session.agent.front_end','agent.html','check_exec_buttons', fold_fieldsets + presets_js,
+                               identity=pybagent.agent_identity())
 
 # ..........................................................
 # .... POST /client/config .................................

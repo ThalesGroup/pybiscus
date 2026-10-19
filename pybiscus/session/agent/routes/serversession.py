@@ -157,7 +157,8 @@ def serverConfigDownload():
     # (which override and lock)
     js_code = show_server_items + fold_fieldsets + lists_management + pinned_config_js() + presets_js
 
-    return generate_model_page(ConfigServer,'pybiscus.session.agent.front_end','agent.html','check_exec_buttons', js_code)
+    return generate_model_page(ConfigServer,'pybiscus.session.agent.front_end','agent.html','check_exec_buttons', js_code,
+                               identity=pybagent.agent_identity())
 
 # ..........................................................
 # .... POST /server/config .................................
@@ -224,7 +225,8 @@ def sessionConfigDownload():
     from pybiscus.session.agent.pybiscus_agent import PRESETS
     presets_js = PRESETS(generate_param_js(json.loads(urllib.parse.unquote(presets_raw)))) if presets_raw else ""
 
-    return generate_model_page(config_session,'pybiscus.session.agent.front_end','agent.html','launch_session_button', presets_js)
+    return generate_model_page(config_session,'pybiscus.session.agent.front_end','agent.html','launch_session_button', presets_js,
+                               identity=pybagent.agent_identity())
 
 # ..........................................................
 # ... POST /session/log/client/<client_name>/runconfig .....

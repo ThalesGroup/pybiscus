@@ -48,6 +48,11 @@ registration_parameters = {}
 #  client part
 session_server_url  = None
 
+def agent_identity() -> dict:
+    """what the forms' top bar shows; empty for an agent used alone"""
+    return {key: registration_parameters[key] for key in ("name", "role", "location", "bouquet")
+            if registration_parameters.get(key)}
+
 def reset_registration():
 
     print("Reset registration !!!")
