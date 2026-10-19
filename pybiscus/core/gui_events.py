@@ -3,6 +3,7 @@
 # regression: loss only; Deeplog: f1score). Lines and patterns are defined here, together.
 
 import math
+import re
 from numbers import Real
 from typing import Mapping, Optional
 
@@ -33,9 +34,30 @@ def set_main_metric(name: Optional[str]) -> None:
     _main_metric = name
 
 
+# bookkeeping and derived keys: client id, per-epoch copies, pre-training validation
+UNCHARTED_KEY = r"^cid$|_epoch_|_pre_train_val$"
+
+# metrics logged per client by the server's strategy, read back by the manager's metrics table
+METRIC_KEY_PREFIXES = {"fit": "fit", "evaluate": "val"}
+SERVER_TEST_ID = "glob"
+
+
+def client_metric_key(phase: str, name: str, cid) -> str:
+    return f"{METRIC_KEY_PREFIXES[phase]}_{name}_{cid}"
+
+
+def server_test_metric_key(name: str) -> str:
+    return f"{METRIC_KEY_PREFIXES['evaluate']}_{name}_{SERVER_TEST_ID}"
+
+
+def metric_key_protocol() -> dict:
+    """what the manager's metrics table needs besides the "metric_key" pattern to read a key"""
+    return {"phases": {prefix: phase for phase, prefix in METRIC_KEY_PREFIXES.items()},
+            "server_test_id": SERVER_TEST_ID}
+
+
 def _is_charted(key: str) -> bool:
-    # bookkeeping and derived keys: client id, per-epoch copies, pre-training validation
-    return not (key == "cid" or "_epoch_" in key or key.endswith("_pre_train_val"))
+    return re.search(UNCHARTED_KEY, key) is None
 
 
 def select_main_metric(metrics: Mapping[str, object]) -> Optional[tuple[str, float]]:
@@ -137,4 +159,9 @@ def gui_log_patterns() -> dict[str, str]:
         "client_phase": r"gui client_phase=(fit|evaluate) round=(\d+)",
         # a client's main metric (log_client_metric): groups phase, round, metric name, value
         "client_metric": r"📈 gui client_metric=(fit|evaluate) round=(\d+) metric=(\S+) value=(-?[\d.]+(?:[eE][-+]?\d+)?|nan|inf)",
+        # a key of the metrics feed (client_metric_key, server_test_metric_key): groups prefix,
+        # metric name (may hold "_"), cid or SERVER_TEST_ID; no "_" in a cid, Flower's included
+        "metric_key": rf"^({'|'.join(METRIC_KEY_PREFIXES.values())})_(.+)_([^_]+)$",
+        # metric names left out of the table (bookkeeping, per-epoch copies)
+        "uncharted_key": UNCHARTED_KEY,
     }

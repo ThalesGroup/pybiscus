@@ -33,6 +33,12 @@
   in place of a "live" mark that went on blinking once the page had stopped reading; Drop session in
   red; the topology as a table of the agents (site, state in words and colour, the server's round
   and last test value).
+* Manager metrics: a table, one row per client and one for the server's test, the loss and main
+  metric of the last round for fit and evaluation (*all metrics* for the others), older values
+  greyed, the clients' lowest main metric highlighted; *raw* keeps the former list. The clients are
+  named from their cid: `/pybiscus-session/agents` returns the session's cids, a relay now returns
+  its cid in its fit metrics (its rows showed Flower's id). The agents table shows a client's round
+  and last evaluation value; a relay's "→ lower level" mark sits under its name, no longer cut.
 * Config forms: a locked field's lock back on its label's line (it took a third line under the key).
 * A check, a save or a pin run during the 600 ms switch between two options of a union read the
   whole union as missing (`data: Field required`): the chosen option is now recorded at the click,

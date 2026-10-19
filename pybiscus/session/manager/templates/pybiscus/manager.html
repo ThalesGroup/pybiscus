@@ -110,6 +110,9 @@
   .node:has(.state[data-state="failed"]) .st, .node:has(.state[data-state="not validated"]) .st{background:#ff6b66}
   .node:has(.state[data-state="stopped"]) .st{background:#d29922}
   .node .name, .node .site{overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+  /* under the name: beside it, the pill took the column and cut both */
+  .node .name .bouquet-pill{display:block; width:fit-content; max-width:100%; overflow:hidden; text-overflow:ellipsis;
+    font-size:9.5px; padding:0 7px; margin-top:2px}
   .node .site{color:var(--muted); font-size:12px}
   .node .state{font-size:11.5px; white-space:nowrap}
   .node .round, .node .metric{font-size:12px; text-align:right; font-variant-numeric:tabular-nums}
@@ -173,6 +176,20 @@
   .row:hover{background:var(--panel-2)}
   .row .src{color:var(--accent); flex:0 0 auto}
   .row .msg{color:var(--text); white-space:pre-line}
+  /* metrics: one row per agent, the last value of each metric, per phase */
+  .metrics-table{flex:1; min-height:0; overflow:auto}
+  .metrics-table[hidden], .list[hidden]{display:none}
+  .mtable{border-collapse:collapse; font-size:12px; font-variant-numeric:tabular-nums; width:100%}
+  .mtable thead{position:sticky; top:0; background:var(--panel)}
+  .mtable th, .mtable td{padding:2px 6px; text-align:right; white-space:nowrap}
+  .mtable th{font-weight:500; color:var(--muted); font-size:10.5px}
+  .mtable th.group{color:var(--text); text-align:center; border-bottom:1px solid var(--border)}
+  .mtable th.group.fit{color:var(--fit)} .mtable th.group.evaluate{color:var(--eval)}
+  .mtable .agent{text-align:left; max-width:10em; overflow:hidden; text-overflow:ellipsis}
+  .mtable .start{border-left:1px solid var(--border)}
+  .mtable tr.server td{color:var(--test); border-bottom:1px solid var(--border)}
+  .mtable td.old{color:var(--dim)}
+  .mtable td.low{color:var(--warn); font-weight:600; background:rgba(255,180,84,.12)}
   .metric-row{display:flex; align-items:center; gap:10px; padding:6px 6px}
   ::-webkit-scrollbar{width:8px;height:8px} ::-webkit-scrollbar-thumb{background:var(--border); border-radius:8px}
 
@@ -286,8 +303,11 @@
         <button class="tool" id="pause-logs-btn">pause</button><button class="tool" id="reset-logs-btn">clear</button></header>
         <div class="body"><div class="list" id="log-list"></div></div></section>
       <section class="panel"><header><span class="eyebrow">Metrics</span>
+        <button class="tool" id="all-metrics-btn" title="every metric the clients return, not only the loss and the main metric">all metrics</button>
+        <button class="tool" id="raw-metrics-btn" title="the metrics as the server logs them">raw</button>
         <button class="tool" id="pause-metrics-btn">pause</button><button class="tool" id="reset-metrics-btn">clear</button></header>
-        <div class="body"><div class="list" id="metrics-list"></div></div></section>
+        <div class="body"><div class="metrics-table" id="metrics-table"><div class="empty">no metrics yet</div></div>
+          <div class="list" id="metrics-list" hidden></div></div></section>
     </div>
 
   </div>
@@ -374,6 +394,7 @@
   bindFeed('reset-agents-btn','pause-agents-btn', agentsList, displayedAgents, ()=> (agentsPaused=!agentsPaused));
   bindFeed('reset-logs-btn','pause-logs-btn', logList, displayedLogs, ()=> (logsPaused=!logsPaused));
   bindFeed('reset-metrics-btn','pause-metrics-btn', metricsList, displayedMetrics, ()=> (metricsPaused=!metricsPaused));
+  document.getElementById('reset-metrics-btn').addEventListener('click', ()=>{ clientMetrics = {}; renderMetricsTable(); });
 
   function addEntries(container, arr, items){
     items.forEach(item=>{
@@ -451,7 +472,83 @@
   function fetchLogs(){ if(logsPaused) return;
     fetchFeed(LOGS_URL, data=>{ addEntries(logList, displayedLogs, data); checkLogs(data); renderCharts(); }); }
   function fetchMetrics(){ if(metricsPaused) return;
-    fetchFeed(METRICS_URL, data=>{ addEntries(metricsList, displayedMetrics, data); }); }
+    fetchFeed(METRICS_URL, data=>{ addEntries(metricsList, displayedMetrics, data); addMetrics(data); renderMetricsTable(); }); }
+
+  // ============ metrics table ============
+  // keys built by pybiscus.core.gui_events (client_metric_key, server_test_metric_key): prefix_metric_cid
+  const METRIC_KEYS = {{ metric_key_protocol | tojson }};
+  const METRIC_PHASES = ['fit', 'evaluate'];
+  let clientMetrics = {};   // id (cid or server_test_id) -> phase -> metric -> {value, round}
+  let agentCids = {};       // agent -> cid, from /pybiscus-session/agents
+  let allMetrics = false;
+  const metricsTable = document.getElementById('metrics-table');
+
+  function addMetrics(items){
+    items.forEach(item=>{
+      const metrics = item.metrics || {}, round = metrics.step;
+      Object.entries(metrics).forEach(([key, value])=>{
+        const m = key.match(RE.metric_key);
+        // the whole key too: a client's own logger may post "val_loss_pre_train_val", read as cid "val"
+        if(!m || typeof value !== 'number' || RE.uncharted_key.test(m[2]) || RE.uncharted_key.test(key)) return;
+        const phase = METRIC_KEYS.phases[m[1]];
+        const byPhase = (clientMetrics[m[3]] ||= {});
+        (byPhase[phase] ||= {})[m[2]] = {value, round};
+      });
+    });
+  }
+  const isServerTest = id => id === METRIC_KEYS.server_test_id;
+  const agentOfCid = cid => Object.keys(agentCids).find(agent => agentCids[agent] === cid);
+  // a cid the session did not give (Flower's own, a client outside the session): its start
+  const metricRowName = id => isServerTest(id) ? 'server · test' : (agentOfCid(id) || (id.length > 8 ? '#' + id.slice(0, 6) + '…' : '#' + id));
+  const lastRoundOf = (id, phase) => Math.max(0, ...Object.values((clientMetrics[id] || {})[phase] || {}).map(e=>e.round || 0));
+  const fmtMetric = v => Math.abs(v) >= 100 ? v.toFixed(1) : v.toPrecision(3);
+
+  function metricColumns(phase){
+    const names = new Set(Object.values(clientMetrics).flatMap(byPhase => Object.keys(byPhase[phase] || {})));
+    const first = ['loss', mainMetricName].filter((n, i, a) => n && a.indexOf(n) === i && names.has(n));
+    return allMetrics ? first.concat([...names].filter(n => !first.includes(n)).sort()) : first;
+  }
+
+  function renderMetricsTable(){
+    const ids = Object.keys(clientMetrics);
+    if(!ids.length){ metricsTable.innerHTML = '<div class="empty">no metrics yet</div>'; return; }
+    // the server's test first, then the clients in the order of their cids
+    const order = id => isServerTest(id) ? -1 : (/^\d+$/.test(id) && id.length < 8 ? parseInt(id, 10) : 1e9);
+    ids.sort((a, b) => order(a) - order(b) || a.localeCompare(b));
+    const phases = METRIC_PHASES.map(phase => {
+      const columns = metricColumns(phase);
+      const latest = Math.max(0, ...ids.map(id => lastRoundOf(id, phase)));
+      // the lowest main metric of the clients at the last round: the client to look at
+      const atLatest = ids.filter(id => !isServerTest(id)).map(id => [id, ((clientMetrics[id][phase] || {})[mainMetricName])])
+                          .filter(([, e]) => e && e.round === latest);
+      atLatest.sort((a, b) => a[1].value - b[1].value);
+      // not when it shows the same figures as the next one
+      const lowest = atLatest.length > 1 && fmtMetric(atLatest[0][1].value) !== fmtMetric(atLatest[1][1].value) ? atLatest[0][0] : null;
+      return {phase, columns, latest, lowest};
+    }).filter(p => p.columns.length);
+    const head1 = '<tr><th class="agent"></th>' + phases.map(p =>
+      `<th class="group ${p.phase} start" colspan="${p.columns.length}">${p.phase}${p.latest ? ' · round ' + p.latest : ''}</th>`).join('') + '</tr>';
+    const head2 = '<tr><th class="agent">agent</th>' + phases.map(p => p.columns.map((c, i) =>
+      `<th class="${i ? '' : 'start'}" title="${esc(c)}">${esc(c)}</th>`).join('')).join('') + '</tr>';
+    const body = ids.map(id => `<tr class="${isServerTest(id) ? 'server' : ''}"><td class="agent" title="${esc(isServerTest(id) ? 'the server tests the aggregated model on its own data' : 'cid ' + id)}">${esc(metricRowName(id))}</td>` +
+      phases.map(p => p.columns.map((c, i) => {
+        const e = ((clientMetrics[id] || {})[p.phase] || {})[c];
+        if(!e) return `<td class="${i ? '' : 'start'}"></td>`;
+        const cls = [i ? '' : 'start', e.round < p.latest ? 'old' : '', c === mainMetricName && id === p.lowest ? 'low' : ''].filter(Boolean).join(' ');
+        const tip = `round ${e.round}` + (cls.includes('low') ? `: the lowest ${c} of round ${p.latest}` : '');
+        return `<td class="${cls}" title="${esc(tip)}">${esc(fmtMetric(e.value))}</td>`;
+      }).join('')).join('') + '</tr>').join('');
+    metricsTable.innerHTML = `<table class="mtable"><thead>${head1}${head2}</thead><tbody>${body}</tbody></table>`;
+  }
+
+  document.getElementById('all-metrics-btn').onclick = e => { allMetrics = !allMetrics; e.target.classList.toggle('active', allMetrics); renderMetricsTable(); };
+  document.getElementById('raw-metrics-btn').onclick = e => {
+    const raw = metricsList.hidden;
+    metricsList.hidden = !raw; metricsTable.hidden = raw;
+    e.target.classList.toggle('active', raw);
+    document.getElementById('all-metrics-btn').disabled = raw;
+    if(raw) metricsList.scrollTop = metricsList.scrollHeight;
+  };
 
   // ============ charts (nouveau rendu SVG à partir des buffers) ============
   function renderAccuracy(){
@@ -731,10 +828,17 @@
     groups.forEach(gr=>{ const relayed = relayedBy(gr.relays); gr.nodes.forEach(nd=>{ nd.relays = relayed[nd.name]; }); });
     nodes.forEach(nd=>{ nd.relays = ownRelayed[nd.name]; });
     const colourOf = bouquet => (groups.find(gr=>gr.bouquet===bouquet) || {}).color || '#7d8794';
-    // the round and the main metric are this session's server's: a client's come with the metrics table
+    // this session's server: its round and its test; this session's clients: from the metrics table
+    // (the lower levels' agents report to their own manager)
     const ownServer = nd => nd.role === 'server' && !nd.group;
-    const roundOf = nd => !ownServer(nd) ? '' : sessionEnd ? `${sessionEnd.done}/${sessionEnd.total}` : (session.roundNumber || '');
-    const metricOf = nd => ownServer(nd) && test_accuracies.latest !== undefined ? fmt(test_accuracies.latest) : '';
+    const cidOf = nd => nd.group ? undefined : agentCids[nd.name];
+    const clientRound = nd => cidOf(nd) === undefined ? 0 : Math.max(...METRIC_PHASES.map(phase => lastRoundOf(cidOf(nd), phase)));
+    const clientMetric = nd => cidOf(nd) === undefined ? undefined : (((clientMetrics[cidOf(nd)] || {}).evaluate || {})[mainMetricName]);
+    const roundOf = nd => ownServer(nd) ? (sessionEnd ? `${sessionEnd.done}/${sessionEnd.total}` : (session.roundNumber || '')) : (clientRound(nd) || '');
+    const metricOf = nd => ownServer(nd) ? (test_accuracies.latest !== undefined ? fmt(test_accuracies.latest) : '') :
+      (clientMetric(nd) ? fmt(clientMetric(nd).value) : '');
+    const metricTip = nd => ownServer(nd) ? (mainMetricName || 'main metric') + ', test on the server' :
+      (clientMetric(nd) ? `${mainMetricName}, evaluation on its data, round ${clientMetric(nd).round}` : '');
     const row = nd =>
       `<div class="node ${stateClass(nd.state)}" title="${esc(tip(nd))}">`+
         `<span class="st"></span><span class="ico">${nd.relays ? '🔁' : (ROLE_ICON[nd.role]||'❔')}</span>`+
@@ -742,7 +846,7 @@
         (nd.relays ? ` <span class="bouquet-pill" style="--session-color:${esc(colourOf(nd.relays))}" title="relays this lower level">→ ${esc(nd.relays)}</span>` : '')+
         `</span><span class="site">${esc(nd.loc || nd.org || '')}</span>`+
         `<span class="state" data-state="${esc(nd.state)}">${STATE_ICON[nd.state]||'⚪'} ${esc(STATE_TEXT[nd.state] || nd.state)}</span>`+
-        `<span class="round">${esc(roundOf(nd))}</span><span class="metric" title="${ownServer(nd) ? esc((mainMetricName || 'main metric') + ', test on the server') : ''}">${esc(metricOf(nd))}</span></div>`;
+        `<span class="round">${esc(roundOf(nd))}</span><span class="metric" title="${esc(metricTip(nd))}">${esc(metricOf(nd))}</span></div>`;
     const head = `<div class="node-head"><span></span><span></span><span>agent</span><span>site</span><span>state</span>`+
       `<span class="round">round</span><span class="metric" title="${esc(mainMetricName || 'main metric')}">${esc(mainMetricName || 'metric')}</span></div>`;
     // how the link to a direct lower level is made, chosen with its relay before the launch
@@ -925,6 +1029,7 @@
       registeredClients = Object.keys(data.clients || {}).length;
       setTxt('cfg-clients', `${registeredClients} client${registeredClients === 1 ? '' : 's'} registered = default min_clients`);
       upperState = data.upper_level || null;
+      if(JSON.stringify(data.cids || {}) !== JSON.stringify(agentCids)){ agentCids = data.cids || {}; renderMetricsTable(); }
       sessionRunning = !!data.session_running;
       renderRepetition(data.repetition || null);
       linkTransports = data.link_transports || {}; linkTransportChoices = data.link_transport_choices || [];

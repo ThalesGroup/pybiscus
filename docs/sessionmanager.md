@@ -114,12 +114,19 @@ The manager shows, live:
   running, stopping, finished, stopped, failed (an agent failed or was given an invalid
   configuration); its tooltip gives the details;
 - the topology, a table of the agents: role, name, site, state (registered, checking, checked,
-  running, finished, failed, stopped, invalid config), and for the server the round and the last
-  test value of the main metric; the map of the sites;
+  running, finished, failed, stopped, invalid config), the round and the last value of the main
+  metric (the server's test, a client's evaluation on its data); the map of the sites;
 - the accuracy per round (clients' training, server's test, clients' evaluation) and the loss;
 - the vignettes of the model's layers per round (from the `VisualizeModelLayers` decorator of the
   server's pipeline);
-- the agents' and the server's logs, and the metrics.
+- the agents' and the server's logs;
+- the metrics, a table with one row per client (named from the cid the session gave it; a cid it
+  did not give shows as `#…`) and one for the server's test: for training (fit) and evaluation, the
+  loss and the main metric of the last round, *all metrics* adding the others; a value from an
+  earlier round is greyed, its round in its tooltip; the clients' lowest main metric of the last
+  round is highlighted, the client to look at. *raw* shows the metrics as the server logs them
+  (`fit_<metric>_<cid>`, `val_<metric>_<cid>`, `val_<metric>_glob`, built by
+  `pybiscus.core.gui_events`).
 
 ![Finished session](images/session_manager_run.png "Finished session")
 

@@ -60,7 +60,7 @@ class RelayClient(fl.client.Client):
                           num_examples=0, metrics={})
         logm.console.log(f"🔁 relay {self.cid}: round {server_round}, the lower level's aggregate of {num_examples} examples sent up")
         return FitRes(status=Status(Code.OK, "ok"), parameters=ndarrays_to_parameters(arrays),
-                      num_examples=num_examples, metrics=scalar_metrics(metrics))
+                      num_examples=num_examples, metrics={**scalar_metrics(metrics), "cid": self.cid})
 
     def evaluate(self, ins):
         # a failure for the server: 0 examples would divide by zero in a session of relays only,

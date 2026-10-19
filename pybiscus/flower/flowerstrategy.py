@@ -37,7 +37,7 @@ class FabricLoggingMixin:
         logmsg = ""
         for key, value in metrics.items():
             logmsg += f"{emo[key]} {key}={value:.3f} "
-            self.fabric.log(f"val_{key}_glob", value, step=server_round)
+            self.fabric.log(gui_events.server_test_metric_key(key), value, step=server_round)
         logm.console.log(f"🔁 Round {server_round} 🧪 Test {logmsg}")
         gui_events.log_round_metric("test", metrics, server_round)
 
@@ -75,14 +75,14 @@ class FabricLoggingMixin:
         failures: list[Union[tuple[ClientProxy, EvaluateRes], BaseException]],
     ) -> tuple[Optional[float], dict[str, Scalar]]:
         aggregated = super().aggregate_evaluate(server_round, results, failures)
-        self._log_client_metrics("val", server_round, results)
+        self._log_client_metrics("evaluate", server_round, results)
         return aggregated
 
-    def _log_client_metrics(self, prefix, server_round, results) -> None:
+    def _log_client_metrics(self, phase, server_round, results) -> None:
         for client, res in results:
             cid = res.metrics.get("cid", client.cid)
             for key, value in res.metrics.items():
-                self.fabric.log(f"{prefix}_{key}_{cid}", value, step=server_round)
+                self.fabric.log(gui_events.client_metric_key(phase, key, cid), value, step=server_round)
 
 
 def with_fabric_logging(flower_strategy_class):

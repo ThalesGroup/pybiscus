@@ -2,6 +2,7 @@ import copy
 import os
 import glob
 import json
+from typing import Optional
 from flask import render_template, request, jsonify
 import requests
 
@@ -237,6 +238,24 @@ def pybiscus_manager_identity():
 
 # **************************
 
+def session_cid(agent: str) -> Optional[str]:
+    """the cid the session gives an agent, None for a server or a client yet unknown; a late
+    client's is taken when its page reads the session's params"""
+    session = pybiscus.session.manager.session_manager
+    if agent in session.session_clients:
+        return str(session.session_clients.index(agent))
+    if agent in session.session_relays:
+        return str(len(session.session_clients) + session.session_relays.index(agent))
+    return session.late_client_cids.get(agent)
+
+
+def session_cids() -> dict[str, str]:
+    session = pybiscus.session.manager.session_manager
+    agents = list(session.session_clients) + list(session.session_relays) + list(session.late_client_cids)
+    return {agent: session_cid(agent) for agent in agents}
+
+# **************************
+
 @pybiscus_manager_app.route("/pybiscus-session/params", methods=["GET"])
 @session_access
 def pybiscus_manager_get_session_params():
@@ -270,10 +289,10 @@ def pybiscus_manager_get_session_params():
         cid = None
     elif agent in session.session_clients:
         index = session.session_clients.index(agent)
-        cid = str(index)
+        cid = session_cid(agent)
     elif agent in session.session_relays:
         # no share of the data, no holdout, no CPU threads (index stays None): it computes nothing
-        cid = str(len(session.session_clients) + session.session_relays.index(agent))
+        cid = session_cid(agent)
         relayed = next(bouquet for bouquet, relay in session.relays.items() if relay == agent)
         # named, not only Some: another client plugin loaded (byzantine...) could be the first tab
         custom_presets["options_set"]["flower_client.alternate_client_class"] = RELAY_OPTION
@@ -457,6 +476,8 @@ def pybiscus_manager_list_clients():
         "cycles": cycles.session_cycles(),
         "repetition": repetition.state(),
         "session": session_state(),
+        # the metrics feed names the clients by cid
+        "cids": session_cids(),
     })
 
 # **************************
@@ -574,14 +595,15 @@ def pybiscus_manager_lower_level_heartbeat():
 # - ConfigSession ( cnx to Pybiscus server )
 @pybiscus_manager_app.route("/pybiscus-session/manage")
 def pybiscus_manager_manage():
-    from pybiscus.core.gui_events import gui_log_patterns
+    from pybiscus.core.gui_events import gui_log_patterns, metric_key_protocol
     from pybiscus.session.agent.agent_weblog import agent_state_protocol
     return render_template("pybiscus/manager.html", manager_port=pybiscus.session.manager.session_manager.manager_port,
                            session_token=pybiscus.session.manager.session_manager.session_token,
                            bouquet=pybiscus.session.manager.session_manager.bouquet,
                            bouquet_color=pybiscus.session.manager.session_manager.bouquet_color,
                            flower_port=pybiscus.session.manager.session_manager.proposed_flower_port(),
-                           gui_log_patterns=gui_log_patterns(), agent_state_protocol=agent_state_protocol())
+                           gui_log_patterns=gui_log_patterns(), agent_state_protocol=agent_state_protocol(),
+                           metric_key_protocol=metric_key_protocol())
 
 # **************************
 
@@ -666,7 +688,8 @@ def pybiscus_manager_receive_metrics():
     data = request.json
     metrics = data.get('metrics', '')
     source = data.get('source', 'unknown')
-    log = { 'source' : source, 'message' : str(metrics) }
+    # message: the raw view; metrics: the table, which decodes the keys
+    log = { 'source' : source, 'message' : str(metrics), 'metrics' : metrics if isinstance(metrics, dict) else {} }
 
     metrics_feed.append(log)
 
