@@ -114,6 +114,8 @@
   tint and bar), more as chips with the chosen one in teal (the others keep their family's colour);
   the white fill of the chosen option, the dimmed others and the sweeping sheen are gone. The
   options' names, which the presets and pins compare, are unchanged.
+* Manager: the session number (`SESSION n`) shown only for a repeated session; it showed
+  `SESSION 1` in every session.
 * Config forms: the pipeline drawn from its strategy (a node that leads to it), with the decorators
   `robustness: safeguard` and `upper_level_link` add, dashed, where they run; the decorators' rules
   (incompatible, order, last, strategies) flagged as the pipeline is edited, with the check's

@@ -34,6 +34,8 @@
   .server-url{color:var(--muted); letter-spacing:.14em; text-transform:uppercase; font-size:10.5px}
   .server-url b{color:var(--text)}
   .sep{width:1px; height:22px; background:var(--border)}
+  /* display:flex overrides the browser's [hidden] rule: SESSION 1 showed outside a repeated session */
+  .kv[hidden]{display:none}
   .kv{display:flex; align-items:center; gap:9px} .kv .num{font-size:15px; white-space:nowrap} .kv b{color:var(--accent)}
   .right{margin-left:auto; display:flex; align-items:center; gap:10px}
   .btn{cursor:pointer; color:var(--text); border:1px solid var(--border); border-radius:8px; padding:6px 12px;
