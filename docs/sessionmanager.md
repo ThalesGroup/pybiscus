@@ -124,7 +124,11 @@ The manager shows, live:
   kept by the browser. Past 12 clients, the points of the hovered round only, and a darker band
   from the first to the third quartile, where half of the clients are. Hovering the chart shows
   the nearest round: its averages and, with *clients*, each client's value, sorted (clients at the
-  same value on one row); past 11 rows, the 5 highest, the median and the 5 lowest. Then the loss;
+  same value on one row); past 11 rows, the 5 highest, the median and the 5 lowest;
+- the loss, in the same way (*loss* tab): the clients' training and evaluation averages, the
+  server's test, *clients* for each client's loss (its choice apart from the main metric's); *diff*
+  shows the change of the clients' average evaluation loss from one round to the next, and in a
+  hierarchical session *cycles* and *constraints* follow;
 - the vignettes of the model's layers per round (from the `VisualizeModelLayers` decorator of the
   server's pipeline), folded by default into a strip on the right that counts the rounds received
   (a dot when new ones came while folded): a click shows them, *hide* folds them again, and the

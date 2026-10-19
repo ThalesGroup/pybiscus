@@ -170,7 +170,7 @@
   .acc-tip .avg{display:flex; gap:10px} .acc-tip .avg b{font-weight:600; color:var(--text)}
   .chart .cpt.hot{stroke:var(--text); stroke-width:1.2} .chart .cpt.many{display:none} .chart .cpt.many.hot{display:inline}
   .acc-tip .more{color:var(--muted); font-style:italic}
-  .acc-tools{display:flex; gap:4px; margin-left:12px} #clients-phase{display:flex; gap:2px} #clients-phase[hidden]{display:none}
+  .acc-tools{display:flex; gap:4px; margin-left:12px} #mid-tabs{display:inline-flex; gap:4px; white-space:nowrap; margin-left:10px} .clients-phase{display:flex; gap:2px} .clients-phase[hidden], .acc-tools[hidden], .acc-legend[hidden], #mid-tabs .tool[hidden]{display:none}
   .chart{width:100%; flex:1; min-height:0; display:block}
   .chart[hidden], .acc-legend[hidden], .cons[hidden]{display:none}
   .cons{overflow:auto; flex:1; min-height:0}
@@ -307,17 +307,27 @@
           </div>
           <span class="acc-tools">
             <button class="tool" id="clients-btn" title="each client's value around the average: a point per client (its name on hover), the band from the lowest to the highest">clients</button>
-            <span id="clients-phase" hidden><button class="tool" data-phase="fit">fit</button><button class="tool" data-phase="evaluate">evaluate</button></span>
+            <span id="clients-phase" class="clients-phase" hidden><button class="tool" data-phase="fit">fit</button><button class="tool" data-phase="evaluate">evaluate</button></span>
           </span>
         </header>
         <div class="body acc-body"><svg class="chart" id="accChart" viewBox="0 0 600 200" preserveAspectRatio="none"></svg><div class="acc-tip" id="acc-tip" hidden></div></div>
       </section>
       <section class="panel" data-panel="loss">
-        <header><span class="eyebrow" id="mid-title">Loss · metric diff</span>
-          <span id="mid-tabs" hidden><button class="tool active" data-tab="loss">loss</button> <button class="tool" data-tab="cycles" title="where each level of the hierarchical session spends its rounds">cycles</button> <button class="tool" data-tab="constraints" title="whether each lower level applies what its upper level imposes">constraints</button></span>
-          <span class="acc-legend" id="loss-legend"><span class="it"><span class="sw" style="background:var(--loss)"></span><span class="v num" id="loss-val">—</span></span></span>
+        <header><span class="eyebrow" id="mid-title">Loss</span>
+          <span id="mid-tabs"><button class="tool active" data-tab="loss" title="the loss per round: the clients' training and evaluation, the server's test">loss</button> <button class="tool" data-tab="diff" title="the change of the clients' average evaluation loss from one round to the next">diff</button> <button class="tool" data-tab="cycles" title="where each level of the hierarchical session spends its rounds" hidden>cycles</button> <button class="tool" data-tab="constraints" title="whether each lower level applies what its upper level imposes" hidden>constraints</button></span>
+          <span class="acc-legend" id="loss-curves-legend">
+            <span class="it"><span class="sw" style="background:var(--fit)"></span>Fit <span class="v num" id="loss-fit">—</span></span>
+            <span class="it"><span class="sw" style="background:var(--test)"></span>Test <span class="v num" id="loss-test">—</span></span>
+            <span class="it"><span class="sw" style="background:var(--eval)"></span>Eval <span class="v num" id="loss-eval">—</span></span>
+          </span>
+          <span class="acc-tools" id="loss-tools">
+            <button class="tool" id="loss-clients-btn" title="each client's loss around the average: a point per client, the band from the lowest to the highest">clients</button>
+            <span id="loss-clients-phase" class="clients-phase" hidden><button class="tool" data-phase="fit">fit</button><button class="tool" data-phase="evaluate">evaluate</button></span>
+          </span>
+          <span class="acc-legend" id="loss-legend" hidden><span class="it"><span class="sw" style="background:var(--loss)"></span><span class="v num" id="loss-val">—</span></span></span>
         </header>
-        <div class="body"><svg class="chart" id="lossChart" viewBox="0 0 600 140" preserveAspectRatio="none"></svg>
+        <div class="body acc-body"><svg class="chart" id="lossCurves" viewBox="0 0 600 140" preserveAspectRatio="none"></svg><div class="acc-tip" id="loss-tip" hidden></div>
+          <svg class="chart" id="lossChart" viewBox="0 0 600 140" preserveAspectRatio="none" hidden></svg>
           <svg class="chart" id="cyclesChart" viewBox="0 0 600 140" preserveAspectRatio="none" hidden></svg>
           <div class="cons" id="constraintsView" hidden></div></div>
       </section>
@@ -444,7 +454,7 @@
   bindFeed('reset-agents-btn','pause-agents-btn', agentsList, displayedAgents, ()=> (agentsPaused=!agentsPaused));
   bindFeed('reset-logs-btn','pause-logs-btn', logList, displayedLogs, ()=> (logsPaused=!logsPaused));
   bindFeed('reset-metrics-btn','pause-metrics-btn', metricsList, displayedMetrics, ()=> (metricsPaused=!metricsPaused));
-  document.getElementById('reset-metrics-btn').addEventListener('click', ()=>{ clientMetrics = {}; clientRounds = {}; renderMetricsTable(); renderAccuracy(); });
+  document.getElementById('reset-metrics-btn').addEventListener('click', ()=>{ clientMetrics = {}; clientRounds = {}; renderMetricsTable(); renderAccuracy(); renderLossCurves(); });
 
   function addEntries(container, arr, items){
     items.forEach(item=>{
@@ -481,6 +491,13 @@
   // phase -> round -> value: placed by their round, the averages of fit and evaluate stayed one round
   // off the test's once the buffers above dropped their first values
   const roundSeries = { fit: {}, test: {}, evaluate: {} };
+  const lossSeries = { fit: {}, test: {}, evaluate: {} };
+  // a strategy outside FlowerStrategyFactory may log no round: the next one of its phase
+  function roundOf(series, phase, text){
+    if(text !== '-') return parseInt(text, 10);
+    const known = Object.keys(series[phase]).map(Number);
+    return (known.length ? Math.max(...known) : (phase === 'test' ? -1 : 0)) + 1;
+  }
   let mainMetricName = null;
   // stopRound: the last round run when a stop after it was asked for; sessionEnd: {done, total, reason}
   let stopRound = null, sessionEnd = null, stopPending = false, roundsCounted = false;
@@ -497,10 +514,12 @@
         // the metrics table's columns follow it: metrics read before this line showed loss alone
         if(mainMetricName !== mMetric[3]){ mainMetricName = mMetric[3]; renderMetricsTable(); }
         PHASE_BUFFER[mMetric[1]].add(parseFloat(mMetric[4]));
-        // a strategy outside FlowerStrategyFactory may log no round: the next one of its phase
-        const known = Object.keys(roundSeries[mMetric[1]]).map(Number);
-        const r = mMetric[2] === '-' ? (known.length ? Math.max(...known) : (mMetric[1] === 'test' ? -1 : 0)) + 1 : parseInt(mMetric[2], 10);
-        roundSeries[mMetric[1]][r] = parseFloat(mMetric[4]);
+        roundSeries[mMetric[1]][roundOf(roundSeries, mMetric[1], mMetric[2])] = parseFloat(mMetric[4]);
+        return;
+      }
+      const mLoss = item.message.match(RE.round_loss);
+      if(mLoss){
+        lossSeries[mLoss[1]][roundOf(lossSeries, mLoss[1], mLoss[2])] = parseFloat(mLoss[3]);
         return;
       }
       const mDur = item.message.match(RE.duration);
@@ -780,6 +799,15 @@
       button: document.getElementById('clients-btn'), phaseBox: document.getElementById('clients-phase'),
       storeKey: `pybiscus-manager-clients:${location.host}`, series: () => roundSeries, metric: () => mainMetricName}),
   };
+  charts.loss = phaseChart({svg: document.getElementById('lossCurves'), tip: document.getElementById('loss-tip'),
+    button: document.getElementById('loss-clients-btn'), phaseBox: document.getElementById('loss-clients-phase'),
+    storeKey: `pybiscus-manager-loss-clients:${location.host}`, series: () => lossSeries, metric: () => 'loss'});
+  function renderLossCurves(){
+    charts.loss.render();
+    const latest = o => { const r = Object.keys(o).map(Number); return r.length ? o[Math.max(...r)] : null; };
+    setTxt('loss-fit', lossFmt(latest(lossSeries.fit))); setTxt('loss-test', lossFmt(latest(lossSeries.test))); setTxt('loss-eval', lossFmt(latest(lossSeries.evaluate)));
+  }
+  const lossFmt = v => v == null ? '—' : fmtMetric(v);
   function renderAccuracy(){
     if(mainMetricName) setTxt('main-metric-name', mainMetricName);
     charts.accuracy.render();
@@ -818,16 +846,17 @@
   // round, when its relay sends the model down: only durations come up, the clocks of the sites
   // are never compared
   let midTab = 'loss', lastCycles = null;
-  const MID_TITLES = {loss: 'Loss · metric diff', cycles: 'Cycles · per level', constraints: 'Constraints · per level'};
+  const MID_TITLES = {loss: 'Loss', diff: 'Loss · metric diff', cycles: 'Cycles · per level', constraints: 'Constraints · per level'};
   document.querySelectorAll('#mid-tabs .tool').forEach(b => b.onclick = () => { midTab = b.dataset.tab; showMidTab(); });
   function showMidTab(){
     document.querySelectorAll('#mid-tabs .tool').forEach(b => b.classList.toggle('active', b.dataset.tab === midTab));
-    document.getElementById('lossChart').toggleAttribute('hidden', midTab !== 'loss');
-    document.getElementById('loss-legend').toggleAttribute('hidden', midTab !== 'loss');
+    ['lossCurves', 'loss-curves-legend', 'loss-tools'].forEach(id => document.getElementById(id).toggleAttribute('hidden', midTab !== 'loss'));
+    document.getElementById('lossChart').toggleAttribute('hidden', midTab !== 'diff');
+    document.getElementById('loss-legend').toggleAttribute('hidden', midTab !== 'diff');
     document.getElementById('cyclesChart').toggleAttribute('hidden', midTab !== 'cycles');
     document.getElementById('constraintsView').toggleAttribute('hidden', midTab !== 'constraints');
     setTxt('mid-title', MID_TITLES[midTab]);
-    renderCycles(); renderConstraints();
+    renderCycles(); renderConstraints(); renderLossCurves(); renderLoss();
   }
   // each lower level against its parent (this session for the first depth): the managers impose
   // the values, a ✗ says a level runs a session launched before its parent's, or by hand
@@ -891,10 +920,10 @@
     });
     svg.innerHTML = s;
   }
-  function renderCharts(){ renderAccuracy(); renderLoss(); renderDround(); renderCycles(); renderConstraints(); renderRound(); renderSessionState(); }
+  function renderCharts(){ renderAccuracy(); renderLossCurves(); renderLoss(); renderDround(); renderCycles(); renderConstraints(); renderRound(); renderSessionState(); }
   if('ResizeObserver' in window){
-    const redraw = new ResizeObserver(() => { renderAccuracy(); renderLoss(); renderCycles(); });
-    ['accChart', 'lossChart', 'cyclesChart'].forEach(id => redraw.observe(document.getElementById(id)));
+    const redraw = new ResizeObserver(() => { renderAccuracy(); renderLossCurves(); renderLoss(); renderCycles(); });
+    ['accChart', 'lossCurves', 'lossChart', 'cyclesChart'].forEach(id => redraw.observe(document.getElementById(id)));
   }
 
   // read from what the page already follows: registered agents, the server's end line, the agents'
@@ -1253,7 +1282,9 @@
       renderRepetition(data.repetition || null);
       linkTransports = data.link_transports || {}; linkTransportChoices = data.link_transport_choices || [];
       lastCycles = {own: data.cycles || [], ownSession: data.session || null, groups: flattenLowerLevels(data.lower_levels || [], null, 1, [])};
-      document.getElementById('mid-tabs').hidden = !lastCycles.groups.length && !data.upper_level;
+      const hierarchical = !!lastCycles.groups.length || !!data.upper_level;
+      document.querySelectorAll('#mid-tabs [data-tab="cycles"], #mid-tabs [data-tab="constraints"]').forEach(b => { b.hidden = !hierarchical; });
+      if(!hierarchical && ['cycles', 'constraints'].includes(midTab)){ midTab = 'loss'; showMidTab(); }
       try { renderTopology(servers, data.clients || {}, data.meta || {}, data.lower_levels || [], data.upper_level || null, data.manager || null, data.relays || {}); renderCharts(); }
       catch(e){ console.error('[manager] render error:', e); }
       if(serverUrl==="" && Object.keys(servers).length>0){

@@ -106,6 +106,8 @@ def weighted_average(metrics: list[tuple[int, Metrics]], context="", round_of=No
 
     # print(f"Final outputs before logging: {outputs}")
     logm.console.log(f"Averaged {context} metrics: {outputs}")
-    gui_events.log_round_metric(context, outputs, round_of() if round_of else None)
+    server_round = round_of() if round_of else None
+    gui_events.log_round_metric(context, outputs, server_round)
+    gui_events.log_round_loss(context, outputs, server_round)
     
     return outputs

@@ -42,6 +42,7 @@ class FabricLoggingMixin:
             self.fabric.log(gui_events.server_test_metric_key(key), value, step=server_round)
         logm.console.log(f"🔁 Round {server_round} 🧪 Test {logmsg}")
         gui_events.log_round_metric("test", metrics, server_round)
+        gui_events.log_round_loss("test", metrics, server_round)
 
         return eval_res
 

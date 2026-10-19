@@ -68,7 +68,11 @@
   client's value, sorted (a point hovered alone missed those under a curve, and of clients at the
   same value showed one at random). Past 12 clients, the points of the hovered round only and the quartiles'
   band (40 clients made a bar of points per round, hiding the averages); the tooltip lists the 5
-  highest, the median and the 5 lowest (with 40 clients it outgrew the chart, clipped). Each value is placed by its round: the server's fit
+  highest, the median and the 5 lowest (with 40 clients it outgrew the chart, clipped).
+* Manager: the loss per round in the middle panel's *loss* tab, as the main metric: fit and evaluate
+  averages, the server's test, each client's loss with *clients*; the former chart, the change of
+  the evaluation loss, under *diff*; *cycles* and *constraints* shown in a hierarchical session
+  only. The server logs the loss of each phase in a line of its own (`round_loss`). Each value is placed by its round: the server's fit
   and evaluate averages now log theirs (`round=-` before), and past 40 rounds the training and
   evaluation curves were drawn one round off the test's.
 * Config forms: an optional field's checkbox replaced by *unset | set*, unset showing the field's

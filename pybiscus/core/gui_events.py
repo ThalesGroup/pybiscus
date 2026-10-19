@@ -79,6 +79,15 @@ def log_round_metric(phase: str, metrics: Mapping[str, object], server_round: Op
     logm.console.log(f"📈 gui phase={phase} round={round_text} metric={name} value={value:.6g}")
 
 
+def log_round_loss(phase: str, metrics: Mapping[str, object], server_round: Optional[int] = None) -> None:
+    """the loss beside the main metric: a line of its own, a second round_metric would be read as the main metric"""
+    loss = metrics.get("loss")
+    if not isinstance(loss, Real) or isinstance(loss, bool) or not math.isfinite(float(loss)):
+        return
+    round_text = "-" if server_round is None else str(server_round)
+    logm.console.log(f"📉 gui round_loss phase={phase} round={round_text} value={float(loss):.6g}")
+
+
 def log_round_start(server_round: int, counted: int, num_rounds: int) -> None:
     """counted: the round's rank among those that count, Flower's numbers also counting the skipped ones"""
     logm.console.log(f"▶️ gui round_start round={server_round} counted={counted}/{num_rounds}")
@@ -139,6 +148,8 @@ def gui_log_patterns() -> dict[str, str]:
         "round": r"🔁 [rR]ound:\s*(\d+)",
         # main metric of a phase: groups phase, round ("-" if unknown), metric name, value
         "round_metric": r"📈 gui phase=(fit|test|evaluate) round=(\d+|-) metric=(\S+) value=(-?[\d.]+(?:[eE][-+]?\d+)?|nan|inf)",
+        # loss of a phase (log_round_loss): groups phase, round ("-" if unknown), value
+        "round_loss": r"📉 gui round_loss phase=(fit|test|evaluate) round=(\d+|-) value=(-?[\d.]+(?:[eE][-+]?\d+)?|nan|inf)",
         # duration of a round (timediffcompute decorator)
         "duration": r"time diff is (\d+(?:\.\d+)?)s",
         # variation of the aggregated evaluation loss (metricdiffcompute decorator)
