@@ -31,7 +31,8 @@ Launch the client agents, and open `http://localhost:5001/client/config` and
 On each form, the top bar stays in view when scrolling: the form's name, and the agent's name,
 role, site and bouquet when it is registered in a session, then the buttons. The sections are
 listed on the left (on top when the window is narrow); the shown one has its description under its
-name.
+name. A nested block is marked by a rule on its left, in teal for the block under the
+pointer; a list has a sunk background.
 
 On each form:
 - **Check** validates the configuration; **Execute** (enabled once it is checked)

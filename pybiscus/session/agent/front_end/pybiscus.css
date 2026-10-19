@@ -1706,3 +1706,64 @@ body > div > fieldset > legend {
     }
     .pybiscus-sections > .level-1-menu .menu-item-level-1 { flex: 0 0 auto; }
 }
+
+/* ---------- Ergonomics, step 3.3c: flat blocks, the depth by a rule on the left ---------- */
+
+/* the shown section is the column itself: its title and description mark it */
+#top-div fieldset.foldable:not(.collapsed) {
+    border: 0;
+    background: none;
+    box-shadow: none;
+    padding: 0;
+}
+
+#top-div > fieldset fieldset:not(.foldable):not(.pybiscus-camouflaged-fieldset) {
+    border: 0;
+    border-left: 2px solid var(--fieldset-border);
+    border-radius: 0;
+    background: none;
+    box-shadow: none;
+    padding: 0 0 0 0.75rem;
+    transition: border-color var(--transition-fast);
+}
+
+/* the innermost block under the pointer, not its parents: which block a field belongs to */
+#top-div > fieldset fieldset:not(.foldable):hover:not(:has(fieldset:not(.pybiscus-camouflaged-fieldset):hover)) {
+    border-left-color: var(--ok);
+}
+
+/* the same chain as the rule above, or its weight wins over these variants */
+/* a list reads as a collection: a sunk background, its items keeping their rule */
+#top-div > fieldset fieldset.pybiscus-list-fs:not(.foldable):not(.pybiscus-camouflaged-fieldset) {
+    background: var(--panel-sunk);
+    border-radius: 0 6px 6px 0;
+    padding: 0.25rem 0.5rem 0.5rem 0.75rem;
+}
+
+#top-div > fieldset fieldset.pybiscus-fieldset-invalid:not(.foldable):not(.pybiscus-camouflaged-fieldset) {
+    border-left-color: var(--color-error) !important;
+}
+#top-div > fieldset fieldset.pybiscus-fieldset-invalid > legend .pybiscus-config {
+    color: var(--color-error);
+}
+
+#top-div > fieldset fieldset.pybiscus-locked:not(.foldable):not(.pybiscus-camouflaged-fieldset) {
+    border-left-style: dashed;
+}
+
+/* a union's frame of its own doubled the block's rule; its tabs are restyled in 3.3e */
+#top-div .pybiscus-tab-container {
+    background: none;
+    box-shadow: none;
+    border-radius: 0;
+    border-bottom: 0;
+}
+#top-div .pybiscus-tab-content,
+#top-div .pybiscus-tab-content.active {
+    background: none;
+    padding: var(--spacing-sm) 0 0;
+}
+/* the origin marker of a vertical union is out of the flow, in the band at the top of the content */
+#top-div .pybiscus-tab-vertical > .pybiscus-tab-content:has(> .pybiscus-origin-marker) {
+    padding-top: 2.25rem;
+}

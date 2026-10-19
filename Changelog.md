@@ -88,6 +88,10 @@
 * Config forms: the section menu in a column on the left, staying in view when scrolling (back on
   top when the window is narrow); the shown section titled by its name, with its description under
   it (it was only on hover).
+* Config forms: flat blocks: a nested block (model, option, union, list item) drawn by a rule on its
+  left in place of a framed box, the rule of the block under the pointer in teal (which block a field
+  belongs to); a list on a sunk background; a block refused by the check with a red rule and title, a
+  locked one with a dashed rule. The shown section has no frame. More width is left to the fields.
 * Config forms: a locked field's value readable in the dark theme (the faintest grey, dimmed twice).
 * Config forms: a locked field's lock back on its label's line (it took a third line under the key).
 * A check, a save or a pin run during the 600 ms switch between two options of a union read the
