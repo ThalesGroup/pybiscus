@@ -5,7 +5,7 @@
 window.pybiscusCompactLists = (() => {
 
     const listPrefix = fs => {
-        const probe = fs.querySelector(".pybiscus-list-template [data-pybiscus-prefix], .pybiscus-list-template [data-pybiscus-name]");
+        const probe = fs.querySelector(":scope > .pybiscus-list > .pybiscus-list-template :is([data-pybiscus-prefix], [data-pybiscus-name])");
         const path = probe ? (probe.getAttribute("data-pybiscus-prefix") || probe.getAttribute("data-pybiscus-name")) : "";
         return path.split(".#")[0] || fs.querySelector(":scope > legend .pybiscus-config")?.textContent.trim() || "list";
     };

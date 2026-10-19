@@ -1767,3 +1767,10 @@ body > div > fieldset > legend {
 #top-div .pybiscus-tab-vertical > .pybiscus-tab-content:has(> .pybiscus-origin-marker) {
     padding-top: 2.25rem;
 }
+
+/* a compact list: the shown item's rank is the chain's current node, its own label repeated it */
+.pybiscus-cl-compact > .pybiscus-list > .pybiscus-list-contents > .pybiscus-list-content > .pybiscus-field > label.pybiscus-config,
+.pybiscus-cl-compact > .pybiscus-list > .pybiscus-list-contents > .pybiscus-list-content > .pybiscus-field > fieldset > legend > .pybiscus-config:first-child,
+.pybiscus-cl-compact > .pybiscus-list > .pybiscus-list-contents > .pybiscus-list-content > fieldset > legend > .pybiscus-config:first-child {
+    display: none;
+}

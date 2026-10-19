@@ -92,6 +92,14 @@
   left in place of a framed box, the rule of the block under the pointer in teal (which block a field
   belongs to); a list on a sunk background; a block refused by the check with a red rule and title, a
   locked one with a dashed rule. The shown section has no frame. More width is left to the fields.
+* Config forms: in a compact list (the chain of items), the shown item no longer repeats its rank
+  above its values, the chain's current node showing it.
+* Config forms: a list whose items hold a list of their own (a W&B logger's tags, among the metrics
+  loggers): the item's template no longer carries a stray copy of the inner list before the item,
+  shown with the rank while the item kept the template's `#` (the generator built the inner list in
+  the outer one's context); ➕ on the outer list no longer clones the inner list's template (an
+  unscoped search found it first), nor does the numbering read its paths; the ➕ of an inner list in
+  an added item works (a cloned button had no listener).
 * Config forms: a locked field's value readable in the dark theme (the faintest grey, dimmed twice).
 * Config forms: a locked field's lock back on its label's line (it took a third line under the key).
 * A check, a save or a pin run during the 600 ms switch between two options of a union read the

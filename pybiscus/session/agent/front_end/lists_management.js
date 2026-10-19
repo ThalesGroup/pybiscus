@@ -37,8 +37,13 @@
     return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   }
 
+  // this list's own parts: an item holding a nested list (a logger's tags) comes first in the
+  // document, and an unscoped query found its template and its contents
+  const ownContents = list => list.querySelector(':scope > .pybiscus-list > .pybiscus-list-contents');
+  const ownTemplate = list => list.querySelector(':scope > .pybiscus-list > .pybiscus-list-template');
+
   function renum_list_config(container) {
-    const contents = container.querySelector('.pybiscus-list-contents');
+    const contents = ownContents(container);
     if (!contents) return;
 
     // Base du chemin de CETTE liste = segment précédant le '#' du template. Permet de
@@ -47,7 +52,7 @@
     // NB: l'ancienne version faisait replace('#', index), qui ne trouvait plus rien une fois
     // l'item numéroté -> suppression au milieu / réordonnancement laissaient des indices
     // périmés (trous dans le YAML).
-    const template = container.querySelector('.pybiscus-list-template');
+    const template = ownTemplate(container);
     const probe = template && template.querySelector('[data-pybiscus-name*="#"], [data-pybiscus-prefix*="#"]');
     let re = null;
     if (probe) {
@@ -122,7 +127,7 @@
     });
 }
 
-  document.querySelectorAll('.pybiscus-list-generator').forEach(generator => {
+  function bindListGenerator(generator) {
 
       generator.addEventListener('click', () => {
 
@@ -131,8 +136,8 @@
         if (!container) return;
 
         // access internal elements
-        const contents = container.querySelector('.pybiscus-list-contents');
-        const template = container.querySelector('.pybiscus-list-template');
+        const contents = ownContents(container);
+        const template = ownTemplate(container);
         if (!contents || !template) return;
    
         // create .pybiscus-list-content container
@@ -214,13 +219,17 @@
       
         // set click callback on new contents
         newContent.querySelectorAll('.pybiscus-tab-container').forEach(handlePybiscusTabContainer);
+        // a clone has no listener: the ➕ of a list nested in the item (a logger's tags) did nothing
+        newContent.querySelectorAll('.pybiscus-list-generator').forEach(bindListGenerator);
 
         // insert into .pybiscus-list-contents
         contents.appendChild(newContent);
 
         renum_list_config( container );
       });
-    });
+  }
+
+  document.querySelectorAll('.pybiscus-list-generator').forEach(bindListGenerator);
 
   // =========================================================================
   // Pré-allocation d'éléments par défaut dans certaines listes.
@@ -238,7 +247,7 @@
 
   function listOptionAvailable(container, name){
     // le template contient l'union avec tous les onglets d'options disponibles
-    return Array.from(container.querySelectorAll('.pybiscus-list-template .pybiscus-tab-button'))
+    return Array.from(ownTemplate(container)?.querySelectorAll('.pybiscus-tab-button') || [])
       .some(b => b.textContent.trim() === name);
   }
 
@@ -254,7 +263,7 @@
           .some(el => el.closest('.pybiscus-list-fs') === fs);
       });
       if (!container) return;                                        // liste absente (config/plugins)
-      const contents   = container.querySelector('.pybiscus-list-contents');
+      const contents   = ownContents(container);
       const generator  = container.querySelector('.pybiscus-list-generator');
       if (!contents || !generator || contents.children.length) return;   // absente ou déjà peuplée
 

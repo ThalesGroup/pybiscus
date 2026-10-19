@@ -211,6 +211,17 @@ def generate_field_html(field_name: str, field_type, field_default, field_descri
         if get_origin(list_type) is Annotated:
             list_type = get_args(list_type)[0]
 
+        # generated before any `with`: dominate attaches every element created inside a `with` to it, so a
+        # list nested in the item (a logger's tags) was also added, stray, at the head of this template
+        item_html = generate_field_html(
+                                    field_name        = "#", 
+                                    field_type        = list_type, 
+                                    field_default     = None, 
+                                    field_description = PydanticUndefined,
+                                    inFieldSet        = True,
+                                    prefix            = f"{prefix}{field_name}.",
+                                    )
+
         list_fieldset = fieldset( cls='pybiscus-list-fs' )
 
         with list_fieldset:
@@ -227,14 +238,7 @@ def generate_field_html(field_name: str, field_type, field_default, field_descri
 
                 with div( cls='pybiscus-list-template', style="display: none;", **{'data-pybiscus-status': 'ignored'} ):
                     
-                    raw( generate_field_html(
-                                    field_name        = "#", 
-                                    field_type        = list_type, 
-                                    field_default     = None, 
-                                    field_description = PydanticUndefined,
-                                    inFieldSet        = True,
-                                    prefix            = f"{prefix}{field_name}.",
-                                    ) )
+                    raw( item_html )
 
         field_html +=  list_fieldset.render()
     
@@ -271,6 +275,41 @@ def generate_field_html(field_name: str, field_type, field_default, field_descri
         if get_origin(the_dict_value_type) is Annotated:
             the_dict_value_type = get_args(the_dict_value_type)[0]
 
+        # generated before any `with`, as for a list's item
+        # Key field - no .pybiscus-field class, special handling
+        key_html = generate_field_html(
+            field_name="", 
+            field_type=the_dict_key_type, 
+            field_default=None, 
+            field_description=PydanticUndefined,
+            inFieldSet=True,
+            prefix=f"{prefix}{field_name}.",
+        )
+        
+        # Remove .pybiscus-field from key and add special class
+        # TODO: to harden
+        key_html_modified = key_html.replace(
+            '<div class="pybiscus-field">',
+            '<div class="pybiscus-dict-key">'
+        )
+
+        # Value field - keep .pybiscus-field but add special class for dynamic naming
+        value_html = generate_field_html(
+            field_name="@", 
+            field_type=the_dict_value_type, 
+            field_default=None, 
+            field_description=PydanticUndefined,
+            inFieldSet=True,
+            prefix=f"{prefix}{field_name}.",
+        )
+        
+        # Add special class to value field for dynamic data-pybiscus-name handling
+        # TODO: to harden
+        value_html_modified = value_html.replace(
+            '<div class="pybiscus-field">',
+            '<div class="pybiscus-field pybiscus-dict-value">'
+        )
+
         dict_fieldset = fieldset( cls='pybiscus-list-fs' )
 
         with dict_fieldset:
@@ -287,40 +326,6 @@ def generate_field_html(field_name: str, field_type, field_default, field_descri
 
                 with div( cls='pybiscus-list-template', style="display: none;", **{'data-pybiscus-status': 'ignored'} ):
 
-                    # Key field - no .pybiscus-field class, special handling
-                    key_html = generate_field_html(
-                        field_name="", 
-                        field_type=the_dict_key_type, 
-                        field_default=None, 
-                        field_description=PydanticUndefined,
-                        inFieldSet=True,
-                        prefix=f"{prefix}{field_name}.",
-                    )
-                    
-                    # Remove .pybiscus-field from key and add special class
-                    # TODO: to harden
-                    key_html_modified = key_html.replace(
-                        '<div class="pybiscus-field">',
-                        '<div class="pybiscus-dict-key">'
-                    )
-
-                    # Value field - keep .pybiscus-field but add special class for dynamic naming
-                    value_html = generate_field_html(
-                        field_name="@", 
-                        field_type=the_dict_value_type, 
-                        field_default=None, 
-                        field_description=PydanticUndefined,
-                        inFieldSet=True,
-                        prefix=f"{prefix}{field_name}.",
-                    )
-                    
-                    # Add special class to value field for dynamic data-pybiscus-name handling
-                    # TODO: to harden
-                    value_html_modified = value_html.replace(
-                        '<div class="pybiscus-field">',
-                        '<div class="pybiscus-field pybiscus-dict-value">'
-                    )
-                
                     raw(key_html_modified + value_html_modified)
 
         field_html +=  dict_fieldset.render()
