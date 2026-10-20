@@ -17,6 +17,20 @@
 
   .app{height:100vh; display:grid; grid-template-rows:auto 1fr; gap:12px; padding:12px}
 
+  .top{display:flex; flex-direction:column; gap:8px; min-width:0}
+  .session-summary{display:flex; flex-wrap:wrap; align-items:center; gap:6px 18px; padding:7px 14px; font-size:12px;
+    border:1px solid var(--border); border-left:3px solid var(--done); border-radius:var(--r); background:var(--panel)}
+  .session-summary[hidden]{display:none}
+  .session-summary.stopped{border-left-color:var(--stopped)}
+  .session-summary .sum-label{font-weight:600; letter-spacing:.08em; text-transform:uppercase; font-size:11px}
+  .session-summary .sum-reason{color:var(--stopped)}
+  .session-summary .sum-item{color:var(--muted); white-space:nowrap} .session-summary .sum-item b{color:var(--text); font-variant-numeric:tabular-nums}
+  .session-summary .sum-reports{display:flex; align-items:center; gap:8px; min-width:0; flex:1 1 20em}
+  .session-summary .sum-reports[hidden]{display:none}
+  .session-summary code{color:var(--text); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; min-width:0; direction:rtl; text-align:left}
+  .session-summary .sum-close{margin-left:auto}
+  body.detached .session-summary{display:none}
+
   /* top bar */
   .topbar{display:flex; align-items:center; gap:16px; padding:10px 14px; border:1px solid var(--border);
     border-radius:var(--r); background:linear-gradient(180deg,var(--panel-2),var(--panel))}
@@ -38,6 +52,7 @@
   .kv[hidden]{display:none}
   .kv{display:flex; align-items:center; gap:9px} .kv .num{font-size:15px; white-space:nowrap} .kv b{color:var(--accent)}
   .right{margin-left:auto; display:flex; align-items:center; gap:10px}
+  .round-time{display:flex; align-items:center; gap:10px; cursor:help}
   .btn{cursor:pointer; color:var(--text); border:1px solid var(--border); border-radius:8px; padding:6px 12px;
   a.btn{text-decoration:none}
     font-family:var(--mono); font-size:11px; letter-spacing:.12em; text-transform:uppercase; background:var(--panel-2)}
@@ -124,7 +139,8 @@
   /* wrapped: in a narrow topology panel the relay picker and its warning were clipped off to the right */
   .tier-head{display:flex; align-items:center; gap:8px; flex-wrap:wrap}
   /* one row per agent, its columns aligned with the header's (.node-head) */
-  .node, .node-head{display:grid; grid-template-columns:9px 16px minmax(0,1.5fr) minmax(0,1fr) auto 3.4em 4.6em; align-items:center; column-gap:8px}
+  /* fixed widths in px: in em, the header's smaller font made its columns narrower than the rows' (and cut "accuracy") */
+  .node, .node-head{display:grid; grid-template-columns:9px 16px minmax(0,1.5fr) minmax(0,1fr) auto 44px 72px; align-items:center; column-gap:8px}
   .node{padding:7px 9px; border:1px solid var(--border); border-radius:8px; background:var(--panel-2)}
   .node-head{padding:0 10px; font-size:10px; letter-spacing:.04em; text-transform:uppercase; color:var(--muted)}
   .node-head span{overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
@@ -253,7 +269,8 @@
 
 <div class="app">
 
-  <!-- top bar -->
+  <!-- top bar, and under it the summary of an ended session -->
+  <div class="top">
   <div class="topbar">
     <div class="brand"><span class="mark">✳</span> Pybiscus · Session</div>
     <span class="bouquet-pill" id="bouquet-pill" hidden></span>
@@ -266,8 +283,9 @@
     <div class="right">
       <span id="detached-chips"></span>
       <button class="btn" id="dock-btn" hidden title="close this window, the panel goes back to the main page">⧉ dock</button>
-      <span class="eyebrow">Δ round</span><span class="num" id="dround-val">—</span>
-      <svg id="droundSpark" width="76" height="22"></svg>
+      <span class="round-time" id="round-time" title="duration of the last round; the bars: the last rounds' durations, the last one highlighted (from the timediffcompute decorator of the server's pipeline)">
+        <span class="eyebrow">round time</span><span class="num" id="dround-val">—</span>
+        <svg id="droundSpark" width="76" height="22"></svg></span>
       <button class="btn pybiscus-theme-toggle" title="light or dark theme, kept by this browser for this manager">🌓</button>
       <a class="btn" href="/pybiscus-session/network" target="_blank" title="the machines, ports and flows of the session">🌐 network</a>
       <button class="btn" id="token-btn" title="Copy the session token: the agents give it at registration">🔑 session token</button>
@@ -276,6 +294,17 @@
       <button class="btn" id="stop-repeat-btn" hidden title="no other session after the current one">🔁 stop repeating</button>
       <button class="btn danger" id="revokeBtn">Drop session</button>
     </div>
+  </div>
+  <div class="session-summary" id="session-summary" role="status" hidden>
+    <span class="sum-state" id="sum-state"></span>
+    <span class="sum-item" id="sum-rounds"></span>
+    <span class="sum-item" id="sum-duration"></span>
+    <span class="sum-item" id="sum-metric"></span>
+    <span class="sum-item" id="sum-loss"></span>
+    <span class="sum-item sum-reports" id="sum-reports" hidden><span class="eyebrow">reports</span>
+      <code id="sum-path"></code><button class="tool" id="sum-copy" title="copy the path of the reports directory, on the server agent's machine">copy</button></span>
+    <button class="tool sum-close" id="sum-close" title="hide this summary until the next session ends">×</button>
+  </div>
   </div>
 
   <div class="grid">
@@ -511,11 +540,16 @@
   let mainMetricName = null;
   // stopRound: the last round run when a stop after it was asked for; sessionEnd: {done, total, reason}
   let stopRound = null, sessionEnd = null, stopPending = false, roundsCounted = false;
+  // the summary of an ended session: when its first round began and where the server wrote its reports
+  let firstRoundTime = null, reportingPath = null, summaryClosed = false;
 
   function checkLogs(newItems){
     newItems.forEach(item=>{
       const mRound = item.message.match(RE.round);
       if(mRound && !roundsCounted) session.roundNumber = parseInt(mRound[1],10);
+      const mPath = item.message.match(RE.reporting_path);
+      if(mPath){ reportingPath = mPath[1]; return; }
+      if(firstRoundTime === null && item.time && RE.round_start.test(item.message)) firstRoundTime = item.time;
       // a schedule skips rounds that do not count: its own counter wins over Flower's numbers
       const mDone = item.message.match(RE.rounds_done);
       if(mDone){ roundsCounted = true; session.roundNumber = parseInt(mDone[1],10); return; }
@@ -541,7 +575,7 @@
       const mSr = item.message.match(RE.stop_requested);
       if(mSr){ stopRound = parseInt(mSr[1],10); return; }
       const mEnd = item.message.match(RE.session_end);
-      if(mEnd){ sessionEnd = {done: parseInt(mEnd[1],10), total: parseInt(mEnd[2],10), reason: mEnd[3] || null}; return; }
+      if(mEnd){ sessionEnd = {done: parseInt(mEnd[1],10), total: parseInt(mEnd[2],10), reason: mEnd[3] || null, time: item.time || null}; summaryClosed = false; return; }
     });
   }
 
@@ -984,7 +1018,45 @@
     });
     svg.innerHTML = s;
   }
-  function renderCharts(){ renderAccuracy(); renderLossCurves(); renderLoss(); renderDround(); renderCycles(); renderConstraints(); renderRound(); renderSessionState(); }
+  function renderCharts(){ renderAccuracy(); renderLossCurves(); renderLoss(); renderDround(); renderCycles(); renderConstraints(); renderRound(); renderSessionState(); renderSummary(); }
+  const latestOf = o => { const r = Object.keys(o).map(Number).filter(n => n > 0); return r.length ? o[Math.max(...r)] : null; };
+  function fmtDuration(seconds){
+    const s = Math.round(seconds), h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60);
+    return h ? `${h} h ${String(m).padStart(2, '0')} min` : m ? `${m} min ${String(s % 60).padStart(2, '0')} s` : `${s} s`;
+  }
+  // the phases' last values of a metric, the server's test first: "test 0.993 · eval 0.992 · fit 0.994"
+  function phaseValues(series){
+    return [['test', series.test], ['eval', series.evaluate], ['fit', series.fit]]
+      .map(([label, o]) => [label, latestOf(o)]).filter(([, v]) => v != null)
+      .map(([label, v]) => `${label} <b>${esc(fmtMetric(v))}</b>`).join(' · ');
+  }
+  function renderSummary(){
+    const box = document.getElementById('session-summary');
+    box.hidden = !sessionEnd || summaryClosed;
+    if(box.hidden) return;
+    box.classList.toggle('stopped', !!sessionEnd.reason);
+    document.getElementById('sum-state').innerHTML = sessionEnd.reason
+      ? `<span class="sum-label">⏹ stopped</span> <span class="sum-reason">${esc(sessionEnd.reason)}</span>`
+      : '<span class="sum-label">🏁 session finished</span>';
+    document.getElementById('sum-rounds').innerHTML = `<b>${sessionEnd.done}/${sessionEnd.total}</b> rounds`;
+    const duration = sessionEnd.time && firstRoundTime ? sessionEnd.time - firstRoundTime : null;
+    const durationEl = document.getElementById('sum-duration');
+    durationEl.hidden = duration == null;
+    durationEl.innerHTML = duration == null ? '' : `<b>${fmtDuration(duration)}</b> from round 1`;
+    const metric = mainMetricName ? phaseValues(roundSeries) : '', loss = phaseValues(lossSeries);
+    document.getElementById('sum-metric').innerHTML = metric ? `${esc(mainMetricName)} ${metric}` : '';
+    document.getElementById('sum-loss').innerHTML = loss ? `loss ${loss}` : '';
+    document.getElementById('sum-reports').hidden = !reportingPath;
+    const path = document.getElementById('sum-path');
+    // rtl: a long path is cut at its start, its end (the session's timestamp) stays readable
+    path.textContent = `\u200e${reportingPath || ''}`; path.title = reportingPath || '';
+  }
+  document.getElementById('sum-close').onclick = () => { summaryClosed = true; renderSummary(); };
+  document.getElementById('sum-copy').onclick = async e => {
+    try { await navigator.clipboard.writeText(reportingPath || ''); e.target.textContent = 'copied'; }
+    catch(err) { e.target.textContent = 'copy failed'; }
+    setTimeout(() => { e.target.textContent = 'copy'; }, 1500);
+  };
   if('ResizeObserver' in window){
     const redraw = new ResizeObserver(() => { renderAccuracy(); renderLossCurves(); renderLoss(); renderCycles(); });
     ['accChart', 'lossCurves', 'lossChart', 'cyclesChart'].forEach(id => redraw.observe(document.getElementById(id)));
@@ -1414,7 +1486,7 @@
     btn.textContent = repetition?.stop_requested ? '🔁 last session' : '🔁 stop repeating';
     if(!repetition) return;
     if(repetition.sessions > repetitionSessions){
-      if(repetitionSessions > 0){ sessionEnd = null; stopRound = null; stopPending = false; roundsCounted = false; session.roundNumber = 0; }
+      if(repetitionSessions > 0){ sessionEnd = null; stopRound = null; stopPending = false; roundsCounted = false; session.roundNumber = 0; firstRoundTime = null; reportingPath = null; }
       repetitionSessions = repetition.sessions;
     }
     const next = repetition.next_deadline ? new Date(repetition.next_deadline).toLocaleString() : null;

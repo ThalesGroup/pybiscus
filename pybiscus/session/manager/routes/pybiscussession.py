@@ -1,4 +1,5 @@
 import copy
+import time
 import os
 import glob
 import json
@@ -672,7 +673,8 @@ def pybiscus_manager_receive_log():
     message = data.get('content', '')
     source = data.get('source', 'unknown')
 
-    log_feed.append({'source': source, 'message': message})
+    # the time it was received: the page computes the session's duration from it
+    log_feed.append({'source': source, 'message': message, 'time': time.time()})
     cycles.note_server_line(message)
 
     return jsonify({"status": "success"}), 200

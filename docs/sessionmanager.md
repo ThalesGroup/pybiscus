@@ -114,7 +114,12 @@ Every agent's page then switches to its run monitor (state, live log, stop butto
 The manager shows, live:
 - in its top bar, the session's state: waiting (for agents), not ready, ready (to be configured),
   running, stopping, finished, stopped, failed (an agent failed or was given an invalid
-  configuration); its tooltip gives the details;
+  configuration); its tooltip gives the details; *round time*, the duration of the last round and
+  bars for the last rounds' (from the `timediffcompute` decorator of the server's pipeline);
+- once the session has ended, a summary under the top bar: finished or stopped (and why), the rounds
+  run, the duration from round 1, the last values of the main metric and of the loss (server's test,
+  clients' evaluation, training), and the server's reports directory, with *copy* (a path on the
+  server agent's machine); × hides it until the next session ends;
 - the topology, a table of the agents: role, name, site, state (registered, checking, checked,
   running, finished, failed, stopped, invalid config), the round and the last value of the main
   metric (the server's test, a client's evaluation on its data); the map of the sites;

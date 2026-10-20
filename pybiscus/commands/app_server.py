@@ -271,8 +271,6 @@ def launch_config(
 
     ensure_dir_exists(reporting_path)
 
-    logm.console.log(f"reporting 💾 path is set to : {reporting_path}")
-
     # load the loggers
     _logger_classes = [ logger_registry()[logger.name](config=logger.config) for logger in conf.server_run.loggers ]
 
@@ -287,6 +285,8 @@ def launch_config(
         _logger_classes = [ RichLoggerFactory(), _file_logger_factory ]
 
     logm.console = MultipleLoggerFactory(_logger_classes).get_logger()
+    # once the loggers are set: before, the line reached the console only, never the manager
+    gui_events.log_reporting_path(reporting_path)
 
     # load the metricsloggers
     _metricslogger_classes = [ metricslogger_registry()[mlogger.name](config=mlogger.config) for mlogger in conf.server_compute_context.metrics_loggers ]

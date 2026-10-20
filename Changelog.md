@@ -22,6 +22,15 @@
   the main metric's chart gets *r0* too, round 0 hidden by default (the untrained model's test
   stretched the scale down to 0.1).
 
+* Manager: a summary under the top bar once the session has ended: finished or stopped (and why),
+  rounds run, duration from round 1, last values of the main metric and of the loss, the server's
+  reports directory with *copy* (it showed only in the server's log). The server logs its reports
+  directory as a GUI event (`gui reporting_path=`), after its loggers are set (before, it reached
+  its console only); the manager stamps the log lines it receives with their time.
+* Manager: the topology's metric column wide enough for "accuracy" (fixed widths: in em, the
+  header's smaller font made its columns narrower than the rows'); *Δ round* reads *round time*,
+  its tooltip saying what the value and the bars are.
+
 ## [Version 0.13.0]
 
 Since `version0.12.0` (2026-10-18): the GUI reworked — one dark theme (with a light one) shared by

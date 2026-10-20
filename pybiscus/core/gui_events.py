@@ -141,6 +141,11 @@ def log_session_end(rounds_done: int, num_rounds: int, reason: Optional[str]) ->
         logm.console.log(f"🛑 gui session_end rounds={rounds_done}/{num_rounds} stopped: {reason}")
 
 
+def log_reporting_path(path) -> None:
+    """the server's reports directory, which the manager shows at the session's end"""
+    logm.console.log(f"💾 gui reporting_path={path}")
+
+
 def gui_log_patterns() -> dict[str, str]:
     # JavaScript RegExp sources, compiled as is by the manager page (also valid Python)
     return {
@@ -162,6 +167,8 @@ def gui_log_patterns() -> dict[str, str]:
         "stop_requested": r"gui stop_requested round=(\d+)",
         # end of the rounds: groups rounds done, num_rounds, reason of an early stop
         "session_end": r"gui session_end rounds=(\d+)/(\d+)(?: stopped: (.*))?",
+        # the server's reports directory (log_reporting_path): group path, spaces included
+        "reporting_path": r"gui reporting_path=(.+?)\s*$",
         # with a schedule, the rounds counted (log_rounds_done): groups rounds done, num_rounds
         "rounds_done": r"gui rounds_done=(\d+)/(\d+)",
         # a server's round begins (log_round_start): groups round, rank among the counted ones, num_rounds
