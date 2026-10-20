@@ -82,6 +82,9 @@
   scene); set in `edit --ui` too. A cut without tiles gives the same video as before.
 * `docs/recording.md` shows `edit --ui` (scenes in mosaic, screenshots, export) and the two layouts of
   the mosaic; the page plays the animated webp where the browser has no H.264.
+* `shoot --attach` opens the run monitor of each agent launching its run (`--agent-pages`, 4 by
+  default; `--agent-token` for an agent beyond the loopback); `attach.cut.yml` shows them as tiles
+  beside the manager. A scene with tiles and no view to tile yet is composed as without tiles.
 
 ## [Version 0.13.0]
 

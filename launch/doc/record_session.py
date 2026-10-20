@@ -37,7 +37,7 @@ from pathlib import Path
 
 import requests
 import yaml
-from playwright.sync_api import sync_playwright
+from playwright.sync_api import Error as PlaywrightError, sync_playwright
 
 from rushes import Shooting, edit, log
 
@@ -468,11 +468,12 @@ def shoot_hierarchical(sc, work, rushes):
 
 # ..................................................................... a session run by someone
 
-def shoot_attached(url, sc, rushes, max_duration):
+def shoot_attached(url, sc, rushes, max_duration, agent_pages=4, agent_tokens=None):
     """follows the session of the manager at url, from its state, until its runs end; events:
     attached or joined (count), registered, started, validated, executing, round (round, rounds,
     of_rounds), failed (name, state), finished (accuracy), dropped, interrupted, lost (the manager
-    no longer answers)"""
+    no longer answers). The run monitor of each agent launching its run is opened as the view
+    agent:<name>, up to agent_pages of them"""
     parsed = urllib.parse.urlsplit(url)
     base = f"{parsed.scheme}://{parsed.netloc}"
     token = urllib.parse.parse_qs(parsed.query).get("token", [None])[0]
@@ -504,11 +505,46 @@ def shoot_attached(url, sc, rushes, max_duration):
         shooting = Shooting(rushes, viewport, scale, sc.get("period", 0.35))
         shooting.add_view("manager", page, MANAGER_PANELS, manager_label())
         shooting.set_focus("manager")
+        opened, given_up = [], set()
+
+        def open_agent(name, meta):
+            if name in opened or name in given_up or len(opened) >= agent_pages:
+                return
+            given_up.add(name)
+            agent_url = (meta.get(name) or {}).get("agent_url")
+            if not agent_url:
+                log(f"agent {name}: the manager does not know its address, its page is not shot")
+                return
+            token = (agent_tokens or {}).get(name)
+            # narrow, as in a scenario: its run monitor stays readable once reduced to a tile
+            tab = browser.new_page(viewport=sc.get("inset_viewport", INSET_VIEWPORT), device_scale_factor=scale)
+            try:
+                response = tab.goto(f"{agent_url.rstrip('/')}/run" + (f"?token={urllib.parse.quote(token)}" if token else ""), timeout=15000)
+            except PlaywrightError as error:
+                log(f"agent {name}: its page at {agent_url} cannot be opened from here ({error.message.splitlines()[0]})")
+                tab.close()
+                return
+            if response is not None and response.status == 401:
+                log(f"agent {name} asks for its token: --agent-token {name}=<its access token>")
+                tab.close()
+                return
+            tab.wait_for_timeout(800)
+            given_up.discard(name)
+            opened.append(name)
+            shooting.add_view(f"agent:{name}", tab, AGENT_PANELS, agent_label(name))
+            # captured now: the next tick would come after the event, the scene's first images without its tile
+            shooting.capture(f"agent:{name}")
+            shooting.set_focus("manager", *(f"agent:{n}" for n in opened))
+            log(f"agent {name}: its run monitor is shot")
+
         # what happened before the shooting is the starting point, not news
         known = set(first["servers"]) | set(first["clients"])
         states = dict(first.get("states") or {})
         executed = {name for name, state in states.items() if state == "executing" or state in AGENT_ENDED}
         running, shown = bool(first.get("session_running")), None
+        # joined during the session: the runs already launched, the server's first
+        for name in sorted((n for n, s in states.items() if s == "executing"), key=lambda n: n not in first["servers"]):
+            open_agent(name, first.get("meta") or {})
         shooting.event("joined" if running else "attached", count=len(known))
         log(f"attached to {base}: Ctrl+C stops the shooting")
         deadline = time.time() + max_duration if max_duration else None
@@ -539,6 +575,8 @@ def shoot_attached(url, sc, rushes, max_duration):
                     if state in ("validated", "executing"):
                         if state == "executing":
                             executed.add(name)
+                            # before its event: the scene's first images already have its tile
+                            open_agent(name, d.get("meta") or {})
                         shooting.event(state, name=name)
                     elif state in ("failed", "stopped"):
                         shooting.event("failed", name=name, state=state)
@@ -578,6 +616,10 @@ def main():
     shoot.add_argument("scenario", type=Path, nargs="?", help="scenario file (optional with --attach: its viewport, scale, period, cut)")
     shoot.add_argument("--attach", metavar="MANAGER_URL", help="follow the session of a running manager, without driving it")
     shoot.add_argument("--max-duration", type=float, help="with --attach: stop after this many seconds")
+    shoot.add_argument("--agent-pages", type=int, default=4, metavar="N",
+                       help="with --attach: shoot the run monitor of the first N agents launching their run (default 4; 0: the manager's page only)")
+    shoot.add_argument("--agent-token", action="append", default=[], metavar="NAME=TOKEN",
+                       help="with --attach: the access token of an agent beyond the loopback, to open its page")
     shoot.add_argument("--rushes", type=Path, help="directory of the rushes (default: experiments/recordings/rushes-<name>-<date>)")
     shoot.add_argument("--cut", help="cut to edit right after the shooting, instead of the scenario's (\"none\": no editing)")
     shoot.add_argument("--output", type=Path, help="with a cut: basename of the video, or directory of the screenshots, instead of the cut's")
@@ -625,7 +667,10 @@ def main():
         raise SystemExit("ffmpeg is needed to edit the video: install it first (Debian: apt install ffmpeg), or --cut none")
 
     if args.attach:
-        shoot_attached(args.attach, sc, rushes, args.max_duration)
+        tokens = dict(pair.split("=", 1) for pair in args.agent_token if "=" in pair)
+        if len(tokens) != len(args.agent_token):
+            parser.error("--agent-token NAME=TOKEN")
+        shoot_attached(args.attach, sc, rushes, args.max_duration, args.agent_pages, tokens)
     else:
         work = Path(tempfile.mkdtemp(prefix="pybiscus-demo-", dir=args.work_root))
         log(f"working directory {work}")

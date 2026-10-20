@@ -52,6 +52,8 @@ A scenario naming its cut (`cut:`) is edited right after: this command gives the
 | `--output <path>` | basename of the video, or directory of the screenshots, instead of the cut's |
 | `--attach <manager URL>` | follow a running session instead of a scenario (see below) |
 | `--max-duration <s>` | with `--attach`: stop after this many seconds |
+| `--agent-pages <n>` | with `--attach`: shoot the run monitor of the first `n` agents launching their run (default 4; 0: the manager's page only) |
+| `--agent-token <name>=<token>` | with `--attach`: the access token of an agent beyond the loopback, to open its page (repeatable) |
 | `--viewport <width>x<height>` | size of the captured pages, instead of the scenario's (`--viewport 1920x1080`) |
 | `--scale <factor>` | pixel density of the captures (2: a 1440 × 900 page captured in 2880 × 1800, sharper text) |
 | `--work-root <dir>` | where the working directory of the processes is created (default `/tmp`) |
@@ -369,7 +371,12 @@ uv run launch/doc/record_session.py shoot --attach http://localhost:5555 --outpu
 
 It drives nothing and starts nothing: it opens the manager's page in a headless browser, reads the
 manager's state (`/pybiscus-session/agents`) between two captures, and turns what happens into
-events. It stops by itself when every launched run has ended (or when the session is dropped), at
+events. When an agent launches its run, its run monitor is opened too, at the address the agent
+registered with, as the view `agent:<name>` (the first 4, `--agent-pages`): the cut shows them as
+tiles beside the manager (`executing`, `round`, `failed`), the agent concerned outlined. An agent
+beyond the loopback asks for its access token (`--agent-token <name>=<token>`); without it, or if
+its address cannot be reached from the recorder's machine, its page is left out with a message and
+the video shows the manager alone. It stops by itself when every launched run has ended (or when the session is dropped), at
 `--max-duration`, or on **Ctrl+C**; the rushes are then edited with
 `launch/doc/scenarios/attach.cut.yml`, unless `--cut` gives another cut.
 It can be started before or during the session. Started during it, it shows only what happens from
@@ -392,6 +399,5 @@ time-lapse are then added while editing (Clipchamp, Shotcut, Kdenlive, ffmpeg).
 
 **Planned** (not available yet):
 - a demonstration video of `edit --ui` itself, the page driven by a script;
-- the agents' run monitors with `--attach`;
 - a recording started by the session manager itself, with captions taken from its events;
 - a record button in the manager's page, recording the tab from the browser.

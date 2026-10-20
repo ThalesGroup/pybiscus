@@ -112,7 +112,8 @@ class Composer:
                             frame.get("tiles"), frame.get("highlight"), frame.get("mosaic_style"))
 
     def compose(self, t, main, inset=None, caption="", inset_style=None, tiles=None, highlight=None, mosaic_style=None):
-        if tiles:
+        # no view to tile yet (none captured so far): the image as without tiles, not an empty column
+        if tiles and self.tiled(t, main, tiles):
             return self.mosaic(t, main, caption, tiles, highlight, mosaic_style)
         rushes, s = self.rushes, self.rushes.scale
         style = {**self.inset_style, **(inset_style or {})}

@@ -1,5 +1,6 @@
 # Default cut of `shoot --attach` (a session someone runs, followed from its manager's page); the
-# video goes to <rushes>/video.mp4 unless --output is given.
+# video goes to <rushes>/video.mp4 unless --output is given. The agents' run monitors (--agent-pages)
+# are tiles beside the manager once their runs are launched; without them, the manager alone.
 
 formats: [mp4, webp]
 
@@ -21,13 +22,18 @@ scenes:
     caption: "{name}: configuration checked"
   executing:
     main: manager
+    tiles: ["agent:*"]
+    highlight: "agent:{name}"
     caption: "{name}: run launched"
   round:
     main: manager
+    tiles: ["agent:*"]
     caption: "Federated training: round {round}{of_rounds}"
     pace: progress
   failed:
     main: manager
+    tiles: ["agent:*"]
+    highlight: "agent:{name}"
     caption: "{name}: run {state}"
   finished:
     main: manager
