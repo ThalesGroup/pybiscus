@@ -364,10 +364,13 @@ ticks; a cut then edits the rushes as above. A view's **panels** are given as:
 `launch/doc/demos/editor_demo.py` is such a driver: it shoots `edit --ui` at work on the rushes
 of the MNIST scenario (play, a caption changed, the round scenes put in mosaic, a scene left out
 and brought back, a screenshot, save, export), with a cursor drawn in the page, a headless browser
-showing none. Its cut is `launch/doc/demos/editor-demo.cut.yml`:
+showing none. Its cut is `launch/doc/demos/editor-demo.cut.yml`. It needs rushes of the MNIST
+scenario, as the command of *Shooting* gives them (its scenes are clicked by kind and rank: the
+second registration, the third round…):
 
 ```bash
-uv run launch/doc/demos/editor_demo.py docs/videos/examples/rushes/rushes-mnist-session-20261019-172307
+uv run launch/doc/record_session.py shoot launch/doc/scenarios/mnist-session.yml   # if not done yet
+uv run launch/doc/demos/editor_demo.py experiments/recordings/rushes-mnist-session-<date>
 # docs/videos/edit-ui-demo.mp4, about 70 s
 ```
 
