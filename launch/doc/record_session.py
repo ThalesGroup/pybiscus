@@ -1,6 +1,6 @@
 # /// script
 # requires-python = ">=3.12"
-# dependencies = ["playwright==1.63.0", "requests", "pyyaml", "pillow"]
+# dependencies = ["playwright==1.63.0", "requests", "pyyaml", "pillow", "ruamel.yaml>=0.19.1"]
 # ///
 """Shoot a Pybiscus session (its manager's and agents' pages), then edit the rushes into a video or
 screenshots for the docs.

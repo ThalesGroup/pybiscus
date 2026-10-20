@@ -1,9 +1,12 @@
 """Interactive editing: a local page showing the rushes on a timeline, with the composed image of the
-cut at any moment and the video played from its plan. Read-only for now: the cut is edited in its
-file, and the page reloads it."""
+cut at any moment and the video played from its plan; a scene's settings are changed there, for that
+scene (an override) or for every scene of its kind (the rule), and saved into the cut's file with
+its comments."""
 
+import copy
 import io
 import json
+import shutil
 import threading
 import webbrowser
 from functools import partial
@@ -11,53 +14,157 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
-import yaml
+from ruamel.yaml import YAML
+from ruamel.yaml.comments import CommentedMap, CommentedSeq
+from ruamel.yaml.error import YAMLError
 
-from .editing import Composer, Rushes, TIMING, plan, scenes
+from .editing import RULE_KEYS, Composer, Rushes, TIMING, plan, scenes
 from .shooting import log
 
 PAGE = Path(__file__).with_name("editor.html")
 CACHE_SIZE = 400
 JPEG_QUALITY = 82
+SCENE_KEYS = ("offset", "duration", "corner", "width", "skip")
+# the header a write must carry: a page of another site cannot send it without the browser asking first
+HEADER = "X-Rushes-Editor"
+
+
+def round_trip():
+    """a YAML reader and writer keeping the comments, the quotes and the layout of the bundled cuts"""
+    yaml = YAML()
+    yaml.preserve_quotes = True
+    yaml.width = 4096
+    yaml.indent(mapping=2, sequence=4, offset=2)
+    # "inset: null" as the docs write it; ruamel writes an empty value otherwise
+    yaml.representer.add_representer(type(None), lambda r, _: r.represent_scalar("tag:yaml.org,2002:null", "null"))
+    return yaml
+
+
+def plain(document):
+    # the editing reads plain dicts and lists; the document keeps its comments for the writing
+    return json.loads(json.dumps(document))
+
+
+class Refused(Exception):
+    pass
 
 
 class Session:
-    """the rushes and the cut being edited; the plan is computed again when the cut's file changes"""
+    """the rushes and the cut being edited. The cut's file is followed while nothing is changed in the
+    page; changes are kept here until saved"""
 
     def __init__(self, rushes_dir: Path, cut_file: Path):
         self.rushes = Rushes(Path(rushes_dir).resolve())
         self.cut_file = Path(cut_file)
+        self.yaml = round_trip()
         self.lock = threading.Lock()
         self.cache = {}
-        self.cut_mtime, self.scenes, self.frames, self.error = None, [], [], None
+        self.disk_mtime, self.scenes, self.frames, self.error, self.dirty = None, [], [], None, False
         self.reload()
         if self.error:
             raise SystemExit(self.error)
 
-    def reload(self):
+    def reload(self, force=False):
         mtime = self.cut_file.stat().st_mtime
-        if mtime == self.cut_mtime:
+        if mtime == self.disk_mtime and not force:
             return
-        cut = yaml.safe_load(self.cut_file.read_text()) or {}
-        if not cut.get("scenes"):
+        document = self.yaml.load(self.cut_file.read_text()) or CommentedMap()
+        if not document.get("scenes"):
             raise SystemExit(f"{self.cut_file}: no scenes, nothing to edit (a cut of screenshots only is edited as it is)")
-        self.cut, self.cut_mtime = cut, mtime
-        self.composer = Composer(self.rushes, cut.get("inset"))
+        self.document, self.disk_mtime, self.dirty = document, mtime, False
         self.error = None
         try:
-            self.scenes, self.frames = scenes(self.rushes, cut), plan(self.rushes, cut)
+            self.compute(plain(document))
         except SystemExit as error:
             # a cut being written may be wrong for a while: the page says why and keeps the last plan
             self.error = str(error)
+
+    def compute(self, cut):
+        computed = scenes(self.rushes, cut), plan(self.rushes, cut)
+        self.cut, (self.scenes, self.frames) = cut, computed
+        self.composer = Composer(self.rushes, cut.get("inset"))
         self.cache.clear()
 
     def state(self):
         with self.lock:
             try:
-                self.reload()
-            except (OSError, yaml.YAMLError, SystemExit) as error:
+                if not self.dirty:
+                    self.reload()
+            except (OSError, YAMLError, SystemExit) as error:
                 self.error = f"{self.cut_file}: {error}"
             return self.error
+
+    def disk_changed(self):
+        try:
+            return self.cut_file.stat().st_mtime != self.disk_mtime
+        except OSError:
+            return True
+
+    # ............................................................ changes
+
+    def change(self, op):
+        """applies a change to a copy of the cut, keeps it only if the plan can be computed with it"""
+        with self.lock:
+            document = copy.deepcopy(self.document)
+            kind, key, value = op.get("kind"), op.get("key"), op.get("value")
+            if kind not in document["scenes"]:
+                raise Refused(f"no rule for the kind {kind!r}")
+            if op.get("scope") == "rule":
+                if key not in RULE_KEYS:
+                    raise Refused(f"a rule sets {', '.join(RULE_KEYS)}, not {key!r}")
+                rule = document["scenes"][kind]
+                if key == "main" and not value:
+                    raise Refused("a scene needs a main view")
+                if value in (None, ""):
+                    rule.pop(key, None)
+                else:
+                    rule[key] = value
+            elif op.get("scope") == "scene":
+                if key not in RULE_KEYS + SCENE_KEYS:
+                    raise Refused(f"an override sets {', '.join(RULE_KEYS + SCENE_KEYS)}, not {key!r}")
+                self.set_override(document, kind, op.get("index"), key, value, op.get("remove", False))
+            else:
+                raise Refused("scope is rule or scene")
+            try:
+                self.compute(plain(document))
+            except SystemExit as error:
+                raise Refused(str(error))
+            self.document, self.dirty, self.error = document, True, None
+
+    @staticmethod
+    def set_override(document, kind, index, key, value, remove):
+        overrides = document.get("overrides")
+        if overrides is None:
+            overrides = document["overrides"] = CommentedSeq()
+        found = next((o for o in overrides if o.get("kind") == kind and o.get("index") == index), None)
+        if remove:
+            if found is not None:
+                found.pop(key, None)
+                if set(found) <= {"kind", "index"}:
+                    overrides.remove(found)
+            if not overrides:
+                del document["overrides"]
+            return
+        if found is None:
+            # written on one line, as the overrides of the docs
+            found = CommentedMap([("kind", kind), ("index", index)])
+            found.fa.set_flow_style()
+            overrides.append(found)
+        found[key] = value
+
+    def revert(self):
+        with self.lock:
+            self.reload(force=True)
+
+    def save(self, force=False):
+        with self.lock:
+            if self.disk_changed() and not force:
+                raise Refused("the cut's file changed on disk since it was read: save over it, or revert to it")
+            if self.cut_file.exists():
+                shutil.copyfile(self.cut_file, self.cut_file.with_name(self.cut_file.name + ".bak"))
+            with open(self.cut_file, "w") as out:
+                self.yaml.dump(self.document, out)
+            self.disk_mtime, self.dirty = self.cut_file.stat().st_mtime, False
 
     def rushes_json(self):
         r = self.rushes
@@ -83,7 +190,9 @@ class Session:
             video_t += duration
         skipped = [{"kind": o["kind"], "index": o["index"]} for o in self.cut.get("overrides") or [] if o.get("skip")]
         return {"cut": self.cut_file.name, "error": self.error, "frames": self.frames, "scenes": listed,
-                "skipped": skipped, "video_duration": video_t + timing["end_hold"], "rules": self.cut["scenes"]}
+                "skipped": skipped, "video_duration": video_t + timing["end_hold"], "rules": self.cut["scenes"],
+                "dirty": self.dirty, "disk_changed": self.dirty and self.disk_changed(),
+                "inset": {"width": 0.42, "corner": "bottom-right", **(self.cut.get("inset") or {})}}
 
     def image(self, key, compose, width):
         key = (key, width)
@@ -172,6 +281,26 @@ class Handler(BaseHTTPRequestHandler):
         except (BrokenPipeError, ConnectionResetError):
             # the page moved on (playing, scrubbing) before an image arrived
             pass
+
+    def do_POST(self):
+        if self.headers.get(HEADER) != "1":
+            return self.json({"error": f"a change carries the header {HEADER}: 1"}, 403)
+        url, session = urlparse(self.path), self.session
+        try:
+            body = json.loads(self.rfile.read(int(self.headers.get("Content-Length", 0))) or b"{}")
+            if url.path == "/api/change":
+                session.change(body)
+            elif url.path == "/api/save":
+                session.save(bool(body.get("force")))
+            elif url.path == "/api/revert":
+                session.revert()
+            else:
+                return self.json({"error": "not found"}, 404)
+            return self.json(session.plan_json())
+        except Refused as error:
+            return self.json({"error": str(error)}, 409)
+        except (ValueError, OSError, YAMLError, SystemExit) as error:
+            return self.json({"error": str(error)}, 400)
 
 
 def serve(rushes_dir: Path, cut_file: Path, port: int = 0, open_browser: bool = True):

@@ -111,8 +111,18 @@ to only print its address):
 - the **scene** selected: its time in the rushes and in the video, its images, its main view, inset,
   caption, pace and the event's fields, in yellow what an override of that scene sets.
 
-The page reads the cut's file every 2 seconds: edit it, save, the page follows. A wrong cut is
-shown with its message, and the last plan stays.
+The scene's settings are changed in the page, for **this scene** (an override: also its `offset`,
+`duration`, the inset's `corner` and `width`) or for **every** scene of its kind (the rule). Each
+change is checked by computing the plan again: a refused one (an offset reversing two scenes, an
+unknown view…) shows its message and changes nothing. ↺ removes an override's value; *Leave out
+this scene* skips it, *Bring it back* on its hatched mark undoes it.
+
+*Save* (or Ctrl+S) writes the cut's file with its comments and layout kept, the previous one in
+`<cut>.bak`; *Revert* drops the unsaved changes. The header says whether the page is saved, has
+unsaved changes, or the file changed on disk: saving then asks first.
+
+Without unsaved changes, the page reads the cut's file every 2 seconds: edit it elsewhere, save, the
+page follows. A wrong cut is shown with its message, and the last plan stays.
 
 ### The cut
 
@@ -333,10 +343,8 @@ and agents side by side), or on Windows the Xbox Game Bar (`Win` + `Alt` + `R`).
 time-lapse are then added while editing (Clipchamp, Shotcut, Kdenlive, ffmpeg).
 
 **Planned** (not available yet):
-- an interactive editor writing the cut: a timeline of the events, a track per view, the scenes, a
-  preview of the composed image;
-- side by side views (a mosaic), as an alternative to a main view and an inset; the inset's corner
-  per scene;
+- in `edit --ui`: marking captures as shots, and exporting the video from the page;
+- side by side views (a mosaic), as an alternative to a main view and an inset;
 - the agents' run monitors with `--attach`;
 - a recording started by the session manager itself, with captions taken from its events;
 - a record button in the manager's page, recording the tab from the browser.

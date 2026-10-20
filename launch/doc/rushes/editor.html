@@ -41,6 +41,27 @@
   aside td:first-child{color:var(--muted); white-space:nowrap; width:1%}
   aside td.v{font-family:var(--mono); word-break:break-word}
   aside .ov{color:var(--head)}
+  header .state{font-family:var(--mono); font-size:12px; color:var(--muted)}
+  header .state.dirty{color:var(--head)}
+  header .state.conflict{color:var(--warn)}
+  header .spacer{flex:1}
+  button.primary{border-color:var(--accent); color:var(--accent)}
+  button:disabled{opacity:.4; cursor:default; border-color:var(--line)}
+  .scope{display:flex; gap:0; margin:6px 0 10px}
+  .scope button{border-radius:0; flex:1; font-size:12px}
+  .scope button:first-child{border-radius:5px 0 0 5px}
+  .scope button:last-child{border-radius:0 5px 5px 0}
+  .scope button.on{background:var(--accent); color:#0b0e14; border-color:var(--accent)}
+  .form{display:grid; grid-template-columns:auto minmax(0,1fr) auto; gap:5px 6px; align-items:center; font-size:12px}
+  .form label{color:var(--muted); white-space:nowrap}
+  .form label.ov{color:var(--head)}
+  .form input, .form select{width:100%; background:var(--bg); color:var(--text); border:1px solid var(--line); border-radius:4px; padding:3px 6px; font:12px var(--mono)}
+  .form input:focus, .form select:focus{outline:none; border-color:var(--accent)}
+  .form .reset{padding:1px 6px; font-size:11px; visibility:hidden}
+  .form .reset.on{visibility:visible}
+  .form .note{grid-column:1 / -1; color:var(--muted); font-size:11px}
+  #scene-error{display:none; margin-top:8px; padding:6px 8px; border:1px solid var(--warn); border-radius:5px; color:var(--warn); font:11px var(--mono); white-space:pre-wrap}
+  .facts{margin-top:10px}
   #timeline-wrap{grid-column:1 / -1; padding:8px 0 4px}
   #timeline-help{color:var(--muted); font-size:11px; padding:0 12px 6px}
   #timeline{display:block; width:100%; user-select:none; cursor:crosshair}
@@ -51,7 +72,7 @@
   #timeline .grid{stroke:var(--line); stroke-width:1}
   #timeline .scene{stroke:var(--bg); stroke-width:1; cursor:pointer}
   #timeline .scene.sel{stroke:var(--text); stroke-width:2}
-  #timeline .skipped{fill:url(#hatch)}
+  #timeline .skipped{fill:url(#hatch); cursor:pointer}
   #timeline .ev{cursor:help}
   #timeline .cap{stroke:var(--muted); stroke-width:1}
   #timeline .cap.chg{stroke:var(--accent)}
@@ -66,6 +87,10 @@
   <span class="kv">shot <b id="h-shot">—</b></span>
   <span class="kv">video <b id="h-video">—</b></span>
   <span class="kv"><b id="h-scenes">—</b> scenes, <b id="h-frames">—</b> images</span>
+  <span class="spacer"></span>
+  <span id="h-state" class="state">saved</span>
+  <button id="b-revert" title="drop the changes: the cut as its file has it" disabled>Revert</button>
+  <button id="b-save" class="primary" title="write the cut into its file, its comments kept; the former file as .bak (Ctrl+S)" disabled>Save</button>
 </header>
 <div id="error"></div>
 <main>
@@ -90,6 +115,7 @@
     <svg id="timeline"></svg>
   </section>
 </main>
+<datalist id="views-list"></datalist>
 <script>
 "use strict";
 const $ = id => document.getElementById(id);
@@ -97,7 +123,12 @@ const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':
 const KIND_COLORS = ['#4ecdc4','#ffd166','#ef476f','#06d6a0','#a78bfa','#f78c6b','#83c5be','#e9c46a','#90be6d','#f4a261'];
 let rushes = null, cut = null, planKey = '', kindColor = {};
 let index = 0, playing = false, timer = null, selected = null, cursor = null;   // cursor: {t, view} out of the plan
+let selectedKey = null;              // {kind, index} of the selected scene: its position changes when a scene is left out
+let scope = 'scene';                 // a change applies to this scene (an override) or to every scene of its kind (the rule)
+let sceneError = '';
 let starts = [];                     // video time at which each image of the plan starts
+// in the images' addresses: the browser does not load again an image whose address has not changed
+let planVersion = 0;
 const PREVIEW_W = 1280;
 
 async function getJSON(url){ const r = await fetch(url); return r.json(); }
@@ -108,22 +139,22 @@ function colorOf(kind){
 }
 
 // ---------- preview
-function show(i){
+function show(i, follow = true){
   if(!cut || !cut.frames.length) return;
   index = Math.max(0, Math.min(cut.frames.length - 1, i));
   cursor = null;
   const f = cut.frames[index];
-  $('preview').src = `/api/frame?i=${index}&w=${PREVIEW_W}`;
+  $('preview').src = `/api/frame?i=${index}&w=${PREVIEW_W}&v=${planVersion}`;
   $('mode').textContent = `plan · ${f.kind} #${f.index}`;
-  for(let k = 1; k <= 3 && index + k < cut.frames.length; k++) new Image().src = `/api/frame?i=${index + k}&w=${PREVIEW_W}`;
-  selectScene(f.scene, false);
+  for(let k = 1; k <= 3 && index + k < cut.frames.length; k++) new Image().src = `/api/frame?i=${index + k}&w=${PREVIEW_W}&v=${planVersion}`;
+  if(follow) selectScene(f.scene, false);
   updateTimes();
   drawHeads();
 }
 function showAt(t, view){
   stop();
   cursor = {t, view};
-  $('preview').src = view ? `/api/view?view=${encodeURIComponent(view)}&t=${t}&w=${PREVIEW_W}` : `/api/at?t=${t}&w=${PREVIEW_W}`;
+  $('preview').src = view ? `/api/view?view=${encodeURIComponent(view)}&t=${t}&w=${PREVIEW_W}` : `/api/at?t=${t}&w=${PREVIEW_W}&v=${planVersion}`;
   $('mode').textContent = view ? `rushes · ${view} alone` : 'rushes · the cut at this moment';
   const scene = sceneAt(t);
   if(scene !== null) selectScene(scene, false);
@@ -163,28 +194,113 @@ function firstFrameOf(scene){ return Math.max(0, cut.frames.findIndex(f => f.sce
 // ---------- scene panel
 function selectScene(i, jump = true){
   selected = i;
+  selectedKey = cut.scenes[i] ? {kind: cut.scenes[i].kind, index: cut.scenes[i].index} : null;
   if(jump) show(firstFrameOf(i));
   renderScene();
   drawTimeline();
   drawVideobar();
 }
 function renderScene(){
+  const box = $('scene');
+  if(selectedKey && selected === null && cut.skipped.some(k => k.kind === selectedKey.kind && k.index === selectedKey.index)){
+    box.innerHTML = `<p><b style="color:${colorOf(selectedKey.kind)}">${esc(selectedKey.kind)}</b> #${selectedKey.index}</p>
+      <p class="empty">Left out of the video by an override (skip).</p>
+      <button id="b-restore" class="primary">Bring it back</button><div id="scene-error"></div>`;
+    $('b-restore').onclick = () => change({scope: 'scene', kind: selectedKey.kind, index: selectedKey.index, key: 'skip', remove: true});
+    showSceneError();
+    return;
+  }
   const s = cut.scenes[selected];
-  if(!s){ $('scene').innerHTML = '<p class="empty">Click a scene on the timeline or on the video bar.</p>'; return; }
-  const ov = s.override || {};
-  const row = (k, v, overridden) => `<tr><td>${esc(k)}</td><td class="v${overridden ? ' ov' : ''}">${esc(v ?? '—')}</td></tr>`;
-  const fields = Object.entries(s.fields).map(([k, v]) => row(`{${k}}`, v)).join('');
-  const rule = ['main', 'inset', 'caption', 'pace'].map(k => row(k, s.rule[k] ?? (k === 'pace' ? 'event' : null), k in ov)).join('');
-  const style = ['corner', 'width'].filter(k => k in s.inset_style).map(k => row(k, s.inset_style[k], true)).join('');
-  $('scene').innerHTML = `
+  if(!s){ box.innerHTML = '<p class="empty">Click a scene on the timeline or on the video bar.</p>'; return; }
+  const ov = s.override || {}, rule = cut.rules[s.kind] || {}, onScene = scope === 'scene';
+  const value = k => onScene ? (k in ov ? ov[k] : s.rule[k]) : rule[k];
+  const field = (k, label, input, overridable = true) => {
+    const set = onScene && k in ov;
+    return `<label class="${set ? 'ov' : ''}" for="f-${k}">${label}</label>${input}` +
+      `<button class="reset${set && overridable ? ' on' : ''}" data-reset="${k}" title="back to the rule of its kind">↺</button>`;
+  };
+  const text = (k, ph = '') => `<input id="f-${k}" data-key="${k}" list="${k === 'main' || k === 'inset' ? 'views-list' : ''}" value="${esc(value(k) ?? '')}" placeholder="${esc(ph)}">`;
+  const select = (k, options, ph) => `<select id="f-${k}" data-key="${k}">${ph !== undefined ? `<option value="">${esc(ph)}</option>` : ''}` +
+    options.map(o => `<option${(value(k) ?? '') === o ? ' selected' : ''}>${o}</option>`).join('') + '</select>';
+  const number = (k, step, ph) => `<input id="f-${k}" data-key="${k}" type="number" step="${step}" value="${ov[k] ?? ''}" placeholder="${esc(ph)}">`;
+  let form = field('main', 'main', text('main')) +
+    field('inset', 'inset', text('inset', 'none')) +
+    field('caption', 'caption', text('caption', 'none')) +
+    field('pace', 'pace', select('pace', ['event', 'progress', 'final']));
+  if(onScene){
+    form += field('offset', 'offset s', number('offset', 0.1, '0')) +
+      field('duration', 'duration s', number('duration', 0.1, `${s.video_duration.toFixed(1)} (its pace)`)) +
+      field('corner', 'inset corner', select('corner', ['top-left', 'top-right', 'bottom-left', 'bottom-right'], `${cut.inset.corner} (the cut's)`)) +
+      field('width', 'inset width', number('width', 0.01, `${cut.inset.width} (the cut's)`)) +
+      `<span class="note">{field}: a field of the event · yellow: set for this scene only · ↺ back to the rule</span>`;
+  } else {
+    form += `<span class="note">Every ${esc(s.kind)} scene follows these, unless an override of the scene says otherwise. Start, duration and the inset's place are set scene by scene.</span>`;
+  }
+  const facts = `<table class="facts">
+      <tr><td>rushes</td><td class="v">${s.start.toFixed(2)} → ${s.end.toFixed(2)} s</td></tr>
+      <tr><td>video</td><td class="v">${s.video_start.toFixed(1)} → ${(s.video_start + s.video_duration).toFixed(1)} s (${s.video_duration.toFixed(1)} s)</td></tr>
+      <tr><td>images</td><td class="v">${s.frames}</td></tr>
+      ${Object.entries(s.fields).map(([k, v]) => `<tr><td>{${esc(k)}}</td><td class="v">${esc(v)}</td></tr>`).join('')}
+    </table>`;
+  box.innerHTML = `
     <p><b style="color:${colorOf(s.kind)}">${esc(s.kind)}</b> #${s.index} <span class="time">· scene ${selected + 1}/${cut.scenes.length}</span></p>
-    <table>
-      ${row('rushes', `${s.start.toFixed(2)} → ${s.end.toFixed(2)} s`, 'offset' in ov)}
-      ${row('video', `${s.video_start.toFixed(1)} → ${(s.video_start + s.video_duration).toFixed(1)} s (${s.video_duration.toFixed(1)} s)`, 'duration' in ov)}
-      ${row('images', s.frames)}
-      ${rule}${style}${fields}
-    </table>
-    <p class="time">${Object.keys(ov).length ? 'yellow: set by an override of this scene' : 'from the rule of its kind'}</p>`;
+    <div class="scope"><button data-scope="scene" class="${onScene ? 'on' : ''}">this scene</button><button data-scope="rule" class="${onScene ? '' : 'on'}">every ${esc(s.kind)}</button></div>
+    <div class="form">${form}</div>
+    ${onScene ? '<p><button id="b-skip" title="leave this scene out of the video, its time too">Leave out this scene</button></p>' : ''}
+    <div id="scene-error"></div>
+    ${facts}`;
+  box.querySelectorAll('[data-scope]').forEach(b => b.onclick = () => { scope = b.dataset.scope; sceneError = ''; renderScene(); });
+  box.querySelectorAll('[data-key]').forEach(el => el.addEventListener('change', () => fieldChanged(s, el)));
+  box.querySelectorAll('[data-reset]').forEach(b => b.onclick = () => change({scope: 'scene', kind: s.kind, index: s.index, key: b.dataset.reset, remove: true}));
+  if($('b-skip')) $('b-skip').onclick = () => change({scope: 'scene', kind: s.kind, index: s.index, key: 'skip', value: true});
+  showSceneError();
+}
+function showSceneError(){
+  const el = $('scene-error');
+  if(!el) return;
+  el.style.display = sceneError ? 'block' : 'none';
+  el.textContent = sceneError;
+}
+function fieldChanged(s, el){
+  const key = el.dataset.key, raw = el.value.trim(), numeric = el.type === 'number';
+  const op = {scope, kind: s.kind, index: s.index, key};
+  if(numeric || key === 'corner'){
+    if(raw === '') op.remove = true; else op.value = numeric ? Number(raw) : raw;
+  } else if(key === 'main' && raw === ''){
+    sceneError = 'A scene needs a main view.'; renderScene(); return;
+  } else {
+    // emptied on a scene: none for it (inset, caption); on the rule: the key goes
+    op.value = raw === '' ? null : raw;
+  }
+  change(op);
+}
+async function post(url, body){
+  const r = await fetch(url, {method: 'POST', headers: {'Content-Type': 'application/json', 'X-Rushes-Editor': '1'}, body: JSON.stringify(body || {})});
+  return {ok: r.ok, data: await r.json()};
+}
+async function change(op){
+  stop();
+  const {ok, data} = await post('/api/change', op);
+  sceneError = ok ? '' : data.error;
+  if(ok) applyPlan(data, true); else renderScene();
+}
+async function save(force = false){
+  const {ok, data} = await post('/api/save', {force});
+  if(ok){ applyPlan(data, true); return; }
+  if(!force && /changed on disk/.test(data.error) && confirm(`${data.error}\n\nSave over it?`)) return save(true);
+  alert(data.error);
+}
+async function revert(){
+  if(cut.dirty && !confirm('Drop the changes made in the page?')) return;
+  const {ok, data} = await post('/api/revert');
+  sceneError = '';
+  if(ok) applyPlan(data, true); else alert(data.error);
+}
+function renderState(){
+  const el = $('h-state');
+  el.className = 'state' + (cut.disk_changed ? ' conflict' : cut.dirty ? ' dirty' : '');
+  el.textContent = cut.disk_changed ? 'unsaved changes · the file changed on disk' : cut.dirty ? 'unsaved changes' : 'saved';
+  $('b-save').disabled = !cut.dirty; $('b-revert').disabled = !cut.dirty;
 }
 
 // ---------- video bar: the scenes in video time
@@ -251,7 +367,7 @@ function drawTimeline(){
     if(!ev) return;
     const next = cut.scenes.find(sc => sc.start > ev.t);
     const a = Math.max(x(ev.t), LABEL_W), b = Math.min(x(next ? next.start : rushes.end), W - 10);
-    if(b > a) s += `<rect class="skipped" x="${a}" y="${RULER + 2}" width="${b - a}" height="${ROW - 4}"><title>${esc(k.kind)} #${k.index}: left out (skip)</title></rect>`;
+    if(b > a) s += `<rect class="skipped" data-skipped-kind="${esc(k.kind)}" data-skipped-index="${k.index}" x="${a}" y="${RULER + 2}" width="${b - a}" height="${ROW - 4}"><title>${esc(k.kind)} #${k.index}: left out (skip)</title></rect>`;
   });
   s += `<line class="head" id="thead" x1="0" y1="${RULER - 6}" x2="0" y2="${H}"/>`;
   svg.innerHTML = s;
@@ -288,6 +404,8 @@ window.addEventListener('mouseup', e => {
   if(moved) return;
   const target = e.target.closest ? e.target : null;
   if(!target || !target.closest('#timeline')) return;
+  const skippedEl = target.closest('[data-skipped-kind]');
+  if(skippedEl){ stop(); selected = null; selectedKey = {kind: skippedEl.dataset.skippedKind, index: Number(skippedEl.dataset.skippedIndex)}; sceneError = ''; renderScene(); drawTimeline(); drawVideobar(); return; }
   const sceneEl = target.closest('[data-scene]');
   if(sceneEl){ stop(); selectScene(Number(sceneEl.dataset.scene)); return; }
   const t = timeAt(e.clientX);
@@ -308,22 +426,31 @@ function clampView(){
 }
 
 // ---------- loading, and the cut's file watched
-async function loadPlan(){
-  const data = await getJSON('/api/plan');
-  const key = JSON.stringify([data.frames, data.scenes, data.error]);
+function applyPlan(data, fromChange = false){
+  const key = JSON.stringify([data.frames, data.scenes, data.error, data.dirty, data.disk_changed]);
   $('error').style.display = data.error ? 'block' : 'none';
   $('error').textContent = data.error ? `The cut has an error; the last plan is kept.\n${data.error}` : '';
   if(key === planKey) return;
   const first = !planKey;
-  planKey = key; cut = data;
+  planKey = key; cut = data; planVersion++;
   starts = []; let acc = 0; cut.frames.forEach(f => { starts.push(acc); acc += f.duration; });
   $('h-cut').textContent = cut.cut;
   $('h-video').textContent = `${cut.video_duration.toFixed(1)} s`;
   $('h-scenes').textContent = cut.scenes.length;
   $('h-frames').textContent = cut.frames.length;
-  if(selected !== null && selected >= cut.scenes.length) selected = null;
-  if(first) show(0); else if(cursor) showAt(cursor.t, cursor.view); else show(Math.min(index, cut.frames.length - 1));
+  renderState();
+  selected = selectedKey ? cut.scenes.findIndex(s => s.kind === selectedKey.kind && s.index === selectedKey.index) : null;
+  if(selected === -1) selected = null;
+  // the edited scene stays shown, from its first image: an image index of the former plan means another image now
+  if(first) show(0);
+  else if(cursor) showAt(cursor.t, cursor.view);
+  else if(fromChange && selected !== null) show(firstFrameOf(selected));
+  // a scene just left out stays selected, to be brought back
+  else show(Math.min(index, cut.frames.length - 1), !(fromChange && selectedKey));
   renderScene(); drawVideobar(); drawTimeline();
+}
+async function loadPlan(){
+  applyPlan(await getJSON('/api/plan'));
 }
 async function init(){
   rushes = await getJSON('/api/rushes');
@@ -331,15 +458,22 @@ async function init(){
   $('h-shot').textContent = `${rushes.end.toFixed(1)} s, ${Object.keys(rushes.views).length} views`;
   document.documentElement.style.setProperty('--ratio', `${rushes.size[0]} / ${rushes.size[1]}`);
   document.documentElement.style.setProperty('--r', rushes.size[0] / rushes.size[1]);
+  const options = new Set();
+  Object.entries(rushes.views).forEach(([name, v]) => { options.add(name); v.panels.forEach(p => options.add(`${name}@${p}`)); });
+  $('views-list').innerHTML = [...options].map(o => `<option value="${esc(o)}">`).join('');
   view0 = 0; view1 = rushes.end;
   await loadPlan();
   setInterval(() => loadPlan().catch(() => {}), 2000);
 }
 $('b-play').onclick = play;
+$('b-save').onclick = () => save();
+$('b-revert').onclick = revert;
+window.addEventListener('beforeunload', e => { if(cut && cut.dirty){ e.preventDefault(); e.returnValue = ''; } });
 $('b-start').onclick = () => { stop(); show(0); };
 $('b-prev').onclick = () => { stop(); show(index - 1); };
 $('b-next').onclick = () => { stop(); show(index + 1); };
 window.addEventListener('keydown', e => {
+  if((e.ctrlKey || e.metaKey) && e.key === 's'){ e.preventDefault(); if(cut && cut.dirty) save(); return; }
   if(e.target.closest('input, textarea, select')) return;
   if(e.key === ' '){ e.preventDefault(); play(); }
   else if(e.key === 'ArrowRight'){ stop(); show(index + 1); }

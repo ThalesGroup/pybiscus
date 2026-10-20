@@ -66,6 +66,10 @@
   scenes, the events, a track per view), the cut's image at any moment as the export composes it,
   the video played from its plan, the selected scene's settings; it follows the cut's file as it is
   edited, and shows a wrong cut's message.
+* `edit --ui` changes a scene's settings, for that scene (an override) or for every scene of its kind
+  (the rule), each change checked by computing the plan again, a scene left out or brought back;
+  *Save* writes the cut with its comments (ruamel.yaml, the previous file in `.bak`), asking first
+  when the file changed on disk; *Revert* drops the unsaved changes.
 
 ## [Version 0.13.0]
 
