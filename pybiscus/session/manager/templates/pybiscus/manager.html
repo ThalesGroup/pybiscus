@@ -30,6 +30,16 @@
   .session-summary code{color:var(--text); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; min-width:0; direction:rtl; text-align:left}
   .session-summary .sum-close{margin-left:auto}
   body.detached .session-summary{display:none}
+  .next-step{display:flex; align-items:center; gap:12px; padding:6px 14px; font-size:12px; color:var(--text);
+    border:1px solid var(--border); border-left:3px solid var(--accent); border-radius:var(--r); background:var(--panel)}
+  .next-step[hidden], body.detached .next-step{display:none}
+  .next-step b{color:var(--accent); font-weight:600}
+  /* agents that reported their start but have not registered: dimmed, with a link to register */
+  .started-head{margin:10px 0 4px; padding:0 10px; font-size:10px; letter-spacing:.04em; text-transform:uppercase; color:var(--muted)}
+  .node.started{opacity:.65; border-style:dashed; grid-template-columns:9px 16px minmax(0,1.5fr) auto auto}
+  .node.started .st{background:var(--idle)}
+  .node.started .when{color:var(--muted); font-size:11.5px; white-space:nowrap}
+  .node.started a{color:var(--accent); font-size:11.5px; white-space:nowrap}
 
   /* top bar */
   .topbar{display:flex; align-items:center; gap:16px; padding:10px 14px; border:1px solid var(--border);
@@ -296,6 +306,7 @@
       <button class="btn danger" id="revokeBtn">Drop session</button>
     </div>
   </div>
+  <div class="next-step" id="next-step" role="status" hidden><span class="eyebrow">next</span><span id="next-step-text"></span></div>
   <div class="session-summary" id="session-summary" role="status" hidden>
     <span class="sum-state" id="sum-state"></span>
     <span class="sum-item" id="sum-rounds"></span>
@@ -818,7 +829,7 @@
       const roundStep = [1, 2, 5, 10, 20, 50, 100].find(k => (W-padL-padR) * k / Math.max(rmax - rmin, 1) >= 26) || 100;
       for(let r=rmin;r<=rmax;r++){
         s+=`<line class="round-l" x1="${x(r)}" y1="${padT}" x2="${x(r)}" y2="${H-padB}"/>`;
-        if(r % roundStep === 0 || rmax === rmin) s+=`<text class="axis tick" x="${x(r)}" y="${H-3}" text-anchor="middle">${r}</text>`;
+        if(allRounds.length && (r % roundStep === 0 || rmax === rmin)) s+=`<text class="axis tick" x="${x(r)}" y="${H-3}" text-anchor="middle">${r}</text>`;
       }
       if(clients.length){
         const colour = phase === 'fit' ? colors.fit : colors.eval;
@@ -1080,6 +1091,7 @@
   // read from what the page already follows: registered agents, the server's end line, the agents'
   // states (AgentState); no state of its own to drift from them
   let agentCount = 0, configMissing = [];
+  let startedAgents = {};   // name -> {url, role, bouquet, time}: started, not registered (/pybiscus-session/agents)
   function sessionStateOf(){
     if(sessionEnd) return sessionEnd.reason
       ? {key:'stopped', text:'stopped', title:`after ${sessionEnd.done}/${sessionEnd.total} rounds: ${sessionEnd.reason}`}
@@ -1093,6 +1105,29 @@
     if(!agentCount) return {key:'waiting', text:'waiting', title:'no agent registered yet'};
     if(configMissing.length) return {key:'waiting', text:'not ready', title:'the session can be configured once it has ' + configMissing.join(', and ')};
     return {key:'ready', text:'ready', title:'ready to be configured and launched (config)'};
+  }
+  // what the operator does next, from what is registered and the agents' states; none once all run
+  function nextStep(servers, clients, withoutRelay){
+    if(sessionEnd || DETACHED_PANEL) return null;
+    if(Object.values(session.agentStates).some(st => st === 'failed' || st === 'not validated')) return null;
+    const started = Object.keys(startedAgents).length;
+    const startedNote = started ? ` (${started} started, not registered: <b>register ↗</b> in Topology)` : '';
+    const serverNames = Object.keys(servers), clientNames = Object.keys(clients);
+    if(!serverNames.length) return `register a <b>server</b> agent, then the clients, on each agent's registration page${startedNote}`;
+    if(!clientNames.length) return `register the <b>clients</b>, on each client agent's registration page${startedNote}`;
+    if(withoutRelay.length) return `choose the <b>relay</b> of ${esc(withoutRelay.join(', '))} in Topology`;
+    if(waitsForUpperSession()) return `wait for the upper-level session (${esc(upperState.bouquet || upperState.url)}) to be configured`;
+    if(!sessionRunning) return `<b>⚙ config</b>: the model, the data and the rounds, then <b>Run session</b>`;
+    const running = name => ['executing', 'terminated'].includes(session.getAgentState(name));
+    const idleServers = serverNames.filter(n => !running(n)), idleClients = clientNames.filter(n => !running(n));
+    if(idleServers.length) return `on the server's page (${esc(idleServers.join(', '))}): <b>Check</b>, then <b>Execute</b>; the clients after it`;
+    if(idleClients.length) return `on each client's page: <b>Check</b>, then <b>Execute</b> (${esc(idleClients.join(', '))})`;
+    return null;
+  }
+  function renderNextStep(servers, clients, withoutRelay){
+    const text = nextStep(servers, clients, withoutRelay), box = document.getElementById('next-step');
+    box.hidden = !text;
+    if(text) document.getElementById('next-step-text').innerHTML = text;
   }
   function renderSessionState(){
     const state = sessionStateOf(), el = document.getElementById('session-state');
@@ -1276,6 +1311,14 @@
       `<div class="tier-head"><span class="bouquet-pill" style="--session-color:${esc(color)}"${url ? ` title="manager: ${esc(url)}"` : ''}>💐 ${esc(name)}</span>`+
       `<span class="chip">${count} agent${count===1?'':'s'}</span>`+ (extra || '') +
       (stale ? '<span class="chip" title="its manager has stopped reporting">unreachable</span>' : '')+`</div>`;
+    const startedRows = Object.entries(startedAgents).sort(([a], [b]) => a.localeCompare(b)).map(([name, ag]) => {
+      const t = ag.time ? new Date(ag.time * 1000) : null;
+      const when = t ? `started ${pad2(t.getHours())}:${pad2(t.getMinutes())}` : 'started';
+      const link = ag.url ? `<a href="${esc(ag.url.replace(/\/$/, ''))}/session/agent/registration" target="_blank" rel="noopener" title="open its registration page">register ↗</a>` : '';
+      return `<div class="node started" title="${esc([name, ag.role, ag.bouquet && '💐 ' + ag.bouquet, ag.url].filter(Boolean).join(' · '))}">`+
+        `<span class="st"></span><span>${ROLE_ICON[ag.role] || '⚪'}</span><span class="name">${esc(name)}</span><span class="when">${when}</span>${link}</div>`;
+    }).join('');
+    const startedBlock = startedRows ? `<div class="started-head">started, not registered</div>${startedRows}` : '';
     let list = head + nodes.map(row).join('');
     // the upper level this manager reports to (--upper-url): its bouquet, and whether it is reached
     const upper = upperLevel ? {...upperLevel, name: upperLevel.bouquet || upperLevel.url,
@@ -1296,7 +1339,7 @@
     // not while a relay or a link is being chosen: the periodic redraw would close the list under the pointer
     if(!document.activeElement || !['relay-select', 'transport-select'].some(c=>document.activeElement.classList.contains(c)))
       // the link to the upper level shows before the first agent registers
-      document.getElementById('nodes').innerHTML = allNodes.length ? list : upperHead + '<div class="empty">no agents yet</div>';
+      document.getElementById('nodes').innerHTML = (allNodes.length ? list : upperHead + (startedBlock ? '' : '<div class="empty">no agents yet</div>')) + startedBlock;
     // positions : par lat/lon si dispo (ajustées à la bbox des agents + décalage anti-superposition),
     // sinon disposition schématique (serveur au centre, clients en cercle, niveaux inférieurs autour)
     const geo=document.getElementById('geo');
@@ -1430,6 +1473,7 @@
       upperState = data.upper_level || null;
       if(JSON.stringify(data.cids || {}) !== JSON.stringify(agentCids)){ agentCids = data.cids || {}; renderMetricsTable(); }
       sessionRunning = !!data.session_running;
+      startedAgents = data.started || {};
       renderRepetition(data.repetition || null);
       linkTransports = data.link_transports || {}; linkTransportChoices = data.link_transport_choices || [];
       lastCycles = {own: data.cycles || [], ownSession: data.session || null, groups: flattenLowerLevels(data.lower_levels || [], null, 1, [])};
@@ -1453,6 +1497,7 @@
       agentCount = Object.keys(servers).length + registeredClients;
       configMissing = missing;
       renderSessionState();
+      renderNextStep(servers, data.clients || {}, withoutRelay);
       const cfgBtn = document.getElementById('cfg-btn');
       cfgBtn.disabled = missing.length > 0;
       cfgBtn.title = missing.length ? 'the session can be configured once it has ' + missing.join(', and ') : 'configure and launch the session';

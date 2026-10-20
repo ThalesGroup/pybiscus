@@ -475,6 +475,7 @@ def pybiscus_manager_list_clients():
         "clients": pybiscus.session.manager.session_manager.registered_clients,
         "servers": pybiscus.session.manager.session_manager.registered_servers,
         "meta":    pybiscus.session.manager.session_manager.registered_agents_meta,
+        "started": unregistered_started_agents(),
         "states":  pybiscus.session.manager.session_manager.agent_states,
         "lower_levels": lower_levels(),
         "upper_level": upper_level(),
@@ -489,6 +490,11 @@ def pybiscus_manager_list_clients():
         # the metrics feed names the clients by cid
         "cids": session_cids(),
     })
+
+def unregistered_started_agents() -> dict:
+    session = pybiscus.session.manager.session_manager
+    return {name: agent for name, agent in session.started_agents.items()
+            if name not in session.registered_servers and name not in session.registered_clients}
 
 # **************************
 
@@ -645,6 +651,12 @@ def pybiscus_manager_receive_agents():
     state = data.get('state')
 
     agent_feed.append({'source': source, 'message': message, 'state': state, 'time': time.time()})
+
+    started = data.get('started')
+    if isinstance(started, dict) and ":" in source:
+        bouquet, name = source.split(":", 1)
+        pybiscus.session.manager.session_manager.started_agents[name] = {
+            "url": started.get("url"), "role": started.get("role"), "bouquet": bouquet, "time": time.time()}
 
     # the source is "<bouquet>:<agent name>", as the page reads it (checkAgentLogs)
     if state and ":" in source:

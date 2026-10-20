@@ -33,7 +33,7 @@ def agent_state_protocol() -> dict:
 
 class PrintAgentLogger():
 
-    def log(self, msg, state: str = None):
+    def log(self, msg, state: str = None, started: dict = None):
         if state is None:
             print(msg)
         else:
@@ -53,13 +53,16 @@ class WebHookAgentLogger():
         else:
             self.logger_id = f"{logger_bouquet}:{logger_id}"
 
-    def log(self, msg, state: str = None):
+    def log(self, msg, state: str = None, started: dict = None):
 
         try:
             msg = { 'source' : self.logger_id, 'content' : msg }
 
             if state is not None:
                 msg['state'] = state
+            # {url, role} at the agent's start: the manager lists it before it registers
+            if started is not None:
+                msg['started'] = started
 
             response = requests.post(self.webhook_url, json=msg, timeout=5, headers=headers_for(self.webhook_url))
             response.raise_for_status()  # raise an exception upon codes 4xx/5xx

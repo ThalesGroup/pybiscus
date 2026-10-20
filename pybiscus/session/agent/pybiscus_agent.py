@@ -457,6 +457,7 @@ def main():
     from pybiscus.session.agent import ui_settings
     ui_settings.set_agent_port(args.port)
 
+    started = None
     if args.config is not None:
 
         try:
@@ -467,11 +468,12 @@ def main():
                 from pybiscus.session.agent.agent_weblog import initAgentLogger
 
                 initAgentLogger( f'{config["manager_url"]}/webhook/agents', config["bouquet"], config["agent_name"] )
+                started = {"url": config.get("agent_url"), "role": config.get("role")}
 
         except Exception as e:
             print(f"YAML config loading error : {e}")
 
-    agent_weblog.agent_logger.log(f"Starting Pybiscus-Agent on {args.host}:{args.port}")
+    agent_weblog.agent_logger.log(f"Starting Pybiscus-Agent on {args.host}:{args.port}", started=started)
 
     if args.config is None:
         print(f"Using no configuration file")

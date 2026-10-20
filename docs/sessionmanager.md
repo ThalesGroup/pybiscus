@@ -120,9 +120,14 @@ The manager shows, live:
   run, the duration from round 1, the last values of the main metric and of the loss (server's test,
   clients' evaluation, training), and the server's reports directory, with *copy* (a path on the
   server agent's machine); × hides it until the next session ends;
+- under the top bar, the next step until the session runs: register a server agent, then the
+  clients; choose the relays (or wait for the upper level); *⚙ config* and *Run session*; *Check*
+  then *Execute* on the server's page, then on the clients';
 - the topology, a table of the agents: role, name, site, state (registered, checking, checked,
   running, finished, failed, stopped, invalid config), the round and the last value of the main
-  metric (the server's test, a client's evaluation on its data); the map of the sites;
+  metric (the server's test, a client's evaluation on its data); under it, dimmed, the agents
+  started with a registration configuration (`--config`, as `launch/agent/cli/500x.sh`) that have
+  not registered yet, each with *register ↗* to its registration page; the map of the sites;
 - the main metric per round, its last 40 rounds: the clients' training and evaluation (the average of
   all the clients, weighted by their examples), the server's test; curves that coincide (evaluation
   and test when the clients validate on the official test set) are drawn in dashes of their colours

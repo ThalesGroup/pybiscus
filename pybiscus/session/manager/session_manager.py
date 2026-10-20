@@ -42,6 +42,9 @@ LOCAL_ORIGINS = r"^https?://(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$"
 registered_clients = {}
 registered_servers = {}
 registered_agents_meta = {}   # name -> {geo_location, bouquet, location, organisation, role, agent_url}
+# name -> {url, role, bouquet, time}: the agents that reported their start (pybiscus_agent --config),
+# shown until they register; not reset by a drop, they still run and register again
+started_agents = {}
 manager_port = None
 # the bouquet this manager's session belongs to (--bouquet): the one its page shows, whatever the
 # agents declare at their registration; None keeps showing theirs

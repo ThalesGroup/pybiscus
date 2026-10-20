@@ -35,6 +35,12 @@
   server's log, the reports directory reads `…/<its last directory>`, the whole path on hover (it
   wrapped the lines of the saved configs on three lines).
 
+* Manager: the next step under the top bar until the session runs (register a server, then the
+  clients; relays; *⚙ config* and *Run session*; *Check* then *Execute* on the server, then on the
+  clients). The agents started with `--config` and not registered yet listed in the topology,
+  dimmed, with *register ↗* to their registration page: the topology said "no agents yet" while
+  the agents' log showed them started (an agent sends its URL and role with its start).
+
 ## [Version 0.13.0]
 
 Since `version0.12.0` (2026-10-18): the GUI reworked — one dark theme (with a light one) shared by
