@@ -444,6 +444,7 @@
   // ============ data model (préservé) ============
   var session = new Session();
 
+  let repetitionActive = false;   // a repeated session launches other ones (renderRepetition)
   const metricDiffs = {};   // round -> change of the aggregated evaluation loss since the previous round
   let noEvaluationRound = null;
   const durations   = new CircularBuffer(6);
@@ -1168,10 +1169,12 @@
   }
   // an ended session: dropping it is the way to the next one, not a danger
   function renderDropButton(){
-    const btn = document.getElementById('revokeBtn'), ended = !!sessionEnd;
+    // between two sessions of a repetition, the session has ended but the drop cancels the next ones
+    const btn = document.getElementById('revokeBtn'), ended = !!sessionEnd && !repetitionActive;
     btn.classList.toggle('danger', !ended);
     btn.textContent = ended ? '⟲ new session' : 'Drop session';
     btn.title = ended ? 'empty the page for a new session: the agents register again'
+      : repetitionActive ? 'cancel the repetition and drop the session (asks first)'
       : sessionRunning ? 'stop the runs and drop the session (asks first)' : 'drop the session: the agents register again';
   }
   function renderSessionState(){
@@ -1587,6 +1590,7 @@
   let repetitionSessions = 0;
   function renderRepetition(repetition){
     const active = !!repetition && (repetition.status === 'running' || repetition.status === 'waiting');
+    if(active !== repetitionActive){ repetitionActive = active; renderDropButton(); }
     session.keepPolling = active;
     document.getElementById('repeat-kv').hidden = !repetition;
     const btn = document.getElementById('stop-repeat-btn');
@@ -1661,7 +1665,8 @@
   // drop session
   document.getElementById("revokeBtn").addEventListener("click", async ()=>{
     // it stops the runs still going: asked while the session runs
-    if(sessionRunning && !sessionEnd && !confirm('Drop the running session?\n\nThe runs of its agents are stopped; the agents register again for a new session.')) return;
+    if(repetitionActive && !confirm('Drop the repeated session?\n\nNo other session is launched; the runs still going are stopped and the agents register again.')) return;
+    if(!repetitionActive && sessionRunning && !sessionEnd && !confirm('Drop the running session?\n\nThe runs of its agents are stopped; the agents register again for a new session.')) return;
     session.stop();
     try{
       const response = await fetch("/pybiscus-session/params", {method:"DELETE", headers:{"Content-Type":"application/json", "X-Pybiscus":"1"}});

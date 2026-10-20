@@ -42,7 +42,9 @@ One agent per site: the server's, then the clients'.
 ./launch/agent/cli/5002.sh
 ```
 
-Each agent reports to the manager when it starts (agents log, bottom left).
+Each agent reports to the manager when it starts (agents log, bottom left); the topology lists
+it, dimmed, with *register ↗* to its registration page, and the line under the top bar gives the
+next step.
 
 ![Agents started](images/session_manager_agents_started.png "Agents started")
 

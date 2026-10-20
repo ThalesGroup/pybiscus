@@ -52,6 +52,9 @@
   order of arrival, without numbers, on three lines); the `metricdiffcompute` decorator logs its
   round (`gui metric_diff round= value=`). A started agent that no longer answers the manager is
   marked *not reachable* (it stayed listed as started).
+* Manager: between two sessions of a repeated session, *Drop session* stays red and asks first (it
+  read *⟲ new session* once each session ended, though it cancels the next ones).
+* Documentation: the screenshots of the manager redone (`docs/images`).
 
 ## [Version 0.13.0]
 
