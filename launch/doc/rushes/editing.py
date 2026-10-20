@@ -15,7 +15,7 @@ A cut (YAML):
          corner: top-right, width: 0.35, skip: true}
     shots:                                # screenshots
       - {file: a.png, take: <take name>}
-      - {file: b.png, view: <view>, at: <event kind>, index: 0, panel: <panel id>}
+      - {file: b.png, view: <view>, at: <event kind>, index: 0, after: 2.5, panel: <panel id>}
     shots_dir: docs/images
 Fields and views are written with {name} placeholders, filled from the event's fields.
 """
@@ -23,6 +23,7 @@ Fields and views are written with {name} placeholders, filled from the event's f
 import bisect
 import io
 import json
+import math
 import shutil
 import subprocess
 from pathlib import Path
@@ -33,6 +34,7 @@ from .shooting import log
 
 TIMING = {"caption": 3.5, "last_caption": 5.0, "min_frame": 0.25, "round_frame": 0.25,
           "progress_max": 8.0, "end_hold": 2.5, "webp_width": 1080, "blend": 0.4}
+SHOT_KEYS = ("file", "take", "view", "at", "index", "after", "panel")
 INSET = {"width": 0.42, "corner": "bottom-right"}
 CAPTION_BACKGROUND, CAPTION_TEXT, INSET_BORDER = (20, 24, 40, 225), (255, 255, 255, 255), (78, 205, 196, 255)
 
@@ -255,24 +257,81 @@ def edit(rushes_dir: Path, cut: dict, output=None, work=None):
     if cut.get("shots"):
         shots_dir = Path(cut.get("shots_dir", "shots")).resolve()
         shots_dir.mkdir(parents=True, exist_ok=True)
-        for shot in cut["shots"]:
+        for shot in check_shots(rushes, cut):
             path = shots_dir / shot["file"]
-            if "take" in shot:
-                take = rushes.takes.get(shot["take"])
-                if not take:
-                    raise SystemExit(f"no take {shot['take']!r} in {rushes_dir} (takes: {', '.join(rushes.takes)})")
-                shutil.copyfile(rushes_dir / take["file"], path)
+            if shot["take"]:
+                shutil.copyfile(rushes_dir / rushes.takes[shot["take"]]["file"], path)
             else:
-                matching = [e for e in rushes.events if e["kind"] == shot["at"]]
-                if not matching:
-                    raise SystemExit(f"shot {shot['file']}: no event {shot['at']!r} in {rushes_dir}")
-                t = matching[shot.get("index", 0)]["t"]
-                # the view as it was just after the event: its first capture from then on
-                captures = [c for c in rushes.by_view.get(shot["view"], []) if c["t"] >= t] or [rushes.at(shot["view"], t)]
-                rushes.image(captures[0], shot.get("panel")).convert("RGB").save(path)
+                shot_image(rushes, shot).save(path)
             written.append(str(path))
     for path in written:
         log(f"{path} written")
+
+
+def check_shots(rushes: Rushes, cut):
+    """the screenshots of the cut, each with what it is taken from: a take, or a view's capture"""
+    resolved, files = [], set()
+    for i, shot in enumerate(cut.get("shots") or []):
+        where = f"shot {i} ({shot.get('file', 'no file')})" if isinstance(shot, dict) else f"shot {i}"
+        if not isinstance(shot, dict) or not shot.get("file"):
+            raise SystemExit(f"{where}: a shot has a file")
+        unknown = set(shot) - set(SHOT_KEYS)
+        if unknown:
+            raise SystemExit(f"{where}: unknown key {', '.join(sorted(unknown))} (keys: {', '.join(SHOT_KEYS)})")
+        if shot["file"] in files:
+            raise SystemExit(f"{where}: another shot writes {shot['file']}")
+        files.add(shot["file"])
+        if "take" in shot:
+            take = rushes.takes.get(shot["take"])
+            if not take:
+                raise SystemExit(f"{where}: no take {shot['take']!r} in {rushes.dir} (takes: {', '.join(rushes.takes)})")
+            resolved.append({"file": shot["file"], "take": shot["take"], "t": take.get("t", 0), "view": None, "panel": None})
+            continue
+        if not shot.get("view") or not shot.get("at"):
+            raise SystemExit(f"{where}: a shot has a take, or a view and an event (at)")
+        if shot["view"] not in rushes.by_view:
+            raise SystemExit(f"{where}: no capture of the view {shot['view']!r} (views: {', '.join(rushes.by_view)})")
+        matching = [e for e in rushes.events if e["kind"] == shot["at"]]
+        index = shot.get("index", 0)
+        if not matching:
+            raise SystemExit(f"{where}: no event {shot['at']!r} in {rushes.dir}")
+        if not isinstance(index, int) or not 0 <= index < len(matching):
+            raise SystemExit(f"{where}: index {index}, but {len(matching)} {shot['at']} event(s)")
+        t = matching[index]["t"] + float(shot.get("after", 0))
+        # the view as it was just after the event: its first capture from then on (1e-6: the sum of two
+        # times written with 3 decimals can exceed by a hair the capture it designates)
+        captures = [c for c in rushes.by_view[shot["view"]] if c["t"] >= t - 1e-6] or [rushes.at(shot["view"], t)]
+        panel = shot.get("panel")
+        if panel and panel not in captures[0]["panels"]:
+            raise SystemExit(f"{where}: no panel {panel!r} in the capture of {shot['view']!r} (panels: {', '.join(captures[0]['panels'])})")
+        resolved.append({"file": shot["file"], "take": None, "t": captures[0]["t"], "view": shot["view"],
+                         "panel": panel, "capture": captures[0]})
+    return resolved
+
+
+def shot_image(rushes: Rushes, shot):
+    if shot["take"]:
+        return Image.open(rushes.dir / rushes.takes[shot["take"]]["file"]).convert("RGB")
+    return rushes.image(shot["capture"], shot["panel"]).convert("RGB")
+
+
+def shot_anchor(rushes: Rushes, view, t):
+    """the shot of the view's capture shown at t, written from the event before it, so that it
+    designates the same moment in another shooting of the scenario"""
+    capture = rushes.at(view, t)
+    if not rushes.events:
+        raise SystemExit("no event in the rushes: a shot is placed after one")
+    before = [e for e in rushes.events if e["t"] <= capture["t"]] or rushes.events[:1]
+    event = before[-1]
+    index = [e for e in rushes.events if e["kind"] == event["kind"]].index(event)
+    # rounded down: rounded up, the first capture from event + after could be the next one
+    after = math.floor((capture["t"] - event["t"]) * 1000) / 1000
+    anchor = {"at": event["kind"]}
+    if index:
+        anchor["index"] = index
+    if after:
+        anchor["after"] = after
+    return anchor
 
 
 def assemble(frames: Path, lines, output: Path, formats, timing):

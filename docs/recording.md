@@ -117,6 +117,14 @@ change is checked by computing the plan again: a refused one (an offset reversin
 unknown view…) shows its message and changes nothing. ↺ removes an override's value; *Leave out
 this scene* skips it, *Bring it back* on its hatched mark undoes it.
 
+**Screenshots** (`shots`): *Capture here* adds the view shown, whole or one of its panels, at the
+moment shown (in the plan: the scene's main view at that image; on a view's track: that view), under
+the file name proposed or typed; a take of the rushes is added under its name. The shot is written
+from the event before that moment (`at`, `index`, `after`), so that it designates the same moment in
+another shooting of the scenario. Each screenshot is listed with its image, renamed in place, removed
+with ✕, and marked ◆ on the timeline; the directory (`shots_dir`) is set there too. A cut of
+screenshots only, without scenes, opens as well: the page shows the views and the screenshots.
+
 *Save* (or Ctrl+S) writes the cut's file with its comments and layout kept, the previous one in
 `<cut>.bak`; *Revert* drops the unsaved changes. The header says whether the page is saved, has
 unsaved changes, or the file changed on disk: saving then asks first.
@@ -203,8 +211,9 @@ The events, and their fields:
 | a hierarchical scenario | `registered`; `relays`; `session-form` (`bouquet`); `form` (`name`); `round` (`round`, `rounds`, `turn`: the lower bouquet whose turn it is); `end`; `tab` (`tab`) |
 
 **Screenshots** (`shots`, written into `shots_dir`): `{file, take: <name>}` copies a take of the
-rushes; `{file, view, at: <kind of event>, index, panel}` extracts the view as it was just after
-the `index`-th event of that kind (default 0), or one of its panels.
+rushes; `{file, view, at: <kind of event>, index, after, panel}` extracts the view as it was just
+after the `index`-th event of that kind (default 0), `after` seconds later (default 0), or one of its
+panels.
 
 **Timing** (`timing:`, seconds)
 
@@ -343,7 +352,7 @@ and agents side by side), or on Windows the Xbox Game Bar (`Win` + `Alt` + `R`).
 time-lapse are then added while editing (Clipchamp, Shotcut, Kdenlive, ffmpeg).
 
 **Planned** (not available yet):
-- in `edit --ui`: marking captures as shots, and exporting the video from the page;
+- in `edit --ui`: exporting the video and the screenshots from the page;
 - side by side views (a mosaic), as an alternative to a main view and an inset;
 - the agents' run monitors with `--attach`;
 - a recording started by the session manager itself, with captions taken from its events;

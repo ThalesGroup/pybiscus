@@ -1,7 +1,7 @@
 """Interactive editing: a local page showing the rushes on a timeline, with the composed image of the
 cut at any moment and the video played from its plan; a scene's settings are changed there, for that
-scene (an override) or for every scene of its kind (the rule), and saved into the cut's file with
-its comments."""
+scene (an override) or for every scene of its kind (the rule); screenshots are taken from the
+moment shown. All is saved into the cut's file with its comments."""
 
 import copy
 import io
@@ -18,7 +18,7 @@ from ruamel.yaml import YAML
 from ruamel.yaml.comments import CommentedMap, CommentedSeq
 from ruamel.yaml.error import YAMLError
 
-from .editing import RULE_KEYS, Composer, Rushes, TIMING, plan, scenes
+from .editing import RULE_KEYS, Composer, Rushes, TIMING, check_shots, plan, scenes, shot_anchor, shot_image
 from .shooting import log
 
 PAGE = Path(__file__).with_name("editor.html")
@@ -59,7 +59,7 @@ class Session:
         self.yaml = round_trip()
         self.lock = threading.Lock()
         self.cache = {}
-        self.disk_mtime, self.scenes, self.frames, self.error, self.dirty = None, [], [], None, False
+        self.disk_mtime, self.scenes, self.frames, self.shots, self.error, self.dirty = None, [], [], [], None, False
         self.reload()
         if self.error:
             raise SystemExit(self.error)
@@ -69,8 +69,8 @@ class Session:
         if mtime == self.disk_mtime and not force:
             return
         document = self.yaml.load(self.cut_file.read_text()) or CommentedMap()
-        if not document.get("scenes"):
-            raise SystemExit(f"{self.cut_file}: no scenes, nothing to edit (a cut of screenshots only is edited as it is)")
+        if not isinstance(document, dict):
+            raise SystemExit(f"{self.cut_file}: a cut is a mapping (scenes, shots…)")
         self.document, self.disk_mtime, self.dirty = document, mtime, False
         self.error = None
         try:
@@ -80,8 +80,10 @@ class Session:
             self.error = str(error)
 
     def compute(self, cut):
-        computed = scenes(self.rushes, cut), plan(self.rushes, cut)
-        self.cut, (self.scenes, self.frames) = cut, computed
+        # a cut of screenshots only has no scene: the page shows the rushes and the shots
+        computed = (scenes(self.rushes, cut), plan(self.rushes, cut)) if cut.get("scenes") else ([], [])
+        shots = check_shots(self.rushes, cut)
+        self.cut, (self.scenes, self.frames), self.shots = cut, computed, shots
         self.composer = Composer(self.rushes, cut.get("inset"))
         self.cache.clear()
 
@@ -107,9 +109,16 @@ class Session:
         with self.lock:
             document = copy.deepcopy(self.document)
             kind, key, value = op.get("kind"), op.get("key"), op.get("value")
-            if kind not in document["scenes"]:
+            if op.get("scope") == "shot":
+                self.change_shot(document, op)
+            elif op.get("scope") == "shots_dir":
+                if value:
+                    document["shots_dir"] = value
+                else:
+                    document.pop("shots_dir", None)
+            elif kind not in (document.get("scenes") or {}):
                 raise Refused(f"no rule for the kind {kind!r}")
-            if op.get("scope") == "rule":
+            elif op.get("scope") == "rule":
                 if key not in RULE_KEYS:
                     raise Refused(f"a rule sets {', '.join(RULE_KEYS)}, not {key!r}")
                 rule = document["scenes"][kind]
@@ -124,7 +133,7 @@ class Session:
                     raise Refused(f"an override sets {', '.join(RULE_KEYS + SCENE_KEYS)}, not {key!r}")
                 self.set_override(document, kind, op.get("index"), key, value, op.get("remove", False))
             else:
-                raise Refused("scope is rule or scene")
+                raise Refused("scope is rule, scene, shot or shots_dir")
             try:
                 self.compute(plain(document))
             except SystemExit as error:
@@ -152,6 +161,40 @@ class Session:
             overrides.append(found)
         found[key] = value
 
+    def change_shot(self, document, op):
+        shots = document.get("shots")
+        if shots is None:
+            shots = document["shots"] = CommentedSeq()
+        if "add" in op:
+            add = op["add"]
+            if not add.get("file"):
+                raise Refused("a shot needs a file name")
+            if add.get("take"):
+                shot = CommentedMap([("file", add["file"]), ("take", add["take"])])
+            else:
+                try:
+                    anchor = shot_anchor(self.rushes, add["view"], float(add["t"]))
+                except SystemExit as error:
+                    raise Refused(str(error))
+                shot = CommentedMap([("file", add["file"]), ("view", add["view"]), *anchor.items()])
+                if add.get("panel"):
+                    shot["panel"] = add["panel"]
+            # written on one line, as the shots of the docs
+            shot.fa.set_flow_style()
+            shots.append(shot)
+            return
+        index = op.get("index")
+        if not isinstance(index, int) or not 0 <= index < len(shots):
+            raise Refused(f"no shot {index}")
+        if op.get("remove"):
+            del shots[index]
+            if not shots:
+                del document["shots"]
+        elif op.get("file"):
+            shots[index]["file"] = op["file"]
+        else:
+            raise Refused("a shot is added, removed or renamed")
+
     def revert(self):
         with self.lock:
             self.reload(force=True)
@@ -174,7 +217,9 @@ class Session:
                         "panels": sorted({p for c in captures for p in c["panels"]}),
                         "label": captures[-1]["label"]}
                  for name, captures in r.by_view.items()}
-        return {"dir": r.dir.name, "size": r.size, "scale": r.scale, "end": r.end, "views": views,
+        # a take can come after the last capture: the timeline goes as far
+        span = max([r.end] + [take.get("t", 0) for take in r.takes.values()])
+        return {"dir": r.dir.name, "size": r.size, "scale": r.scale, "end": r.end, "span": span, "views": views,
                 "events": r.events, "takes": list(r.takes.values())}
 
     def plan_json(self):
@@ -189,8 +234,11 @@ class Session:
                            "frames": len(frames), "video_start": video_t, "video_duration": duration})
             video_t += duration
         skipped = [{"kind": o["kind"], "index": o["index"]} for o in self.cut.get("overrides") or [] if o.get("skip")]
+        written = self.cut.get("shots") or []
+        shots = [{**{k: v for k, v in shot.items() if k != "capture"}, "written": written[i]} for i, shot in enumerate(self.shots)]
         return {"cut": self.cut_file.name, "error": self.error, "frames": self.frames, "scenes": listed,
-                "skipped": skipped, "video_duration": video_t + timing["end_hold"], "rules": self.cut["scenes"],
+                "skipped": skipped, "video_duration": video_t + timing["end_hold"] if self.frames else 0,
+                "rules": self.cut.get("scenes") or {}, "shots": shots, "shots_dir": self.cut.get("shots_dir"),
                 "dirty": self.dirty, "disk_changed": self.dirty and self.disk_changed(),
                 "inset": {"width": 0.42, "corner": "bottom-right", **(self.cut.get("inset") or {})}}
 
@@ -226,6 +274,10 @@ class Session:
             return None
         f = self.frames[index]
         return self.image(("at", round(t, 3)), lambda: self.composer.compose(t, f["main"], f["inset"], f["caption"], f["inset_style"]), width)
+
+    def shot(self, index, width):
+        shot = self.shots[index]
+        return self.image(("shot", index), lambda: shot_image(self.rushes, shot), width)
 
     def view(self, name, t, width):
         return self.image(("view", name, round(t, 3)), lambda: self.rushes.image(self.rushes.at(name, t)).convert("RGB"), width)
@@ -268,6 +320,11 @@ class Handler(BaseHTTPRequestHandler):
                 if not 0 <= index < len(session.frames):
                     return self.json({"error": f"no image {index} in the plan"}, 404)
                 return self.send(200, session.frame(index, width), "image/jpeg")
+            if url.path == "/api/shot":
+                index = int(query["i"])
+                if not 0 <= index < len(session.shots):
+                    return self.json({"error": f"no shot {index}"}, 404)
+                return self.send(200, session.shot(index, width), "image/jpeg")
             if url.path == "/api/at":
                 data = session.at(float(query["t"]), width)
                 return self.send(200, data, "image/jpeg") if data else self.json({"error": "no scene"}, 404)

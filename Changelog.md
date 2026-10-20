@@ -70,6 +70,9 @@
   (the rule), each change checked by computing the plan again, a scene left out or brought back;
   *Save* writes the cut with its comments (ruamel.yaml, the previous file in `.bak`), asking first
   when the file changed on disk; *Revert* drops the unsaved changes.
+* `edit --ui` takes screenshots: the view shown (or one of its panels) at the moment shown, or a take,
+  listed with their image, renamed, removed, marked on the timeline; a cut of screenshots only opens
+  too. A shot of a cut takes `after: <seconds>` after its event.
 
 ## [Version 0.13.0]
 
