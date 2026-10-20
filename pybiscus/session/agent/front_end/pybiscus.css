@@ -402,6 +402,11 @@ body > div > fieldset > legend::before {
     display: none;
 }
 
+/* an unset field can be the one in error (required by the session): its message stays in view */
+.pybiscus-camouflaged-fieldset > .pybiscus-field-error {
+    display: block;
+}
+
 .pybiscus-option-fs:not(.pybiscus-camouflaged-fieldset) .pybiscus-tab-container {
     display: flex;
     flex-wrap: nowrap;
@@ -1627,6 +1632,12 @@ html { scroll-padding-top: 80px; }
     right: 0;
     width: min(36rem, 80vw);
     z-index: 5;
+}
+/* over the form: the error tint is translucent, the page under it made the text unreadable */
+.pybiscus-bar .pybiscus-check-errors pre,
+.pybiscus-bar .pybiscus-failure {
+    background: linear-gradient(var(--color-error-bg), var(--color-error-bg)), var(--body-bg);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
 }
 
 .pybiscus-bar .pybiscus-button { min-height: 36px; padding: 0.35rem 1rem; }

@@ -12,6 +12,9 @@
   field (`repeat.every`, `repeat.timezone`, `num_rounds`…) or under *Run session*; it used to close
   the form and show the message in a browser alert. The schedule's errors name their field
   (`pybiscus schedule preview` says which option).
+* Check errors (agents' forms and session form): an error about an unset optional field (`num_rounds`
+  required by lower levels) shows under its title, instead of under the buttons; the messages under
+  the buttons, over the form, on an opaque background (the form showed through them).
 
 ## [Version 0.13.0]
 

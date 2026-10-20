@@ -34,8 +34,8 @@ const pybiscusCheckErrors = (function () {
   }
 
   // depth: name segments found in the location, in order; rest: location segments after the last one
-  function match(input, loc) {
-    const segments = input.getAttribute('data-pybiscus-name').split('.');
+  function match(input, loc, name = input.getAttribute('data-pybiscus-name')) {
+    const segments = name.split('.');
     const indices = listIndices(input);
     let j = 0, depth = 0, listLevel = 0;
     for (const segment of segments) {
@@ -57,11 +57,20 @@ const pybiscusCheckErrors = (function () {
     return ancestor;
   }
 
+  // an unset optional field has its input in an ignored tab: its block, named by its prefix, stands for it
+  function unsetOption(root, loc) {
+    return Array.from(root.querySelectorAll('fieldset.pybiscus-option-fs[data-pybiscus-prefix]'))
+      .filter(fieldset => !fieldset.closest(IGNORED))
+      .find(fieldset => match(fieldset, loc, fieldset.getAttribute('data-pybiscus-prefix')).leaf);
+  }
+
   // the input, or the fieldset of the deepest part of the location the form has
   function locate(root, loc) {
     const matches = effectiveInputs(root).map(input => ({ input, ...match(input, loc) }));
     const leaf = matches.find(m => m.leaf);
     if (leaf) return { input: leaf.input };
+    const option = unsetOption(root, loc);
+    if (option) return { fieldset: option, rest: [] };
     const depth = Math.max(0, ...matches.map(m => m.depth));
     if (depth === 0) return null;
     const deepest = matches.filter(m => m.depth === depth);
