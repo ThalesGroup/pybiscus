@@ -80,6 +80,8 @@
   tile per view, in their order of appearance, `highlight` outlining one (`"agent:{turn}"`); the
   tiles in a column on the right (default) or a row at the bottom (`mosaic: {side, slots}`, or per
   scene); set in `edit --ui` too. A cut without tiles gives the same video as before.
+* `docs/recording.md` shows `edit --ui` (scenes in mosaic, screenshots, export) and the two layouts of
+  the mosaic; the page plays the animated webp where the browser has no H.264.
 
 ## [Version 0.13.0]
 

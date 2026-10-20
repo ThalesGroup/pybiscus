@@ -111,6 +111,8 @@ to only print its address):
 - the **scene** selected: its time in the rushes and in the video, its images, its main view, inset,
   tiles, outlined tile, caption, pace and the event's fields, in yellow what an override of that scene sets.
 
+![edit --ui: the round scenes in mosaic, set for every round](images/recording_editor.png)
+
 The scene's settings are changed in the page, for **this scene** (an override: also its `offset`,
 `duration`, the inset's `corner` and `width`, the tiles' `side` and `slots`) or for **every** scene of its kind (the rule). Each
 change is checked by computing the plan again: a refused one (an offset reversing two scenes, an
@@ -126,6 +128,8 @@ another shooting of the scenario. Each screenshot is listed with its image, rena
 with ✕, and marked ◆ on the timeline; the directory (`shots_dir`) is set there too. A cut of
 screenshots only, without scenes, opens as well: the page shows the views and the screenshots.
 
+![edit --ui: two screenshots taken, the second shown, its mark on the timeline](images/recording_editor_screenshots.png)
+
 *Save* (or Ctrl+S) writes the cut's file with its comments and layout kept, the previous one in
 `<cut>.bak`; *Revert* drops the unsaved changes. The header says whether the page is saved, has
 unsaved changes, or the file changed on disk: saving then asks first.
@@ -135,6 +139,8 @@ byte for byte (it waits for the cut to be saved). The *Export* section sets the 
 (`output`, relative to the directory the editor was started in) and its formats; a bar follows the
 images, then the encodings. The files written are listed at the end, the video playable in the page;
 a failed export says why.
+
+![edit --ui: the export done, its files and the video](images/recording_editor_export.png)
 
 Without unsaved changes, the page reads the cut's file every 2 seconds: edit it elsewhere, save, the
 page follows. A wrong cut is shown with its message, and the last plan stays.
@@ -199,6 +205,10 @@ scenes:
 ```
 
 A scene has an inset or tiles, not both.
+
+| `side: right` (default) | `side: bottom` |
+|---|---|
+| ![tiles on the right](images/recording_mosaic_right.png) | ![tiles at the bottom](images/recording_mosaic_bottom.png) |
 
 **One scene** (`overrides:`): a rule applies to every scene of its kind; an override changes one,
 the `index`-th scene of its kind (0 the first, in the order of the rushes):

@@ -499,7 +499,10 @@ function showExport(x){
     const what = x.total ? `${x.stage} ${x.done + 1}/${x.total}` : x.stage;
     box.innerHTML = `exporting · ${esc(what)} · ${elapsed}<div class="bar"><div style="width:${100 * share}%"></div></div>`;
   } else if(x.state === 'done'){
-    const video = x.written.findIndex(w => w.media === 'video/mp4'), webp = x.written.findIndex(w => w.media === 'image/webp');
+    // a browser without H.264 (some Chromium builds) plays the animated webp instead
+    const h264 = document.createElement('video').canPlayType('video/mp4; codecs="avc1.64001F"') !== '';
+    let video = x.written.findIndex(w => w.media === 'video/mp4'), webp = x.written.findIndex(w => w.media === 'image/webp');
+    if(!h264 && webp >= 0) video = -1;
     box.innerHTML = `exported in ${elapsed} · <a href="#" id="x-close">close</a><br>` +
       x.written.map((w, i) => w.media ? `<a href="/api/output?i=${i}" target="_blank">${esc(w.path)}</a>` : esc(w.path)).join('<br>') +
       (video >= 0 ? `<video controls src="/api/output?i=${video}&v=${Date.now()}"></video>` :
