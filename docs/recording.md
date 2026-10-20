@@ -10,7 +10,7 @@ presentation, and into the screenshots of the docs. It works in two times, as a 
    event, the main view, an inset, a caption, a pace) and the screenshots to extract. Editing takes
    a few seconds and can be done again with another cut, without running the session again.
 
-> This page follows the tool as it grows (see the end of the page).
+> This page follows the tool as it grows.
 
 ## Overview
 
@@ -651,10 +651,15 @@ says so. A recording ended by stopping the manager is not copied.
 while the session is filmed, *REC · editing* while its video is made, then *🎬 video*, its tooltip
 giving where the video is (*🎬 failed*: the recorder's log).
 
+**The page's ⏺ record button** films from now on, whatever the session's state, without `--record`
+nor the form's box: before the agents register, or a session already running (its video then
+starts there). *⏹ stop recording* ends the recording going: its video is edited and copied into the
+session's reports as above. With `--record`, the stop ends only that recording: the next session
+launched, or the next one after a drop, is recorded again. The button is disabled, its tooltip
+saying why, when the manager's machine cannot record, and while a video is being edited.
+
 **With a screen recorder**, the session can also be recorded from your own screen:
 [OBS Studio](https://obsproject.com/) (a *browser source* per page lets a scene show the manager
 and agents side by side), or on Windows the Xbox Game Bar (`Win` + `Alt` + `R`). Captions and
 time-lapse are then added while editing (Clipchamp, Shotcut, Kdenlive, ffmpeg).
 
-**Planned** (not available yet):
-- a record button in the manager's page, recording the tab from the browser.

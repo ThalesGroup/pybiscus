@@ -32,7 +32,8 @@ manager's.
 
 With `--record`, the manager films each of its sessions into a video (its page and the agents' run
 monitors, with captions), in `experiments/recordings` or the directory given; the session form's
-`record` box films one session only ([Session parameters](#session-parameters)). A **● REC** pill
+`record` box films one session only ([Session parameters](#session-parameters)), and the page's
+**⏺ record** button films from the moment it is clicked until *⏹ stop recording*. A **● REC** pill
 beside the round number shows it, and the video is copied into the session's reports: see
 [recording.md](recording.md#recording-a-session-you-run-yourself).
 

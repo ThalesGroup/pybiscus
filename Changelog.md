@@ -58,6 +58,10 @@
 
 ### Recording
 
+* The manager's page has a **⏺ record** button: it films from now on (before the registrations or
+  during a session), *⏹ stop recording* ends that recording, edited and copied into the session's
+  reports; with `--record`, the next sessions are recorded again. Disabled, with the reason, when the
+  manager's machine cannot record.
 * The session form's `record` box films that session only (a manager whose machine cannot record
   refuses it, the reason under the box); a recorded session's video is copied into the server's
   reports as `session-video.mp4` / `.webp` when they are on the manager's machine; the manager's

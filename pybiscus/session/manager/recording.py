@@ -22,10 +22,17 @@ SHOT_LINE = "rushes in "
 VIDEOS = ("video.mp4", "video.webp")
 
 
+_missing = None
+
+
 def missing_requirements() -> list:
-    checks = (("uv", shutil.which("uv")), ("ffmpeg", shutil.which("ffmpeg")),
-              (f"the recorder {RECORDER} (a checkout of the repository)", RECORDER.is_file()))
-    return [what for what, found in checks if not found]
+    # checked once: the manager's page asks at every poll, and the tools do not come and go during a run
+    global _missing
+    if _missing is None:
+        checks = (("uv", shutil.which("uv")), ("ffmpeg", shutil.which("ffmpeg")),
+                  (f"the recorder {RECORDER} (a checkout of the repository)", RECORDER.is_file()))
+        _missing = [what for what, found in checks if not found]
+    return _missing
 
 
 class Recording:
@@ -39,6 +46,8 @@ class Recording:
         self.admin_token, self.no_agent, self.automatic, self.poll = admin_token, no_agent, automatic, poll
         self.proc, self.rushes, self.started = None, None, 0.0
         self.launched_unrecorded = False
+        # a recording stopped from the page: --record does not start another one before the next session
+        self.hold = False
         # the server's reports directory of the session being recorded: its video is copied there
         self.session_reports = None
         self.last = None   # what the last recorder gave: {"state": "done" | "failed", ...}
@@ -54,8 +63,26 @@ class Recording:
         return self.proc is not None and self.proc.poll() is None
 
     def session_launched(self) -> None:
+        self.hold = False
         if not self.recording():
             self.launched_unrecorded = True
+
+    def start_now(self) -> bool:
+        """the page's record button: False if a recording is already going"""
+        if self.recording() or self.launched_unrecorded:
+            return False
+        self.session_launched()
+        return True
+
+    def stop_current(self) -> bool:
+        """the page's stop button: the recording going ends and is edited; False if none is going"""
+        with self.lock:
+            if not self.recording():
+                return False
+            self.hold = True
+            os.killpg(self.proc.pid, signal.SIGINT)
+            logm.console.log(f"🎬 recording stopped from the manager's page; its video is being edited into {self.rushes / VIDEOS[0]}")
+            return True
 
     def note_reports(self, path: str) -> None:
         # the first one of the recording: a repeated session gives one per session, the recording follows the first
@@ -68,6 +95,8 @@ class Recording:
             log = self._log()
             shot = not self.recording() or (log.exists() and SHOT_LINE in log.read_text(errors="replace"))
             return {"state": "editing" if shot else "recording", "rushes": str(self.rushes), "automatic": self.automatic}
+        if self.launched_unrecorded:
+            return {"state": "starting", "automatic": self.automatic}
         return {**(self.last or {"state": "idle"}), "automatic": self.automatic}
 
     def _log(self) -> Path:
@@ -83,7 +112,10 @@ class Recording:
                     self.proc = None
                     if not started and self.automatic:
                         return
-                if (self.automatic and self.no_agent()) or self.launched_unrecorded:
+                if not self.no_agent():
+                    # agents registered since the stop: their drop makes a new session, recorded again
+                    self.hold = False
+                if (self.automatic and self.no_agent() and not self.hold) or self.launched_unrecorded:
                     self._launch()
 
     def _launch(self) -> None:

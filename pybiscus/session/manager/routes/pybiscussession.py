@@ -460,6 +460,27 @@ def pybiscus_manager_stop_repeating():
     return jsonify({"status": "success", "repetition": repetition.state()}), 202
 
 
+# the page's record button: a recording now, whatever the session's state; stop ends the one going
+@pybiscus_manager_app.route("/pybiscus-session/recording/start", methods=["POST"])
+def pybiscus_manager_start_recording():
+    session = pybiscus.session.manager.session_manager
+    problems = recording_refused()
+    if problems:
+        return jsonify({"status": "error", "message": problems[0]["msg"]}), 409
+    recording = session.recording or session.start_recording(None, automatic=False)
+    if not recording.start_now():
+        return jsonify({"status": "error", "message": "a recording is already going"}), 409
+    return jsonify({"status": "success", "recording": recording.state()}), 202
+
+
+@pybiscus_manager_app.route("/pybiscus-session/recording/stop", methods=["POST"])
+def pybiscus_manager_stop_recording():
+    recording = pybiscus.session.manager.session_manager.recording
+    if recording is None or not recording.stop_current():
+        return jsonify({"status": "error", "message": "no recording is going"}), 409
+    return jsonify({"status": "success", "recording": recording.state()}), 202
+
+
 def stop_agent_runs():
     """a dropped session's runs stop with it: they went on without a manager, and a lower level's
     server waited for a model that no longer comes"""
@@ -515,8 +536,12 @@ def pybiscus_manager_list_clients():
     })
 
 def session_recording_state():
+    """None: nothing recorded yet; "unavailable": why this machine cannot record"""
     recording = pybiscus.session.manager.session_manager.recording
-    return recording.state() if recording is not None else None
+    if recording is not None:
+        return recording.state()
+    problems = recording_refused()
+    return {"state": "idle", "unavailable": problems[0]["msg"]} if problems else None
 
 def unregistered_started_agents() -> dict:
     session = pybiscus.session.manager.session_manager

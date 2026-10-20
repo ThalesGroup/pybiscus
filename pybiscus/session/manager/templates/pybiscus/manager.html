@@ -321,6 +321,7 @@
       <a class="btn" href="/pybiscus-session/network" target="_blank" title="the machines, ports and flows of the session">🌐 network</a>
       <button class="btn" id="token-btn" title="Copy the session token: the agents give it at registration">🔑 session token</button>
       <button class="btn" id="cfg-btn" disabled title="the session can be configured once its server agent is registered">⚙ config</button>
+      <button class="btn" id="rec-btn" title="film the session from now on: its video is edited and copied into the session's reports">⏺ record</button>
       <button class="btn" id="stop-round-btn" disabled title="no session is running">⏹ stop after round</button>
       <button class="btn" id="stop-repeat-btn" hidden title="no other session after the current one">🔁 stop repeating</button>
       <button class="btn danger" id="revokeBtn">Drop session</button>
@@ -1601,12 +1602,14 @@
   // each new one starts with its own round counter and end
   // the manager films the session (--record, or the session form): data.recording.state
   const RECORDING_VIEW = {
+    starting:  ['REC · starting', r => 'the recorder is starting'],
     recording: ['REC', r => `the session is being filmed into ${r.rushes}`],
     editing:   ['REC · editing', r => `the shooting is over, its video is being edited into ${r.rushes}`],
     done:      ['🎬 video', r => `the session's video: ${r.kept || r.video || r.rushes}`],
     failed:    ['🎬 failed', r => `the recording failed: see ${r.log}`],
   };
   function renderRecording(recording){
+    renderRecordButton(recording);
     const kv = document.getElementById('rec-kv'), view = recording && RECORDING_VIEW[recording.state];
     kv.hidden = !view;
     if(!view) return;
@@ -1614,6 +1617,27 @@
     document.getElementById('rec-text').textContent = view[0];
     kv.title = view[1](recording);
   }
+
+  let recordingState = null;
+  function renderRecordButton(recording){
+    const btn = document.getElementById('rec-btn'), state = recording?.state || 'idle';
+    recordingState = state;
+    btn.textContent = state === 'recording' ? '⏹ stop recording' : state === 'starting' ? '⏺ starting…' : '⏺ record';
+    btn.disabled = !!recording?.unavailable || state === 'starting' || state === 'editing';
+    btn.title = recording?.unavailable ? recording.unavailable
+      : state === 'recording' ? "end this recording: its video is edited and copied into the session's reports"
+      : state === 'editing' ? 'the video of the last recording is being edited'
+      : "film the session from now on: its video is edited and copied into the session's reports";
+  }
+  document.getElementById('rec-btn').onclick = async ()=>{
+    const action = recordingState === 'recording' ? 'stop' : 'start';
+    try{
+      const response = await fetch(`/pybiscus-session/recording/${action}`, {method:'POST', headers:{'X-Pybiscus':'1'}});
+      const data = await response.json();
+      if(!response.ok){ alert(data.message || `the recording could not ${action}`); return; }
+      renderRecording(data.recording);
+    }catch(error){ console.error(`Error at recording ${action}:`, error); }
+  };
 
   let repetitionSessions = 0;
   function renderRepetition(repetition){
