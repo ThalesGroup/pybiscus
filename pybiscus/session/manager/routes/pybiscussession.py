@@ -62,15 +62,15 @@ def pybiscus_manager_run_session():
             presets = json.loads(decoded)
             repeat = presets.get("repeat")
             if repeat is not None:
-                problem = repetition_refused(repeat)
-                if problem:
-                    return jsonify({"status": "error", "message": problem}), 409
+                problems = repetition_refused(repeat)
+                if problems:
+                    return refused(problems), 409
             if pybiscus.session.manager.session_manager.upper_link is not None:
                 apply_upper_constraints(presets)
             # the lower levels' servers stop after as many rounds: none may wait for a round that never comes
             if pybiscus.session.manager.session_manager.lower_levels and not presets.get("num_rounds"):
-                return jsonify({"status": "error",
-                                "message": "a session with lower levels sets num_rounds in its session form: they follow it round for round"}), 409
+                return refused([{"loc": ["num_rounds"],
+                                 "msg": "a session with lower levels sets num_rounds in its session form: they follow it round for round"}]), 409
             record_session_constraints(presets)
 
             # store them into context
@@ -110,19 +110,28 @@ def pybiscus_manager_run_session():
         "status": "success",
     }), 200
 
-def repetition_refused(repeat) -> str:
-    """why a session cannot be launched again at deadlines, or an empty string"""
+def refused(problems: list):
+    """a refused session form: each problem as the check's errors ({loc, msg}), which the form shows
+    under its field, and as one message for a caller without the form"""
+    message = "; ".join(f"{'.'.join(map(str, p['loc']))}: {p['msg']}" if p["loc"] else p["msg"] for p in problems)
+    return jsonify({"status": "error", "message": message, "fields": problems})
+
+
+def repetition_refused(repeat) -> list:
+    """why a session cannot be launched again at deadlines, as the check's errors; empty if it can"""
     from pydantic import ValidationError
     from pybiscus.core.schedule import ConfigSchedule
     session = pybiscus.session.manager.session_manager
     # each level of a tree is launched by its own operator, its rounds following its upper level's
     if session.upper_link is not None or session.lower_levels:
-        return "a hierarchical session cannot be launched again at deadlines yet: repeat a session without lower or upper level"
+        return [{"loc": ["repeat"],
+                 "msg": "a hierarchical session cannot be launched again at deadlines yet: repeat a session without lower or upper level"}]
     try:
         ConfigSchedule.model_validate(repeat)
     except ValidationError as error:
-        return f"repeat: {error.errors()[0]['msg']}"
-    return ""
+        return [{"loc": ["repeat", *e["loc"]], "msg": e["msg"]}
+                for e in error.errors(include_url=False, include_context=False, include_input=False)]
+    return []
 
 # **************************
 

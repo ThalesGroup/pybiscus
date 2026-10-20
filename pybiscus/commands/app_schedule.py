@@ -21,7 +21,9 @@ def preview(
     try:
         config = ConfigSchedule(every=every, cron=cron, timezone=timezone, start=start)
     except ValidationError as error:
-        logm.console.log(f"❌ {error.errors()[0]['msg']}")
+        first = error.errors()[0]
+        option = f"--{first['loc'][0]}: " if first["loc"] else ""
+        logm.console.log(f"❌ {option}{first['msg']}")
         raise typer.Exit(code=1)
     schedule = Schedule(config)
     logm.console.log(f"🗓️ zone {schedule.zone}")

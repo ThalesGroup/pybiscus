@@ -8,6 +8,10 @@
   Client learning rate (η_l), Adaptivity (τ), First / Second moment decay (β₁, β₂)), FedProx's
   Proximal term weight (μ), ALIE's Deviation (z), the models' `mid_shape`, the client's Validation
   before training; `*_sub_dir` reads "subdirectory".
+* Session form: a session the manager refuses keeps the form open, each problem in red under its
+  field (`repeat.every`, `repeat.timezone`, `num_rounds`…) or under *Run session*; it used to close
+  the form and show the message in a browser alert. The schedule's errors name their field
+  (`pybiscus schedule preview` says which option).
 
 ## [Version 0.13.0]
 

@@ -1427,12 +1427,20 @@
          && !confirm(`min_clients = ${wanted}, while ${registeredClients} client(s) are registered.\n\n${minClientsRisk(wanted, registeredClients, !!event.data?.value?.data_partition)}\n\nLaunch the session anyway?`)){
         return;
       }
-      closeSessionConfig();
-      session.sessionState = "paramsDefined";
+      // the form stays open until the session is accepted: a refusal is shown in it, under its fields
+      const form = event.source;
       const presets = encodeURIComponent(JSON.stringify(event.data?.value));
       fetch(`/pybiscus-session/run?presets=${presets}`, {method:'POST', headers:{'X-Pybiscus':'1'}})
-        .then(r=>{ if(r.status===409) r.json().then(answer=>alert(answer.message)); })
-        .catch(err=>console.error('Error running pybiscus session:', err));
+        .then(async r=>{
+          if(r.ok){ closeSessionConfig(); session.sessionState = "paramsDefined"; return; }
+          const answer = await r.json().catch(()=>({message:`session refused (HTTP ${r.status})`}));
+          if(form) form.postMessage({type:'session_refused', message:answer.message, fields:answer.fields || []}, '*');
+          else alert(answer.message);
+        })
+        .catch(err=>{
+          console.error('Error running pybiscus session:', err);
+          if(form) form.postMessage({type:'session_refused', message:`the manager did not answer: ${err}`, fields:[]}, '*');
+        });
     }
   });
 

@@ -6,6 +6,7 @@ launch_session_button.addEventListener('click', function() {
 
     // Select top-div ided element
     const topDiv = document.getElementById('top-div');
+    clearRefusal(topDiv);
 
     // generate configuration data (returns a list of 3-tuples)
     raw_data = traverseDOM(topDiv, []).reverse();
@@ -117,4 +118,31 @@ launch_session_button.addEventListener('click', function() {
     // console.log( server_data );
 
     window.parent.postMessage({ type: "session_config", value: server_data }, "*");
+});
+
+function clearRefusal(topDiv) {
+    pybiscusCheckErrors.clear(topDiv);
+    document.getElementById('check-failure-result').style.display = 'none';
+    document.getElementById('check-errors-unplaced').replaceChildren();
+}
+
+// the manager refused the session: its problems as the check's errors, shown under their fields
+window.addEventListener('message', event => {
+    if (event.source !== window.parent || event.data?.type !== 'session_refused') return;
+    const topDiv = document.getElementById('top-div');
+    const fields = Array.isArray(event.data.fields) ? event.data.fields : [];
+    const unplaced = pybiscusCheckErrors.show(topDiv, fields);
+    const failure = document.getElementById('check-failure-result');
+    failure.textContent = fields.length > unplaced.length
+        ? `Session refused: ${fields.length} problem${fields.length > 1 ? 's' : ''}, shown in red in the form.`
+        : 'Session refused.';
+    failure.style.display = 'block';
+    // a refusal about no field (a relay to designate, the upper level not configured) has only its message
+    const lines = fields.length > 0 ? unplaced : [event.data.message || 'unknown reason'];
+    const unplacedDiv = document.getElementById('check-errors-unplaced');
+    for (const line of lines) {
+        const pre = document.createElement('pre');
+        pre.textContent = line;
+        unplacedDiv.appendChild(pre);
+    }
 });

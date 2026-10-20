@@ -8,7 +8,7 @@ from typing import ClassVar, Optional
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from cronsim import CronSim, CronSimError
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 DURATION_UNITS = {"s": 1, "min": 60, "h": 3600, "d": 86400, "w": 604800}
 _DURATION_PART = re.compile(r"(\d+(?:\.\d+)?)(s|min|h|d|w)")
@@ -70,22 +70,40 @@ class ConfigSchedule(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
+    # field validators, not one model validator: the error then names its field (loc), which the
+    # forms show it under
+    @field_validator("every")
+    @classmethod
+    def valid_period(cls, every):
+        if every is not None:
+            parse_duration(every)
+        return every
+
+    @field_validator("timezone")
+    @classmethod
+    def known_zone(cls, timezone):
+        if timezone is not None:
+            try:
+                ZoneInfo(timezone)
+            except (ZoneInfoNotFoundError, ValueError):
+                raise ValueError(f"unknown zone '{timezone}' (an IANA name, e.g. Europe/Paris)")
+        return timezone
+
+    # the syntax of a cron expression does not depend on the zone it is read in
+    @field_validator("cron")
+    @classmethod
+    def valid_cron(cls, cron):
+        if cron is not None:
+            try:
+                next(CronSim(cron, datetime.now()))
+            except CronSimError as error:
+                raise ValueError(f"'{cron}': {error}")
+        return cron
+
     @model_validator(mode="after")
     def one_format(self):
         if (self.every is None) == (self.cron is None):
             raise ValueError("schedule: give either every (a period) or cron (fixed times), exactly one of them")
-        if self.every is not None:
-            parse_duration(self.every)
-        if self.timezone is not None:
-            try:
-                ZoneInfo(self.timezone)
-            except (ZoneInfoNotFoundError, ValueError):
-                raise ValueError(f"schedule.timezone: unknown zone '{self.timezone}' (an IANA name, e.g. Europe/Paris)")
-        if self.cron is not None:
-            try:
-                next(CronSim(self.cron, datetime.now(self.zone())))
-            except CronSimError as error:
-                raise ValueError(f"schedule.cron: '{self.cron}': {error}")
         return self
 
     def zone(self) -> tzinfo:

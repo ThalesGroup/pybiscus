@@ -81,7 +81,9 @@ of each share (`data_holdout`), `num_rounds`, `min_clients`, `robustness`, `shar
 ![Session configuration, data partition and holdout](images/session_manager_config2.png "Session configuration, data partition and holdout")
 
 *Run session* sends these values to every agent: their forms open with them set and locked (🔒
-on the field name).
+on the field name). A session the manager refuses (a repetition's period or zone that it cannot
+read, a lower level without a relay…) leaves the form open, each problem in red under its field, or
+under the button when it is about no field.
 
 ### 5. Launch the server
 
