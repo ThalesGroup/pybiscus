@@ -1,6 +1,24 @@
 # Changelog
 
-## Unreleased
+## [Version 0.14.0]
+
+Since `version0.13.0` (2026-10-19): the manager tells what to do next, sums up an ended session and
+fits its charts; sessions recorded from the manager (`--record`, the session form's box, a record
+button) and an interactive editor for the recordings (`edit --ui`, mosaic, screenshots, export);
+server-side differential privacy and FLTrust measured at 20 clients.
+
+### Dependencies
+
+* `pip-audit` finds no known vulnerability in `uv.lock`; no dependency changed.
+
+### Robust aggregation and privacy
+
+* Server-side differential privacy at 20 clients (`launch/campaign/cifar10_serverdp_20clients.yml`,
+  3 seeds): at epsilon 20, a tight bound (C 0.5, most clients clipped) loses 7 points to FedAvg, a
+  loose one (C 1) 15, the adaptive bound in between; `docs/configuration.md`.
+* FLTrust at 20 clients, 5 attackers (`launch/campaign/cifar10_fltrust_20clients.yml`, 3 seeds):
+  3.5 points lost without attacker, 5 sign flippers x10 stopped (FedAvg falls to chance), ALIE at
+  z 1 let through like FedAvg; `docs/robust-aggregation.md`.
 
 ### Agent pages
 
