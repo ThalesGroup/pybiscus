@@ -307,10 +307,11 @@ server_strategy:
   stopped cifar10's learning (`launch/campaign/cifar10_serverdp.yml`) for an epsilon of 13 after 5
   rounds. Meaningful central DP needs many clients.
 - With 20 clients (`launch/campaign/cifar10_serverdp_20clients.yml`, dirichlet shares, 10 rounds,
-  one seed: a first look), the noise is divided by 20: FedAvg reaches 0.366; z 0.3 costs about a
-  point but its epsilon (106) protects little; at epsilon 20 (z 1) a tight bound learns better than
-  a loose one, C 0.5 (most clients clipped, noise 0.025) 0.295 against C 1 (noise 0.05) 0.210, the
-  adaptive bound in between (0.239); at epsilon 9 (z 2, C 0.5) 0.181. Clipping costs less than
+  three seeds, accuracy at round 10, mean ± std), the noise is divided by 20: FedAvg reaches
+  0.363 ± 0.016; z 0.3 costs about a point (0.354) but its epsilon (106) protects little; at epsilon
+  20 (z 1) a tight bound learns better than a loose one on every seed, C 0.5 (most clients clipped,
+  noise 0.025) 0.291 ± 0.012 against C 1 (noise 0.05) 0.214 ± 0.007, the adaptive bound in between
+  (0.232 ± 0.023); at epsilon 9 (z 2, C 0.5) 0.174. Clipping costs less than
   noise: set C near the median update norm, or below it.
 
 
