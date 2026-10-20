@@ -590,8 +590,14 @@ def main():
     edit_parser.add_argument("rushes", type=Path)
     edit_parser.add_argument("cut", type=Path)
     edit_parser.add_argument("--output", type=Path, help="basename of the video, or directory of the screenshots, instead of the cut's")
+    edit_parser.add_argument("--ui", action="store_true", help="open a local page: the rushes on a timeline, the cut's images, the video played")
+    edit_parser.add_argument("--port", type=int, default=0, help="with --ui: port of the page (default: a free one)")
+    edit_parser.add_argument("--no-browser", action="store_true", help="with --ui: give the page's address without opening it")
     args = parser.parse_args()
 
+    if args.command == "edit" and args.ui:
+        from rushes.editor import serve
+        return serve(args.rushes, args.cut, args.port, not args.no_browser)
     if args.command == "edit":
         if shutil.which("ffmpeg") is None:
             raise SystemExit("ffmpeg is needed to edit the video: install it first (Debian: apt install ffmpeg)")

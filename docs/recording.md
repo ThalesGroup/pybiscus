@@ -14,7 +14,7 @@ A session is shot in one of three ways: a **scenario** that runs it all (a manag
 start on the machine, register, configure and launch the session), a **hierarchical scenario**
 (a tree of sessions), or **`--attach`**, which follows a session someone runs.
 
-The shooting and the editing are in `launch/doc/rushes/`, which knows nothing of Pybiscus: the
+The shooting and the editing (and the interactive editor, `edit --ui`) are in `launch/doc/rushes/`, which knows nothing of Pybiscus: the
 Pybiscus side (`record_session.py`) names the views, their panels and the events.
 
 > This page follows the tool as it grows (see the end of the page).
@@ -91,6 +91,28 @@ does not succeed, or when the runs do not end within `timeout`.
 uv run launch/doc/record_session.py edit <rushes> launch/doc/scenarios/mnist-session.cut.yml
 uv run launch/doc/record_session.py edit <rushes> my.cut.yml --output docs/videos/try
 ```
+
+### Editing interactively
+
+```bash
+uv run launch/doc/record_session.py edit <rushes> my.cut.yml --ui
+```
+
+opens a page of this machine only (`127.0.0.1`, a free port; `--port` to choose it, `--no-browser`
+to only print its address):
+
+- the **image** of the cut, as the export composes it, with ⏮ ◀ ▶ ▶| (or Home, ←, space, →): *play*
+  shows each image of the video for its time, without the fade the export adds;
+- the **video bar**: the scenes in the video's time, a click goes to one;
+- the **timeline** of the rushes in their own time: the scenes (hatched when an override leaves one
+  out), the events (large: they start a scene; small: no rule), and a track per view, a mark per
+  capture (bright when the page changed). A click shows the cut's image at that moment, or on a
+  view's track that view alone; a click on a scene selects it; the wheel zooms, a drag moves;
+- the **scene** selected: its time in the rushes and in the video, its images, its main view, inset,
+  caption, pace and the event's fields, in yellow what an override of that scene sets.
+
+The page reads the cut's file every 2 seconds: edit it, save, the page follows. A wrong cut is
+shown with its message, and the last plan stays.
 
 ### The cut
 

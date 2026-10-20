@@ -61,7 +61,11 @@
 * A cut's `overrides:` change one scene (the `index`-th of its kind): its start (`offset`), its
   `duration`, its main view, inset, caption or pace, its inset's `corner` and `width`, or leave it
   out (`skip`); a rule applied to every scene of its kind. The editing computes the plan of the video
-  (its images, in order) apart from rendering it, for an interactive editor to come.
+  (its images, in order) apart from rendering it.
+* `record_session.py edit <rushes> <cut> --ui`: a local page showing the rushes on a timeline (the
+  scenes, the events, a track per view), the cut's image at any moment as the export composes it,
+  the video played from its plan, the selected scene's settings; it follows the cut's file as it is
+  edited, and shows a wrong cut's message.
 
 ## [Version 0.13.0]
 
