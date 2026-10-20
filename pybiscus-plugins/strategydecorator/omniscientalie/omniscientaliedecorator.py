@@ -23,7 +23,7 @@ class ConfigOmniscientAlieDecoratorData(BaseModel):
 
     PYBISCUS_CONFIG: ClassVar[str] = "config"
 
-    z: Optional[float] = Field(default=None, gt=0, description="deviation sent, in honest standard deviations; unset: computed from the round's numbers of clients and attackers (0.57 for 2 of 7)")
+    z: Optional[float] = Field(title="Deviation (z)", default=None, gt=0, description="deviation sent, in honest standard deviations; unset: computed from the round's numbers of clients and attackers (0.57 for 2 of 7)")
     from_round: int = Field(default=1, ge=1, description="first round attacked")
 
     model_config = ConfigDict(extra="forbid")

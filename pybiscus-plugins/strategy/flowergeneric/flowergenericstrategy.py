@@ -42,7 +42,7 @@ class FedAvgMFactory(FlowerStrategyFactory):
 class ConfigFedProxData(ConfigFlowerFailuresData):
     """FedAvg with a proximal term mu/2 * ||w - w_global||^2 in the clients' loss, which limits
     their drift from the global model, see flwr.server.strategy.FedProx. mu = 0 is FedAvg."""
-    proximal_mu: float = Field(default=0.01, ge=0, description="weight of the proximal term mu/2 * ||w - w_global||^2 in the clients' loss, which limits their drift; 0: FedAvg")
+    proximal_mu: float = Field(title="Proximal term weight (μ)", default=0.01, ge=0, description="weight of the proximal term mu/2 * ||w - w_global||^2 in the clients' loss, which limits their drift; 0: FedAvg")
 
 
 class ConfigFedProx(BaseModel):
@@ -71,11 +71,11 @@ class FedProxFactory(FlowerStrategyFactory):
 class ConfigFedAdamData(ConfigFlowerFailuresData):
     """Server-side Adam, see flwr.server.strategy.FedAdam. eta: server learning rate; tau: adaptivity
     (a tiny tau makes every step the sign of the update); eta_l: informative only (unused by Flower)."""
-    eta:    float = Field(default=1e-2, gt=0, description='server learning rate: the size of the step the server takes along the aggregated update')
-    eta_l:  float = Field(default=0.1,  gt=0, description="the clients' learning rate, informative only: Flower does not use it")
-    beta_1: float = Field(default=0.9,  ge=0, lt=1, description="decay of the first moment (momentum) of the server's Adam")
-    beta_2: float = Field(default=0.99, ge=0, lt=1, description="decay of the second moment of the server's Adam")
-    tau:    float = Field(default=1e-9, gt=0, description='adaptivity: added to the denominator; tiny, every step is about the sign of the update')
+    eta:    float = Field(title="Server learning rate (η)", default=1e-2, gt=0, description='server learning rate: the size of the step the server takes along the aggregated update')
+    eta_l:  float = Field(title="Client learning rate (η_l)", default=0.1,  gt=0, description="the clients' learning rate, informative only: Flower does not use it")
+    beta_1: float = Field(title="First moment decay (β₁)", default=0.9,  ge=0, lt=1, description="decay of the first moment (momentum) of the server's Adam")
+    beta_2: float = Field(title="Second moment decay (β₂)", default=0.99, ge=0, lt=1, description="decay of the second moment of the server's Adam")
+    tau:    float = Field(title="Adaptivity (τ)", default=1e-9, gt=0, description='adaptivity: added to the denominator; tiny, every step is about the sign of the update')
 
 
 class ConfigFedAdam(BaseModel):
@@ -93,11 +93,11 @@ class FedAdamFactory(FlowerStrategyFactory):
 class ConfigFedYogiData(ConfigFlowerFailuresData):
     """Server-side Yogi, see flwr.server.strategy.FedYogi. eta: server learning rate; tau:
     adaptivity; eta_l: informative only (unused by Flower)."""
-    eta:    float = Field(default=0.01,   gt=0, description='server learning rate: the size of the step the server takes along the aggregated update')
-    eta_l:  float = Field(default=0.0316, gt=0, description="the clients' learning rate, informative only: Flower does not use it")
-    beta_1: float = Field(default=0.9,    ge=0, lt=1, description="decay of the first moment (momentum) of the server's Yogi")
-    beta_2: float = Field(default=0.99,   ge=0, lt=1, description="decay of the second moment of the server's Yogi")
-    tau:    float = Field(default=1e-9,   gt=0, description='adaptivity: added to the denominator; tiny, every step is about the sign of the update')
+    eta:    float = Field(title="Server learning rate (η)", default=0.01,   gt=0, description='server learning rate: the size of the step the server takes along the aggregated update')
+    eta_l:  float = Field(title="Client learning rate (η_l)", default=0.0316, gt=0, description="the clients' learning rate, informative only: Flower does not use it")
+    beta_1: float = Field(title="First moment decay (β₁)", default=0.9,    ge=0, lt=1, description="decay of the first moment (momentum) of the server's Yogi")
+    beta_2: float = Field(title="Second moment decay (β₂)", default=0.99,   ge=0, lt=1, description="decay of the second moment of the server's Yogi")
+    tau:    float = Field(title="Adaptivity (τ)", default=1e-9,   gt=0, description='adaptivity: added to the denominator; tiny, every step is about the sign of the update')
 
 
 class ConfigFedYogi(BaseModel):
@@ -115,9 +115,9 @@ class FedYogiFactory(FlowerStrategyFactory):
 class ConfigFedAdagradData(ConfigFlowerFailuresData):
     """Server-side Adagrad, see flwr.server.strategy.FedAdagrad. eta: server learning rate; tau:
     adaptivity (a tiny tau makes every step the sign of the update); eta_l: informative only."""
-    eta:   float = Field(default=1e-2, gt=0, description='server learning rate: the size of the step the server takes along the aggregated update')
-    eta_l: float = Field(default=0.1,  gt=0, description="the clients' learning rate, informative only: Flower does not use it")
-    tau:   float = Field(default=1e-9, gt=0, description='adaptivity: added to the denominator; tiny, every step is about the sign of the update')
+    eta:   float = Field(title="Server learning rate (η)", default=1e-2, gt=0, description='server learning rate: the size of the step the server takes along the aggregated update')
+    eta_l: float = Field(title="Client learning rate (η_l)", default=0.1,  gt=0, description="the clients' learning rate, informative only: Flower does not use it")
+    tau:   float = Field(title="Adaptivity (τ)", default=1e-9, gt=0, description='adaptivity: added to the denominator; tiny, every step is about the sign of the update')
 
 
 class ConfigFedAdagrad(BaseModel):

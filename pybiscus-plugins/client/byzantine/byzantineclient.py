@@ -46,7 +46,7 @@ class ConfigByzantineClientData(BaseModel):
     # clients (sets z), z itself to force it, directory they share, wait for the others
     colluders: int = Field(default=2, ge=2)
     num_clients: Optional[int] = Field(default=None, ge=1)
-    z: Optional[float] = Field(default=None, gt=0)
+    z: Optional[float] = Field(title="Deviation (z)", default=None, gt=0)
     shared_dir: str = "/tmp/pybiscus-alie"
     timeout: float = Field(default=120.0, gt=0)
     # label_flip: number of classes of the task

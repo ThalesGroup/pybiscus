@@ -24,7 +24,7 @@ class ConfigCNN(BaseModel):
     PYBISCUS_CONFIG: ClassVar[str] = "config"
 
     input_shape: int   = Field( default=3,     description="number of channels of the input" )
-    mid_shape:   int   = Field( default=6,     description="number of channels of the second convolutional layer" )
+    mid_shape:   int   = Field( title="Channels of the second layer", default=6,     description="number of channels of the second convolutional layer" )
     n_classes:   int   = Field( default=10,    description="number of classes" )
     lr:          float = Field( default=0.001, description="the learning rate" )
 

@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+### Agent pages
+
+* Config forms: readable labels for the adaptive strategies' parameters (Server learning rate (η),
+  Client learning rate (η_l), Adaptivity (τ), First / Second moment decay (β₁, β₂)), FedProx's
+  Proximal term weight (μ), ALIE's Deviation (z), the models' `mid_shape`, the client's Validation
+  before training; `*_sub_dir` reads "subdirectory".
+
 ## [Version 0.13.0]
 
 Since `version0.12.0` (2026-10-18): the GUI reworked — one dark theme (with a light one) shared by

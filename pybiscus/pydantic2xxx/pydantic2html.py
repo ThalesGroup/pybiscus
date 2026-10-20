@@ -40,7 +40,8 @@ YAML_KEY = re.compile(r"[A-Za-z][A-Za-z0-9_]*")
 
 
 def humanize_key(key: str) -> str:
-    words = key.split("_")
+    # sub_dir is one word split in two: "sub directory" would read as two words
+    words = key.replace("sub_dir", "subdir").split("_")
     if len(words) > 1 and words[0] in NUMBER_PREFIXES:
         words = ["number", "of"] + words[1:]
     words = [w.upper() if w in LABEL_ACRONYMS else LABEL_WORDS.get(w, w) for w in words if w]

@@ -35,7 +35,7 @@ class ConfigDeeplog(BaseModel):
     PYBISCUS_CONFIG: ClassVar[str] = "config"
 
     input_shape: int   = Field( default=1,     description="input size" )
-    mid_shape:   int   = Field( default=64,     description="hidden size" )
+    mid_shape:   int   = Field( title="Hidden size", default=64,     description="hidden size" )
     n_layers:   int   = Field( default=2,    description="number of hidden layers" )
     n_classes:   int   = Field( default=33,    description="number of classes" )
     

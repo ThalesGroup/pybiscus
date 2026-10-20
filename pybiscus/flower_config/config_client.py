@@ -58,7 +58,7 @@ class ConfigClientRun(BaseModel):
     PYBISCUS_CONFIG: ClassVar[str] = "client_run"
 
     cid: int            = 1
-    pre_train_val: bool = Field(default=False, description='evaluate the global model received at each round before training on it (*_pre_train_val metrics)')
+    pre_train_val: bool = Field(title="Validation before training", default=False, description='evaluate the global model received at each round before training on it (*_pre_train_val metrics)')
     optimizer_state: OptimizerState = OptimizerState.reset
     # new examples arriving between rounds: a data module reads them only in setup() otherwise, once
     refresh_data: bool = Field(default=False, description='read the data again before each round, to train on the examples arrived since (a data module may read only the new ones)')
