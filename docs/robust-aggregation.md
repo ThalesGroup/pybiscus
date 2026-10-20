@@ -604,6 +604,29 @@ paired by seed (FLTrust without attacker: to FedAvg):
 - The attacks themselves harm little here: 2 points for label flipping, under 1 for ALIE. FLTrust's
   case is heterogeneous data, where it costs 2 to 3 points.
 
+### FLTrust at 20 clients
+
+`launch/campaign/cifar10_fltrust_20clients.yml`: dirichlet shares, 20 clients of which 5 attackers,
+3 local epochs, 10 rounds, 500 trusted examples and `normalize_to: median` (the defaults), 3 seeds;
+the same setting as [ALIE at 5 attackers of 20](#at-the-papers-proportion-5-attackers-of-20). Test
+accuracy at round 10, and the difference to the same defense without attacker paired by seed
+(FLTrust without attacker: to FedAvg):
+
+| defense | no attacker | 5 ALIE colluders, z 1 | omniscient ALIE, z 1 | 5 sign flippers x 10 |
+|---|---|---|---|---|
+| FedAvg | 0.364 | 0.355 (−0.9 ± 0.3) | 0.350 (−1.4 ± 0.2) | 0.099 (−26.6 ± 1.6, chance) |
+| FLTrust | 0.329 (−3.5 ± 0.8 vs FedAvg) | 0.322 (−0.7 ± 0.9) | 0.316 (−1.3 ± 0.8) | 0.326 (−0.2 ± 0.7) |
+
+- FLTrust costs 3.5 points without attacker, on every seed: with a twentieth of uneven data each,
+  the honest clients' trust scores spread from 0.08 to 0.52 (about 0.3 in the middle), so a few
+  honest clients count four to six times less than others.
+- The sign flippers, which bring FedAvg down to chance (10 classes), are left out of every round
+  (score 0) and do no harm: this is what FLTrust buys.
+- ALIE at z 1 passes: its updates score 0.17 to 0.24, inside the honest range. It harms FLTrust no
+  more and no less than FedAvg, about one point, which is within the noise of three seeds.
+- At 20 clients FLTrust is worth its cost only against attackers whose direction stands out (sign
+  flipping, scaled updates); against ALIE, which harms little at z 1, it adds a cost and no defense.
+
 ## Label flipping: poisoned data
 
 `attack: label_flip`: the attacker trains on its own data with every label l replaced by

@@ -1,0 +1,106 @@
+# Campaign of launch/campaign/strategy_campaign.py: FLTrust at 20 clients, 5 of them attackers. At 7
+# clients FLTrust held against omniscient ALIE and sign flippers (cifar10_fltrust.yml, dirichlet) and
+# cost nothing on iid shares (cifar10_fltrust_iid.yml); at 20 clients each holds a twentieth of the
+# data and the dirichlet shares are more uneven: does the trusted direction still let honest clients
+# through, and does it stop the attacks that beat the other defenses at 20 clients
+# (cifar10_alie_20clients.yml)? FLTrust with its defaults (500 trusted examples, median norm), against
+# FedAvg under the same attacks. Each attacked variant is compared to the same defense without
+# attacker, seed by seed; FLTrust without attacker to FedAvg.
+#   uv run python launch/campaign/strategy_campaign.py launch/campaign/cifar10_fltrust_20clients.yml
+# Dirichlet 0.5 shares, 20 clients, 3 local epochs, 10 rounds. 24 runs, about 1 h 10. 20 clients fill
+# 24 GB of memory and a few GB of swap: run it alone, never next to a live session or a browser.
+# Status: our own measurement, not a reproduction (docs/robust-aggregation.md, Limits).
+
+server_config: configs/cifar10_cnn/distributed/without_ssl/server.yml
+client_config: configs/cifar10_cnn/distributed/without_ssl/client_1.yml
+output: experiments/campaigns
+plugin_manifests: [launch/campaign/test-plugins-conf.yml]
+
+clients: 20
+rounds: 10
+local_epochs: 3
+port: 3399                 # the Flower server of each run: must be free
+threads_per_client: auto   # physical cores / clients
+timeout: 3600              # seconds per run
+seeds: [1, 2, 3]           # every variant once per seed, then mean ± std
+
+client_data:
+  train:
+    partition:
+      scheme: dirichlet
+      alpha: 0.5
+      seed: 42
+  val:
+    source: holdout
+    fraction: 0.1
+
+server_data:
+  test:
+    max_samples: 2000
+  trusted: {}
+
+variants:
+  - label: FedAvg, no attacker
+    strategy: {name: fedavg, config: {}}
+  - label: FedAvg, 5 ALIE colluders z 1
+    reference: FedAvg, no attacker
+    strategy: {name: fedavg, config: {}}
+    client_overrides:
+      0: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: alie, colluders: 5, z: 1.0, shared_dir: "{work}/alie"}}}}
+      1: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: alie, colluders: 5, z: 1.0, shared_dir: "{work}/alie"}}}}
+      2: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: alie, colluders: 5, z: 1.0, shared_dir: "{work}/alie"}}}}
+      3: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: alie, colluders: 5, z: 1.0, shared_dir: "{work}/alie"}}}}
+      4: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: alie, colluders: 5, z: 1.0, shared_dir: "{work}/alie"}}}}
+  - label: FedAvg, omniscient ALIE z 1
+    reference: FedAvg, no attacker
+    strategy: {name: fedavg, config: {}}
+    pipeline: [{name: omniscientalie, config: {z: 1.0}}]
+    client_overrides:
+      0: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: none}}}}
+      1: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: none}}}}
+      2: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: none}}}}
+      3: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: none}}}}
+      4: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: none}}}}
+  - label: FedAvg, 5 sign flippers x10
+    reference: FedAvg, no attacker
+    strategy: {name: fedavg, config: {}}
+    client_overrides:
+      0: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: sign_flip, scale: 10.0}}}}
+      1: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: sign_flip, scale: 10.0}}}}
+      2: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: sign_flip, scale: 10.0}}}}
+      3: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: sign_flip, scale: 10.0}}}}
+      4: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: sign_flip, scale: 10.0}}}}
+  - label: FLTrust, no attacker
+    reference: FedAvg, no attacker
+    strategy: {name: fedavg, config: {}}
+    pipeline: [{name: fltrust, config: {}}]
+  - label: FLTrust, 5 ALIE colluders z 1
+    reference: FLTrust, no attacker
+    strategy: {name: fedavg, config: {}}
+    pipeline: [{name: fltrust, config: {}}]
+    client_overrides:
+      0: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: alie, colluders: 5, z: 1.0, shared_dir: "{work}/alie"}}}}
+      1: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: alie, colluders: 5, z: 1.0, shared_dir: "{work}/alie"}}}}
+      2: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: alie, colluders: 5, z: 1.0, shared_dir: "{work}/alie"}}}}
+      3: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: alie, colluders: 5, z: 1.0, shared_dir: "{work}/alie"}}}}
+      4: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: alie, colluders: 5, z: 1.0, shared_dir: "{work}/alie"}}}}
+  - label: FLTrust, omniscient ALIE z 1
+    reference: FLTrust, no attacker
+    strategy: {name: fedavg, config: {}}
+    pipeline: [{name: fltrust, config: {}}, {name: omniscientalie, config: {z: 1.0}}]
+    client_overrides:
+      0: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: none}}}}
+      1: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: none}}}}
+      2: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: none}}}}
+      3: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: none}}}}
+      4: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: none}}}}
+  - label: FLTrust, 5 sign flippers x10
+    reference: FLTrust, no attacker
+    strategy: {name: fedavg, config: {}}
+    pipeline: [{name: fltrust, config: {}}]
+    client_overrides:
+      0: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: sign_flip, scale: 10.0}}}}
+      1: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: sign_flip, scale: 10.0}}}}
+      2: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: sign_flip, scale: 10.0}}}}
+      3: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: sign_flip, scale: 10.0}}}}
+      4: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: sign_flip, scale: 10.0}}}}
