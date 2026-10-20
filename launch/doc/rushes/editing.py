@@ -141,42 +141,56 @@ def scenes(rushes: Rushes, rules: dict):
         yield event, end, rules[event["kind"]]
 
 
+def plan(rushes: Rushes, cut: dict):
+    """the images of the video, in order: {t, main, inset, caption, duration, scene}; the preview and
+    the rendering read the same plan, so that they cannot differ"""
+    timing = {**TIMING, **(cut.get("timing") or {})}
+    frames = []
+    for scene, (event, end, rule) in enumerate(scenes(rushes, cut["scenes"])):
+        fields = {k: v for k, v in event.items() if k not in ("t", "kind")}
+        if "main" not in rule:
+            raise SystemExit(f"the cut's scene {event['kind']!r} has no main view")
+        main, inset = fill(rule["main"], fields), fill(rule.get("inset"), fields)
+        caption, pace = fill(rule.get("caption", ""), fields), rule.get("pace", "event")
+        main_view = main.partition("@")[0]
+        times = [c["t"] for c in rushes.by_view.get(main_view, []) if event["t"] <= c["t"] < end] or [event["t"]]
+        if pace == "progress":
+            per = min(timing["round_frame"], timing["progress_max"] / len(times))
+        else:
+            per = max(timing["min_frame"], timing["last_caption" if pace == "final" else "caption"] / len(times))
+        frames += [{"t": t, "main": main, "inset": inset, "caption": caption, "duration": per, "scene": scene} for t in times]
+    return frames
+
+
+def render(rushes: Rushes, cut: dict, frames_plan, output: Path, frames: Path):
+    composer = Composer(rushes, cut.get("inset"))
+    timing = {**TIMING, **(cut.get("timing") or {})}
+    shutil.rmtree(frames, ignore_errors=True); frames.mkdir(parents=True)
+    lines = []
+    for n, frame in enumerate(frames_plan):
+        name = f"f{n:05d}.png"
+        composer.compose(frame["t"], frame["main"], frame["inset"], frame["caption"]).save(frames / name)
+        lines += [f"file '{frames / name}'", f"duration {frame['duration']:.3f}"]
+        if n + 1 == len(frames_plan) or frames_plan[n + 1]["scene"] != frame["scene"]:
+            # the fade mixes an image with the next one: the scene's last image, repeated for one frame
+            # of the video, fades into itself, and the next scene starts on a cut
+            lines += [f"file '{frames / name}'", "duration 0.040"]
+    final = lines[-2].split("'")[1]
+    lines += [f"file '{final}'", f"duration {timing['end_hold']}", f"file '{final}'"]
+    return assemble(frames, lines, output, cut.get("formats", ["mp4", "webp"]), timing)
+
+
 def edit(rushes_dir: Path, cut: dict, output=None, work=None):
     # ffmpeg reads the images' names relative to the list that gives them
     rushes_dir = Path(rushes_dir).resolve()
     rushes = Rushes(rushes_dir)
-    composer = Composer(rushes, cut.get("inset"))
     written = []
     if cut.get("scenes"):
         output = Path(output or cut.get("output") or rushes_dir / "video").resolve()
-        frames = Path(work or rushes_dir / "edit").resolve()
-        shutil.rmtree(frames, ignore_errors=True); frames.mkdir(parents=True)
-        timing = {**TIMING, **(cut.get("timing") or {})}
-        lines, n = [], 0
-        for event, end, rule in scenes(rushes, cut["scenes"]):
-            fields = {k: v for k, v in event.items() if k not in ("t", "kind")}
-            if "main" not in rule:
-                raise SystemExit(f"the cut's scene {event['kind']!r} has no main view")
-            main, inset = fill(rule["main"], fields), fill(rule.get("inset"), fields)
-            caption, pace = fill(rule.get("caption", ""), fields), rule.get("pace", "event")
-            main_view = main.partition("@")[0]
-            times = [c["t"] for c in rushes.by_view.get(main_view, []) if event["t"] <= c["t"] < end] or [event["t"]]
-            if pace == "progress":
-                per = min(timing["round_frame"], timing["progress_max"] / len(times))
-            else:
-                per = max(timing["min_frame"], timing["last_caption" if pace == "final" else "caption"] / len(times))
-            for t in times:
-                name = f"f{n:05d}.png"; n += 1
-                composer.compose(t, main, inset, caption).save(frames / name)
-                lines += [f"file '{frames / name}'", f"duration {per:.3f}"]
-            # the fade mixes an image with the next one: the scene's last image, repeated for one frame
-            # of the video, fades into itself, and the next scene starts on a cut
-            lines += [f"file '{frames / name}'", "duration 0.040"]
-        if not lines:
+        frames_plan = plan(rushes, cut)
+        if not frames_plan:
             raise SystemExit("no scene: none of the cut's events is in the rushes")
-        final = lines[-2].split("'")[1]
-        lines += [f"file '{final}'", f"duration {timing['end_hold']}", f"file '{final}'"]
-        written += assemble(frames, lines, output, cut.get("formats", ["mp4", "webp"]), timing)
+        written += render(rushes, cut, frames_plan, output, Path(work or rushes_dir / "edit").resolve())
     if cut.get("shots"):
         shots_dir = Path(cut.get("shots_dir", "shots")).resolve()
         shots_dir.mkdir(parents=True, exist_ok=True)
