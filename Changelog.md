@@ -58,6 +58,12 @@
 
 ### Recording
 
+* `session_manager --record [DIR]`: the manager films each of its sessions (its page, the agents'
+  run monitors as tiles, captions from its events) into `DIR` (default `experiments/recordings`),
+  with `launch/doc/record_session.py shoot --attach` run by `uv` in its own process: no new
+  dependency. A recording starts with the manager, after a drop, or joins a session launched while
+  none records; the manager's Ctrl+C ends it, its video edited all the same. `--attach` takes the
+  manager's administration token from `$PYBISCUS_MANAGER_TOKEN` too.
 * A view's panels: an element's id, a CSS selector, or a selector and the container to take
   (`(name, selector, "section")`); `launch/doc/rushes/` no longer assumes Pybiscus' `<section>`
   around a panel. `launch/doc/demos/editor_demo.py` shoots `edit --ui` at work with the same tool,

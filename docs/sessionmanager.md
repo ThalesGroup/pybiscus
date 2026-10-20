@@ -30,6 +30,10 @@ do when several managers run. `--bouquet-mismatch warn` registers it anyway, wit
 manager's log and in the agent's registration page. An agent declaring no bouquet gets the
 manager's.
 
+With `--record`, the manager films each of its sessions into a video (its page and the agents' run
+monitors, with captions), in `experiments/recordings` or the directory given: see
+[recording.md](recording.md#recording-a-session-you-run-yourself).
+
 ![Session manager, empty](images/session_manager_init.png "Session manager, empty")
 
 ### 2. Start the agents

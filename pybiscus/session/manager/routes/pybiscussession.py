@@ -100,6 +100,8 @@ def pybiscus_manager_run_session():
 
     # set the session running flag
     pybiscus.session.manager.session_manager.session_is_running = True
+    if session.recording is not None:
+        session.recording.session_launched()
 
     repeat = (session.agent_gui_json_presets or {}).get("repeat")
     if repeat is not None:

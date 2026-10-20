@@ -477,7 +477,8 @@ def shoot_attached(url, sc, rushes, max_duration, agent_pages=4, agent_tokens=No
     agent:<name>, up to agent_pages of them"""
     parsed = urllib.parse.urlsplit(url)
     base = f"{parsed.scheme}://{parsed.netloc}"
-    token = urllib.parse.parse_qs(parsed.query).get("token", [None])[0]
+    # from the environment too: a manager recording itself does not show it in a command line
+    token = urllib.parse.parse_qs(parsed.query).get("token", [None])[0] or os.environ.get("PYBISCUS_MANAGER_TOKEN")
     # the manager's administration token, required beyond the loopback: in the page's URL once, then a cookie
     headers = {**H, **({"Authorization": f"Bearer {token}"} if token else {})}
 
@@ -615,7 +616,8 @@ def main():
     sub = parser.add_subparsers(dest="command", required=True)
     shoot = sub.add_parser("shoot", help="play a scenario, or follow a running session, and keep its rushes")
     shoot.add_argument("scenario", type=Path, nargs="?", help="scenario file (optional with --attach: its viewport, scale, period, cut)")
-    shoot.add_argument("--attach", metavar="MANAGER_URL", help="follow the session of a running manager, without driving it")
+    shoot.add_argument("--attach", metavar="MANAGER_URL",
+                       help="follow the session of a running manager, without driving it (its administration token: ?token=… or $PYBISCUS_MANAGER_TOKEN)")
     shoot.add_argument("--max-duration", type=float, help="with --attach: stop after this many seconds")
     shoot.add_argument("--agent-pages", type=int, default=4, metavar="N",
                        help="with --attach: shoot the run monitor of the first N agents launching their run (default 4; 0: the manager's page only)")

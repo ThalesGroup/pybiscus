@@ -1,4 +1,5 @@
 import argparse
+import atexit
 import os
 import socket
 from threading import Lock
@@ -84,6 +85,7 @@ session_links = {}
 upper_session_link = None
 # --upper-token: kept apart from upper_link, which the page shows
 upper_token = None
+recording = None       # --record: pybiscus.session.manager.recording.Recording
 session_is_running = False
 agent_gui_json_presets = None
 session_client_id_counter = -1
@@ -162,6 +164,18 @@ def geo_coordinates(text: str) -> dict:
         raise argparse.ArgumentTypeError(f"latitude in [-90, 90], longitude in [-180, 180]: {text!r}")
     return {"type": "coordinates", "latitude": latitude, "longitude": longitude}
 
+def start_recording(directory, browsed_url):
+    from pathlib import Path
+    from pybiscus.session.manager.recording import Recording, missing_requirements
+    global recording
+    missing = missing_requirements()
+    if missing:
+        raise SystemExit(f"--record needs {', '.join(missing)}")
+    recording = Recording(Path(directory), browsed_url, bouquet or f"manager-{manager_port}", admin_token,
+                          no_agent=lambda: not registered_clients and not registered_servers)
+    recording.start()
+    atexit.register(recording.stop)
+
 def main():
 
     parser = argparse.ArgumentParser(description="Start the Federated Learning Manager Server.")
@@ -205,6 +219,10 @@ def main():
     parser.add_argument("--upper-token", default=None,
                         help="session token of the upper-level manager (default: $PYBISCUS_UPPER_TOKEN, else its token file "
                              "when it runs on this machine, started from the same directory)")
+    parser.add_argument("--record", nargs="?", const="experiments/recordings", default=None, metavar="DIR",
+                        help="film each session from this manager's page (and the agents' run monitors) into DIR "
+                             "(default experiments/recordings): rushes and video, by launch/doc/record_session.py; "
+                             "needs uv, ffmpeg and the Chromium of Playwright")
     parser.add_argument("--require-token", action="store_true",
                         help="require the tokens on the loopback too (always required when listening beyond it)")
     args = parser.parse_args()
@@ -237,6 +255,8 @@ def main():
     manager_url = f"http://{linked_host}:{manager_port}"
     print_access("manager", f"http://{browsed_host}:{manager_port}/pybiscus-session/manage", admin_token)
     print(f"🔑 session token, for the agents (shown in the manager page too): {session_token}", flush=True)
+    if args.record:
+        start_recording(args.record, f"http://{browsed_host}:{manager_port}")
     if args.upper_url:
         from pybiscus.session.manager.upper_level import report_to_upper_level
         report_to_upper_level(args.upper_url, args.upper_token)

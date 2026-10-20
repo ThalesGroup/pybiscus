@@ -420,11 +420,36 @@ metrics and the vignettes from their beginning.
 - The recorder's page and the pages of the people following the session do not take anything from
   each other: each page reads the manager's logs, metrics and vignettes from its own position.
 
+**By the manager itself**, `session_manager --record [DIR]` films each of its sessions, with
+`--attach` on its own page, into `DIR` (default `experiments/recordings`, from the manager's
+directory): a `rushes-<bouquet>-<date>/` per session, its `video.mp4` and `video.webp` inside, and
+the recorder's log beside it (`rushes-<bouquet>-<date>.log`). The manager's console says when a
+recording starts and where its video is.
+
+```bash
+session_manager --port 5555 --bouquet demo --record
+```
+
+- A recording starts with the manager, then again whenever it is ready for a new session: after a
+  *Drop session* (no agent registered), or when a session is launched while none records (it then
+  joins it: *Recording joins the running session*). It ends with the session (its runs ended, or
+  the session dropped). A repeated session is recorded until its first runs end.
+- The recorder is `launch/doc/record_session.py`, run by `uv` in its own environment and process
+  group: the manager needs a checkout of the repository, `uv`, `ffmpeg` and the Chromium of
+  Playwright (see *Prerequisites*), but no new dependency. It refuses to start without them.
+- When the manager is stopped (Ctrl+C), the recording ends there and its video is edited all the
+  same, the recorder finishing on its own. A recorder that fails at its start (its log says why)
+  stops the recording for the rest of the manager's run.
+- It is given the manager's administration token through its environment, never in a command
+  line. Agents beyond the loopback asking for their token are left out of the video (manager
+  alone), as with `--attach` without `--agent-token`.
+- A Chromium follows the session all along: a few hundred MB of memory, and a capture every 0.35 s.
+
 **With a screen recorder**, the session can also be recorded from your own screen:
 [OBS Studio](https://obsproject.com/) (a *browser source* per page lets a scene show the manager
 and agents side by side), or on Windows the Xbox Game Bar (`Win` + `Alt` + `R`). Captions and
 time-lapse are then added while editing (Clipchamp, Shotcut, Kdenlive, ffmpeg).
 
 **Planned** (not available yet):
-- a recording started by the session manager itself, with captions taken from its events;
+- the recording chosen in the server's session form, rather than when the manager is started;
 - a record button in the manager's page, recording the tab from the browser.
