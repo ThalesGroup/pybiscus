@@ -129,6 +129,12 @@ screenshots only, without scenes, opens as well: the page shows the views and th
 `<cut>.bak`; *Revert* drops the unsaved changes. The header says whether the page is saved, has
 unsaved changes, or the file changed on disk: saving then asks first.
 
+**Export** writes the video and the screenshots as `edit` does with the saved cut: the same files,
+byte for byte (it waits for the cut to be saved). The *Export* section sets the video's path
+(`output`, relative to the directory the editor was started in) and its formats; a bar follows the
+images, then the encodings. The files written are listed at the end, the video playable in the page;
+a failed export says why.
+
 Without unsaved changes, the page reads the cut's file every 2 seconds: edit it elsewhere, save, the
 page follows. A wrong cut is shown with its message, and the last plan stays.
 
@@ -352,7 +358,7 @@ and agents side by side), or on Windows the Xbox Game Bar (`Win` + `Alt` + `R`).
 time-lapse are then added while editing (Clipchamp, Shotcut, Kdenlive, ffmpeg).
 
 **Planned** (not available yet):
-- in `edit --ui`: exporting the video and the screenshots from the page;
+- a demonstration video of `edit --ui` itself, the page driven by a script;
 - side by side views (a mosaic), as an alternative to a main view and an inset;
 - the agents' run monitors with `--attach`;
 - a recording started by the session manager itself, with captions taken from its events;

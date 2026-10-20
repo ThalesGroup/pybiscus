@@ -1,13 +1,15 @@
 """Interactive editing: a local page showing the rushes on a timeline, with the composed image of the
 cut at any moment and the video played from its plan; a scene's settings are changed there, for that
 scene (an override) or for every scene of its kind (the rule); screenshots are taken from the
-moment shown. All is saved into the cut's file with its comments."""
+moment shown. All is saved into the cut's file with its comments, and exported from the page as edit
+does it."""
 
 import copy
 import io
 import json
 import shutil
 import threading
+import time
 import webbrowser
 from functools import partial
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -18,13 +20,16 @@ from ruamel.yaml import YAML
 from ruamel.yaml.comments import CommentedMap, CommentedSeq
 from ruamel.yaml.error import YAMLError
 
-from .editing import RULE_KEYS, Composer, Rushes, TIMING, check_shots, plan, scenes, shot_anchor, shot_image
+from .editing import RULE_KEYS, Composer, Rushes, TIMING, check_shots, edit, plan, scenes, shot_anchor, shot_image
 from .shooting import log
 
 PAGE = Path(__file__).with_name("editor.html")
 CACHE_SIZE = 400
 JPEG_QUALITY = 82
 SCENE_KEYS = ("offset", "duration", "corner", "width", "skip")
+SETTING_KEYS = ("output", "formats", "shots_dir")
+FORMATS = ("mp4", "webp", "png")
+MEDIA_TYPES = {".mp4": "video/mp4", ".webp": "image/webp", ".png": "image/png"}
 # the header a write must carry: a page of another site cannot send it without the browser asking first
 HEADER = "X-Rushes-Editor"
 
@@ -60,6 +65,7 @@ class Session:
         self.lock = threading.Lock()
         self.cache = {}
         self.disk_mtime, self.scenes, self.frames, self.shots, self.error, self.dirty = None, [], [], [], None, False
+        self.export = {"state": "idle"}
         self.reload()
         if self.error:
             raise SystemExit(self.error)
@@ -111,11 +117,8 @@ class Session:
             kind, key, value = op.get("kind"), op.get("key"), op.get("value")
             if op.get("scope") == "shot":
                 self.change_shot(document, op)
-            elif op.get("scope") == "shots_dir":
-                if value:
-                    document["shots_dir"] = value
-                else:
-                    document.pop("shots_dir", None)
+            elif op.get("scope") == "setting":
+                self.change_setting(document, key, value)
             elif kind not in (document.get("scenes") or {}):
                 raise Refused(f"no rule for the kind {kind!r}")
             elif op.get("scope") == "rule":
@@ -133,7 +136,7 @@ class Session:
                     raise Refused(f"an override sets {', '.join(RULE_KEYS + SCENE_KEYS)}, not {key!r}")
                 self.set_override(document, kind, op.get("index"), key, value, op.get("remove", False))
             else:
-                raise Refused("scope is rule, scene, shot or shots_dir")
+                raise Refused("scope is rule, scene, shot or setting")
             try:
                 self.compute(plain(document))
             except SystemExit as error:
@@ -160,6 +163,20 @@ class Session:
             found.fa.set_flow_style()
             overrides.append(found)
         found[key] = value
+
+    @staticmethod
+    def change_setting(document, key, value):
+        if key not in SETTING_KEYS:
+            raise Refused(f"a setting is {', '.join(SETTING_KEYS)}, not {key!r}")
+        if key == "formats":
+            if not isinstance(value, list) or not value or set(value) - set(FORMATS):
+                raise Refused(f"formats: one or more of {', '.join(FORMATS)}")
+            value = CommentedSeq(value)
+            value.fa.set_flow_style()
+        if value in (None, ""):
+            document.pop(key, None)
+        else:
+            document[key] = value
 
     def change_shot(self, document, op):
         shots = document.get("shots")
@@ -209,6 +226,48 @@ class Session:
                 self.yaml.dump(self.document, out)
             self.disk_mtime, self.dirty = self.cut_file.stat().st_mtime, False
 
+    # ............................................................ export
+
+    def start_export(self):
+        with self.lock:
+            if self.dirty:
+                raise Refused("save first: the export writes what the cut's file says, as edit does")
+            if self.export["state"] == "running":
+                raise Refused("an export is running")
+            if self.error:
+                raise Refused(f"the cut has an error: {self.error}")
+            cut = copy.deepcopy(self.cut)
+            self.export = {"state": "running", "stage": "starting", "done": 0, "total": 0, "written": [],
+                           "error": None, "started": time.time(), "elapsed": 0}
+        threading.Thread(target=self.run_export, args=(cut,), daemon=True).start()
+
+    def run_export(self, cut):
+        export = self.export
+
+        def progress(stage, done=0, total=0):
+            export.update(stage=stage, done=done, total=total, elapsed=time.time() - export["started"])
+
+        try:
+            written = edit(self.rushes.dir, cut, progress=progress)
+            export.update(state="done", written=written)
+        # the thread's end: whatever stops the export is shown in the page rather than lost
+        except BaseException as error:
+            export.update(state="failed", error=str(error) or type(error).__name__)
+        export["elapsed"] = time.time() - export["started"]
+
+    def export_json(self):
+        export = dict(self.export)
+        if export.get("state") == "running":
+            export["elapsed"] = time.time() - export["started"]
+        export["written"] = [{"path": p, "media": MEDIA_TYPES.get(Path(p).suffix)} for p in export.get("written", [])]
+        return export
+
+    def output_file(self, index):
+        written = self.export.get("written", []) if self.export.get("state") == "done" else []
+        if not 0 <= index < len(written) or Path(written[index]).suffix not in MEDIA_TYPES:
+            return None
+        return Path(written[index])
+
     def rushes_json(self):
         r = self.rushes
         views = {name: {"times": [c["t"] for c in captures],
@@ -239,6 +298,8 @@ class Session:
         return {"cut": self.cut_file.name, "error": self.error, "frames": self.frames, "scenes": listed,
                 "skipped": skipped, "video_duration": video_t + timing["end_hold"] if self.frames else 0,
                 "rules": self.cut.get("scenes") or {}, "shots": shots, "shots_dir": self.cut.get("shots_dir"),
+                "output": self.cut.get("output"), "formats": self.cut.get("formats", ["mp4", "webp"]),
+                "default_output": str(self.rushes.dir / "video"),
                 "dirty": self.dirty, "disk_changed": self.dirty and self.disk_changed(),
                 "inset": {"width": 0.42, "corner": "bottom-right", **(self.cut.get("inset") or {})}}
 
@@ -299,6 +360,32 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
 
+    def send_file(self, path):
+        # a range: the video element seeks by asking for a part of the file
+        size, start, end = path.stat().st_size, 0, None
+        ranged = self.headers.get("Range", "").startswith("bytes=")
+        if ranged:
+            first, _, last = self.headers["Range"][6:].partition("-")
+            start, end = int(first or 0), int(last) if last else size - 1
+        end = size - 1 if end is None else min(end, size - 1)
+        self.send_response(206 if ranged else 200)
+        self.send_header("Content-Type", MEDIA_TYPES[path.suffix])
+        self.send_header("Accept-Ranges", "bytes")
+        self.send_header("Content-Length", str(end - start + 1))
+        if ranged:
+            self.send_header("Content-Range", f"bytes {start}-{end}/{size}")
+        self.send_header("Cache-Control", "no-store")
+        self.end_headers()
+        with open(path, "rb") as source:
+            source.seek(start)
+            left = end - start + 1
+            while left > 0:
+                chunk = source.read(min(left, 1 << 20))
+                if not chunk:
+                    break
+                self.wfile.write(chunk)
+                left -= len(chunk)
+
     def json(self, data, code=200):
         self.send(code, json.dumps(data).encode(), "application/json")
 
@@ -325,6 +412,13 @@ class Handler(BaseHTTPRequestHandler):
                 if not 0 <= index < len(session.shots):
                     return self.json({"error": f"no shot {index}"}, 404)
                 return self.send(200, session.shot(index, width), "image/jpeg")
+            if url.path == "/api/export":
+                return self.json(session.export_json())
+            if url.path == "/api/output":
+                path = session.output_file(int(query["i"]))
+                if not path or not path.is_file():
+                    return self.json({"error": "no such file written by the export"}, 404)
+                return self.send_file(path)
             if url.path == "/api/at":
                 data = session.at(float(query["t"]), width)
                 return self.send(200, data, "image/jpeg") if data else self.json({"error": "no scene"}, 404)
@@ -351,6 +445,9 @@ class Handler(BaseHTTPRequestHandler):
                 session.save(bool(body.get("force")))
             elif url.path == "/api/revert":
                 session.revert()
+            elif url.path == "/api/export":
+                session.start_export()
+                return self.json(session.export_json())
             else:
                 return self.json({"error": "not found"}, 404)
             return self.json(session.plan_json())

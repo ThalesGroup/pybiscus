@@ -225,12 +225,17 @@ def plan(rushes: Rushes, cut: dict):
     return frames
 
 
-def render(rushes: Rushes, cut: dict, frames_plan, output: Path, frames: Path):
+def no_progress(stage, done=0, total=0):
+    pass
+
+
+def render(rushes: Rushes, cut: dict, frames_plan, output: Path, frames: Path, progress=no_progress):
     composer = Composer(rushes, cut.get("inset"))
     timing = {**TIMING, **(cut.get("timing") or {})}
     shutil.rmtree(frames, ignore_errors=True); frames.mkdir(parents=True)
     lines = []
     for n, frame in enumerate(frames_plan):
+        progress("images", n, len(frames_plan))
         name = f"f{n:05d}.png"
         composer.compose(frame["t"], frame["main"], frame["inset"], frame["caption"], frame["inset_style"]).save(frames / name)
         lines += [f"file '{frames / name}'", f"duration {frame['duration']:.3f}"]
@@ -240,10 +245,10 @@ def render(rushes: Rushes, cut: dict, frames_plan, output: Path, frames: Path):
             lines += [f"file '{frames / name}'", "duration 0.040"]
     final = lines[-2].split("'")[1]
     lines += [f"file '{final}'", f"duration {timing['end_hold']}", f"file '{final}'"]
-    return assemble(frames, lines, output, cut.get("formats", ["mp4", "webp"]), timing)
+    return assemble(frames, lines, output, cut.get("formats", ["mp4", "webp"]), timing, progress)
 
 
-def edit(rushes_dir: Path, cut: dict, output=None, work=None):
+def edit(rushes_dir: Path, cut: dict, output=None, work=None, progress=no_progress):
     # ffmpeg reads the images' names relative to the list that gives them
     rushes_dir = Path(rushes_dir).resolve()
     rushes = Rushes(rushes_dir)
@@ -253,11 +258,15 @@ def edit(rushes_dir: Path, cut: dict, output=None, work=None):
         frames_plan = plan(rushes, cut)
         if not frames_plan:
             raise SystemExit("no scene: none of the cut's events is in the rushes")
-        written += render(rushes, cut, frames_plan, output, Path(work or rushes_dir / "edit").resolve())
+        # before the images are composed: a directory that cannot be made fails at once
+        output.parent.mkdir(parents=True, exist_ok=True)
+        written += render(rushes, cut, frames_plan, output, Path(work or rushes_dir / "edit").resolve(), progress)
     if cut.get("shots"):
         shots_dir = Path(cut.get("shots_dir", "shots")).resolve()
         shots_dir.mkdir(parents=True, exist_ok=True)
-        for shot in check_shots(rushes, cut):
+        shots = check_shots(rushes, cut)
+        for n, shot in enumerate(shots):
+            progress("screenshots", n, len(shots))
             path = shots_dir / shot["file"]
             if shot["take"]:
                 shutil.copyfile(rushes_dir / rushes.takes[shot["take"]]["file"], path)
@@ -266,6 +275,7 @@ def edit(rushes_dir: Path, cut: dict, output=None, work=None):
             written.append(str(path))
     for path in written:
         log(f"{path} written")
+    return written
 
 
 def check_shots(rushes: Rushes, cut):
@@ -334,7 +344,7 @@ def shot_anchor(rushes: Rushes, view, t):
     return anchor
 
 
-def assemble(frames: Path, lines, output: Path, formats, timing):
+def assemble(frames: Path, lines, output: Path, formats, timing, progress=no_progress):
     concat = frames / "concat.txt"
     concat.write_text("\n".join(lines) + "\n")
     ff = ["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-f", "concat", "-safe", "0", "-i", str(concat)]
@@ -350,11 +360,13 @@ def assemble(frames: Path, lines, output: Path, formats, timing):
     output.parent.mkdir(parents=True, exist_ok=True)
     written = []
     if "mp4" in formats:
+        progress("mp4")
         # H.264 in yuv420p needs even sizes, which a fractional scale may not give
         subprocess.run(ff + ["-vf", f"{rate(25)},scale=trunc(iw/2)*2:trunc(ih/2)*2,format=yuv420p", "-c:v", "libx264",
                              "-crf", "24", "-preset", "slow", "-movflags", "+faststart", f"{output}.mp4"], check=True)
         written.append(f"{output}.mp4")
     if "webp" in formats:
+        progress("webp")
         subprocess.run(ff + ["-vf", f"{rate(10)},scale={timing['webp_width']}:-1:flags=lanczos", "-c:v", "libwebp_anim",
                              "-lossless", "0", "-q:v", "70", "-loop", "0", f"{output}.webp"], check=True)
         written.append(f"{output}.webp")

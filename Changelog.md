@@ -73,6 +73,9 @@
 * `edit --ui` takes screenshots: the view shown (or one of its panels) at the moment shown, or a take,
   listed with their image, renamed, removed, marked on the timeline; a cut of screenshots only opens
   too. A shot of a cut takes `after: <seconds>` after its event.
+* `edit --ui` exports the video and the screenshots of the saved cut, the same files as `edit`, with
+  its progress, the files written and the video played in the page; the video's path and formats are
+  set there.
 
 ## [Version 0.13.0]
 

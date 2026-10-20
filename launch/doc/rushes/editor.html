@@ -74,6 +74,16 @@
   #shot-add .at{grid-column:1 / -1; color:var(--muted); font:11px var(--mono)}
   #timeline .shotmark{fill:var(--head); stroke:var(--bg); cursor:pointer}
   #timeline .shotmark.sel{stroke:var(--text); stroke-width:2}
+  #export-box{margin-top:18px; padding-top:12px; border-top:1px solid var(--line)}
+  #export-box .formats{display:flex; gap:10px; font:12px var(--mono)}
+  #export-box .formats label{color:var(--text)}
+  #export-box .formats input{width:auto}
+  #export{display:none; margin:8px 16px 0; padding:8px 12px; border:1px solid var(--line); border-radius:6px; background:var(--panel); font:12px var(--mono)}
+  #export.failed{border-color:var(--warn); color:var(--warn); white-space:pre-wrap}
+  #export .bar{height:6px; background:var(--panel2); border-radius:3px; margin-top:6px; overflow:hidden}
+  #export .bar div{height:100%; background:var(--accent); transition:width .3s}
+  #export a{color:var(--accent)}
+  #export video, #export .webp{display:block; max-width:min(100%, 720px); max-height:40vh; margin-top:8px; border-radius:4px}
   #timeline-wrap{grid-column:1 / -1; padding:8px 0 4px}
   #timeline-help{color:var(--muted); font-size:11px; padding:0 12px 6px}
   #timeline{display:block; width:100%; user-select:none; cursor:crosshair}
@@ -102,9 +112,11 @@
   <span class="spacer"></span>
   <span id="h-state" class="state">saved</span>
   <button id="b-revert" title="drop the changes: the cut as its file has it" disabled>Revert</button>
+  <button id="b-export" title="write the video and the screenshots, as edit does (the cut saved)">Export</button>
   <button id="b-save" class="primary" title="write the cut into its file, its comments kept; the former file as .bak (Ctrl+S)" disabled>Save</button>
 </header>
 <div id="error"></div>
+<div id="export"></div>
 <main>
   <section id="stage" class="panel">
     <div id="preview-box"><img id="preview" alt="composed image"></div>
@@ -124,6 +136,10 @@
     <div id="shots-box">
       <h2>Screenshots</h2>
       <div id="shots"></div>
+    </div>
+    <div id="export-box">
+      <h2>Export</h2>
+      <div id="export-form"></div>
     </div>
   </aside>
   <section id="timeline-wrap" class="panel">
@@ -317,7 +333,7 @@ async function post(url, body){
 async function change(op){
   stop();
   const {ok, data} = await post('/api/change', op);
-  const onShots = op.scope === 'shot' || op.scope === 'shots_dir';
+  const onShots = op.scope === 'shot' || op.scope === 'setting';
   if(onShots) shotError = ok ? '' : data.error; else sceneError = ok ? '' : data.error;
   if(!ok) return onShots ? renderShots() : renderScene();
   applyPlan(data, !onShots);
@@ -397,7 +413,7 @@ function renderShots(){
     shotFileTyped = false;
   };
   if($('b-take')) $('b-take').onclick = () => change({scope: 'shot', add: {file: `${$('s-take').value}.png`, take: $('s-take').value}});
-  $('s-dir').addEventListener('change', () => change({scope: 'shots_dir', value: $('s-dir').value.trim()}));
+  $('s-dir').addEventListener('change', () => change({scope: 'setting', key: 'shots_dir', value: $('s-dir').value.trim()}));
   $('shot-error').style.display = shotError ? 'block' : 'none';
   $('shot-error').textContent = shotError;
   updateShotForm(true);
@@ -418,6 +434,68 @@ function updateShotForm(force = false){
   if(at && (force || !document.activeElement || !document.activeElement.closest('#shot-add'))){
     $('s-view').value = at.view; fillPanels(at.panel); proposeFile();
   } else if(force) fillPanels();
+}
+
+// ---------- export: the video and the screenshots, as edit writes them
+let exportTimer = null;
+function renderExportForm(){
+  const formats = cut.formats || [];
+  $('export-form').innerHTML = `<div class="form">
+      <label for="x-output">video</label><input id="x-output" value="${esc(cut.output || '')}" placeholder="${esc(cut.default_output)}"><span></span>
+      <label>formats</label><span class="formats">${['mp4', 'webp', 'png'].map(f =>
+        `<label><input type="checkbox" data-format="${f}"${formats.includes(f) ? ' checked' : ''}> ${f}</label>`).join('')}</span><span></span>
+      <span></span><button id="b-export2" class="primary">Export</button><span></span>
+      <span class="note">.mp4 and .webp are added to the video's path; png: its images as well. The screenshots go into their directory. Relative paths start from the directory the editor was started in.</span>
+    </div>`;
+  $('x-output').addEventListener('change', () => change({scope: 'setting', key: 'output', value: $('x-output').value.trim()}));
+  document.querySelectorAll('[data-format]').forEach(box => box.addEventListener('change', () => {
+    const chosen = [...document.querySelectorAll('[data-format]')].filter(b => b.checked).map(b => b.dataset.format);
+    change({scope: 'setting', key: 'formats', value: chosen});
+  }));
+  $('b-export2').onclick = startExport;
+  renderExportButtons();
+}
+function renderExportButtons(){
+  const why = cut.dirty ? "save first: the export writes what the cut's file says" : cut.error ? 'the cut has an error' : '';
+  const running = $('export').dataset.state === 'running';
+  ['b-export', 'b-export2'].forEach(id => { const b = $(id); if(!b) return;
+    b.disabled = !!why || running; b.title = why || (running ? 'exporting' : 'write the video and the screenshots, as edit does'); });
+}
+async function startExport(){
+  const {ok, data} = await post('/api/export');
+  if(!ok) return alert(data.error);
+  showExport(data); followExport();
+}
+function followExport(){
+  clearTimeout(exportTimer);
+  exportTimer = setTimeout(async () => {
+    const data = await getJSON('/api/export');
+    showExport(data);
+    if(data.state === 'running') followExport();
+  }, 500);
+}
+function showExport(x){
+  const box = $('export');
+  box.dataset.state = x.state;
+  box.className = x.state === 'failed' ? 'failed' : '';
+  box.style.display = x.state === 'idle' ? 'none' : 'block';
+  const elapsed = `${(x.elapsed || 0).toFixed(0)} s`;
+  if(x.state === 'running'){
+    // the images take most of the time; the encodings are shown as steps
+    const share = x.stage === 'images' && x.total ? 0.7 * x.done / x.total : {mp4: 0.7, webp: 0.85, screenshots: 0.95}[x.stage] || 0;
+    const what = x.total ? `${x.stage} ${x.done + 1}/${x.total}` : x.stage;
+    box.innerHTML = `exporting · ${esc(what)} · ${elapsed}<div class="bar"><div style="width:${100 * share}%"></div></div>`;
+  } else if(x.state === 'done'){
+    const video = x.written.findIndex(w => w.media === 'video/mp4'), webp = x.written.findIndex(w => w.media === 'image/webp');
+    box.innerHTML = `exported in ${elapsed} · <a href="#" id="x-close">close</a><br>` +
+      x.written.map((w, i) => w.media ? `<a href="/api/output?i=${i}" target="_blank">${esc(w.path)}</a>` : esc(w.path)).join('<br>') +
+      (video >= 0 ? `<video controls src="/api/output?i=${video}&v=${Date.now()}"></video>` :
+       webp >= 0 ? `<img class="webp" src="/api/output?i=${webp}&v=${Date.now()}" alt="">` : '');
+    $('x-close').onclick = e => { e.preventDefault(); box.style.display = 'none'; };
+  } else if(x.state === 'failed'){
+    box.textContent = `the export failed after ${elapsed}\n${x.error}`;
+  }
+  renderExportButtons();
 }
 
 // ---------- video bar: the scenes in video time
@@ -553,7 +631,8 @@ function clampView(){
 
 // ---------- loading, and the cut's file watched
 function applyPlan(data, fromChange = false){
-  const key = JSON.stringify([data.frames, data.scenes, data.shots, data.shots_dir, data.error, data.dirty, data.disk_changed]);
+  // all of it: a setting left out of the key would leave the page showing the former one
+  const key = JSON.stringify(data);
   $('error').style.display = data.error ? 'block' : 'none';
   $('error').textContent = data.error ? `The cut has an error; the last plan is kept.\n${data.error}` : '';
   if(key === planKey) return;
@@ -575,7 +654,7 @@ function applyPlan(data, fromChange = false){
   else if(fromChange && selected !== null) show(firstFrameOf(selected));
   // a scene just left out stays selected, to be brought back
   else show(Math.min(index, cut.frames.length - 1), !(fromChange && selectedKey));
-  renderScene(); renderShots(); drawVideobar(); drawTimeline();
+  renderScene(); renderShots(); renderExportForm(); drawVideobar(); drawTimeline();
 }
 async function loadPlan(){
   applyPlan(await getJSON('/api/plan'));
@@ -591,11 +670,15 @@ async function init(){
   $('views-list').innerHTML = [...options].map(o => `<option value="${esc(o)}">`).join('');
   view0 = 0; view1 = rushes.span;
   await loadPlan();
+  // an export started before the page was opened (or reloaded) is followed
+  const x = await getJSON('/api/export');
+  showExport(x); if(x.state === 'running') followExport();
   setInterval(() => loadPlan().catch(() => {}), 2000);
 }
 $('b-play').onclick = play;
 $('b-save').onclick = () => save();
 $('b-revert').onclick = revert;
+$('b-export').onclick = startExport;
 window.addEventListener('beforeunload', e => { if(cut && cut.dirty){ e.preventDefault(); e.returnValue = ''; } });
 $('b-start').onclick = () => { stop(); show(0); };
 $('b-prev').onclick = () => { stop(); show(index - 1); };
