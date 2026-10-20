@@ -132,6 +132,27 @@ capture of its main view in that time:
 | `caption` | drawn at the bottom of the image |
 | `pace` | `event` (the scene lasts about `timing.caption` seconds), `progress` (its images scroll by: `timing.round_frame` each), `final` (`timing.last_caption`, then the last image stays) |
 
+**One scene** (`overrides:`): a rule applies to every scene of its kind; an override changes one,
+the `index`-th scene of its kind (0 the first, in the order of the rushes):
+
+```yaml
+overrides:
+  - {kind: configured, index: 0, duration: 6}          # lasts 6 seconds, whatever its pace
+  - {kind: launched, index: 1, skip: true}             # left out, its time too
+  - {kind: round, index: 0, offset: 1.5, inset: "agent:client-lille@console", corner: top-right, width: 0.35}
+```
+
+| key | meaning |
+|---|---|
+| `main`, `inset`, `caption`, `pace` | instead of the rule's (`inset: null`: no inset) |
+| `offset` | seconds added to the scene's start (negative: earlier); the scene before ends there; scenes keep their order |
+| `duration` | the scene's time in the video, shared by its images (at least one video frame each, 0.04 s) |
+| `corner`, `width` | the inset's corner (`top-left`, `top-right`, `bottom-left`, `bottom-right`) and width, a share of the image's |
+| `skip` | the scene is left out with its time; the scene before still ends where it began |
+
+An unknown key, a kind without a rule, an index beyond the rushes' scenes or two overrides of one
+scene stop the editing with a message.
+
 `{field}` in a view or a caption is replaced by the event's field. The views:
 
 | view | what it shows |

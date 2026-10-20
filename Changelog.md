@@ -56,6 +56,13 @@
   read *⟲ new session* once each session ended, though it cancels the next ones).
 * Documentation: the screenshots of the manager redone (`docs/images`).
 
+### Recording
+
+* A cut's `overrides:` change one scene (the `index`-th of its kind): its start (`offset`), its
+  `duration`, its main view, inset, caption or pace, its inset's `corner` and `width`, or leave it
+  out (`skip`); a rule applied to every scene of its kind. The editing computes the plan of the video
+  (its images, in order) apart from rendering it, for an interactive editor to come.
+
 ## [Version 0.13.0]
 
 Since `version0.12.0` (2026-10-18): the GUI reworked — one dark theme (with a light one) shared by

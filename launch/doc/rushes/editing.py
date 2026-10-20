@@ -10,6 +10,9 @@ A cut (YAML):
         inset: <view>                     # optional
         caption: "text with {fields} of the event"
         pace: event | progress | final    # event: about timing.caption seconds; progress: scrolls by
+    overrides:                            # one scene: the index-th scene of its kind (0 the first)
+      - {kind: <kind>, index: 0, offset: 1.5, duration: 4, caption: ..., main: ..., inset: ..., pace: ...,
+         corner: top-right, width: 0.35, skip: true}
     shots:                                # screenshots
       - {file: a.png, take: <take name>}
       - {file: b.png, view: <view>, at: <event kind>, index: 0, panel: <panel id>}
@@ -91,8 +94,9 @@ class Composer:
         capture = self.rushes.at(name, t)
         return self.rushes.image(capture, panel or None), capture["label"] + (f" · {panel}" if panel else "")
 
-    def compose(self, t, main, inset=None, caption=""):
+    def compose(self, t, main, inset=None, caption="", inset_style=None):
         rushes, s = self.rushes, self.rushes.scale
+        style = {**self.inset_style, **(inset_style or {})}
         image, _ = self.view(main, t)
         if image.size != rushes.size:
             # every image of a video has one size: a main view of another one (a panel) is fitted to it
@@ -108,11 +112,11 @@ class Composer:
         if inset:
             small, label = self.view(inset, t)
             # an inset is never enlarged: its text stays readable
-            w = min(int(width * self.inset_style["width"]), small.width)
+            w = min(int(width * style["width"]), small.width)
             small = small.resize((w, max(1, int(small.height * w / small.width))), Image.LANCZOS)
             margin = 24 * s
             bottom_room = (height - caption_box[1] + 8 * s) if caption_box else margin
-            corner = self.inset_style["corner"]
+            corner = style["corner"]
             x = int(margin if "left" in corner else width - w - margin)
             y = int(margin + 26 * s if "top" in corner else height - small.height - bottom_room)
             image.alpha_composite(small, (x, y))
@@ -133,32 +137,89 @@ def fill(text, fields):
     return text.format(**fields) if text else text
 
 
-def scenes(rushes: Rushes, rules: dict):
-    """an event with a rule starts a scene, which lasts until the next one"""
-    starts = [e for e in rushes.events if e["kind"] in rules]
-    for i, event in enumerate(starts):
-        end = starts[i + 1]["t"] if i + 1 < len(starts) else rushes.end + 1e-3
-        yield event, end, rules[event["kind"]]
+RULE_KEYS = ("main", "inset", "caption", "pace")
+OVERRIDE_KEYS = {"kind", "index", "offset", "duration", "skip", "corner", "width", *RULE_KEYS}
+PACES, CORNERS = ("event", "progress", "final"), ("top-left", "top-right", "bottom-left", "bottom-right")
+SHORTEST = 0.04   # one frame of the video at 25 images per second
+
+
+def check_override(override, counts, rules):
+    where = f"override {override}"
+    unknown = set(override) - OVERRIDE_KEYS
+    if unknown:
+        raise SystemExit(f"{where}: unknown keys {', '.join(sorted(unknown))} (known: {', '.join(sorted(OVERRIDE_KEYS))})")
+    kind, index = override.get("kind"), override.get("index")
+    if kind not in rules:
+        raise SystemExit(f"{where}: no rule for the kind {kind!r} in scenes ({', '.join(rules)})")
+    if not isinstance(index, int) or not 0 <= index < counts.get(kind, 0):
+        raise SystemExit(f"{where}: the rushes have {counts.get(kind, 0)} scene(s) {kind!r}, index 0 to {counts.get(kind, 0) - 1}")
+    if override.get("pace", "event") not in PACES:
+        raise SystemExit(f"{where}: pace is one of {', '.join(PACES)}")
+    if override.get("corner", "top-left") not in CORNERS:
+        raise SystemExit(f"{where}: corner is one of {', '.join(CORNERS)}")
+    if not 0 < override.get("width", 0.5) <= 1:
+        raise SystemExit(f"{where}: width is a share of the image's width, above 0 and at most 1")
+    if override.get("duration", 1) <= 0:
+        raise SystemExit(f"{where}: duration is in seconds, above 0")
+
+
+def scenes(rushes: Rushes, cut: dict):
+    """an event with a rule starts a scene, which lasts until the next one; an override changes one
+    scene: its start (offset), its rule's keys, its inset's corner and width, its duration, or leaves
+    it out (skip: its time is left out too, the scene before it still ending where it began)"""
+    rules = cut["scenes"]
+    found, counts = [], {}
+    for event in rushes.events:
+        if event["kind"] in rules:
+            found.append((event, counts.get(event["kind"], 0)))
+            counts[event["kind"]] = counts.get(event["kind"], 0) + 1
+    overrides = {}
+    for override in cut.get("overrides") or []:
+        check_override(override, counts, rules)
+        key = (override["kind"], override["index"])
+        if key in overrides:
+            raise SystemExit(f"two overrides of the scene {key[0]!r} index {key[1]}: merge them")
+        overrides[key] = override
+    listed = []
+    for event, index in found:
+        override = overrides.get((event["kind"], index), {})
+        listed.append({"event": event, "kind": event["kind"], "index": index, "override": override,
+                       "start": event["t"] + override.get("offset", 0)})
+    for before, after in zip(listed, listed[1:]):
+        if after["start"] <= before["start"]:
+            raise SystemExit(f"the offsets put the scene {after['kind']!r} index {after['index']} at or before "
+                             f"the scene {before['kind']!r} index {before['index']}: scenes keep their order")
+    for i, scene in enumerate(listed):
+        scene["end"] = listed[i + 1]["start"] if i + 1 < len(listed) else rushes.end + 1e-3
+        override = scene["override"]
+        scene["rule"] = {**rules[scene["kind"]], **{k: override[k] for k in RULE_KEYS if k in override}}
+        scene["inset_style"] = {k: override[k] for k in ("corner", "width") if k in override}
+    return [scene for scene in listed if not scene["override"].get("skip")]
 
 
 def plan(rushes: Rushes, cut: dict):
-    """the images of the video, in order: {t, main, inset, caption, duration, scene}; the preview and
-    the rendering read the same plan, so that they cannot differ"""
+    """the images of the video, in order: {t, main, inset, caption, inset_style, duration, scene, kind,
+    index}; the preview and the rendering read the same plan, so that they cannot differ"""
     timing = {**TIMING, **(cut.get("timing") or {})}
     frames = []
-    for scene, (event, end, rule) in enumerate(scenes(rushes, cut["scenes"])):
+    for scene, listed in enumerate(scenes(rushes, cut)):
+        event, rule, start, end = listed["event"], listed["rule"], listed["start"], listed["end"]
         fields = {k: v for k, v in event.items() if k not in ("t", "kind")}
         if "main" not in rule:
             raise SystemExit(f"the cut's scene {event['kind']!r} has no main view")
         main, inset = fill(rule["main"], fields), fill(rule.get("inset"), fields)
         caption, pace = fill(rule.get("caption", ""), fields), rule.get("pace", "event")
         main_view = main.partition("@")[0]
-        times = [c["t"] for c in rushes.by_view.get(main_view, []) if event["t"] <= c["t"] < end] or [event["t"]]
-        if pace == "progress":
+        times = [c["t"] for c in rushes.by_view.get(main_view, []) if start <= c["t"] < end] or [start]
+        if "duration" in listed["override"]:
+            # below one frame of the video an image would not show: such a scene lasts a little longer
+            per = max(SHORTEST, listed["override"]["duration"] / len(times))
+        elif pace == "progress":
             per = min(timing["round_frame"], timing["progress_max"] / len(times))
         else:
             per = max(timing["min_frame"], timing["last_caption" if pace == "final" else "caption"] / len(times))
-        frames += [{"t": t, "main": main, "inset": inset, "caption": caption, "duration": per, "scene": scene} for t in times]
+        frames += [{"t": t, "main": main, "inset": inset, "caption": caption, "inset_style": listed["inset_style"],
+                    "duration": per, "scene": scene, "kind": listed["kind"], "index": listed["index"]} for t in times]
     return frames
 
 
@@ -169,7 +230,7 @@ def render(rushes: Rushes, cut: dict, frames_plan, output: Path, frames: Path):
     lines = []
     for n, frame in enumerate(frames_plan):
         name = f"f{n:05d}.png"
-        composer.compose(frame["t"], frame["main"], frame["inset"], frame["caption"]).save(frames / name)
+        composer.compose(frame["t"], frame["main"], frame["inset"], frame["caption"], frame["inset_style"]).save(frames / name)
         lines += [f"file '{frames / name}'", f"duration {frame['duration']:.3f}"]
         if n + 1 == len(frames_plan) or frames_plan[n + 1]["scene"] != frame["scene"]:
             # the fade mixes an image with the next one: the scene's last image, repeated for one frame
