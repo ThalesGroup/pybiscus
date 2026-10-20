@@ -52,7 +52,7 @@ class MetricDiffComputeStrategyDecorator(StrategyDecorator):
             return None, metrics_dict
         
         if self.previous_metric is not None:
-            gui_events.log_metric_diff(abs(self.previous_metric - metric))
+            gui_events.log_metric_diff(abs(self.previous_metric - metric), server_round)
 
         self.previous_metric = metric
 

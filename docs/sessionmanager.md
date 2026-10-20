@@ -129,7 +129,10 @@ The manager shows, live:
   running, finished, failed, stopped, invalid config), the round and the last value of the main
   metric (the server's test, a client's evaluation on its data); under it, dimmed, the agents
   started with a registration configuration (`--config`, as `launch/agent/cli/500x.sh`) that have
-  not registered yet, each with *register ↗* to its registration page; the map of the sites;
+  not registered yet, each with *register ↗* to its registration page; the manager asks them every
+  15 s whether they still run, and marks *not reachable* those that do not answer (stopped, or a
+  firewall between the manager and the agent: such an agent can still register); the map of the
+  sites;
 - the main metric per round, its last 40 rounds: the clients' training and evaluation (the average of
   all the clients, weighted by their examples), the server's test; curves that coincide (evaluation
   and test when the clients validate on the official test set) are drawn in dashes of their colours
@@ -146,7 +149,9 @@ The manager shows, live:
   server's test, *clients* for each client's loss (its choice apart from the main metric's); the
   round 0 shown with *r0*, a logarithmic scale with *log*, *0–1* for a loss below 1, each choice
   kept by the browser; *diff*
-  shows the change of the clients' average evaluation loss from one round to the next, and in a
+  shows the change of the clients' average evaluation loss from one round to the next (from the
+  `metricdiffcompute` decorator of the server's pipeline), its last 40 rounds, with the same
+  fitted scale and round numbers, and in a
   hierarchical session *cycles* and *constraints* follow;
 - the vignettes of the model's layers per round (from the `VisualizeModelLayers` decorator of the
   server's pipeline), folded by default into a strip on the right that counts the rounds received

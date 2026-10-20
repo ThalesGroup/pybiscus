@@ -38,6 +38,7 @@
   .started-head{margin:10px 0 4px; padding:0 10px; font-size:10px; letter-spacing:.04em; text-transform:uppercase; color:var(--muted)}
   .node.started{opacity:.65; border-style:dashed; grid-template-columns:9px 16px minmax(0,1.5fr) auto auto}
   .node.started .st{background:var(--idle)}
+  .node.started.lost{opacity:.45}
   .node.started .when{color:var(--muted); font-size:11.5px; white-space:nowrap}
   .node.started a{color:var(--accent); font-size:11.5px; white-space:nowrap}
 
@@ -443,7 +444,7 @@
   // ============ data model (préservé) ============
   var session = new Session();
 
-  const metricDiffs = new CircularBuffer(30);
+  const metricDiffs = {};   // round -> change of the aggregated evaluation loss since the previous round
   let noEvaluationRound = null;
   const durations   = new CircularBuffer(6);
   const fit_accuracies      = new CircularBuffer(40);
@@ -605,7 +606,7 @@
       const mDur = item.message.match(RE.duration);
       if(mDur){ durations.add(parseFloat(mDur[1])); return; }
       const mMd = item.message.match(RE.metric_diff);
-      if(mMd){ metricDiffs.add(parseFloat(mMd[1])); return; }
+      if(mMd){ metricDiffs[parseInt(mMd[1], 10)] = parseFloat(mMd[2]); return; }
       const mNe = item.message.match(RE.no_evaluation);
       if(mNe){ noEvaluationRound = parseInt(mNe[1],10); return; }
       const mSr = item.message.match(RE.stop_requested);
@@ -752,6 +753,25 @@
       .reduce((best, s) => Math.abs(Math.log(s / raw)) < Math.abs(Math.log(best / raw)) ? s : best);
     return {step, digits: Math.max(0, -Math.floor(Math.log10(step) + 1e-9))};
   };
+  // the value lines of a linear scale on round steps, and the rounds' marks with their figures:
+  // shared by the curves and the diff chart
+  function valueGrid(lo, hi, y, padL, W, padR){
+    const {step, digits} = niceStep((hi - lo) / 5);
+    let s = '';
+    for(let v = Math.ceil(lo / step - 1e-9) * step; v <= hi + step * 1e-9; v += step)
+      s += `<line class="grid-l" x1="${padL}" y1="${y(v)}" x2="${W-padR}" y2="${y(v)}"/><text class="axis" x="3" y="${y(v)+3}">${v.toFixed(digits)}</text>`;
+    return s;
+  }
+  // a figure every round, or every 2, 5, 10… rounds when they would overlap
+  function roundMarks(rmin, rmax, x, padL, padR, padT, padB, W, H, figures){
+    const roundStep = [1, 2, 5, 10, 20, 50, 100].find(k => (W-padL-padR) * k / Math.max(rmax - rmin, 1) >= 26) || 100;
+    let s = '';
+    for(let r=rmin;r<=rmax;r++){
+      s+=`<line class="round-l" x1="${x(r)}" y1="${padT}" x2="${x(r)}" y2="${H-padB}"/>`;
+      if(figures && (r % roundStep === 0 || rmax === rmin)) s+=`<text class="axis tick" x="${x(r)}" y="${H-3}" text-anchor="middle">${r}</text>`;
+    }
+    return s + `<text class="axis axis-name" x="3" y="${H-3}">round</text>`;
+  }
   const quantile = (sorted, p) => { const i = (sorted.length - 1) * p, k = Math.floor(i); return sorted[k] + (sorted[Math.min(k + 1, sorted.length - 1)] - sorted[k]) * (i - k); };
   // round0Button: the server's test before any training (round 0), hidden by default: its loss set
   // the scale and flattened the rounds after it; scaleButton: linear (default) or logarithmic
@@ -833,15 +853,9 @@
         for(let g=0;g<=5;g++){ const v = 10 ** (lo+(hi-lo)*g/5); s += gridLine(v, Number(v.toPrecision(2)).toString()); }
       } else {
         // round steps (1, 2 or 5 × 10^n): a fitted scale cut in fifths gave 0.973, 0.979…
-        const {step, digits} = niceStep((hi - lo) / 5);
-        for(let v = Math.ceil(lo / step - 1e-9) * step; v <= hi + step * 1e-9; v += step) s += gridLine(v, v.toFixed(digits));
+        s += valueGrid(lo, hi, y, padL, W, padR);
       }
-      // a figure every round, or every 2, 5, 10… rounds when they would overlap
-      const roundStep = [1, 2, 5, 10, 20, 50, 100].find(k => (W-padL-padR) * k / Math.max(rmax - rmin, 1) >= 26) || 100;
-      for(let r=rmin;r<=rmax;r++){
-        s+=`<line class="round-l" x1="${x(r)}" y1="${padT}" x2="${x(r)}" y2="${H-padB}"/>`;
-        if(allRounds.length && (r % roundStep === 0 || rmax === rmin)) s+=`<text class="axis tick" x="${x(r)}" y="${H-3}" text-anchor="middle">${r}</text>`;
-      }
+      s += roundMarks(rmin, rmax, x, padL, padR, padT, padB, W, H, allRounds.length > 0);
       if(clients.length){
         const colour = phase === 'fit' ? colors.fit : colors.eval;
         const sorted = clients.map(([r, ids]) => [r, ids.map(([, v]) => v).sort((a, b) => a - b)]);
@@ -871,7 +885,6 @@
       order.forEach(k => { const p = points[k]; if(!p.length) return; const [r, v] = p[p.length - 1];
         s += `<circle cx="${x(r)}" cy="${y(v)}" r="3" fill="${colors[k]}" stroke="${tok('--bg')}" stroke-width="1.4"/>`; });
       s += `<line class="hover-line round-l" x1="0" y1="${padT}" x2="0" y2="${H-padB}" stroke="${tok('--muted')}" visibility="hidden"/>`;
-      s+=`<text class="axis axis-name" x="3" y="${H-3}">round</text>`;
       svg.innerHTML=s;
       showTip();
     }
@@ -949,23 +962,27 @@
     setTxt('acc-fit',fmt(fit_accuracies.latest)); setTxt('acc-test',fmt(test_accuracies.latest)); setTxt('acc-eval',fmt(evaluate_accuracies.latest));
   }
   function renderLoss(){
-    const arr=metricDiffs.all, svg=document.getElementById('lossChart');
-    setTxt('loss-val', arr.length ? Number(arr[arr.length-1]).toFixed(3) : '—');
-    if(arr.length<1){
+    const svg=document.getElementById('lossChart');
+    const all = Object.entries(metricDiffs).map(([r, v]) => [Number(r), v]).sort((a, b) => a[0] - b[0]);
+    const points = all.slice(-CHART_ROUNDS);
+    setTxt('loss-val', points.length ? fmtMetric(points[points.length-1][1]) : '—');
+    if(points.length<1){
       svg.innerHTML = noEvaluationRound===null ? ''
         : `<text class="axis" x="10" y="20">no federated evaluation result (round ${noEvaluationRound}): no client evaluated the model</text>`;
       return;
     }
     const [W, H] = chartSize(svg, 600, 140);
-    const padL=30,padR=8,padT=10,padB=16;
-    const mn=Math.min(...arr), mx=Math.max(...arr), span=(mx-mn)||1, lo=Math.max(0, mn-span*0.1), hi=mx+span*0.1;   // borne basse >= 0
-    const n=arr.length, x=i=>padL+(W-padL-padR)*(n>1?i/(n-1):0), y=v=>padT+(H-padT-padB)*(1-(v-lo)/(hi-lo));
-    let s='';
-    for(let g=0;g<3;g++){const v=lo+(hi-lo)*g/2; s+=`<line class="grid-l" x1="${padL}" y1="${y(v)}" x2="${W-padR}" y2="${y(v)}"/><text class="axis" x="3" y="${y(v)+3}">${v.toFixed(2)}</text>`;}
-    for(let i=0;i<n;i++) s+=`<line class="round-l" x1="${x(i)}" y1="${padT}" x2="${x(i)}" y2="${H-padB}"/>`;   // marques de round
-    const pts=arr.map((v,i)=>`${x(i)},${y(v)}`).join(' ');
-    s+=`<polyline points="${pts}" fill="none" stroke="${tok('--loss')}" stroke-width="1.5" stroke-linejoin="round"/>`;
-    s+=`<circle cx="${x(n-1)}" cy="${y(arr[n-1])}" r="3" fill="${tok('--loss')}" stroke="${tok('--bg')}" stroke-width="1.4"/>`;
+    // the scale often starts at 0, whose label on the bottom line met the axis name "round"
+    const padL=34,padR=8,padT=10,padB=24;
+    const values = points.map(([, v]) => v), mn = Math.min(...values), mx = Math.max(...values);
+    // a change is ≥ 0: the scale fits the values, a single one with a span around it
+    const span = (mx - mn) || Math.max(mx * 0.1, 0.001), lo = Math.max(0, mn - span*0.1), hi = mx + span*0.1;
+    const rmin = points[0][0], rmax = points[points.length-1][0];
+    const x = r => padL + (W-padL-padR) * (rmax > rmin ? (r - rmin) / (rmax - rmin) : 0), y = v => padT + (H-padT-padB) * (1 - (v-lo)/(hi-lo));
+    let s = valueGrid(lo, hi, y, padL, W, padR) + roundMarks(rmin, rmax, x, padL, padR, padT, padB, W, H, true);
+    s+=`<polyline points="${points.map(([r, v]) => `${x(r)},${y(v)}`).join(' ')}" fill="none" stroke="${tok('--loss')}" stroke-width="1.5" stroke-linejoin="round"/>`;
+    const [lr, lv] = points[points.length-1];
+    s+=`<circle cx="${x(lr)}" cy="${y(lv)}" r="3" fill="${tok('--loss')}" stroke="${tok('--bg')}" stroke-width="1.4"/>`;
     svg.innerHTML=s;
   }
   function renderDround(){
@@ -1343,9 +1360,11 @@
     const startedRows = Object.entries(startedAgents).sort(([a], [b]) => a.localeCompare(b)).map(([name, ag]) => {
       const t = ag.time ? new Date(ag.time * 1000) : null;
       const when = t ? `started ${pad2(t.getHours())}:${pad2(t.getMinutes())}` : 'started';
+      const lost = ag.reachable === false
+        ? '<span class="chip" title="the manager could not reach it: stopped, or a firewall in between">not reachable</span>' : '';
       const link = ag.url ? `<a href="${esc(ag.url.replace(/\/$/, ''))}/session/agent/registration" target="_blank" rel="noopener" title="open its registration page">register ↗</a>` : '';
-      return `<div class="node started" title="${esc([name, ag.role, ag.bouquet && '💐 ' + ag.bouquet, ag.url].filter(Boolean).join(' · '))}">`+
-        `<span class="st"></span><span>${ROLE_ICON[ag.role] || '⚪'}</span><span class="name">${esc(name)}</span><span class="when">${when}</span>${link}</div>`;
+      return `<div class="node started${lost ? ' lost' : ''}" title="${esc([name, ag.role, ag.bouquet && '💐 ' + ag.bouquet, ag.url].filter(Boolean).join(' · '))}">`+
+        `<span class="st"></span><span>${ROLE_ICON[ag.role] || '⚪'}</span><span class="name">${esc(name)}</span><span class="when">${lost || when}</span>${link}</div>`;
     }).join('');
     const startedBlock = startedRows ? `<div class="started-head">started, not registered</div>${startedRows}` : '';
     let list = head + nodes.map(row).join('');

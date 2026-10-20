@@ -47,6 +47,11 @@
   of the screen).
 * Manager: *Drop session* asks first while the session runs (it stops the runs); once the session
   has ended it reads *⟲ new session*, no longer in red.
+* Manager: the *diff* chart (change of the evaluation loss) placed by round, its last 40 rounds,
+  with the fitted scale and the round numbers of the other charts (its values were placed in their
+  order of arrival, without numbers, on three lines); the `metricdiffcompute` decorator logs its
+  round (`gui metric_diff round= value=`). A started agent that no longer answers the manager is
+  marked *not reachable* (it stayed listed as started).
 
 ## [Version 0.13.0]
 

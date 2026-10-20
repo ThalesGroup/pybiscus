@@ -3,6 +3,7 @@ import time
 import os
 import glob
 import json
+import threading
 from typing import Optional
 from flask import render_template, request, jsonify
 import requests
@@ -11,7 +12,7 @@ import urllib
 import pybiscus.session.manager.session_manager
 from pybiscus.session.manager.session_manager import generate_new_cid, pybiscus_manager_app
 import pybiscus.core.pybiscus_logger as logm
-from pybiscus.session.auth import session_access
+from pybiscus.session.auth import headers_for, session_access
 from pybiscus.session.csrf import HEADER
 from pybiscus.session.manager import cycles, repetition
 from pybiscus.session.manager.feeds import Feed
@@ -493,8 +494,37 @@ def pybiscus_manager_list_clients():
 
 def unregistered_started_agents() -> dict:
     session = pybiscus.session.manager.session_manager
-    return {name: agent for name, agent in session.started_agents.items()
-            if name not in session.registered_servers and name not in session.registered_clients}
+    unregistered = {name: agent for name, agent in session.started_agents.items()
+                    if name not in session.registered_servers and name not in session.registered_clients}
+    for agent in unregistered.values():
+        check_reachable(agent)
+    return {name: {key: value for key, value in agent.items() if key != "checking"}
+            for name, agent in unregistered.items()}
+
+
+STARTED_CHECK_EVERY = 15   # seconds
+
+def check_reachable(agent: dict) -> None:
+    """an agent stopped before registering said nothing: the manager asks it, in the background so
+    that the page's poll does not wait for a timeout"""
+    if agent.get("checking") or not agent.get("url") or time.time() - agent.get("checked", 0) < STARTED_CHECK_EVERY:
+        return
+    agent["checking"] = True
+
+    def ask():
+        try:
+            # any answer, a refusal or a login page included, says the agent runs
+            requests.get(f"{agent['url'].rstrip('/')}/run/status", headers=headers_for(agent["url"]),
+                         timeout=3, allow_redirects=False)
+            agent["reachable"] = True
+        except requests.RequestException:
+            # marked, not removed: a firewall can stop the manager's requests and let the agent's
+            # webhooks through, and such an agent can still be registered
+            agent["reachable"] = False
+        agent["checked"] = time.time()
+        agent["checking"] = False
+
+    threading.Thread(target=ask, daemon=True).start()
 
 # **************************
 

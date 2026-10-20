@@ -107,8 +107,8 @@ def log_client_metric(phase: str, metrics: Mapping[str, object], server_round: i
     logm.console.log(f"📈 gui client_metric={phase} round={server_round} metric={name} value={value:.6g}")
 
 
-def log_metric_diff(diff: float) -> None:
-    logm.console.log(f"📊⚖️📊 = 🧐🔢 metric diff is {diff:.4f}")
+def log_metric_diff(diff: float, server_round: int) -> None:
+    logm.console.log(f"📊⚖️📊 = 🧐🔢 gui metric_diff round={server_round} value={diff:.4f}")
 
 
 def log_no_evaluation_metric(server_round: int) -> None:
@@ -158,7 +158,8 @@ def gui_log_patterns() -> dict[str, str]:
         # duration of a round (timediffcompute decorator)
         "duration": r"time diff is (\d+(?:\.\d+)?)s",
         # variation of the aggregated evaluation loss (metricdiffcompute decorator)
-        "metric_diff": r"metric diff is (\d+(?:\.\d+)?)\s*$",
+        # groups round, value: the page placed the values by their order of arrival, without numbers
+        "metric_diff": r"gui metric_diff round=(\d+) value=(\d+(?:\.\d+)?)",
         # no aggregated evaluation loss (no client evaluated): group round
         "no_evaluation": r"gui no_evaluation round=(\d+)",
         # a lower level's link (log_link_event): groups event, round, examples
