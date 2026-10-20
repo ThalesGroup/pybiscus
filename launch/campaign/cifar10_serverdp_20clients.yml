@@ -1,0 +1,65 @@
+# Campaign of launch/campaign/strategy_campaign.py: central differential privacy at 20 clients. At 3
+# clients (cifar10_serverdp.yml) the noise z * C / n exceeded the CNN's weights (about 0.05) before
+# epsilon meant anything; with 20 clients the noise is divided by 20: does a useful epsilon still learn?
+#   uv run python launch/campaign/strategy_campaign.py launch/campaign/cifar10_serverdp_20clients.yml
+# C from the update norms measured in this setting (clipping decorator, cifar10_alie_20clients.yml
+# without attacker): median 0.79 at round 1, 0.48 at round 10, max about 1.2 then 1.0, so C 1 clips
+# almost nobody and C 0.5 about half. Epsilon after 10 rounds, delta 1e-5: z 0.3 -> 106, z 1 -> 20,
+# z 2 -> 9. Flower's adaptive variant needs z < 2 x clipped_count_stddev (20 / 20 = 1 by default).
+# Dirichlet 0.5 shares, 20 clients, 3 local epochs, 10 rounds, one seed: 7 runs, about 20 min
+# (seeds: [1, 2, 3] for the measurement, about 1 h). 20 clients fill 24 GB of memory: run it alone.
+
+server_config: configs/cifar10_cnn/distributed/without_ssl/server.yml
+client_config: configs/cifar10_cnn/distributed/without_ssl/client_1.yml
+output: experiments/campaigns
+plugin_manifests: [launch/campaign/test-plugins-conf.yml]
+
+clients: 20
+rounds: 10
+local_epochs: 3
+port: 3399                 # the Flower server of each run: must be free
+threads_per_client: auto   # physical cores / clients
+timeout: 3600              # seconds per run
+seeds: [1]
+
+client_data:
+  train:
+    partition:
+      scheme: dirichlet
+      alpha: 0.5
+      seed: 42
+  val:
+    source: holdout
+    fraction: 0.1
+
+server_data:
+  test:
+    max_samples: 2000
+
+variants:
+  - label: FedAvg
+    strategy: {name: fedavg, config: {}}
+  - label: DP fixed z 0.3, C 1
+    reference: FedAvg
+    strategy: {name: fedavg, config: {}}
+    pipeline: [{name: serverdpfixed, config: {noise_multiplier: 0.3, clipping_norm: 1.0}}]
+  - label: DP fixed z 1, C 1
+    reference: FedAvg
+    strategy: {name: fedavg, config: {}}
+    pipeline: [{name: serverdpfixed, config: {noise_multiplier: 1.0, clipping_norm: 1.0}}]
+  - label: DP fixed z 1, C 0.5
+    reference: FedAvg
+    strategy: {name: fedavg, config: {}}
+    pipeline: [{name: serverdpfixed, config: {noise_multiplier: 1.0, clipping_norm: 0.5}}]
+  - label: DP fixed z 2, C 0.5
+    reference: FedAvg
+    strategy: {name: fedavg, config: {}}
+    pipeline: [{name: serverdpfixed, config: {noise_multiplier: 2.0, clipping_norm: 0.5}}]
+  - label: DP adaptive z 0.3, C from 0.5
+    reference: FedAvg
+    strategy: {name: fedavg, config: {}}
+    pipeline: [{name: serverdpadaptive, config: {noise_multiplier: 0.3, initial_clipping_norm: 0.5}}]
+  - label: DP adaptive z 1, C from 0.5
+    reference: FedAvg
+    strategy: {name: fedavg, config: {}}
+    pipeline: [{name: serverdpadaptive, config: {noise_multiplier: 1.0, initial_clipping_norm: 0.5}}]

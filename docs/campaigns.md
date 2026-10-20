@@ -141,6 +141,7 @@ and how long it takes.
 | `cifar10_label_flip.yml` | the defenses against 2 attackers training on flipped labels (data poisoning), 3 seeds | [robust-aggregation.md](robust-aggregation.md#label-flipping-poisoned-data) |
 | `cifar10_directions_iid.yml` | the updates' directions on iid shares, client-side and omniscient ALIE | [robust-aggregation.md](robust-aggregation.md#on-iid-shares-honest-clients-look-alike-too) |
 | `cifar10_serverdp.yml` | server-side differential privacy against FedAvg | [configuration.md](configuration.md#server-side-differential-privacy) |
+| `cifar10_serverdp_20clients.yml` | server-side differential privacy at 20 clients: fixed and adaptive bounds, epsilon 106, 20 and 9 after 10 rounds, one seed | [configuration.md](configuration.md#server-side-differential-privacy) |
 | `cifar10_fedmia.yml` | FedMIA membership inference (then the analyser) | [privacy-evaluation.md](privacy-evaluation.md) |
 | `cifar10_fedprox.yml` | FedProx's mu against FedAvg, 3 clients, short | [configuration.md](configuration.md#fedprox) |
 | `cifar10_fedprox_hetero.yml` | FedProx where it is meant to help: dirichlet 0.1, 5 local epochs, 3 of 6 clients per round, 20 rounds, 3 seeds | [configuration.md](configuration.md#fedprox) |
