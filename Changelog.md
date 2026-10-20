@@ -16,6 +16,12 @@
   required by lower levels) shows under its title, instead of under the buttons; the messages under
   the buttons, over the form, on an opaque background (the form showed through them).
 
+* Manager charts (main metric, loss): the scale fits the values, on round steps (accuracies ending
+  at 0.99 were one line along the top of a 0–1 scale, a loss of 0.03 flat at its bottom); *0–1*
+  brings the whole scale back; the axis numbers the rounds (every 2, 5, 10… when they are many);
+  the main metric's chart gets *r0* too, round 0 hidden by default (the untrained model's test
+  stretched the scale down to 0.1).
+
 ## [Version 0.13.0]
 
 Since `version0.12.0` (2026-10-18): the GUI reworked — one dark theme (with a light one) shared by
