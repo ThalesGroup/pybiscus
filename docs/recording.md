@@ -10,14 +10,142 @@ presentation, and into the screenshots of the docs. It works in two times, as a 
    event, the main view, an inset, a caption, a pace) and the screenshots to extract. Editing takes
    a few seconds and can be done again with another cut, without running the session again.
 
-A session is shot in one of three ways: a **scenario** that runs it all (a manager and its agents
-start on the machine, register, configure and launch the session), a **hierarchical scenario**
-(a tree of sessions), or **`--attach`**, which follows a session someone runs.
-
-The shooting and the editing (and the interactive editor, `edit --ui`) are in `launch/doc/rushes/`, which knows nothing of Pybiscus: the
-Pybiscus side (`record_session.py`) names the views, their panels and the events.
-
 > This page follows the tool as it grows (see the end of the page).
+
+## Overview
+
+Four kinds of things are involved: **processes** (the manager, the agents), **views** (one per
+browser page), **events** (the moments of the story) and **rushes** (the directory where all of it
+is recorded). The **cut** (the editing's YAML file) then designates all of these by name to make
+the video.
+
+### Two times, two layers
+
+```
+  scenario YAML ──► record_session.py ───────► rushes/ ──► cut YAML ──────► video, screenshots
+                    (knows Pybiscus:           (images     (scenes by          (edit, or
+                     what to start, which       + event     kind of event)      edit --ui)
+                     pages, which moments)      log)
+                          │
+                          ▼
+                    launch/doc/rushes/  (knows nothing of Pybiscus: captures named pages,
+                                         notes events, composes)
+```
+
+- **`launch/doc/rushes/`** is generic: it captures the pages it is given by name, notes the events
+  it is told about, then composes the video. Any web application can be shot with it
+  ([Shooting another web application](#shooting-another-web-application)).
+- **`launch/doc/record_session.py`** is the Pybiscus driver: it decides which processes to start,
+  which pages to open, how to name them and which moments to signal.
+
+### Four ways to shoot a session
+
+| way | what drives the session |
+|---|---|
+| a **scenario** (`shoot <scenario>.yml`) | the tool: it starts a manager and its agents, registers them, configures and launches the session |
+| a **hierarchical scenario** | the tool, for a tree of sessions (one manager per bouquet) |
+| **`--attach <manager URL>`** | someone else: the tool only follows the manager's state |
+| **`session_manager --record`** | someone else: the manager starts `--attach` on itself for each of its sessions |
+
+### Processes
+
+They come from the scenario (`launch/doc/scenarios/mnist-session.yml`: a `manager:` and its
+`agents:`). Each is started under a name, `manager` or `agent_<name>`, with its log in `<name>.log`
+in a neutral working directory (`/tmp/pybiscus-demo-XXXXXX`), on a **free port**, in its **own
+process group**: at the end the tool stops them all by group, never looking processes up by name.
+With `--attach` (and `--record`), nothing is started: the tool polls the manager.
+
+### Views
+
+One headless Chromium (driven by Playwright), one tab per page; each tab is declared as a **view**,
+under a name `record_session.py` chooses:
+
+| view | page |
+|---|---|
+| `manager` | the manager's page (hierarchical: `manager:core`, `manager:edge1`…) |
+| `agent:<name>` | the successive pages of an agent, in one tab: registration, configuration form, run monitor |
+| `session-form` | the server agent's session form |
+
+- **Label**: computed again at each capture from the page's URL (`client-lyon · registration`,
+  then `client-lyon · run monitor`); it is the text shown on an inset or a tile.
+- **Panels**: at each capture, the position of a few elements is noted (manager: `geo`, `nodes`,
+  `accChart`, `cyclesChart`; agent: `console`). A cut can then show a panel alone, written
+  `view@panel` (`manager@geo`).
+- **Focus**: the views at the centre of the action are captured at every tick (about 0.35 s), the
+  others one tick in four. An image identical to the previous one is stored once.
+
+### Events
+
+An event is a moment of the story, a kind and fields: `{t, kind, ...fields}`. **The driver emits
+them**, when it knows what happens; nothing is inferred from the images.
+
+- **Scenario**: from the actions the tool performs itself.
+
+  | kind | when | fields |
+  |---|---|---|
+  | `empty` | the manager is open, no agent | — |
+  | `registered` | it fills an agent's registration form | `name`, `role`, `location` |
+  | `configured` | the session form is open | `rounds` |
+  | `started` | the session is launched from the manager | — |
+  | `launched` | it checks and runs an agent's configuration | `name`, `role`, `location` |
+  | `round` | the round number changes on the manager's page | `round`, `rounds`, `turn` |
+  | `finished` | every run has ended | `accuracy` (read on the page), `rounds` |
+
+  `turn` is a **storytelling choice**, not a measure: every client trains at every round, the tool
+  just designates one in turn to show in the inset or as the outlined tile.
+- **`--attach`**: from the changes of the manager's state (`/pybiscus-session/agents`): a new agent
+  gives `registered`; an agent's state (`AgentState`) gives `validated`, `executing` or `failed`;
+  the end gives `finished`, or `dropped`, `interrupted`, `lost`. A step shorter than a capture has
+  no event.
+- **Hierarchical**: the scenario lists its steps and their events (`relays`, `form`, `round`,
+  `tab`…); it can also ask for **takes**, special named captures (a whole page, a panel after a
+  click), kept in `takes/`.
+
+### Rushes
+
+```
+rushes-mnist-session-20261019-172307/
+  meta.json        window size, scale
+  captures.jsonl   {t, view, file, url, label, panels}   one line per capture
+  events.jsonl     {t, kind, ...fields}                  one line per event
+  takes.jsonl      {t, name, file}                       the takes
+  views/<view>/    the images
+  takes/
+```
+
+`t` is counted in seconds from the start of the shooting: it is the axis of `edit --ui`'s timeline.
+
+### Editing: everything is designated by name
+
+```yaml
+scenes:
+  registered:                       # a kind of event starts a scene
+    main: "agent:{name}"            # a view, filled with the event's fields
+    inset: "manager@geo"            # view@panel
+    caption: "Agent {name} registers ({role}, {location})"
+  round:
+    main: manager
+    tiles: ["agent:*"]              # a pattern: every agent view
+    highlight: "agent:{turn}"
+overrides:
+  - {kind: round, index: 2, side: bottom}           # "the 3rd round scene"
+shots:
+  - {file: x.png, view: manager, at: finished, after: 0.8, panel: accChart}
+```
+
+- A **scene** starts at each event whose kind has a rule, and lasts until the next one.
+- The events' **fields** fill the `{…}`: `agent:{name}` designates the view of the agent
+  registering, whatever its name in the scenario.
+- A given scene is designated by its **kind and rank** (`kind`, `index`), a screenshot by an
+  **event and an offset** (`at`, `after`): both stay valid when the same scenario is shot again.
+
+### The fragile point
+
+The names are a **convention between `record_session.py` and the cuts**: `manager`,
+`agent:<name>`, the panels' elements, the kinds of events. Renaming an element of the manager's
+page (`accChart`) breaks the cuts citing that panel; the editing then stops with a message listing
+the panels available. Likewise, a cut writing a name literally (`agent:client-lille`) does not
+follow a renaming in the scenario, unlike `agent:{name}`.
 
 ## Prerequisites
 
@@ -376,6 +504,67 @@ uv run launch/doc/demos/editor_demo.py experiments/recordings/rushes-mnist-sessi
 
 The editor is started from a neutral directory under `/tmp` (the export shows the paths it
 writes), on a free port, in its own process group, stopped at the end.
+
+### Having a driver written by a coding agent
+
+Each application needs its own driver, but the driver follows a pattern: a coding agent that can
+read this repository can write it. Give it the prompt below, its placeholders filled; it reads the
+rushes package and the editor's driver, writes a driver and a cut, shoots, looks at the images and
+corrects until the video tells the story.
+
+```text
+Write a driver that films a web application with the shooting tool of this repository, and the
+cut that edits its rushes into a video.
+
+The application: <WHAT IT IS>
+How to start it: <COMMAND, PORT OR URL, DATA IT NEEDS, HOW TO STOP IT>
+The story to film, step by step: <e.g. "an empty list; add three tasks; mark one done; filter the
+done tasks; delete one">
+Video: <LENGTH, e.g. about 60 s>, captions in <LANGUAGE>, written to <OUTPUT BASENAME, e.g.
+docs/videos/my-app>.
+Driver and cut: <e.g. launch/doc/demos/my_app_demo.py and launch/doc/demos/my-app.cut.yml>.
+
+Read first:
+- docs/recording.md, sections "Overview", "The cut" and "Shooting another web application";
+- launch/doc/rushes/shooting.py (Shooting: add_view, set_focus, event, tick, capture, take;
+  panel_spec) and the docstring of launch/doc/rushes/editing.py (the cut's keys);
+- launch/doc/demos/editor_demo.py and launch/doc/demos/editor-demo.cut.yml: a complete driver of
+  the same kind, to follow.
+
+The driver:
+- a script with a PEP 723 header (playwright==1.63.0, pyyaml, pillow, ruamel.yaml>=0.19.1), run by
+  `uv run`, importing launch/doc/rushes (Shooting, edit, log) and nothing of Pybiscus;
+- starts the application itself if it is local: a free port, its own process group
+  (start_new_session=True), stopped by os.killpg in a finally; never look processes up by name;
+- works in a directory with a neutral name under /tmp when the application shows paths;
+- declares a view per page (a short name: "app", "admin"…), with panels for the parts a cut may
+  show alone: an element's id, (name, CSS selector), or (name, CSS selector, container) to take
+  the element with its frame and title;
+- emits an event at the start of each step of the story, with fields the captions can use (a
+  name, a count…), then acts and ticks: about 3 ticks to let a change be seen, more on a moment to
+  dwell on;
+- draws a cursor in the page (a headless browser shows none) that moves to what is clicked, and
+  types text by a few letters per tick;
+- choose an option of a <select> with select_option without clicking it (a click shows its native
+  list over the page in the captures);
+- if the page is taller than the window, scroll to what is used (smoothly) and back, as a person
+  would; mind elements scrolling on their own (scrollIntoView also scrolls the window);
+- after an action that reaches a server, wait for the page to be drawn again before the next one;
+  before following a long operation, wait until it has really started.
+
+The cut: one rule per kind of event (main view, caption, pace: progress plays the images about as
+shot, event shows a step in about 3.5 s, final ends on a longer caption); timing to keep the pace
+close to the shooting (round_frame 0.3); overrides to shorten a long wait (duration).
+
+Validate:
+1. shoot with the cut "none", read events.jsonl, and look at images taken at the key moments of
+   each step (captures.jsonl gives each image's time): the cursor where expected, every action
+   visible, nothing hidden under the fold or a popup;
+2. correct the driver and shoot again until every step reads right;
+3. edit, then look at frames taken in the middle of each scene of the video: each caption over the
+   step it describes;
+4. report the length of the video, its events, and what was corrected on the way.
+```
 
 ## When something goes wrong
 
