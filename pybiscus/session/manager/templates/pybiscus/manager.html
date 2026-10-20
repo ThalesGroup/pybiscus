@@ -229,6 +229,7 @@
   .row{display:flex; gap:9px; padding:3px 6px; border-radius:6px; font-size:12px}
   .row:hover{background:var(--panel-2)}
   .row .src{color:var(--accent); flex:0 0 auto}
+  .row .ts{color:var(--muted); flex:0 0 auto; font-variant-numeric:tabular-nums; cursor:default}
   .row .msg{color:var(--text); white-space:pre-line}
   /* metrics: one row per agent, the last value of each metric, per phase */
   .metrics-table{flex:1; min-height:0; overflow:auto}
@@ -495,11 +496,24 @@
   bindFeed('reset-metrics-btn','pause-metrics-btn', metricsList, displayedMetrics, ()=> (metricsPaused=!metricsPaused));
   document.getElementById('reset-metrics-btn').addEventListener('click', ()=>{ clientMetrics = {}; clientRounds = {}; renderMetricsTable(); renderAccuracy(); renderLossCurves(); });
 
-  function addEntries(container, arr, items){
+  const pad2 = n => String(n).padStart(2, '0');
+  // the reports directory as "…/<its last directory>" in the server's lines: its absolute path
+  // wrapped them on three lines; the reporting_path line itself keeps it whole
+  function shortenPaths(message){
+    if(!reportingPath || !message.includes(reportingPath) || RE.reporting_path.test(message)) return message;
+    return message.split(reportingPath).join('…/' + reportingPath.split('/').filter(Boolean).pop());
+  }
+  function addEntries(container, arr, items, shorten = false){
     items.forEach(item=>{
       const div=document.createElement('div'); div.className='row';
+      // the time the manager received it (the logs' feeds stamp it), the full date on hover
+      const ts=document.createElement('span'); ts.className='ts';
+      if(item.time){ const d = new Date(item.time * 1000); ts.textContent = `${pad2(d.getHours())}:${pad2(d.getMinutes())}:${pad2(d.getSeconds())}`; ts.title = d.toLocaleString(); }
       const src=document.createElement('span'); src.className='src'; src.textContent = item.source ? `[${item.source}]` : '';
-      const msg=document.createElement('span'); msg.className='msg'; msg.textContent = item.message || JSON.stringify(item);
+      const text = item.message || JSON.stringify(item), shown = shorten ? shortenPaths(text) : text;
+      const msg=document.createElement('span'); msg.className='msg'; msg.textContent = shown;
+      if(shown !== text) msg.title = text;
+      if(item.time) div.appendChild(ts);
       div.appendChild(src); div.appendChild(msg); container.appendChild(div); arr.push(div);
       if(arr.length>200){ arr.shift().remove(); }
     });
@@ -591,7 +605,8 @@
   function fetchAgents(){ if(agentsPaused) return;
     fetchFeed(AGENTS_URL, data=>{ addEntries(agentsList, displayedAgents, data); checkAgentLogs(data); }); }
   function fetchLogs(){ if(logsPaused) return;
-    fetchFeed(LOGS_URL, data=>{ addEntries(logList, displayedLogs, data); checkLogs(data); renderCharts(); }); }
+    // read first: the reports directory, known from these lines, shortens them
+    fetchFeed(LOGS_URL, data=>{ checkLogs(data); addEntries(logList, displayedLogs, data, true); renderCharts(); }); }
   function fetchMetrics(){ if(metricsPaused) return;
     fetchFeed(METRICS_URL, data=>{ addEntries(metricsList, displayedMetrics, data); addMetrics(data); renderMetricsTable(); }); }
 

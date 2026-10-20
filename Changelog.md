@@ -31,6 +31,10 @@
   header's smaller font made its columns narrower than the rows'); *Δ round* reads *round time*,
   its tooltip saying what the value and the bars are.
 
+* Manager logs: each line with the time the manager received it (the date on hover); in the
+  server's log, the reports directory reads `…/<its last directory>`, the whole path on hover (it
+  wrapped the lines of the saved configs on three lines).
+
 ## [Version 0.13.0]
 
 Since `version0.12.0` (2026-10-18): the GUI reworked — one dark theme (with a light one) shared by

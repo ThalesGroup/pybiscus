@@ -644,7 +644,7 @@ def pybiscus_manager_receive_agents():
     # purement informatifs, auquel cas le front retombe sur l'analyse du texte
     state = data.get('state')
 
-    agent_feed.append({'source': source, 'message': message, 'state': state})
+    agent_feed.append({'source': source, 'message': message, 'state': state, 'time': time.time()})
 
     # the source is "<bouquet>:<agent name>", as the page reads it (checkAgentLogs)
     if state and ":" in source:

@@ -147,7 +147,9 @@ The manager shows, live:
   charts take the width; the choice is kept by the browser, for this manager. Shown, the matrix
   follows the last round, unless you scrolled back to earlier ones; the layers and the rounds stay
   in sight when it scrolls;
-- the agents' and the server's logs;
+- the agents' and the server's logs, each line with the time the manager received it (the date on
+  hover); in the server's, the reports directory reads `…/<its last directory>` (the whole path on
+  hover, and in the summary);
 - the metrics, a table with one row per client (named from the cid the session gave it; a cid it
   did not give shows as `#…`) and one for the server's test: for training (fit) and evaluation, the
   loss and the main metric of the last round, *all metrics* adding the others; a value from an
