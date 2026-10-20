@@ -1,6 +1,6 @@
-"""--record: the manager films its sessions with the recorder of the repository
-(launch/doc/record_session.py shoot --attach), run by uv in a process of its own: Playwright and its
-Chromium stay out of the manager's dependencies."""
+"""Recording of the manager's sessions (--record, or the session form's record): the recorder of the
+repository (launch/doc/record_session.py shoot --attach), run by uv in a process of its own:
+Playwright and its Chromium stay out of the manager's dependencies."""
 
 import os
 import shutil
@@ -14,8 +14,12 @@ from typing import Callable, Optional
 import pybiscus.core.pybiscus_logger as logm
 
 RECORDER = Path(__file__).resolve().parents[3] / "launch" / "doc" / "record_session.py"
+DEFAULT_DIRECTORY = "experiments/recordings"
 # a recorder ending this soon with an error could not start (browser, uv): starting it again would fail again
 FAILED_START = 60
+# the recorder's line once its shooting is over, before it edits the video
+SHOT_LINE = "rushes in "
+VIDEOS = ("video.mp4", "video.webp")
 
 
 def missing_requirements() -> list:
@@ -25,15 +29,19 @@ def missing_requirements() -> list:
 
 
 class Recording:
-    """one recorder at a time; a new one starts when the manager is ready for a new session: no agent
-    registered (at its start, after a drop), or a session launched while none was recording"""
+    """one recorder at a time. automatic (--record): a new one starts when the manager is ready for a
+    new session, no agent registered (at its start, after a drop), or when a session is launched while
+    none records; otherwise (the session form) only for the sessions launched asking for it"""
 
     def __init__(self, directory: Path, manager_url: str, name: str, admin_token: Optional[str],
-                 no_agent: Callable[[], bool], poll: float = 2.0):
+                 no_agent: Callable[[], bool], automatic: bool = True, poll: float = 2.0):
         self.directory, self.manager_url, self.name = directory.resolve(), manager_url, name
-        self.admin_token, self.no_agent, self.poll = admin_token, no_agent, poll
+        self.admin_token, self.no_agent, self.automatic, self.poll = admin_token, no_agent, automatic, poll
         self.proc, self.rushes, self.started = None, None, 0.0
         self.launched_unrecorded = False
+        # the server's reports directory of the session being recorded: its video is copied there
+        self.session_reports = None
+        self.last = None   # what the last recorder gave: {"state": "done" | "failed", ...}
         self.stopping = threading.Event()
         self.lock = threading.Lock()
 
@@ -49,6 +57,22 @@ class Recording:
         if not self.recording():
             self.launched_unrecorded = True
 
+    def note_reports(self, path: str) -> None:
+        # the first one of the recording: a repeated session gives one per session, the recording follows the first
+        if self.recording() and self.session_reports is None:
+            self.session_reports = path
+
+    def state(self) -> dict:
+        if self.proc is not None:
+            # ended but not yet taken in hand by the loop (its video still to be copied): still editing
+            log = self._log()
+            shot = not self.recording() or (log.exists() and SHOT_LINE in log.read_text(errors="replace"))
+            return {"state": "editing" if shot else "recording", "rushes": str(self.rushes), "automatic": self.automatic}
+        return {**(self.last or {"state": "idle"}), "automatic": self.automatic}
+
+    def _log(self) -> Path:
+        return self.rushes.with_name(self.rushes.name + ".log")
+
     def _loop(self) -> None:
         while not self.stopping.wait(self.poll):
             with self.lock:
@@ -57,15 +81,15 @@ class Recording:
                 if self.proc is not None:
                     started = self._ended()
                     self.proc = None
-                    if not started:
+                    if not started and self.automatic:
                         return
-                if self.no_agent() or self.launched_unrecorded:
+                if (self.automatic and self.no_agent()) or self.launched_unrecorded:
                     self._launch()
 
     def _launch(self) -> None:
-        self.launched_unrecorded = False
+        self.launched_unrecorded, self.session_reports, self.last = False, None, None
         self.rushes = self.directory / f"rushes-{self.name}-{time.strftime('%Y%m%d-%H%M%S')}"
-        log = open(self.rushes.with_name(self.rushes.name + ".log"), "w")
+        log = open(self._log(), "w")
         # the recorder has its own environment (its script's dependencies), not the manager's
         env = {k: v for k, v in os.environ.items() if k not in ("VIRTUAL_ENV", "PYBISCUS_MANAGER_TOKEN")}
         if self.admin_token:
@@ -80,17 +104,35 @@ class Recording:
         logm.console.log(f"🎥 recording the session into {self.rushes}")
 
     def _ended(self) -> bool:
-        """False: the recorder could not start, recording stops"""
-        code, log = self.proc.returncode, self.rushes.with_name(self.rushes.name + ".log")
-        video = self.rushes / "video.mp4"
+        """False: the recorder could not start"""
+        code = self.proc.returncode
+        video = self.rushes / VIDEOS[0]
         if code == 0:
-            logm.console.log(f"🎬 session recorded: {video if video.exists() else self.rushes}")
+            kept = self._keep_with_reports()
+            self.last = {"state": "done", "rushes": str(self.rushes), "video": str(video) if video.exists() else None, "kept": kept}
+            logm.console.log(f"🎬 session recorded: {kept or (video if video.exists() else self.rushes)}")
             return True
+        self.last = {"state": "failed", "rushes": str(self.rushes), "log": str(self._log())}
         if time.monotonic() - self.started < FAILED_START:
-            logm.console.log(f"⚠️ the recorder could not start (exit {code}), recording stops: see {log}")
+            logm.console.log(f"⚠️ the recorder could not start (exit {code}): see {self._log()}"
+                             + (", recording stops" if self.automatic else ""))
             return False
-        logm.console.log(f"⚠️ the recorder ended with an error (exit {code}): see {log}")
+        logm.console.log(f"⚠️ the recorder ended with an error (exit {code}): see {self._log()}")
         return True
+
+    def _keep_with_reports(self) -> Optional[str]:
+        """the video copied into the server's reports directory, when it is on this machine; its path"""
+        if not self.session_reports:
+            return None
+        reports = Path(self.session_reports)
+        # a relative path is the server agent's, from a directory the manager does not know
+        if not reports.is_absolute() or not reports.is_dir():
+            logm.console.log(f"🎬 the server's reports {reports} are not on this machine: the video stays in {self.rushes}")
+            return None
+        for name in VIDEOS:
+            if (self.rushes / name).exists():
+                shutil.copy2(self.rushes / name, reports / f"session-{name}")
+        return str(reports / f"session-{VIDEOS[0]}")
 
     def stop(self) -> None:
         """the manager stops: the recorder ends its shooting and edits it, on its own"""
@@ -98,4 +140,4 @@ class Recording:
         with self.lock:
             if self.recording():
                 os.killpg(self.proc.pid, signal.SIGINT)
-                logm.console.log(f"🎬 the recording ends; its video is being edited into {self.rushes / 'video.mp4'}")
+                logm.console.log(f"🎬 the recording ends; its video is being edited into {self.rushes / VIDEOS[0]}")

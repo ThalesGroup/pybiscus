@@ -58,6 +58,10 @@
 
 ### Recording
 
+* The session form's `record` box films that session only (a manager whose machine cannot record
+  refuses it, the reason under the box); a recorded session's video is copied into the server's
+  reports as `session-video.mp4` / `.webp` when they are on the manager's machine; the manager's
+  page shows a **● REC** pill while the session is filmed, then where its video is.
 * `session_manager --record [DIR]`: the manager films each of its sessions (its page, the agents'
   run monitors as tiles, captions from its events) into `DIR` (default `experiments/recordings`),
   with `launch/doc/record_session.py shoot --attach` run by `uv` in its own process: no new

@@ -634,11 +634,27 @@ session_manager --port 5555 --bouquet demo --record
   alone), as with `--attach` without `--agent-token`.
 - A Chromium follows the session all along: a few hundred MB of memory, and a capture every 0.35 s.
 
+**Asked for by the session form**: its `record` box films that session only, without `--record`.
+The recording starts when the session is launched, so it shows the session from its start, not
+the agents' registrations (*Recording joins the running session*); it goes into
+`experiments/recordings` from the manager's directory. A manager whose machine cannot record (no
+`uv`, `ffmpeg` or checkout of the repository) refuses the session, the reason under the box. A
+manager started with `--record` films every session, the box checked or not.
+
+**The video in the session's reports**: once a recording is edited, the manager copies its video
+into the server's reports directory (the one the server's run announces, `experiments/<bouquet>/<date>`)
+as `session-video.mp4` and `session-video.webp`, when that directory is on the manager's machine
+(given as an absolute path); otherwise the video stays with its rushes, and the manager's console
+says so. A recording ended by stopping the manager is not copied.
+
+**In the manager's page**, a pill beside the round number follows the recording: **● REC** (blinking)
+while the session is filmed, *REC · editing* while its video is made, then *🎬 video*, its tooltip
+giving where the video is (*🎬 failed*: the recorder's log).
+
 **With a screen recorder**, the session can also be recorded from your own screen:
 [OBS Studio](https://obsproject.com/) (a *browser source* per page lets a scene show the manager
 and agents side by side), or on Windows the Xbox Game Bar (`Win` + `Alt` + `R`). Captions and
 time-lapse are then added while editing (Clipchamp, Shotcut, Kdenlive, ffmpeg).
 
 **Planned** (not available yet):
-- the recording chosen in the server's session form, rather than when the manager is started;
 - a record button in the manager's page, recording the tab from the browser.

@@ -1,4 +1,5 @@
 import copy
+import re
 import time
 import os
 import glob
@@ -15,6 +16,7 @@ import pybiscus.core.pybiscus_logger as logm
 from pybiscus.session.auth import headers_for, session_access
 from pybiscus.session.csrf import HEADER
 from pybiscus.session.manager import cycles, repetition
+from pybiscus.core.gui_events import gui_log_patterns
 from pybiscus.session.manager.feeds import Feed
 
 # **************************
@@ -67,6 +69,10 @@ def pybiscus_manager_run_session():
                 problems = repetition_refused(repeat)
                 if problems:
                     return refused(problems), 409
+            if presets.get("record"):
+                problems = recording_refused()
+                if problems:
+                    return refused(problems), 409
             if pybiscus.session.manager.session_manager.upper_link is not None:
                 apply_upper_constraints(presets)
             # the lower levels' servers stop after as many rounds: none may wait for a round that never comes
@@ -100,8 +106,11 @@ def pybiscus_manager_run_session():
 
     # set the session running flag
     pybiscus.session.manager.session_manager.session_is_running = True
-    if session.recording is not None:
+    # --record films every session; the form's record, the sessions asking for it
+    if session.recording is not None and session.recording.automatic:
         session.recording.session_launched()
+    elif (session.agent_gui_json_presets or {}).get("record"):
+        (session.recording or session.start_recording(None, automatic=False)).session_launched()
 
     repeat = (session.agent_gui_json_presets or {}).get("repeat")
     if repeat is not None:
@@ -119,6 +128,15 @@ def refused(problems: list):
     under its field, and as one message for a caller without the form"""
     message = "; ".join(f"{'.'.join(map(str, p['loc']))}: {p['msg']}" if p["loc"] else p["msg"] for p in problems)
     return jsonify({"status": "error", "message": message, "fields": problems})
+
+
+def recording_refused() -> list:
+    """why the manager cannot record the session, as the check's errors; empty if it can"""
+    from pybiscus.session.manager.recording import missing_requirements
+    missing = missing_requirements()
+    if missing:
+        return [{"loc": ["record"], "msg": f"the manager's machine cannot record: it needs {', '.join(missing)}"}]
+    return []
 
 
 def repetition_refused(repeat) -> list:
@@ -291,6 +309,7 @@ def pybiscus_manager_get_session_params():
     robustness = custom_presets.pop("robustness", None)
     num_rounds = custom_presets.pop("num_rounds", None)
     repeat = custom_presets.pop("repeat", None)
+    custom_presets.pop("record", None)
 
     # each call used to take a new cid: the server's page and every reload consumed one, and the
     # cids of the clients were neither consecutive nor stable. Pages name their agent now.
@@ -489,10 +508,15 @@ def pybiscus_manager_list_clients():
         "session_running": pybiscus.session.manager.session_manager.session_is_running,
         "cycles": cycles.session_cycles(),
         "repetition": repetition.state(),
+        "recording": session_recording_state(),
         "session": session_state(),
         # the metrics feed names the clients by cid
         "cids": session_cids(),
     })
+
+def session_recording_state():
+    recording = pybiscus.session.manager.session_manager.recording
+    return recording.state() if recording is not None else None
 
 def unregistered_started_agents() -> dict:
     session = pybiscus.session.manager.session_manager
@@ -707,6 +731,7 @@ def pybiscus_manager_get_agents():
 # *******************************
 
 log_feed = Feed()
+REPORTING_PATH = re.compile(gui_log_patterns()["reporting_path"])
 
 # **************************
 
@@ -720,6 +745,11 @@ def pybiscus_manager_receive_log():
     # the time it was received: the page computes the session's duration from it
     log_feed.append({'source': source, 'message': message, 'time': time.time()})
     cycles.note_server_line(message)
+    recording = pybiscus.session.manager.session_manager.recording
+    if recording is not None:
+        reports = REPORTING_PATH.search(message)
+        if reports:
+            recording.note_reports(reports.group(1))
 
     return jsonify({"status": "success"}), 200
 

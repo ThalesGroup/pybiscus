@@ -88,5 +88,8 @@ def make_session_model(models_confs, data: list[str], data_confs):
         repeat: Optional[ConfigSchedule] = Field(default=None, description=
             "launch the session again at each deadline, once all its runs have ended: each one starts from the "
             "previous one's final weights, its clients read their new data, and it ends at once if none has any")
+        record: bool = Field(default=False, description=
+            "film the session from the manager's page (and the agents' run monitors) into a video, copied into the "
+            "server's reports; the manager's machine needs uv, ffmpeg and Playwright's Chromium (docs/recording.md)")
 
     return ConfigSession

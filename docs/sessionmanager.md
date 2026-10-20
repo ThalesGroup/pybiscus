@@ -31,7 +31,9 @@ manager's log and in the agent's registration page. An agent declaring no bouque
 manager's.
 
 With `--record`, the manager films each of its sessions into a video (its page and the agents' run
-monitors, with captions), in `experiments/recordings` or the directory given: see
+monitors, with captions), in `experiments/recordings` or the directory given; the session form's
+`record` box films one session only ([Session parameters](#session-parameters)). A **● REC** pill
+beside the round number shows it, and the video is copied into the session's reports: see
 [recording.md](recording.md#recording-a-session-you-run-yourself).
 
 ![Session manager, empty](images/session_manager_init.png "Session manager, empty")
@@ -449,6 +451,11 @@ machine (still editable in its form). The server gets none, since it never compu
 time as the clients; with several sessions on one machine, set `server_compute_context.num_threads`
 by hand (see [CPU threads](configuration.md#cpu-threads)). Without it, every PyTorch client takes all the cores: three
 cifar10 clients on a 14-core machine took 233 s per round instead of 20 s.
+
+Its `record` box (off by default) has the manager film the session into a video, copied into the
+server's reports as `session-video.mp4`: the manager's machine needs `uv`, `ffmpeg` and the
+Chromium of Playwright, or it refuses the session (see
+[recording.md](recording.md#recording-a-session-you-run-yourself)).
 
 ## Repeated sessions
 

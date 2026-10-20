@@ -63,6 +63,16 @@
   .kv[hidden]{display:none}
   .kv{display:flex; align-items:center; gap:9px} .kv .num{font-size:15px; white-space:nowrap} .kv b{color:var(--accent)}
   .right{margin-left:auto; display:flex; align-items:center; gap:10px}
+  .rec{display:flex; align-items:center; gap:6px; padding:2px 9px; border:1px solid var(--border); border-radius:999px;
+    font-size:11px; letter-spacing:.08em; color:var(--muted); cursor:help; white-space:nowrap}
+  .rec[hidden]{display:none}
+  .rec .rec-dot{width:8px; height:8px; border-radius:50%; background:var(--muted)}
+  .rec[data-state="recording"]{color:var(--err); border-color:var(--err)}
+  .rec[data-state="recording"] .rec-dot{background:var(--err); animation:rec-blink 1.2s steps(2, start) infinite}
+  .rec[data-state="editing"] .rec-dot{background:var(--err)}
+  .rec[data-state="done"]{color:var(--accent)} .rec[data-state="done"] .rec-dot{display:none}
+  .rec[data-state="failed"]{color:var(--warn); border-color:var(--warn)} .rec[data-state="failed"] .rec-dot{display:none}
+  @keyframes rec-blink{to{visibility:hidden}}
   .round-time{display:flex; align-items:center; gap:10px; cursor:help}
   .btn{cursor:pointer; color:var(--text); border:1px solid var(--border); border-radius:8px; padding:6px 12px;
   a.btn{text-decoration:none}
@@ -300,6 +310,7 @@
     <div class="sep"></div>
     <div class="kv"><span class="eyebrow">round</span><span class="num"><b id="round-num">0</b></span></div>
     <div class="kv" id="repeat-kv" hidden><span class="eyebrow">session</span><span class="num"><b id="repeat-num">1</b></span></div>
+    <div class="rec" id="rec-kv" hidden><span class="rec-dot"></span><span id="rec-text">REC</span></div>
     <div class="right">
       <span id="detached-chips"></span>
       <button class="btn" id="dock-btn" hidden title="close this window, the panel goes back to the main page">⧉ dock</button>
@@ -1527,6 +1538,7 @@
       sessionRunning = !!data.session_running;
       startedAgents = data.started || {};
       renderRepetition(data.repetition || null);
+      renderRecording(data.recording || null);
       linkTransports = data.link_transports || {}; linkTransportChoices = data.link_transport_choices || [];
       lastCycles = {own: data.cycles || [], ownSession: data.session || null, groups: flattenLowerLevels(data.lower_levels || [], null, 1, [])};
       const hierarchical = !!lastCycles.groups.length || !!data.upper_level;
@@ -1587,6 +1599,22 @@
   };
   // a session launched again at each deadline: the page goes on reading between two sessions, and
   // each new one starts with its own round counter and end
+  // the manager films the session (--record, or the session form): data.recording.state
+  const RECORDING_VIEW = {
+    recording: ['REC', r => `the session is being filmed into ${r.rushes}`],
+    editing:   ['REC · editing', r => `the shooting is over, its video is being edited into ${r.rushes}`],
+    done:      ['🎬 video', r => `the session's video: ${r.kept || r.video || r.rushes}`],
+    failed:    ['🎬 failed', r => `the recording failed: see ${r.log}`],
+  };
+  function renderRecording(recording){
+    const kv = document.getElementById('rec-kv'), view = recording && RECORDING_VIEW[recording.state];
+    kv.hidden = !view;
+    if(!view) return;
+    kv.dataset.state = recording.state;
+    document.getElementById('rec-text').textContent = view[0];
+    kv.title = view[1](recording);
+  }
+
   let repetitionSessions = 0;
   function renderRepetition(repetition){
     const active = !!repetition && (repetition.status === 'running' || repetition.status === 'waiting');
