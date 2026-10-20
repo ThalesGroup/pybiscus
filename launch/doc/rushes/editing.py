@@ -10,9 +10,12 @@ A cut (YAML):
         inset: <view>                     # optional
         caption: "text with {fields} of the event"
         pace: event | progress | final    # event: about timing.caption seconds; progress: scrolls by
+        tiles: ["agent:*"]                # instead of an inset: the main view smaller, beside it a tile
+        highlight: "agent:{turn}"         # per view (* matches), in order of appearance; one outlined
+    mosaic: {side: right, slots: 4}       # the tiles in a column on the right, or a row at the bottom
     overrides:                            # one scene: the index-th scene of its kind (0 the first)
       - {kind: <kind>, index: 0, offset: 1.5, duration: 4, caption: ..., main: ..., inset: ..., pace: ...,
-         corner: top-right, width: 0.35, skip: true}
+         corner: top-right, width: 0.35, tiles: [...], highlight: ..., side: bottom, slots: 6, skip: true}
     shots:                                # screenshots
       - {file: a.png, take: <take name>}
       - {file: b.png, view: <view>, at: <event kind>, index: 0, after: 2.5, panel: <panel id>}
@@ -21,6 +24,7 @@ Fields and views are written with {name} placeholders, filled from the event's f
 """
 
 import bisect
+import fnmatch
 import io
 import json
 import math
@@ -36,6 +40,11 @@ TIMING = {"caption": 3.5, "last_caption": 5.0, "min_frame": 0.25, "round_frame":
           "progress_max": 8.0, "end_hold": 2.5, "webp_width": 1080, "blend": 0.4}
 SHOT_KEYS = ("file", "take", "view", "at", "index", "after", "panel")
 INSET = {"width": 0.42, "corner": "bottom-right"}
+# slots: the tiles a column or a row holds before they shrink; the main view takes the rest
+MOSAIC = {"side": "right", "slots": None}
+SLOTS = {"right": 4, "bottom": 6}
+SIDES = tuple(SLOTS)
+MOSAIC_BACKGROUND, TILE_BORDER = (14, 17, 23, 255), (60, 68, 84, 255)
 CAPTION_BACKGROUND, CAPTION_TEXT, INSET_BORDER = (20, 24, 40, 225), (255, 255, 255, 255), (78, 205, 196, 255)
 
 
@@ -86,8 +95,10 @@ class Rushes:
 
 
 class Composer:
-    def __init__(self, rushes: Rushes, inset=None):
-        self.rushes, self.inset_style = rushes, {**INSET, **(inset or {})}
+    def __init__(self, rushes: Rushes, inset=None, mosaic=None):
+        self.rushes, self.inset_style, self.mosaic_style = rushes, {**INSET, **(inset or {})}, {**MOSAIC, **(mosaic or {})}
+        # the order of the tiles: a view keeps its place once it has appeared
+        self.first_seen = sorted(rushes.by_view, key=lambda v: (rushes.by_view[v][0]["t"], v))
         s = rushes.scale
         self.caption_font, self.label_font = font(round(22 * s)), font(round(14 * s))
 
@@ -96,7 +107,13 @@ class Composer:
         capture = self.rushes.at(name, t)
         return self.rushes.image(capture, panel or None), capture["label"] + (f" · {panel}" if panel else "")
 
-    def compose(self, t, main, inset=None, caption="", inset_style=None):
+    def frame(self, frame, t=None):
+        return self.compose(frame["t"] if t is None else t, frame["main"], frame["inset"], frame["caption"], frame["inset_style"],
+                            frame.get("tiles"), frame.get("highlight"), frame.get("mosaic_style"))
+
+    def compose(self, t, main, inset=None, caption="", inset_style=None, tiles=None, highlight=None, mosaic_style=None):
+        if tiles:
+            return self.mosaic(t, main, caption, tiles, highlight, mosaic_style)
         rushes, s = self.rushes, self.rushes.scale
         style = {**self.inset_style, **(inset_style or {})}
         image, _ = self.view(main, t)
@@ -129,9 +146,85 @@ class Composer:
                                    radius=6 * s, fill=INSET_BORDER)
             draw.text((x - border + 8 * s, y - (b - t_) - 8 * s - t_), label, font=self.label_font, fill=(10, 14, 22, 255))
         if caption_box:
-            draw.rounded_rectangle(caption_box, radius=10 * s, fill=CAPTION_BACKGROUND)
-            l, t_, _, _ = draw.textbbox((0, 0), caption, font=self.caption_font)
-            draw.text((caption_box[0] + 22 * s - l, caption_box[1] + 10 * s - t_), caption, font=self.caption_font, fill=CAPTION_TEXT)
+            self.caption(draw, caption, caption_box)
+        return image.convert("RGB")
+
+    def caption(self, draw, caption, box):
+        s = self.rushes.scale
+        draw.rounded_rectangle(box, radius=10 * s, fill=CAPTION_BACKGROUND)
+        l, t_, _, _ = draw.textbbox((0, 0), caption, font=self.caption_font)
+        draw.text((box[0] + 22 * s - l, box[1] + 10 * s - t_), caption, font=self.caption_font, fill=CAPTION_TEXT)
+
+    def caption_size(self, draw, caption):
+        s = self.rushes.scale
+        left, top, right, bottom = draw.textbbox((0, 0), caption, font=self.caption_font)
+        return right - left + 44 * s, bottom - top + 20 * s
+
+    def fitted(self, draw, label, room):
+        # a small tile shows the start of its label rather than overflowing onto its neighbour
+        if draw.textlength(label, font=self.label_font) <= room:
+            return label
+        while label and draw.textlength(label + "…", font=self.label_font) > room:
+            label = label[:-1]
+        return label + "…" if label else ""
+
+    def tiled(self, t, main, tiles):
+        """the views of the tiles at t: those already captured, in their order of appearance, the main
+        view left out; a pattern's panel is taken where the capture has it"""
+        main_view, chosen = main.partition("@")[0], []
+        for pattern in tiles:
+            name, _, panel = pattern.partition("@")
+            glob = any(c in name for c in "*?[")
+            for view in (v for v in self.first_seen if fnmatch.fnmatchcase(v, name)) if glob else [name]:
+                captures = self.rushes.by_view.get(view)
+                if not captures:
+                    raise SystemExit(f"tiles: no capture of the view {view!r} (views: {', '.join(self.rushes.by_view)})")
+                if view == main_view or captures[0]["t"] > t or any(c[0] == view for c in chosen):
+                    continue
+                capture = self.rushes.at(view, t)
+                chosen.append((view, panel if panel and (not glob or panel in capture["panels"]) else None))
+        return chosen
+
+    def mosaic(self, t, main, caption, tiles, highlight, mosaic_style):
+        rushes, s = self.rushes, self.rushes.scale
+        style = {**self.mosaic_style, **(mosaic_style or {})}
+        side, width, height = style["side"], *rushes.size
+        chosen = self.tiled(t, main, tiles)
+        slots = max(style["slots"] or SLOTS[side], len(chosen))
+        # a tile has the image's proportions: slots of them fill the column (or the row) exactly
+        cell_w, cell_h = width / slots, height / slots
+        main_w, main_h = round(width - cell_w), round(height - cell_h)
+        image = Image.new("RGBA", rushes.size, MOSAIC_BACKGROUND)
+        draw = ImageDraw.Draw(image, "RGBA")
+        big, _ = self.view(main, t)
+        main_x = 0 if side == "right" else round((width - main_w) / 2)
+        image.alpha_composite(big.resize((main_w, main_h), Image.LANCZOS), (main_x, 0))
+        gap, border = 6 * s, max(1, round(s))
+        for n, (view, panel) in enumerate(chosen):
+            x0, y0 = (main_w, n * cell_h) if side == "right" else (n * cell_w, main_h)
+            small, label = self.view(f"{view}@{panel}" if panel else view, t)
+            fit = min((cell_w - 2 * gap) / small.width, (cell_h - 2 * gap) / small.height)
+            small = small.resize((max(1, int(small.width * fit)), max(1, int(small.height * fit))), Image.LANCZOS)
+            x, y = int(x0 + (cell_w - small.width) / 2), int(y0 + (cell_h - small.height) / 2)
+            image.alpha_composite(small, (x, y))
+            outlined = highlight and view == highlight.partition("@")[0]
+            b = max(2, round(3 * s)) if outlined else border
+            draw.rectangle((x - b, y - b, x + small.width + b - 1, y + small.height + b - 1),
+                           outline=INSET_BORDER if outlined else TILE_BORDER, width=b)
+            label = self.fitted(draw, label, small.width - 12 * s)
+            l, t_, r, bottom = draw.textbbox((0, 0), label, font=self.label_font)
+            draw.rectangle((x, y, x + (r - l) + 12 * s, y + (bottom - t_) + 8 * s),
+                           fill=INSET_BORDER if outlined else (20, 24, 40, 225))
+            draw.text((x + 6 * s - l, y + 4 * s - t_), label, font=self.label_font,
+                      fill=(10, 14, 22, 255) if outlined else CAPTION_TEXT)
+        if caption:
+            box_w, box_h = self.caption_size(draw, caption)
+            # on the right, the band under the main view is free: the caption goes there
+            if side == "right":
+                x0, y0 = (main_w - box_w) / 2, main_h + (height - main_h - box_h) / 2
+            else:
+                x0, y0 = main_x + (main_w - box_w) / 2, main_h - 18 * s - box_h
+            self.caption(draw, caption, (x0, y0, x0 + box_w, y0 + box_h))
         return image.convert("RGB")
 
 
@@ -139,8 +232,8 @@ def fill(text, fields):
     return text.format(**fields) if text else text
 
 
-RULE_KEYS = ("main", "inset", "caption", "pace")
-OVERRIDE_KEYS = {"kind", "index", "offset", "duration", "skip", "corner", "width", *RULE_KEYS}
+RULE_KEYS = ("main", "inset", "caption", "pace", "tiles", "highlight")
+OVERRIDE_KEYS = {"kind", "index", "offset", "duration", "skip", "corner", "width", "side", "slots", *RULE_KEYS}
 PACES, CORNERS = ("event", "progress", "final"), ("top-left", "top-right", "bottom-left", "bottom-right")
 SHORTEST = 0.04   # one frame of the video at 25 images per second
 
@@ -163,6 +256,24 @@ def check_override(override, counts, rules):
         raise SystemExit(f"{where}: width is a share of the image's width, above 0 and at most 1")
     if override.get("duration", 1) <= 0:
         raise SystemExit(f"{where}: duration is in seconds, above 0")
+    check_mosaic(override, where)
+
+
+def check_mosaic(keys, where):
+    if keys.get("side", "right") not in SIDES:
+        raise SystemExit(f"{where}: side is one of {', '.join(SIDES)}")
+    slots = keys.get("slots")
+    if slots is not None and (not isinstance(slots, int) or isinstance(slots, bool) or slots < 2):
+        raise SystemExit(f"{where}: slots is a number of tiles, 2 or more")
+
+
+def check_rule(kind, rule):
+    where = f"the cut's scene {kind!r}"
+    tiles = rule.get("tiles")
+    if tiles is not None and (not isinstance(tiles, list) or not all(isinstance(v, str) and v for v in tiles)):
+        raise SystemExit(f"{where}: tiles is a list of views (* matches several), as [\"agent:*\"]")
+    if tiles and rule.get("inset"):
+        raise SystemExit(f"{where}: an inset or tiles, not both")
 
 
 def scenes(rushes: Rushes, cut: dict):
@@ -170,6 +281,7 @@ def scenes(rushes: Rushes, cut: dict):
     scene: its start (offset), its rule's keys, its inset's corner and width, its duration, or leaves
     it out (skip: its time is left out too, the scene before it still ending where it began)"""
     rules = cut["scenes"]
+    check_mosaic(cut.get("mosaic") or {}, "mosaic")
     found, counts = [], {}
     for event in rushes.events:
         if event["kind"] in rules:
@@ -196,6 +308,8 @@ def scenes(rushes: Rushes, cut: dict):
         override = scene["override"]
         scene["rule"] = {**rules[scene["kind"]], **{k: override[k] for k in RULE_KEYS if k in override}}
         scene["inset_style"] = {k: override[k] for k in ("corner", "width") if k in override}
+        scene["mosaic_style"] = {k: override[k] for k in ("side", "slots") if k in override}
+        check_rule(scene["kind"], scene["rule"])
     return [scene for scene in listed if not scene["override"].get("skip")]
 
 
@@ -220,8 +334,13 @@ def plan(rushes: Rushes, cut: dict):
             per = min(timing["round_frame"], timing["progress_max"] / len(times))
         else:
             per = max(timing["min_frame"], timing["last_caption" if pace == "final" else "caption"] / len(times))
+        mosaic = {}
+        if rule.get("tiles"):
+            # only then: a frame without tiles stays as it was, its image unchanged
+            mosaic = {"tiles": [fill(v, fields) for v in rule["tiles"]], "highlight": fill(rule.get("highlight"), fields),
+                      "mosaic_style": listed["mosaic_style"]}
         frames += [{"t": t, "main": main, "inset": inset, "caption": caption, "inset_style": listed["inset_style"],
-                    "duration": per, "scene": scene, "kind": listed["kind"], "index": listed["index"]} for t in times]
+                    "duration": per, "scene": scene, "kind": listed["kind"], "index": listed["index"], **mosaic} for t in times]
     return frames
 
 
@@ -230,14 +349,14 @@ def no_progress(stage, done=0, total=0):
 
 
 def render(rushes: Rushes, cut: dict, frames_plan, output: Path, frames: Path, progress=no_progress):
-    composer = Composer(rushes, cut.get("inset"))
+    composer = Composer(rushes, cut.get("inset"), cut.get("mosaic"))
     timing = {**TIMING, **(cut.get("timing") or {})}
     shutil.rmtree(frames, ignore_errors=True); frames.mkdir(parents=True)
     lines = []
     for n, frame in enumerate(frames_plan):
         progress("images", n, len(frames_plan))
         name = f"f{n:05d}.png"
-        composer.compose(frame["t"], frame["main"], frame["inset"], frame["caption"], frame["inset_style"]).save(frames / name)
+        composer.frame(frame).save(frames / name)
         lines += [f"file '{frames / name}'", f"duration {frame['duration']:.3f}"]
         if n + 1 == len(frames_plan) or frames_plan[n + 1]["scene"] != frame["scene"]:
             # the fade mixes an image with the next one: the scene's last image, repeated for one frame

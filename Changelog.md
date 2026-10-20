@@ -76,6 +76,10 @@
 * `edit --ui` exports the video and the screenshots of the saved cut, the same files as `edit`, with
   its progress, the files written and the video played in the page; the video's path and formats are
   set there.
+* Mosaic: a scene's `tiles` (views, `*` matching several) show the main view smaller and beside it a
+  tile per view, in their order of appearance, `highlight` outlining one (`"agent:{turn}"`); the
+  tiles in a column on the right (default) or a row at the bottom (`mosaic: {side, slots}`, or per
+  scene); set in `edit --ui` too. A cut without tiles gives the same video as before.
 
 ## [Version 0.13.0]
 

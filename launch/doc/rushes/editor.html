@@ -148,6 +148,7 @@
   </section>
 </main>
 <datalist id="views-list"></datalist>
+<datalist id="tiles-list"></datalist>
 <script>
 "use strict";
 const $ = id => document.getElementById(id);
@@ -271,12 +272,16 @@ function renderScene(){
     return `<label class="${set ? 'ov' : ''}" for="f-${k}">${label}</label>${input}` +
       `<button class="reset${set && overridable ? ' on' : ''}" data-reset="${k}" title="back to the rule of its kind">↺</button>`;
   };
-  const text = (k, ph = '') => `<input id="f-${k}" data-key="${k}" list="${k === 'main' || k === 'inset' ? 'views-list' : ''}" value="${esc(value(k) ?? '')}" placeholder="${esc(ph)}">`;
+  const lists = {main: 'views-list', inset: 'views-list', highlight: 'views-list', tiles: 'tiles-list'};
+  const shown = v => Array.isArray(v) ? v.join(', ') : (v ?? '');
+  const text = (k, ph = '') => `<input id="f-${k}" data-key="${k}" list="${lists[k] || ''}" value="${esc(shown(value(k)))}" placeholder="${esc(ph)}">`;
   const select = (k, options, ph) => `<select id="f-${k}" data-key="${k}">${ph !== undefined ? `<option value="">${esc(ph)}</option>` : ''}` +
     options.map(o => `<option${(value(k) ?? '') === o ? ' selected' : ''}>${o}</option>`).join('') + '</select>';
   const number = (k, step, ph) => `<input id="f-${k}" data-key="${k}" type="number" step="${step}" value="${ov[k] ?? ''}" placeholder="${esc(ph)}">`;
   let form = field('main', 'main', text('main')) +
     field('inset', 'inset', text('inset', 'none')) +
+    field('tiles', 'tiles', text('tiles', 'none · instead of the inset, e.g. agent:*')) +
+    field('highlight', 'outlined', text('highlight', 'none · a tile, e.g. agent:{turn}')) +
     field('caption', 'caption', text('caption', 'none')) +
     field('pace', 'pace', select('pace', ['event', 'progress', 'final']));
   if(onScene){
@@ -284,6 +289,8 @@ function renderScene(){
       field('duration', 'duration s', number('duration', 0.1, `${s.video_duration.toFixed(1)} (its pace)`)) +
       field('corner', 'inset corner', select('corner', ['top-left', 'top-right', 'bottom-left', 'bottom-right'], `${cut.inset.corner} (the cut's)`)) +
       field('width', 'inset width', number('width', 0.01, `${cut.inset.width} (the cut's)`)) +
+      field('side', 'tiles side', select('side', ['right', 'bottom'], `${cut.mosaic.side} (the cut's)`)) +
+      field('slots', 'tiles slots', number('slots', 1, `${cut.mosaic.slots} (the cut's)`)) +
       `<span class="note">{field}: a field of the event · yellow: set for this scene only · ↺ back to the rule</span>`;
   } else {
     form += `<span class="note">Every ${esc(s.kind)} scene follows these, unless an override of the scene says otherwise. Start, duration and the inset's place are set scene by scene.</span>`;
@@ -316,7 +323,13 @@ function showSceneError(){
 function fieldChanged(s, el){
   const key = el.dataset.key, raw = el.value.trim(), numeric = el.type === 'number';
   const op = {scope, kind: s.kind, index: s.index, key};
-  if(numeric || key === 'corner'){
+  if(key === 'tiles'){
+    const tiles = raw.split(',').map(v => v.trim()).filter(Boolean);
+    const inset = scope === 'scene' ? ('inset' in (s.override || {}) ? s.override.inset : s.rule.inset) : (cut.rules[s.kind] || {}).inset;
+    // tiles replace the inset: both go in one change, the cut refusing a scene having both
+    if(tiles.length && inset){ delete op.key; op.values = {tiles, inset: null}; }
+    else op.value = tiles.length ? tiles : null;
+  } else if(numeric || key === 'corner' || key === 'side'){
     if(raw === '') op.remove = true; else op.value = numeric ? Number(raw) : raw;
   } else if(key === 'main' && raw === ''){
     sceneError = 'A scene needs a main view.'; renderScene(); return;
@@ -668,6 +681,9 @@ async function init(){
   const options = new Set();
   Object.entries(rushes.views).forEach(([name, v]) => { options.add(name); v.panels.forEach(p => options.add(`${name}@${p}`)); });
   $('views-list').innerHTML = [...options].map(o => `<option value="${esc(o)}">`).join('');
+  // the views of a family (agent:server, agent:client-lyon…) in one tile pattern
+  const families = new Set(Object.keys(rushes.views).filter(v => v.includes(':')).map(v => v.split(':')[0] + ':*'));
+  $('tiles-list').innerHTML = [...families, ...Object.keys(rushes.views)].map(o => `<option value="${esc(o)}">`).join('');
   view0 = 0; view1 = rushes.span;
   await loadPlan();
   // an export started before the page was opened (or reloaded) is followed

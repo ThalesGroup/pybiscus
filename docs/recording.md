@@ -109,13 +109,14 @@ to only print its address):
   capture (bright when the page changed). A click shows the cut's image at that moment, or on a
   view's track that view alone; a click on a scene selects it; the wheel zooms, a drag moves;
 - the **scene** selected: its time in the rushes and in the video, its images, its main view, inset,
-  caption, pace and the event's fields, in yellow what an override of that scene sets.
+  tiles, outlined tile, caption, pace and the event's fields, in yellow what an override of that scene sets.
 
 The scene's settings are changed in the page, for **this scene** (an override: also its `offset`,
-`duration`, the inset's `corner` and `width`) or for **every** scene of its kind (the rule). Each
+`duration`, the inset's `corner` and `width`, the tiles' `side` and `slots`) or for **every** scene of its kind (the rule). Each
 change is checked by computing the plan again: a refused one (an offset reversing two scenes, an
 unknown view…) shows its message and changes nothing. ↺ removes an override's value; *Leave out
-this scene* skips it, *Bring it back* on its hatched mark undoes it.
+this scene* skips it, *Bring it back* on its hatched mark undoes it. Tiles are typed as a list
+separated by commas (`agent:*, manager@geo`); given to a scene having an inset, they replace it.
 
 **Screenshots** (`shots`): *Capture here* adds the view shown, whole or one of its panels, at the
 moment shown (in the plan: the scene's main view at that image; on a view's track: that view), under
@@ -175,8 +176,29 @@ capture of its main view in that time:
 |---|---|
 | `main` | the view filling the image (required) |
 | `inset` | a view shown in a corner, with a tab naming it; never enlarged, so that its text stays readable |
-| `caption` | drawn at the bottom of the image |
+| `tiles` | instead of an inset, a **mosaic**: the main view smaller, and beside it one tile per view of the list (`*` matches several: `["agent:*"]`), in the order the views appeared, the main view left out; a view gets its tile once it has been captured. A pattern's panel (`"agent:*@console"`) is taken where the capture has it |
+| `highlight` | the tile outlined, as `"agent:{turn}"`: the agent whose turn it is |
+| `caption` | drawn at the bottom of the image (with tiles on the right: in the band under the main view) |
 | `pace` | `event` (the scene lasts about `timing.caption` seconds), `progress` (its images scroll by: `timing.round_frame` each), `final` (`timing.last_caption`, then the last image stays) |
+
+**Mosaic** (`mosaic:`, the cut's layout of the tiles): `side: right` (default) puts them in a
+column on the right, `side: bottom` in a row at the bottom; `slots` is how many the column or the
+row holds before the tiles shrink (default 4 on the right, 6 at the bottom). A tile has the image's
+proportions, so that `slots` tiles fill the column or the row: the main view keeps the rest
+(three quarters of the width with 4 slots). A tile's label is cut to its width.
+
+```yaml
+mosaic: {side: right, slots: 4}
+scenes:
+  round:
+    main: manager
+    tiles: ["agent:*"]                     # the server and each client, as they appear
+    highlight: "agent:{turn}"
+    caption: "5 · Federated training: round {round} / {rounds}"
+    pace: progress
+```
+
+A scene has an inset or tiles, not both.
 
 **One scene** (`overrides:`): a rule applies to every scene of its kind; an override changes one,
 the `index`-th scene of its kind (0 the first, in the order of the rushes):
@@ -190,10 +212,11 @@ overrides:
 
 | key | meaning |
 |---|---|
-| `main`, `inset`, `caption`, `pace` | instead of the rule's (`inset: null`: no inset) |
+| `main`, `inset`, `caption`, `pace`, `tiles`, `highlight` | instead of the rule's (`inset: null`: no inset, `tiles: null`: no mosaic) |
 | `offset` | seconds added to the scene's start (negative: earlier); the scene before ends there; scenes keep their order |
 | `duration` | the scene's time in the video, shared by its images (at least one video frame each, 0.04 s) |
 | `corner`, `width` | the inset's corner (`top-left`, `top-right`, `bottom-left`, `bottom-right`) and width, a share of the image's |
+| `side`, `slots` | the mosaic's layout for this scene |
 | `skip` | the scene is left out with its time; the scene before still ends where it began |
 
 An unknown key, a kind without a rule, an index beyond the rushes' scenes or two overrides of one
@@ -359,7 +382,6 @@ time-lapse are then added while editing (Clipchamp, Shotcut, Kdenlive, ffmpeg).
 
 **Planned** (not available yet):
 - a demonstration video of `edit --ui` itself, the page driven by a script;
-- side by side views (a mosaic), as an alternative to a main view and an inset;
 - the agents' run monitors with `--attach`;
 - a recording started by the session manager itself, with captions taken from its events;
 - a record button in the manager's page, recording the tab from the browser.

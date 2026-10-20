@@ -20,13 +20,13 @@ from ruamel.yaml import YAML
 from ruamel.yaml.comments import CommentedMap, CommentedSeq
 from ruamel.yaml.error import YAMLError
 
-from .editing import RULE_KEYS, Composer, Rushes, TIMING, check_shots, edit, plan, scenes, shot_anchor, shot_image
+from .editing import MOSAIC, RULE_KEYS, SLOTS, Composer, Rushes, TIMING, check_shots, edit, plan, scenes, shot_anchor, shot_image
 from .shooting import log
 
 PAGE = Path(__file__).with_name("editor.html")
 CACHE_SIZE = 400
 JPEG_QUALITY = 82
-SCENE_KEYS = ("offset", "duration", "corner", "width", "skip")
+SCENE_KEYS = ("offset", "duration", "corner", "width", "side", "slots", "skip")
 SETTING_KEYS = ("output", "formats", "shots_dir")
 FORMATS = ("mp4", "webp", "png")
 MEDIA_TYPES = {".mp4": "video/mp4", ".webp": "image/webp", ".png": "image/png"}
@@ -48,6 +48,14 @@ def round_trip():
 def plain(document):
     # the editing reads plain dicts and lists; the document keeps its comments for the writing
     return json.loads(json.dumps(document))
+
+
+def flow(value):
+    # a list written on one line, as the cuts write [mp4, webp] or ["agent:*"]
+    if isinstance(value, list):
+        value = CommentedSeq(value)
+        value.fa.set_flow_style()
+    return value
 
 
 class Refused(Exception):
@@ -90,7 +98,7 @@ class Session:
         computed = (scenes(self.rushes, cut), plan(self.rushes, cut)) if cut.get("scenes") else ([], [])
         shots = check_shots(self.rushes, cut)
         self.cut, (self.scenes, self.frames), self.shots = cut, computed, shots
-        self.composer = Composer(self.rushes, cut.get("inset"))
+        self.composer = Composer(self.rushes, cut.get("inset"), cut.get("mosaic"))
         self.cache.clear()
 
     def state(self):
@@ -115,6 +123,8 @@ class Session:
         with self.lock:
             document = copy.deepcopy(self.document)
             kind, key, value = op.get("kind"), op.get("key"), op.get("value")
+            # several keys in one change: tiles replacing an inset, which cannot be set together
+            values = op.get("values") or {key: value}
             if op.get("scope") == "shot":
                 self.change_shot(document, op)
             elif op.get("scope") == "setting":
@@ -122,19 +132,21 @@ class Session:
             elif kind not in (document.get("scenes") or {}):
                 raise Refused(f"no rule for the kind {kind!r}")
             elif op.get("scope") == "rule":
-                if key not in RULE_KEYS:
-                    raise Refused(f"a rule sets {', '.join(RULE_KEYS)}, not {key!r}")
                 rule = document["scenes"][kind]
-                if key == "main" and not value:
-                    raise Refused("a scene needs a main view")
-                if value in (None, ""):
-                    rule.pop(key, None)
-                else:
-                    rule[key] = value
+                for key, value in values.items():
+                    if key not in RULE_KEYS:
+                        raise Refused(f"a rule sets {', '.join(RULE_KEYS)}, not {key!r}")
+                    if key == "main" and not value:
+                        raise Refused("a scene needs a main view")
+                    if value in (None, "", []):
+                        rule.pop(key, None)
+                    else:
+                        rule[key] = flow(value)
             elif op.get("scope") == "scene":
-                if key not in RULE_KEYS + SCENE_KEYS:
-                    raise Refused(f"an override sets {', '.join(RULE_KEYS + SCENE_KEYS)}, not {key!r}")
-                self.set_override(document, kind, op.get("index"), key, value, op.get("remove", False))
+                for key, value in values.items():
+                    if key not in RULE_KEYS + SCENE_KEYS:
+                        raise Refused(f"an override sets {', '.join(RULE_KEYS + SCENE_KEYS)}, not {key!r}")
+                    self.set_override(document, kind, op.get("index"), key, flow(value), op.get("remove", False))
             else:
                 raise Refused("scope is rule, scene, shot or setting")
             try:
@@ -301,7 +313,12 @@ class Session:
                 "output": self.cut.get("output"), "formats": self.cut.get("formats", ["mp4", "webp"]),
                 "default_output": str(self.rushes.dir / "video"),
                 "dirty": self.dirty, "disk_changed": self.dirty and self.disk_changed(),
-                "inset": {"width": 0.42, "corner": "bottom-right", **(self.cut.get("inset") or {})}}
+                "inset": {"width": 0.42, "corner": "bottom-right", **(self.cut.get("inset") or {})},
+                "mosaic": self.mosaic_defaults()}
+
+    def mosaic_defaults(self):
+        mosaic = {**MOSAIC, **(self.cut.get("mosaic") or {})}
+        return {"side": mosaic["side"], "slots": mosaic["slots"] or SLOTS.get(mosaic["side"], 4)}
 
     def image(self, key, compose, width):
         key = (key, width)
@@ -322,7 +339,7 @@ class Session:
 
     def frame(self, index, width):
         f = self.frames[index]
-        return self.image(("frame", index), lambda: self.composer.compose(f["t"], f["main"], f["inset"], f["caption"], f["inset_style"]), width)
+        return self.image(("frame", index), lambda: self.composer.frame(f), width)
 
     def at(self, t, width):
         """the image of the cut at a moment of the rushes: the scene in progress then, composed at t"""
@@ -334,7 +351,7 @@ class Session:
         if index is None:
             return None
         f = self.frames[index]
-        return self.image(("at", round(t, 3)), lambda: self.composer.compose(t, f["main"], f["inset"], f["caption"], f["inset_style"]), width)
+        return self.image(("at", round(t, 3)), lambda: self.composer.frame(f, t), width)
 
     def shot(self, index, width):
         shot = self.shots[index]
