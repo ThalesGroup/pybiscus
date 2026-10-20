@@ -120,6 +120,8 @@ The manager shows, live:
   run, the duration from round 1, the last values of the main metric and of the loss (server's test,
   clients' evaluation, training), and the server's reports directory, with *copy* (a path on the
   server agent's machine); × hides it until the next session ends;
+- before the first round, the charts a line each and narrower, the topology taking the width; the
+  map says that the sites appear as the agents register;
 - under the top bar, the next step until the session runs: register a server agent, then the
   clients; choose the relays (or wait for the upper level); *⚙ config* and *Run session*; *Check*
   then *Execute* on the server's page, then on the clients';
@@ -197,7 +199,8 @@ A session launched again at each deadline shows its number (`SESSION n`) and a *
 button ([below](#repeated-sessions)).
 
 *Drop session* ends the session and empties the page, for a new one with the same agents (which
-register again). The runs of its agents still going are stopped. In a hierarchical session, the
+register again). The runs of its agents still going are stopped: while the session runs, it asks
+first. Once the session has ended, it reads *⟲ new session*, no longer in red. In a hierarchical session, the
 lower levels follow: a lower-level manager drops its own session (and stops its runs) as soon as it
 learns that the upper level dropped its session or launched another one — within its 10 s
 heartbeat —, and its page says so (*⚠ session dropped*); its operator launches it again. An upper

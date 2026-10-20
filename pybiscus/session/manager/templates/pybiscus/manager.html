@@ -181,6 +181,14 @@
     background:radial-gradient(700px 400px at 50% 40%, var(--map-bg-1), var(--map-bg-2)); overflow:hidden}
   #geo{position:absolute; inset:0; width:100%; height:100%} #geo g{cursor:default}
   .geolabels{position:absolute; inset:0; pointer-events:none}
+  .geo-empty{position:absolute; inset:0; display:flex; align-items:center; justify-content:center; color:var(--dim); font-size:12px}
+  .geo-empty[hidden]{display:none}
+  /* before the first round: two empty charts, axes alone, took most of the screen; a line each, and
+     their column narrower (applyLayout) */
+  .no-data{display:none; color:var(--dim); font-size:12px; padding:6px 2px}
+  .grid.charts-empty .no-data:not([hidden]){display:block}
+  .grid.charts-empty #accChart, .grid.charts-empty #lossCurves, .grid.charts-empty #lossChart{display:none}
+  .grid.charts-empty .col-mid{grid-template-rows:auto auto; align-content:start}
   .geolabels .lbl{position:absolute; transform:translate(7px,-50%); font-size:10px; color:var(--text);
     white-space:nowrap; text-shadow:0 1px 3px var(--bg),0 0 2px var(--bg); pointer-events:auto; cursor:default}
   .geolabels .lbl.unplaced{visibility:hidden}
@@ -333,6 +341,7 @@
         <div class="body"><div class="geo">
           <div class="geomap">
             <svg id="geo" viewBox="0 0 100 62" preserveAspectRatio="none"></svg>
+            <div class="geo-empty" id="geo-empty">the sites appear here as the agents register</div>
             <div class="geolabels" id="geolabels"></div>
             <span class="cluster-tag" id="cluster-tag">💐 cluster</span>
           </div>
@@ -358,7 +367,8 @@
             <span id="clients-phase" class="clients-phase" hidden><button class="tool" data-phase="fit">fit</button><button class="tool" data-phase="evaluate">evaluate</button></span>
           </span>
         </header>
-        <div class="body acc-body"><svg class="chart" id="accChart" viewBox="0 0 600 200" preserveAspectRatio="none"></svg><div class="acc-tip" id="acc-tip" hidden></div></div>
+        <div class="body acc-body"><svg class="chart" id="accChart" viewBox="0 0 600 200" preserveAspectRatio="none"></svg><div class="acc-tip" id="acc-tip" hidden></div>
+          <div class="no-data">the curves start with the first round</div></div>
       </section>
       <section class="panel" data-panel="loss">
         <header><span class="eyebrow" id="mid-title">Loss</span>
@@ -380,7 +390,8 @@
         <div class="body acc-body"><svg class="chart" id="lossCurves" viewBox="0 0 600 140" preserveAspectRatio="none"></svg><div class="acc-tip" id="loss-tip" hidden></div>
           <svg class="chart" id="lossChart" viewBox="0 0 600 140" preserveAspectRatio="none" hidden></svg>
           <svg class="chart" id="cyclesChart" viewBox="0 0 600 140" preserveAspectRatio="none" hidden></svg>
-          <div class="cons" id="constraintsView" hidden></div></div>
+          <div class="cons" id="constraintsView" hidden></div>
+          <div class="no-data" id="loss-no-data">the curves start with the first round</div></div>
       </section>
     </div>
 
@@ -976,6 +987,7 @@
     document.querySelectorAll('#mid-tabs .tool').forEach(b => b.classList.toggle('active', b.dataset.tab === midTab));
     ['lossCurves', 'loss-curves-legend', 'loss-tools'].forEach(id => document.getElementById(id).toggleAttribute('hidden', midTab !== 'loss'));
     document.getElementById('lossChart').toggleAttribute('hidden', midTab !== 'diff');
+    document.getElementById('loss-no-data').toggleAttribute('hidden', !['loss', 'diff'].includes(midTab));
     document.getElementById('loss-legend').toggleAttribute('hidden', midTab !== 'diff');
     document.getElementById('cyclesChart').toggleAttribute('hidden', midTab !== 'cycles');
     document.getElementById('constraintsView').toggleAttribute('hidden', midTab !== 'constraints');
@@ -1044,7 +1056,15 @@
     });
     svg.innerHTML = s;
   }
-  function renderCharts(){ renderAccuracy(); renderLossCurves(); renderLoss(); renderDround(); renderCycles(); renderConstraints(); renderRound(); renderSessionState(); renderSummary(); }
+  function renderCharts(){ renderChartsEmpty(); renderAccuracy(); renderLossCurves(); renderLoss(); renderDround(); renderCycles(); renderConstraints(); renderRound(); renderSessionState(); renderSummary(); }
+  let chartsEmpty = false;
+  function renderChartsEmpty(){
+    const empty = !sessionEnd && ![roundSeries, lossSeries].some(s => Object.values(s).some(o => Object.keys(o).length));
+    if(empty === chartsEmpty) return;
+    chartsEmpty = empty;
+    document.querySelector('.grid').classList.toggle('charts-empty', empty);
+    if(window.applyLayout) window.applyLayout();
+  }
   const latestOf = o => { const r = Object.keys(o).map(Number).filter(n => n > 0); return r.length ? o[Math.max(...r)] : null; };
   function fmtDuration(seconds){
     const s = Math.round(seconds), h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60);
@@ -1129,7 +1149,16 @@
     box.hidden = !text;
     if(text) document.getElementById('next-step-text').innerHTML = text;
   }
+  // an ended session: dropping it is the way to the next one, not a danger
+  function renderDropButton(){
+    const btn = document.getElementById('revokeBtn'), ended = !!sessionEnd;
+    btn.classList.toggle('danger', !ended);
+    btn.textContent = ended ? '⟲ new session' : 'Drop session';
+    btn.title = ended ? 'empty the page for a new session: the agents register again'
+      : sessionRunning ? 'stop the runs and drop the session (asks first)' : 'drop the session: the agents register again';
+  }
   function renderSessionState(){
+    renderDropButton();
     const state = sessionStateOf(), el = document.getElementById('session-state');
     el.dataset.state = state.key; el.title = state.title || '';
     setTxt('session-state-text', state.text);
@@ -1343,6 +1372,7 @@
     // positions : par lat/lon si dispo (ajustées à la bbox des agents + décalage anti-superposition),
     // sinon disposition schématique (serveur au centre, clients en cercle, niveaux inférieurs autour)
     const geo=document.getElementById('geo');
+    document.getElementById('geo-empty').hidden = allNodes.length > 0;
     const W=100,H=62, cx=50, cy=31;
     const server = nodes.find(n=>n.role==='server');
     const clientNodes = nodes.filter(n=>n.role==='client');
@@ -1611,6 +1641,8 @@
 
   // drop session
   document.getElementById("revokeBtn").addEventListener("click", async ()=>{
+    // it stops the runs still going: asked while the session runs
+    if(sessionRunning && !sessionEnd && !confirm('Drop the running session?\n\nThe runs of its agents are stopped; the agents register again for a new session.')) return;
     session.stop();
     try{
       const response = await fetch("/pybiscus-session/params", {method:"DELETE", headers:{"Content-Type":"application/json", "X-Pybiscus":"1"}});
@@ -1741,7 +1773,9 @@
     // a dragged width (--cw1, --cw2) holds only beside the column it was dragged against
     const leftW = !left ? '0px' : (mid ? 'var(--cw1,1fr)' : '1fr');
     // with no column on top, the logs' row (spanning them all) still needs a width
-    const midW = !mid ? (top ? '0px' : '1fr') : (right && vignettesOpen ? 'var(--cw2,1fr)' : '1fr');
+    // before the first round the charts are a line each: the topology takes the width, unless dragged
+    const midFr = chartsEmpty ? '0.6fr' : '1fr';
+    const midW = !mid ? (top ? '0px' : '1fr') : (right && vignettesOpen ? `var(--cw2,${midFr})` : midFr);
     const rightW = !right ? '0px' : (vignettesOpen ? '1fr' : '36px');
     const grid = document.querySelector('.grid');
     grid.style.gridTemplateColumns = [leftW, left && (mid || right) ? '10px' : '0px', midW, mid && right ? '10px' : '0px', rightW].join(' ');

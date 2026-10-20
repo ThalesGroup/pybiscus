@@ -41,6 +41,13 @@
   dimmed, with *register ↗* to their registration page: the topology said "no agents yet" while
   the agents' log showed them started (an agent sends its URL and role with its start).
 
+* Manager before the first round: the two charts a line each ("the curves start with the first
+  round") and their column narrower, the topology taking the width (unless a column was dragged);
+  the map says that the sites appear as the agents register (empty axes and an empty grid took most
+  of the screen).
+* Manager: *Drop session* asks first while the session runs (it stops the runs); once the session
+  has ended it reads *⟲ new session*, no longer in red.
+
 ## [Version 0.13.0]
 
 Since `version0.12.0` (2026-10-18): the GUI reworked — one dark theme (with a light one) shared by
