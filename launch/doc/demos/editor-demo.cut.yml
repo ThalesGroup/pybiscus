@@ -1,0 +1,48 @@
+# Cut of the editor's demonstration (launch/doc/demos/editor_demo.py): one view, the editor's page,
+# played about as it was shot; the export, long, scrolls by faster.
+#   uv run launch/doc/record_session.py edit <rushes> launch/doc/demos/editor-demo.cut.yml
+
+output: docs/videos/edit-ui-demo          # .mp4 is added
+formats: [mp4]
+timing: {round_frame: 0.3, progress_max: 30}
+
+scenes:
+  open:
+    main: editor
+    caption: "edit --ui: the rushes on a timeline, the cut's video, the scene selected"
+    pace: progress
+  play:
+    main: editor
+    caption: "Play the video as the cut composes it"
+    pace: progress
+  caption:
+    main: editor
+    caption: "Select a scene and change its caption: this scene only"
+    pace: progress
+  mosaic:
+    main: editor
+    caption: "Every round scene: the agents' views as tiles, the client of the round outlined"
+    pace: progress
+  skip:
+    main: editor
+    caption: "Leave a scene out of the video, then bring it back"
+    pace: progress
+  shot:
+    main: editor
+    caption: "Click a view's track, choose a panel: a screenshot of that moment"
+    pace: progress
+  save:
+    main: editor
+    caption: "Save: the cut's file is written, its comments kept"
+    pace: progress
+  export:
+    main: editor
+    caption: "Export: the video and the screenshots, as edit writes them"
+    pace: progress
+  done:
+    main: editor
+    caption: "The exported video, played in the page"
+    pace: final
+
+overrides:
+  - {kind: export, index: 0, duration: 8}  # the export's progress, about 20 s, shortened

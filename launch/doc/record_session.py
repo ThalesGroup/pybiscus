@@ -52,8 +52,9 @@ DEFAULT_VIEWPORT = {"width": 1440, "height": 900}
 INSET_VIEWPORT = {"width": 760, "height": 470}
 # the panels whose position each capture keeps, for the cut to show one of them: the map, the agents,
 # the accuracy curves, the cycles of the manager's page; the log of an agent's run monitor
-MANAGER_PANELS = ("geo", "nodes", "accChart", "cyclesChart")
-AGENT_PANELS = ("console",)
+# each the section holding the element, with its title: the convention of Pybiscus' pages
+MANAGER_PANELS = tuple((name, f"#{name}", "section") for name in ("geo", "nodes", "accChart", "cyclesChart"))
+AGENT_PANELS = (("console", "#console", "section"),)
 
 CHECK_DONE_JS = """() => { const s = document.getElementById('check-success-result'), f = document.getElementById('check-failure-result');
   return (s && s.offsetParent) || (f && f.offsetParent); }"""
@@ -330,7 +331,7 @@ def shoot_hierarchical(sc, work, rushes):
                         # another page of a manager (its network view...), opened for the take
                         page = browser.new_page(viewport=viewport)
                         page.goto(url(tab.split(":", 1)[1]) + take["path"]); page.wait_for_timeout(2500)
-                        shooting.take(take["name"], page, take.get("full_page", False), panel or None)
+                        shooting.take(take["name"], page, take.get("full_page", False), (panel, f"#{panel}", "section") if panel else None)
                         page.close()
                         continue
                     page = shooting.views[tab]["page"]
@@ -339,7 +340,7 @@ def shoot_hierarchical(sc, work, rushes):
                     if take.get("click_text"):
                         # a tab of a form, which shows the section the take is about
                         page.get_by_text(take["click_text"], exact=True).first.click(); page.wait_for_timeout(800)
-                    shooting.take(take["name"], page, take.get("full_page", False), panel or None)
+                    shooting.take(take["name"], page, take.get("full_page", False), (panel, f"#{panel}", "section") if panel else None)
                     if take.get("tab"):
                         # the page now shows that tab: a cut can end on it
                         shooting.event("tab", tab=take["tab"]); shooting.tick(3)

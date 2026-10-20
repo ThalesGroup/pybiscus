@@ -2,7 +2,7 @@
 
 A rushes directory holds:
 - meta.json: the viewport, the pixel scale, the views;
-- captures.jsonl: one line per capture, {t, view, file, url, label, panels: {id: [x, y, w, h]}}, t in
+- captures.jsonl: one line per capture, {t, view, file, url, label, panels: {name: [x, y, w, h]}}, t in
   seconds since the start, panels in image pixels;
 - events.jsonl: one line per event the driver reports, {t, kind, ...its fields};
 - takes.jsonl and takes/: special captures the driver asks for (a whole page, a panel after a click);
@@ -14,10 +14,19 @@ import json
 import time
 from pathlib import Path
 
-PANELS_JS = """(ids) => Object.fromEntries(ids.map(id => {
-  const el = document.getElementById(id); if (!el) return [id, null];
-  const r = (el.closest('section') || el).getBoundingClientRect();
-  return [id, [r.x, r.y, r.width, r.height]]; }))"""
+PANELS_JS = """(specs) => Object.fromEntries(specs.map(([name, selector, closest]) => {
+  const el = document.querySelector(selector); if (!el) return [name, null];
+  const r = ((closest && el.closest(closest)) || el).getBoundingClientRect();
+  return [name, [r.x, r.y, r.width, r.height]]; }))"""
+
+
+def panel_spec(panel):
+    """a panel: an element's id (the element itself), or (name, CSS selector) or (name, CSS selector,
+    container): the container is the closest ancestor matching it, whose box is then the panel's"""
+    if isinstance(panel, str):
+        return [panel, f"#{panel}", None]
+    name, selector, *closest = panel
+    return [name, selector, closest[0] if closest else None]
 
 
 def log(msg):
@@ -48,8 +57,9 @@ class Shooting:
         return round(time.monotonic() - self.start, 3)
 
     def add_view(self, name, page, panels=(), label=None):
-        """label: what the view shows, as a function of its page (its URL changes as it goes)"""
-        self.views[name] = {"page": page, "panels": list(panels), "label": label or (lambda page: name)}
+        """label: what the view shows, as a function of its page (its URL changes as it goes); panels:
+        see panel_spec"""
+        self.views[name] = {"page": page, "panels": [panel_spec(p) for p in panels], "label": label or (lambda page: name)}
         (self.rushes / "views" / self.safe(name)).mkdir(exist_ok=True)
 
     def remove_view(self, name):
@@ -94,12 +104,11 @@ class Shooting:
             time.sleep(self.period)
 
     def take(self, name, page, full_page=False, panel=None):
-        """a special capture: the whole page, or a panel (the section holding an element)"""
+        """a special capture: the whole page, or a panel (see panel_spec)"""
         path = self.rushes / "takes" / f"{self.safe(name)}.png"
         if panel:
-            located = page.locator(f"#{panel}")
-            section = located.locator("xpath=ancestor::section[1]")
-            (section if section.count() else located).screenshot(path=path)
+            _, selector, closest = panel_spec(panel)
+            page.locator(selector).first.evaluate_handle("(e, c) => (c && e.closest(c)) || e", closest).as_element().screenshot(path=path)
         else:
             page.screenshot(path=path, full_page=full_page)
         self.takes.write(json.dumps({"t": self.now(), "name": name, "file": f"takes/{path.name}"}) + "\n"); self.takes.flush()

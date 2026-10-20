@@ -58,6 +58,10 @@
 
 ### Recording
 
+* A view's panels: an element's id, a CSS selector, or a selector and the container to take
+  (`(name, selector, "section")`); `launch/doc/rushes/` no longer assumes Pybiscus' `<section>`
+  around a panel. `launch/doc/demos/editor_demo.py` shoots `edit --ui` at work with the same tool,
+  edited by `launch/doc/demos/editor-demo.cut.yml` (a cursor drawn in the page).
 * A cut's `overrides:` change one scene (the `index`-th of its kind): its start (`offset`), its
   `duration`, its main view, inset, caption or pace, its inset's `corner` and `width`, or leave it
   out (`skip`); a rule applied to every scene of its kind. The editing computes the plan of the video

@@ -349,6 +349,31 @@ it; `scale: 2` is for a large screen or a presentation.
 `docs/videos/` is kept out of git for now (its `.gitignore`): every video weighs in the
 repository's history forever, so only short ones should be versioned, once chosen.
 
+## Shooting another web application
+
+`launch/doc/rushes/` shoots any page Playwright opens. A driver declares its views
+(`Shooting.add_view(name, page, panels, label)`), says which are in focus, signals its events and
+ticks; a cut then edits the rushes as above. A view's **panels** are given as:
+
+- an element's `id` (`"console"`): the element itself;
+- `(name, CSS selector)`: the first element matching it;
+- `(name, CSS selector, container)`: the closest ancestor of that element matching `container`,
+  for a panel shown with its frame and title. Pybiscus' pages give `"section"`
+  (`("geo", "#geo", "section")`).
+
+`launch/doc/demos/editor_demo.py` is such a driver: it shoots `edit --ui` at work on the rushes
+of the MNIST scenario (play, a caption changed, the round scenes put in mosaic, a scene left out
+and brought back, a screenshot, save, export), with a cursor drawn in the page, a headless browser
+showing none. Its cut is `launch/doc/demos/editor-demo.cut.yml`:
+
+```bash
+uv run launch/doc/demos/editor_demo.py docs/videos/examples/rushes/rushes-mnist-session-20261019-172307
+# docs/videos/edit-ui-demo.mp4, about 70 s
+```
+
+The editor is started from a neutral directory under `/tmp` (the export shows the paths it
+writes), on a free port, in its own process group, stopped at the end.
+
 ## When something goes wrong
 
 - **An agent's configuration does not pass its check**: shoot again with `--keep` and read
@@ -398,6 +423,5 @@ and agents side by side), or on Windows the Xbox Game Bar (`Win` + `Alt` + `R`).
 time-lapse are then added while editing (Clipchamp, Shotcut, Kdenlive, ffmpeg).
 
 **Planned** (not available yet):
-- a demonstration video of `edit --ui` itself, the page driven by a script;
 - a recording started by the session manager itself, with captions taken from its events;
 - a record button in the manager's page, recording the tab from the browser.
