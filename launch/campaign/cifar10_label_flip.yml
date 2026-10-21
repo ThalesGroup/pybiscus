@@ -72,11 +72,11 @@ variants:
       1: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: label_flip}}}}
   - label: safeguard, no attacker
     strategy: {name: fedavg, config: {}}
-    pipeline: [{name: clipping, config: {mode: median, median_factor: 1.5, reject_factor: 1.7}}]
+    pipeline: [{name: clipping, config: {mode: median, median_factor: 1.5, reject_factor: 1.7, size_scaling: none}}]
   - label: safeguard, 2 label flippers
     reference: safeguard, no attacker
     strategy: {name: fedavg, config: {}}
-    pipeline: [{name: clipping, config: {mode: median, median_factor: 1.5, reject_factor: 1.7}}]
+    pipeline: [{name: clipping, config: {mode: median, median_factor: 1.5, reject_factor: 1.7, size_scaling: none}}]
     client_overrides:
       0: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: label_flip}}}}
       1: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: label_flip}}}}

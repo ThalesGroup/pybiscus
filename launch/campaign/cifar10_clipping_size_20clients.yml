@@ -1,0 +1,78 @@
+# Campaign of launch/campaign/strategy_campaign.py: the clipping's size scaling at 20 clients. Without it,
+# clipping x1.5 reject x1.7 rejects the largest honest client (cid 15, 2.44 x the median share) in 7 to
+# 10 rounds of 10 (cifar10_alie_20clients.yml): with 3 local epochs the update norm grows with the share
+# (DEVLOG 2026-10-21). size_scaling sqrt_examples compares the norms at the median size: is cid 15 kept,
+# are sign flippers x10 still rejected, does ALIE get through more, and what does it cost without attacker?
+#   uv run python launch/campaign/strategy_campaign.py launch/campaign/cifar10_clipping_size_20clients.yml
+# Dirichlet 0.5 shares, 20 clients, 3 local epochs, 10 rounds. 18 runs, about 45 min. 20 clients fill
+# 24 GB of memory and a few GB of swap: run it alone, never next to a live session or a browser.
+# Status: our own measurement, not a reproduction (docs/robust-aggregation.md, Limits).
+
+server_config: configs/cifar10_cnn/distributed/without_ssl/server.yml
+client_config: configs/cifar10_cnn/distributed/without_ssl/client_1.yml
+output: experiments/campaigns
+plugin_manifests: [launch/campaign/test-plugins-conf.yml]
+
+clients: 20
+rounds: 10
+local_epochs: 3
+port: 3399                 # the Flower server of each run: must be free
+threads_per_client: auto   # physical cores / clients
+timeout: 3600              # seconds per run
+seeds: [1, 2, 3]           # every variant once per seed, then mean ± std
+
+client_data:
+  train:
+    partition:
+      scheme: dirichlet
+      alpha: 0.5
+      seed: 42
+  val:
+    source: holdout
+    fraction: 0.1
+
+server_data:
+  test:
+    max_samples: 2000
+
+variants:
+  - label: FedAvg, no attacker
+    strategy: {name: fedavg, config: {}}
+  - label: clipping, no attacker
+    reference: FedAvg, no attacker
+    strategy: {name: fedavg, config: {}}
+    pipeline: [{name: clipping, config: {mode: median, median_factor: 1.5, reject_factor: 1.7, size_scaling: none}}]
+  - label: clipping, 5 sign flippers x10
+    reference: clipping, no attacker
+    strategy: {name: fedavg, config: {}}
+    pipeline: [{name: clipping, config: {mode: median, median_factor: 1.5, reject_factor: 1.7, size_scaling: none}}]
+    client_overrides:
+      0: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: sign_flip, scale: 10.0}}}}
+      1: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: sign_flip, scale: 10.0}}}}
+      2: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: sign_flip, scale: 10.0}}}}
+      3: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: sign_flip, scale: 10.0}}}}
+      4: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: sign_flip, scale: 10.0}}}}
+  - label: clipping sqrt size, no attacker
+    reference: FedAvg, no attacker
+    strategy: {name: fedavg, config: {}}
+    pipeline: [{name: clipping, config: {mode: median, median_factor: 1.5, reject_factor: 1.7, size_scaling: sqrt_examples}}]
+  - label: clipping sqrt size, 5 sign flippers x10
+    reference: clipping sqrt size, no attacker
+    strategy: {name: fedavg, config: {}}
+    pipeline: [{name: clipping, config: {mode: median, median_factor: 1.5, reject_factor: 1.7, size_scaling: sqrt_examples}}]
+    client_overrides:
+      0: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: sign_flip, scale: 10.0}}}}
+      1: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: sign_flip, scale: 10.0}}}}
+      2: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: sign_flip, scale: 10.0}}}}
+      3: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: sign_flip, scale: 10.0}}}}
+      4: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: sign_flip, scale: 10.0}}}}
+  - label: clipping sqrt size, 5 ALIE colluders z 1
+    reference: clipping sqrt size, no attacker
+    strategy: {name: fedavg, config: {}}
+    pipeline: [{name: clipping, config: {mode: median, median_factor: 1.5, reject_factor: 1.7, size_scaling: sqrt_examples}}]
+    client_overrides:
+      0: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: alie, colluders: 5, z: 1.0, shared_dir: "{work}/alie"}}}}
+      1: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: alie, colluders: 5, z: 1.0, shared_dir: "{work}/alie"}}}}
+      2: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: alie, colluders: 5, z: 1.0, shared_dir: "{work}/alie"}}}}
+      3: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: alie, colluders: 5, z: 1.0, shared_dir: "{work}/alie"}}}}
+      4: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: alie, colluders: 5, z: 1.0, shared_dir: "{work}/alie"}}}}

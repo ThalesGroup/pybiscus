@@ -172,6 +172,7 @@ server_strategy:
       mode: median          # fixed (clipping_norm) | median (median_factor x the round's median norm)
       median_factor: 1.5
       reject_factor: 1.7    # optional: left out of the round above 1.7 x the median norm
+      size_scaling: sqrt_examples # default: norms compared at the median share size; none: as they are
       log_directions: false # optional: cosine similarities of the updates (see Discreet attackers)
 ```
 
@@ -183,6 +184,13 @@ server_strategy:
 - Every round logs `clip_norm`, `clip_fraction`, the median and maximum update norms, the clipped
   clients, and for each client `clip_ratio_<cid>` = its update norm / the median: a client clipped
   round after round far above the median is a suspect.
+- `size_scaling: sqrt_examples` (the default) divides each norm by the square root of the client's number of
+  examples over the median one before comparing it: with a fixed number of local epochs, a client
+  with a large share makes more steps and larger updates, and is otherwise taken for an outlier
+  ([measured at 20 clients](#clipping-at-20-clients-the-size-of-the-shares)). It trusts the
+  number of examples each client reports, as FedAvg's weights do: a client that inflates it by k
+  gains √k of norm margin, besides k times its weight. The measurements of this page made before
+  it (all but that section) are with `size_scaling: none`, written in their campaign files.
 - `log_directions: true` also logs, for each client, the cosine similarity of its update to the
   coordinate-wise median update and to its closest other client ("🧭" lines,
   `clip_cos_median_<cid>`, `clip_cos_closest_<cid>`). It changes nothing to the aggregation and
@@ -215,7 +223,9 @@ Dirichlet shares, same attackers (`launch/campaign/cifar10_clipping_dirichlet.ym
   pass under any such threshold; clipping still bounds them (next section).
 
 **Choosing**: FedAvg + `clipping` (median x 1.5, reject x 1.7) resisted best here, at no cost
-without attacker, and names the suspects. A threshold of 3 leaves a gap that discreet attackers
+without attacker, and names the suspects. Keep `size_scaling: sqrt_examples`, the default, on
+shares of uneven sizes: at 20 clients it keeps the largest honest client, which `none` rejects
+([measured](#clipping-at-20-clients-the-size-of-the-shares)). A threshold of 3 leaves a gap that discreet attackers
 use (ALIE at z 4, below: −11 points instead of −6.5). Against attackers that stay below the
 honest clients' norms (ALIE at z 2), no norm threshold helps, but Bulyan does not do better: it
 costs 8 points on heterogeneous data before any attack.
@@ -392,9 +402,41 @@ attacker, paired by seed (mean ± std, min to max):
   the 5 identical forged copies get the best score, and that update is built from the mean of the 15
   honest ones. Its gain is no defense.
 - Clipping never clips nor rejects an attacker. It rejects one honest client (cid 15) in 7 to 10
-  rounds of 10, with or without attacker: on dirichlet shares, a skewed client looks like an outlier.
+  rounds of 10, with or without attacker: the client with the largest share, not a skewed one
+  (next section).
 - 20 clients take about 1.2 GB of memory each (24 GB and 4.6 GB of swap here) and 2.5 minutes per
   run of 10 rounds; 54 runs took 3 h 10, including the machine's pauses.
+
+### Clipping at 20 clients: the size of the shares
+
+The rejected client, cid 15, holds 5 281 training images, 2.44 times the median share, with
+ordinary classes (7 above 2 %, the main one at 29 %). With 3 local epochs, the number of steps,
+and the update norm, grow with the share: over the 20 clients, the correlation between the share
+size and the mean `clip_ratio` is 0.91 to 0.95 (3 seeds). Replayed on the logged ratios, dividing
+the norm by the number of examples flags the small clients instead (12 to 17 ratios above 1.7 per
+run); by its square root, no ratio goes above 1.6. Hence `size_scaling: sqrt_examples`.
+
+`launch/campaign/cifar10_clipping_size_20clients.yml`: same setting (dirichlet 0.5, 20 clients,
+10 rounds of 3 epochs), clipping x 1.5, reject x 1.7 with and without the scaling; test accuracy at
+round 10, mean over 3 seeds, difference paired by seed (no attacker: to FedAvg; attacked: to the
+same defense without attacker):
+
+| variant | no attacker | Δ vs FedAvg | 5 sign flippers x 10 | Δ | 5 ALIE colluders, z 1 | Δ |
+|---|---|---|---|---|---|---|
+| FedAvg | 0.364 | | | | | |
+| clipping | 0.343 | −0.021 ± 0.007 | 0.344 | +0.001 ± 0.010 | | |
+| clipping, `sqrt_examples` | 0.364 | −0.000 ± 0.001 | 0.361 | −0.003 ± 0.002 | 0.355 | −0.009 ± 0.001 |
+
+- Without the scaling, cid 15 is rejected in 7 rounds of 10 on every seed and clipped in the
+  others; its loss is the whole cost of clipping without attacker (2.1 points). Under sign flippers,
+  it is rejected with them in 11 rounds of 30.
+- With the scaling, nobody is rejected without attacker and a single honest client is clipped once
+  in 30 rounds: the result matches FedAvg's within 0.1 point on every seed. The 5 sign flippers are
+  rejected in every round of the 3 seeds, alone, and cost 0.3 point.
+- Against ALIE z 1, the loss (0.9 point) is FedAvg's under the same attack: the forged update is not
+  rejected. Attacker cid 0 (697 images, the smallest share) is clipped in 2 to 4 rounds: its forged
+  update has the size of the others', which is large for its share (one honest client clipped once
+  besides, in 30 rounds).
 
 ## Discreet attackers: what the norm cannot see
 

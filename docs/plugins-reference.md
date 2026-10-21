@@ -705,6 +705,7 @@ Robust aggregation: clips the clients' updates to a norm (fixed, or a multiple o
 | `median_factor` | float | `1.5` | mode median: updates are clipped to this many times the round's median update norm |
 | `clipping_norm` | float | `2.0` | mode fixed: updates are clipped to this norm |
 | `reject_factor` | float (optional) | `None` | clients whose update norm exceeds this many times the median are left out of the round; none if unset |
+| `size_scaling` | 'none' \| 'sqrt_examples' | `'sqrt_examples'` | none: norms compared as they are; sqrt_examples: each norm divided by the square root of the client's number of examples over the median one, so that a large share is not taken for an outlier (the clipping norm and the logged norms are those of a client of median size) |
 | `log_directions` | bool | `False` | logs each client's cosine similarity to the coordinate-wise median update and to its closest other client (clip_cos_median_<cid>, clip_cos_closest_<cid>); costs a copy of every update |
 
 ### `fltrust` — FLTrust (trusted examples)

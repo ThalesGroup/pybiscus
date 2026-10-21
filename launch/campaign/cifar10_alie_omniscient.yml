@@ -122,18 +122,18 @@ variants:
       1: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: none}}}}
   - label: clipping x1.5 reject x1.7, no attacker
     strategy: {name: fedavg, config: {}}
-    pipeline: [{name: clipping, config: {mode: median, median_factor: 1.5, reject_factor: 1.7}}]
+    pipeline: [{name: clipping, config: {mode: median, median_factor: 1.5, reject_factor: 1.7, size_scaling: none}}]
   - label: clipping x1.5 reject x1.7, omniscient ALIE paper z
     reference: clipping x1.5 reject x1.7, no attacker
     strategy: {name: fedavg, config: {}}
-    pipeline: [{name: clipping, config: {mode: median, median_factor: 1.5, reject_factor: 1.7}}, {name: omniscientalie, config: {}}]
+    pipeline: [{name: clipping, config: {mode: median, median_factor: 1.5, reject_factor: 1.7, size_scaling: none}}, {name: omniscientalie, config: {}}]
     client_overrides:
       0: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: none}}}}
       1: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: none}}}}
   - label: clipping x1.5 reject x1.7, omniscient ALIE z 2
     reference: clipping x1.5 reject x1.7, no attacker
     strategy: {name: fedavg, config: {}}
-    pipeline: [{name: clipping, config: {mode: median, median_factor: 1.5, reject_factor: 1.7}}, {name: omniscientalie, config: {z: 2.0}}]
+    pipeline: [{name: clipping, config: {mode: median, median_factor: 1.5, reject_factor: 1.7, size_scaling: none}}, {name: omniscientalie, config: {z: 2.0}}]
     client_overrides:
       0: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: none}}}}
       1: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: none}}}}

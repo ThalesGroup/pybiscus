@@ -21,12 +21,22 @@ class ClippingMode(str, Enum):
     median = "median"    # C = median_factor x the median update norm of the round
 
 
+class SizeScaling(str, Enum):
+    none = "none"
+    # with a fixed number of local epochs, the norm grows with the client's share: measured on
+    # cifar10 dirichlet at 20 clients, dividing by the number of examples flags the small clients,
+    # by its square root neither the small nor the large ones (DEVLOG 2026-10-21)
+    sqrt_examples = "sqrt_examples"
+
+
 class ConfigClippingDecoratorData(BaseModel):
     """mode: fixed (clipping_norm) or median (median_factor x the round's median update norm:
     set by itself, without lag, and a minority of clients cannot move it); reject_factor: clients
     whose update norm exceeds reject_factor x the median are left out of the round's aggregation
     instead of clipped (unset: none), never below what the strategy needs to aggregate (Bulyan:
-    4f + 3 clients)"""
+    4f + 3 clients); size_scaling sqrt_examples: each norm is compared as if the client held the
+    median number of examples, so that a client with a large share is neither clipped nor
+    rejected for its size (it trusts the reported number of examples, as FedAvg does)"""
 
     PYBISCUS_CONFIG: ClassVar[str] = "config"
 
@@ -34,6 +44,10 @@ class ConfigClippingDecoratorData(BaseModel):
     median_factor: float = Field(default=1.5, gt=0, description="mode median: updates are clipped to this many times the round's median update norm")
     clipping_norm: float = Field(default=2.0, gt=0, description='mode fixed: updates are clipped to this norm')
     reject_factor: Optional[float] = Field(default=None, gt=1, description='clients whose update norm exceeds this many times the median are left out of the round; none if unset')
+    size_scaling: SizeScaling = Field(default=SizeScaling.sqrt_examples, description=
+        "none: norms compared as they are; sqrt_examples: each norm divided by the square root of the client's "
+        "number of examples over the median one, so that a large share is not taken for an outlier "
+        "(the clipping norm and the logged norms are those of a client of median size)")
     log_directions: bool = Field(default=False, description=
         "logs each client's cosine similarity to the coordinate-wise median update and to its closest other client "
         "(clip_cos_median_<cid>, clip_cos_closest_<cid>); costs a copy of every update")
@@ -132,6 +146,11 @@ class ClippingStrategyDecorator(StrategyDecorator):
             params = parameters_to_ndarrays(res.parameters)
             norm = update_norm(params, reference)
             entries.append((str(res.metrics.get("cid", proxy.cid)), proxy, res, reference, params, norm))
+        if self.config.size_scaling == SizeScaling.sqrt_examples:
+            sizes = np.array([max(res.num_examples, 1) for _, _, res, _, _, _ in entries], dtype=np.float64)
+            scales = np.sqrt(sizes / np.median(sizes))
+            entries = [(cid, proxy, res, reference, params, norm / scale)
+                       for (cid, proxy, res, reference, params, norm), scale in zip(entries, scales)]
         norms = np.array([entry[5] for entry in entries])
         median = float(np.median(norms))
         clipping_norm = (self.config.clipping_norm if self.config.mode == ClippingMode.fixed
@@ -161,6 +180,7 @@ class ClippingStrategyDecorator(StrategyDecorator):
             if cid in rejected:
                 continue
             if norm > clipping_norm:
+                # norm and clipping_norm are both at the median size: their ratio is the same for the raw update
                 res.parameters = ndarrays_to_parameters(clipped_params(params, reference, clipping_norm / norm))
                 clipped.append(cid)
             kept.append((proxy, res))

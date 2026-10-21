@@ -137,6 +137,7 @@ and how long it takes.
 | `cifar10_foolsgold.yml` | FoolsGold against label flippers, omniscient ALIE and sign flippers, dirichlet shares, 3 seeds | [robust-aggregation.md](robust-aggregation.md#foolsgold-clients-that-look-alike) |
 | `cifar10_foolsgold_iid.yml` | FoolsGold on iid shares, without attacker and against label flippers, 3 seeds | [robust-aggregation.md](robust-aggregation.md#foolsgold-clients-that-look-alike) |
 | `cifar10_fltrust_iid.yml` | FLTrust on iid shares against label flippers, omniscient ALIE and sign flippers, 3 seeds | [robust-aggregation.md](robust-aggregation.md#fltrust-on-iid-shares) |
+| `cifar10_clipping_size_20clients.yml` | clipping x 1.5, reject x 1.7 at 20 clients, with and without `size_scaling: sqrt_examples`, without attacker, against 5 sign flippers and 5 ALIE colluders, 3 seeds | [robust-aggregation.md](robust-aggregation.md#clipping-at-20-clients-the-size-of-the-shares) |
 | `cifar10_fltrust_20clients.yml` | FLTrust at 20 clients (5 attackers) against client-side and omniscient ALIE and sign flippers, against FedAvg, 3 seeds | [robust-aggregation.md](robust-aggregation.md#fltrust-at-20-clients) |
 | `cifar10_fltrust_trusted_size.yml` | FLTrust with 100, 500 and 2000 trusted examples, without attacker and against label flippers, 3 seeds | [robust-aggregation.md](robust-aggregation.md#how-many-trusted-examples) |
 | `cifar10_label_flip.yml` | the defenses against 2 attackers training on flipped labels (data poisoning), 3 seeds | [robust-aggregation.md](robust-aggregation.md#label-flipping-poisoned-data) |

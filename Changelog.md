@@ -1,5 +1,17 @@
 # Changelog
 
+## Unreleased
+
+### Robust aggregation and privacy
+
+* `clipping` decorator: `size_scaling: sqrt_examples` compares the update norms at the median share
+  size. At 20 clients on dirichlet shares (`launch/campaign/cifar10_clipping_size_20clients.yml`,
+  3 seeds), clipping x1.5 reject x1.7 rejected the largest honest client in 7 rounds of 10 and lost
+  2.1 points to FedAvg; with the scaling it keeps it, matches FedAvg without attacker and still
+  rejects 5 sign flippers x10 every round; `docs/robust-aggregation.md`. **On by default**: a
+  configuration that relied on the former behavior sets `size_scaling: none` (the bundled
+  campaigns measured before it do).
+
 ## [Version 0.14.0]
 
 Since `version0.13.0` (2026-10-19): the manager tells what to do next, sums up an ended session and

@@ -39,25 +39,25 @@ server_data:
 variants:
   - label: no attacker
     strategy: {name: fedavg, config: {}}
-    pipeline: [{name: clipping, config: {mode: median, median_factor: 1.5, reject_factor: 1.7, log_directions: true}}]
+    pipeline: [{name: clipping, config: {mode: median, median_factor: 1.5, reject_factor: 1.7, log_directions: true, size_scaling: none}}]
   - label: client-side ALIE z 2
     reference: no attacker
     strategy: {name: fedavg, config: {}}
-    pipeline: [{name: clipping, config: {mode: median, median_factor: 1.5, reject_factor: 1.7, log_directions: true}}]
+    pipeline: [{name: clipping, config: {mode: median, median_factor: 1.5, reject_factor: 1.7, log_directions: true, size_scaling: none}}]
     client_overrides:
       0: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: alie, colluders: 2, num_clients: 7, z: 2.0, shared_dir: "{work}/alie"}}}}
       1: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: alie, colluders: 2, num_clients: 7, z: 2.0, shared_dir: "{work}/alie"}}}}
   - label: omniscient ALIE paper z
     reference: no attacker
     strategy: {name: fedavg, config: {}}
-    pipeline: [{name: clipping, config: {mode: median, median_factor: 1.5, reject_factor: 1.7, log_directions: true}}, {name: omniscientalie, config: {}}]
+    pipeline: [{name: clipping, config: {mode: median, median_factor: 1.5, reject_factor: 1.7, log_directions: true, size_scaling: none}}, {name: omniscientalie, config: {}}]
     client_overrides:
       0: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: none}}}}
       1: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: none}}}}
   - label: omniscient ALIE z 2
     reference: no attacker
     strategy: {name: fedavg, config: {}}
-    pipeline: [{name: clipping, config: {mode: median, median_factor: 1.5, reject_factor: 1.7, log_directions: true}}, {name: omniscientalie, config: {z: 2.0}}]
+    pipeline: [{name: clipping, config: {mode: median, median_factor: 1.5, reject_factor: 1.7, log_directions: true, size_scaling: none}}, {name: omniscientalie, config: {z: 2.0}}]
     client_overrides:
       0: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: none}}}}
       1: {flower_client: {alternate_client_class: {name: byzantine, config: {attack: none}}}}
