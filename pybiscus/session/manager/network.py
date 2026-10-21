@@ -15,6 +15,10 @@ def this_machine() -> str:
     return sm.machine_name or socket.gethostname()
 
 
+def web_protocol(url) -> str:
+    return "HTTPS" if str(url or "").lower().startswith("https://") else "HTTP"
+
+
 def is_loopback(host: str) -> bool:
     return host in LOOPBACK_NAMES or host.startswith("127.")
 
@@ -58,8 +62,9 @@ def local_view() -> dict:
 
     bouquet = sm.bouquet or "session"
     manager_id = f"{bouquet}/manager"
+    manager_protocol = web_protocol(sm.manager_url)
     processes = [{"id": manager_id, "bouquet": bouquet, "kind": "manager", "name": f"manager {bouquet}",
-                  "machine": this_machine(), "port": sm.manager_port, "protocol": "HTTP",
+                  "machine": this_machine(), "port": sm.manager_port, "protocol": manager_protocol,
                   "listen": listened(sm.manager_host), "role": "session manager"}]
     flows, problems = [], []
 
@@ -74,10 +79,10 @@ def local_view() -> dict:
             relayed = [lower for lower, relay in sm.relays.items() if relay == name]
             agent_machine[name] = machine_of(url, meta.get("machine"))
             processes.append({"id": agent_id, "bouquet": bouquet, "kind": "agent", "name": name,
-                              "machine": agent_machine[name], "port": host_and_port(url)[1], "protocol": "HTTP",
+                              "machine": agent_machine[name], "port": host_and_port(url)[1], "protocol": web_protocol(url),
                               "listen": None, "role": f"relay of {', '.join(relayed)}" if relayed else f"{role} agent"})
-            flow(agent_id, manager_id, "HTTP", sm.manager_port, "registration, states, logs and metrics of its runs")
-            flow(manager_id, agent_id, "HTTP", host_and_port(url)[1], "ping, launch and stop of its run")
+            flow(agent_id, manager_id, manager_protocol, sm.manager_port, "registration, states, logs and metrics of its runs")
+            flow(manager_id, agent_id, web_protocol(url), host_and_port(url)[1], "ping, launch and stop of its run")
 
     port, listen = flower_server_address()
     server = next(iter(sm.registered_servers), None)
@@ -98,7 +103,7 @@ def local_view() -> dict:
             continue
         lower_server = next((a for a in lower_topologies.get(lower, {}).get("agents", []) if a.get("role") == "server"), None)
         if transport_of(lower) == "manager":
-            flow(f"{bouquet}/agent/{relay}", manager_id, "HTTP", sm.manager_port, f"link to {lower}: this manager's mailbox")
+            flow(f"{bouquet}/agent/{relay}", manager_id, manager_protocol, sm.manager_port, f"link to {lower}: this manager's mailbox")
         elif lower_server:
             flow(f"{bouquet}/agent/{relay}", f"{lower}/agent/{lower_server['name']}", "files", None,
                  f"link to {lower}: shared directory")
@@ -112,14 +117,14 @@ def local_view() -> dict:
         upper_id = f"{upper}/manager"
         host, upper_port = host_and_port(sm.upper_link.get("url"))
         processes.append({"id": upper_id, "bouquet": upper, "kind": "manager", "name": f"manager {upper}",
-                          "machine": this_machine() if is_loopback(host) else host, "port": upper_port, "protocol": "HTTP",
+                          "machine": this_machine() if is_loopback(host) else host, "port": upper_port, "protocol": web_protocol(sm.upper_link.get("url")),
                           "listen": None, "role": "upper level's session manager", "external": True})
         link = sm.upper_session_link or {}
         through = link.get("transport") == "manager"
-        flow(manager_id, upper_id, "HTTP", upper_port,
+        flow(manager_id, upper_id, web_protocol(sm.upper_link.get("url")), upper_port,
              "topology reports; the link of its server, relayed to the mailbox" if through else "topology reports")
         if through and server:
-            flow(f"{bouquet}/agent/{server}", manager_id, "HTTP", sm.manager_port, f"link to {upper}: through this manager")
+            flow(f"{bouquet}/agent/{server}", manager_id, manager_protocol, sm.manager_port, f"link to {upper}: through this manager")
     return {"bouquet": bouquet, "processes": processes, "flows": flows, "problems": problems}
 
 

@@ -112,9 +112,9 @@ def session_registration_waiting():
 def session_registration():
 
     default_config = {
-        'manager_url': 'http://localhost:5555',
+        'manager_url': f'{pybagent.web_scheme}://localhost:5555',
         'agent_name': 'John Doe',
-        'agent_url': 'http://localhost:5001',
+        'agent_url': f'{pybagent.web_scheme}://localhost:5001',
         # none of its own: the form takes the manager's (a named default was warned about as a mismatch)
         'bouquet': '',
         'location': 'somewhere',

@@ -1,5 +1,6 @@
 
-export NUM_CLIENTS=5
+# certificates for the Flower clients: they present none in Pybiscus, keep 0 unless you need them
+export NUM_CLIENTS=0
 
 export rootCApass="12345678"
 export CA_C="FR"

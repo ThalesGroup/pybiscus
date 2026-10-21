@@ -497,7 +497,8 @@ deadline is a new session of fresh processes, with no connection kept open in be
 The manager listens on 127.0.0.1 by default. When agents run on other hosts (they send it their
 registration and logs), start it with `--host 0.0.0.0` (or a given address), e.g.
 `launch/session/run_manager.sh --host 0.0.0.0`. For a session spread over several machines, see
-[multi-machine.md](multi-machine.md).
+[multi-machine.md](multi-machine.md). The manager and the agents serve HTTPS with `--tls-cert` and
+`--tls-key`, and trust the session's CA with `--tls-ca` ([Encryption](multi-machine.md#encryption)).
 
 ### Access tokens
 

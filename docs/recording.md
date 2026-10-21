@@ -186,6 +186,7 @@ A scenario naming its cut (`cut:`) is edited right after: this command gives the
 | `--scale <factor>` | pixel density of the captures (2: a 1440 × 900 page captured in 2880 × 1800, sharper text) |
 | `--work-root <dir>` | where the working directory of the processes is created (default `/tmp`) |
 | `--keep` | keep that working directory: logs of the manager and of each agent, run reports |
+| `--tls-cert <crt> --tls-key <key> --tls-ca <ca>` | scenario: the managers and the agents serve HTTPS with this certificate (one valid for `localhost`, `certificates/gen_component_cert.sh`); the browser accepts this certificate's key only, without installing the CA ([multi-machine.md](multi-machine.md#encryption)) |
 
 What happens with a scenario:
 1. A working directory `/tmp/pybiscus-demo-XXXXXX` is created, with links to the plugin directories

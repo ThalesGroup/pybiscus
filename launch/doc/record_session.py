@@ -44,6 +44,10 @@ from rushes import Shooting, edit, log
 REPO = Path(__file__).resolve().parents[2]
 SCENARIOS = Path(__file__).resolve().parent / "scenarios"
 H = {"X-Pybiscus": "1"}
+# set by --tls-cert: the managers and agents the scenario starts serve HTTPS, the browser accepts their certificate
+SCHEME = "http"
+TLS_ARGS = []
+BROWSER_ARGS = []
 RUN_ENDED = ("success", "failure", "stopped")
 # AgentState (pybiscus/session/agent/agent_weblog.py), as the manager's /pybiscus-session/agents gives them
 AGENT_ENDED = ("terminated", "failed", "stopped")
@@ -99,7 +103,9 @@ class Processes:
     def __init__(self, work, manifests=None):
         self.work, self.groups = work, []
         # the script runs in its own environment: the agents' `uv run pybiscus` must use the repository's
-        self.env = {k: v for k, v in os.environ.items() if k not in ("VIRTUAL_ENV", "PYBISCUS_PLUGIN_CONF_PATH")}
+        # REQUESTS_CA_BUNDLE of use_tls is the CA alone: inherited, the components' --tls-ca bundle would drop the usual authorities
+        self.env = {k: v for k, v in os.environ.items() if k not in ("VIRTUAL_ENV", "PYBISCUS_PLUGIN_CONF_PATH")
+                    and not (k == "REQUESTS_CA_BUNDLE" and TLS_ARGS)}
         self.env["UV_PROJECT"] = str(REPO)
         # the configurations' root_dir is ${oc.env:PWD}: inherited, it would point the reports at the caller's directory
         self.env["PWD"] = str(work)
@@ -108,6 +114,8 @@ class Processes:
             self.env["PYBISCUS_PLUGIN_CONF_PATH"] = ":".join(manifests)
 
     def start(self, name, args):
+        if args[0] in ("session_manager", "pybiscus_agent"):
+            args = [*args, *TLS_ARGS]
         out = open(self.work / f"{name}.log", "w")
         p = subprocess.Popen(["uv", "run", "--project", str(REPO), *args], cwd=self.work, env=self.env,
                              stdout=out, stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL, start_new_session=True)
@@ -175,10 +183,10 @@ def shoot_scenario(sc, work, rushes):
     try:
         for port in (manager_port, *(a["port"] for a in agents)):
             wait_for_port(port)
-        manager = f"http://localhost:{manager_port}"
+        manager = f"{SCHEME}://localhost:{manager_port}"
         log(f"manager {manager}")
         with sync_playwright() as p:
-            browser = p.chromium.launch()
+            browser = p.chromium.launch(args=BROWSER_ARGS)
             new_page = lambda: browser.new_page(viewport=viewport, device_scale_factor=scale)
             shooting = Shooting(rushes, viewport, scale, sc.get("period", 0.35))
             page = new_page()
@@ -190,7 +198,7 @@ def shoot_scenario(sc, work, rushes):
             # each agent is registered through its own registration form, as a person does
             for a in agents:
                 tab, view = new_page(), f"agent:{a['name']}"
-                url = f"http://localhost:{a['port']}"
+                url = f"{SCHEME}://localhost:{a['port']}"
                 tab.goto(f"{url}/session/agent/registration"); tab.wait_for_timeout(1000)
                 shooting.add_view(view, tab, AGENT_PANELS, agent_label(a["name"]))
                 shooting.set_focus("manager", view)
@@ -215,7 +223,7 @@ def shoot_scenario(sc, work, rushes):
             server = next(a for a in agents if a["role"] == "server")
             form = new_page()
             presets = {"values_set": {"flower_server.server_port": flower_port}, "values_lock": []}
-            form.goto(f"http://localhost:{server['port']}/session/config?presets=" + urllib.parse.quote(json.dumps(presets)))
+            form.goto(f"{SCHEME}://localhost:{server['port']}/session/config?presets=" + urllib.parse.quote(json.dumps(presets)))
             form.wait_for_timeout(1500)
             shooting.add_view("session-form", form, (), agent_label(server["name"]))
             shooting.set_focus("manager", "session-form")
@@ -234,7 +242,7 @@ def shoot_scenario(sc, work, rushes):
                 shooting.set_focus("manager", view)
                 shooting.event("launched", name=a["name"], role=a["role"], location=a["location"]); shooting.tick(1)
                 check_and_launch(tab, a["name"], work, shooting)
-                tab.goto(f"http://localhost:{a['port']}/run"); tab.wait_for_timeout(800)
+                tab.goto(f"{SCHEME}://localhost:{a['port']}/run"); tab.wait_for_timeout(800)
                 shooting.tick(2)
                 # from now on the tab is only an inset
                 tab.set_viewport_size(sc.get("inset_viewport", INSET_VIEWPORT))
@@ -248,7 +256,7 @@ def shoot_scenario(sc, work, rushes):
                     shooting.event("round", round=current or "…", rounds=rounds, turn=turn)
                     log(f"round {current or '…'} / {rounds}"); shown = current
                 shooting.tick()
-                status = [requests.get(f"http://localhost:{a['port']}/run/status", headers=H).json().get("status") for a in agents]
+                status = [requests.get(f"{SCHEME}://localhost:{a['port']}/run/status", headers=H).json().get("status") for a in agents]
                 if all(s in RUN_ENDED for s in status):
                     break
                 if time.time() > deadline:
@@ -290,7 +298,7 @@ def shoot_hierarchical(sc, work, rushes):
         order.append(queue.pop(0)); queue += children[order[-1]]
     agents = [{**a, "port": free_port()} for a in sc["agents"]]
     servers = {a["bouquet"]: a for a in agents if a["role"] == "server"}
-    url = lambda b: f"http://localhost:{managers[b]['port']}"
+    url = lambda b: f"{SCHEME}://localhost:{managers[b]['port']}"
     procs = Processes(work, sc.get("plugin_manifests"))
     for b in order:
         m = managers[b]
@@ -306,7 +314,7 @@ def shoot_hierarchical(sc, work, rushes):
         for port in [m["port"] for m in managers.values()] + [a["port"] for a in agents]:
             wait_for_port(port)
         with sync_playwright() as p:
-            browser = p.chromium.launch()
+            browser = p.chromium.launch(args=BROWSER_ARGS)
             shooting = Shooting(rushes, viewport, 1, sc.get("period", 0.35))
             # a page per manager filmed only: each one costs a few hundred MB, next to the runs of a large tree
             filmed = [b for b in order if b in sc.get("film", order)]
@@ -354,7 +362,7 @@ def shoot_hierarchical(sc, work, rushes):
                 meta = {"name": a["name"], "role": a["role"], "bouquet": b, "location": a.get("location", place["location"]),
                         "geo_location": {"type": "coordinates", "latitude": lat, "longitude": lon},
                         "organisation": sc.get("organisation", "pybiscus-demo")}
-                agent_url = f"http://localhost:{a['port']}"
+                agent_url = f"{SCHEME}://localhost:{a['port']}"
                 assert requests.post(f"{url(b)}/pybiscus-session/agent", headers=H, json={**meta, "agent_url": agent_url}).ok
                 assert requests.post(f"{agent_url}/session/agent/registration", headers=H, json={**meta, "manager_url": url(b)}).ok
                 shooting.tick()
@@ -394,7 +402,7 @@ def shoot_hierarchical(sc, work, rushes):
             shooting.set_focus(*managers_in_focus, "session-form")
 
             def launch_session(b, presets, options=None, values=None):
-                form.goto(f"http://localhost:{servers[b]['port']}/session/config?presets=" + urllib.parse.quote(json.dumps(presets)))
+                form.goto(f"{SCHEME}://localhost:{servers[b]['port']}/session/config?presets=" + urllib.parse.quote(json.dumps(presets)))
                 form.wait_for_timeout(1500)
                 fill_session_form(form, options, values)
                 step("session-form", bouquet=b)
@@ -428,7 +436,7 @@ def shoot_hierarchical(sc, work, rushes):
                                                      order.index(a["bouquet"])))
             for a in ordered:
                 tab, view = browser.new_page(viewport=form_viewport), f"agent:{a['name']}"
-                tab.goto(f"http://localhost:{a['port']}/session/agent/registration/waiting")
+                tab.goto(f"{SCHEME}://localhost:{a['port']}/session/agent/registration/waiting")
                 tab.wait_for_url(lambda u: "/config?" in u, timeout=60000); tab.wait_for_timeout(2500)
                 shooting.add_view(view, tab, AGENT_PANELS, agent_label(a["name"]))
                 shooting.set_focus(*managers_in_focus, view)
@@ -500,7 +508,7 @@ def shoot_attached(url, sc, rushes, max_duration, agent_pages=4, agent_tokens=No
     signal.signal(signal.SIGINT, lambda *_: interrupted.append(True))
     viewport, scale = sc.get("viewport", DEFAULT_VIEWPORT), sc.get("scale", 1)
     with sync_playwright() as p:
-        browser = p.chromium.launch(handle_sigint=False)
+        browser = p.chromium.launch(handle_sigint=False, args=BROWSER_ARGS)
         page = browser.new_page(viewport=viewport, device_scale_factor=scale)
         page.goto(f"{base}/pybiscus-session/manage" + (f"?token={urllib.parse.quote(token)}" if token else ""))
         page.wait_for_timeout(3000)
@@ -611,6 +619,20 @@ def edit_with(rushes, cut_file, output):
     edit(rushes, cut, output)
 
 
+def use_tls(cert, key, ca):
+    global SCHEME
+    SCHEME = "https"
+    TLS_ARGS[:] = ["--tls-cert", str(cert), "--tls-key", str(key), "--tls-ca", str(ca)]
+    # the script calls only the components it starts: their CA alone is enough
+    os.environ["REQUESTS_CA_BUNDLE"] = str(ca)
+    # Chromium reads its authorities from the system's store (NSS on Linux, certutil): accepting this
+    # certificate's key only spares that install without accepting any other certificate
+    der = subprocess.run(["openssl", "x509", "-in", str(cert), "-pubkey", "-noout"], capture_output=True, check=True).stdout
+    der = subprocess.run(["openssl", "pkey", "-pubin", "-outform", "der"], input=der, capture_output=True, check=True).stdout
+    import base64, hashlib
+    BROWSER_ARGS[:] = [f"--ignore-certificate-errors-spki-list={base64.b64encode(hashlib.sha256(der).digest()).decode()}"]
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     sub = parser.add_subparsers(dest="command", required=True)
@@ -631,6 +653,9 @@ def main():
     # not TMPDIR: the working directory appears in the server log the pages show, it must be short and neutral
     shoot.add_argument("--work-root", type=Path, default=Path("/tmp"))
     shoot.add_argument("--keep", action="store_true", help="keep the working directory (the processes' logs, experiments)")
+    shoot.add_argument("--tls-cert", type=Path, help="scenario: the managers and agents serve HTTPS with this certificate (certificates/gen_component_cert.sh)")
+    shoot.add_argument("--tls-key", type=Path, help="with --tls-cert: its private key")
+    shoot.add_argument("--tls-ca", type=Path, help="with --tls-cert: the CA that signed it")
     edit_parser = sub.add_parser("edit", help="edit rushes with a cut: the scenes into a video, the screenshots")
     edit_parser.add_argument("rushes", type=Path)
     edit_parser.add_argument("cut", type=Path)
@@ -650,6 +675,10 @@ def main():
 
     if not args.scenario and not args.attach:
         parser.error("shoot: a scenario, or --attach")
+    if args.tls_cert:
+        if not (args.tls_key and args.tls_ca) or args.attach:
+            parser.error("--tls-cert goes with --tls-key and --tls-ca, for a scenario")
+        use_tls(args.tls_cert.resolve(), args.tls_key.resolve(), args.tls_ca.resolve())
     sc = yaml.safe_load(args.scenario.read_text()) if args.scenario else {}
     if args.viewport:
         try:

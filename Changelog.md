@@ -2,6 +2,22 @@
 
 ## Unreleased
 
+### Session
+
+* HTTPS between the manager and the agents: `--tls-cert` / `--tls-key` serve HTTPS, `--tls-ca`
+  trusts the session's CA, here and in the runs launched, besides the usual authorities. The
+  printed and linked URLs, the access cookie (`Secure`) and the network view follow; a component
+  listening beyond the loopback without TLS warns at start, the manager warns at the registration
+  of a remote agent in HTTP (its page would be blocked inside the manager's), and an untrusted
+  certificate is named in the logs. `docs/multi-machine.md` (Encryption).
+* `certificates/`: one certificate per machine for the manager, its agents and the Flower server
+  there (`gen_component_cert.sh`, or `gen_component_csr.sh` on the machine and
+  `sign_component_csr.sh` at the CA: the key never leaves its machine); `gen_from_env.sh` refuses to
+  replace an existing CA and no longer makes client certificates (unused by Flower).
+* `launch/doc/record_session.py shoot --tls-cert --tls-key --tls-ca`: a scenario's managers and
+  agents in HTTPS.
+* Removed: the `/pybiscus-session/ping-server` route (unused, read an undefined attribute).
+
 ### Robust aggregation and privacy
 
 * `clipping` decorator: `size_scaling: sqrt_examples` compares the update norms at the median share

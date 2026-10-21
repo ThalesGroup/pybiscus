@@ -365,7 +365,7 @@ def visualize_federated_layers(
                 files = {"file": f}
                 data = {"metadata": json.dumps(payload)}
 
-                response = requests.post(url, files=files, data=data, headers=headers_for(url))
+                response = requests.post(url, files=files, data=data, headers=headers_for(url), timeout=10)
 
                 # logm.console.log(response)
                 # print(response.json())

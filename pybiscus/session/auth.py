@@ -158,7 +158,7 @@ def require_tokens(app: Flask, component: str, enabled: Callable[[], bool], cook
             args = [(k, v) for k, v in request.args.items(multi=True) if k != "token"]
             target = request.path + ("?" + urllib.parse.urlencode(args) if args else "")
             response = redirect(target)
-            response.set_cookie(cookie(), access, httponly=True, samesite="Lax")
+            response.set_cookie(cookie(), access, httponly=True, samesite="Lax", secure=request.is_secure)
             return response
 
         view = app.view_functions.get(request.endpoint)

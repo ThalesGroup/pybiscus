@@ -75,6 +75,10 @@ class WebHookAgentLogger():
         except requests.HTTPError as http_err:
             print(f"⚠️ Agent log Webhook HTTP error : {response.status_code} – {http_err}")
 
+        except requests.exceptions.SSLError:
+            from pybiscus.session.tls import untrusted_hint
+            print(f"⚠️ Agent log Webhook: {untrusted_hint(self.webhook_url)}")
+
         except RequestException as err:
             print(f"⚠️ Agent log Webhook Other error : {err}")
 

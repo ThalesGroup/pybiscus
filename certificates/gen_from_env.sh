@@ -2,11 +2,14 @@
 
 . ./set_env.sh
 
-# Vérifier si les variables d'environnement nécessaires sont définies
-if [ -z "$NUM_CLIENTS" ]; then
-  echo "ERROR: NUM_CLIENTS environment variable is not set."
+# a new CA invalidates every certificate it signed, already copied to the other machines
+if [ -e ca/ca.crt ] && [ "${FORCE_NEW_CA:-}" != "1" ]; then
+  echo "ERROR: $(pwd)/ca/ca.crt exists already; to replace it and every certificate it signed: FORCE_NEW_CA=1 $0"
   exit 1
 fi
+
+# the Flower clients present no certificate (they check the server's with the CA): none by default
+NUM_CLIENTS=${NUM_CLIENTS:-0}
 
 if [ -z "$rootCApass" ]; then
   echo "ERROR: rootCApass environment variable is not set."
@@ -40,7 +43,7 @@ CLIENT_CN_PREFIX=${CLIENT_CN_PREFIX:-"Client"}
 # Dossiers pour stocker les clés et certificats
 mkdir -p ca
 mkdir -p server
-mkdir -p clients
+[ "$NUM_CLIENTS" -gt 0 ] && mkdir -p clients
 
 # 1. Créer une CA racine
 echo "Creating Root CA..."

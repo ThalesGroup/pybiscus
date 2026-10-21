@@ -24,6 +24,8 @@ pybiscus.session.theme.install(rest_server)
 
 agent_port  = None
 agent_token = None
+# the scheme of the default URLs in the registration form
+web_scheme  = "http"
 tokens_are_required = False
 
 # the session token is the one given at the registration (set_session_token)
@@ -428,7 +430,11 @@ def parse_args():
         action='store_true',
         help="require the tokens on the loopback too (always required when listening beyond it)"
     )
-    return parser.parse_args()
+    from pybiscus.session import tls
+    tls.add_tls_arguments(parser)
+    args = parser.parse_args()
+    tls.check_tls_arguments(parser, args)
+    return args
 
 def main():
     """Main entry point for launching the Flask server."""
@@ -446,8 +452,12 @@ def main():
 
     set_upload_folder(args.port)
 
-    global agent_port, agent_token, tokens_are_required
+    global agent_port, agent_token, tokens_are_required, web_scheme
     agent_port  = args.port
+    # before the first call to the manager (initAgentLogger), and inherited by the runs
+    from pybiscus.session import tls
+    tls.trust_ca(args.tls_ca)
+    web_scheme = tls.scheme(args)
     # inherited by the server runs this agent launches
     from pybiscus.commands.apps_common import CLIENT_CONFIGS_ENV
     os.environ[CLIENT_CONFIGS_ENV] = os.path.join("experiments", "config_clients", str(args.port))
@@ -480,10 +490,13 @@ def main():
     else:
         print(f"Using configuration file: {args.config}")
 
+    warning = tls.plain_http_warning("agent", args.host, args)
+    if warning:
+        print(warning, flush=True)
     browsed_host = "127.0.0.1" if args.host in ("0.0.0.0", "::") else args.host
-    print_access("agent", f"http://{browsed_host}:{args.port}/session/agent/registration", agent_token)
+    print_access("agent", f"{tls.scheme(args)}://{browsed_host}:{args.port}/session/agent/registration", agent_token)
 
-    rest_server.run(debug=args.debug, host=args.host, port=args.port)
+    rest_server.run(debug=args.debug, host=args.host, port=args.port, ssl_context=tls.ssl_context(args))
 
 if __name__ == "__main__":
     # run as a script (container entrypoint), this file is a second copy of the module named

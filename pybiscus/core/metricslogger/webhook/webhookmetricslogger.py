@@ -29,5 +29,9 @@ class WebHookMetricsLogger():
         except requests.HTTPError as http_err:
             print(f"❌ Metrics log Webhook HTTP error : {response.status_code} – {http_err}")
 
+        except requests.exceptions.SSLError:
+            from pybiscus.session.tls import untrusted_hint
+            print(f"❌ Metrics log Webhook: {untrusted_hint(self.webhook_url)}")
+
         except RequestException as err:
             print(f"❌ Metrics log Webhook Other error : {err}")

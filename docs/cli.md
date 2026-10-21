@@ -77,7 +77,8 @@ pybiscus schedule preview --cron "30 2 * * *" --timezone Europe/Paris --count 3
 ## Encrypting the Flower traffic (SSL)
 
 1. Generate a certificate authority and the server's certificate, from `certificates/` (adjust
-   `set_env.sh` first: number of clients, names of the organisation):
+   `set_env.sh` first: names of the organisation, password of the CA; for sessions over several
+   machines, one certificate per machine: [multi-machine.md](multi-machine.md#certificates)):
 
    ```bash
    cd certificates && ./gen_from_env.sh && cd ..

@@ -6,7 +6,7 @@
 {{ pybiscus_theme_head() | safe }}
 <style>
   /* colours: pybiscus/session/theme; the protocols take the phases' */
-  :root{ --http:var(--test); --grpc:var(--fit); --files:var(--eval); --r:10px; }
+  :root{ --http:var(--test); --https:var(--test); --grpc:var(--fit); --files:var(--eval); --r:10px; }
   *{box-sizing:border-box}
   body{margin:0; background:radial-gradient(1200px 700px at 82% -12%, var(--bg-glow) 0%, transparent 60%), var(--bg);
     color:var(--text); font-family:var(--mono); font-size:13px; line-height:1.5}
@@ -26,7 +26,7 @@
   th{color:var(--muted); font-weight:500}
   td.num{font-variant-numeric:tabular-nums}
   .proto{padding:1px 7px; border-radius:999px; font-size:11px; border:1px solid currentColor}
-  .proto.HTTP{color:var(--http)} .proto.gRPC{color:var(--grpc)} .proto.files{color:var(--files)}
+  .proto.HTTP{color:var(--http)} .proto.HTTPS{color:var(--https)} .proto.gRPC{color:var(--grpc)} .proto.files{color:var(--files)}
   .machine-row td{background:var(--panel-2); font-weight:600}
   svg text{font-family:var(--mono); fill:var(--text)}
   details summary{cursor:pointer; color:var(--muted)}
@@ -162,7 +162,7 @@
           `<text x="${x + BOX_W - 8}" y="${y + 17}" font-size="11" text-anchor="end" fill="${pybiscusTheme.color('--muted')}">${p.port ? esc(p.protocol) + ' :' + esc(p.port) : ''}</text></g>`;
       });
     });
-    const markers = ['HTTP', 'gRPC', 'files'].map(p =>
+    const markers = ['HTTP', 'HTTPS', 'gRPC', 'files'].map(p =>
       `<marker id="arrow-${p}" viewBox="0 0 8 8" refX="8" refY="4" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L8,4 L0,8 z" fill="${colour(p)}"/></marker>`).join('');
     document.getElementById('graph').innerHTML =
       `<svg width="${width}" height="${LANE_TOP + lanes * LANE_GAP + 10}" viewBox="0 0 ${width} ${LANE_TOP + lanes * LANE_GAP + 10}"><defs>${markers}</defs>${arcs}${boxes}</svg>`;

@@ -30,7 +30,7 @@ class WebHookLogger:
         
         try:
             # send the message to the webhook using a POST request
-            response = requests.post(self.webhook_url, json=payload, headers=headers_for(self.webhook_url))
+            response = requests.post(self.webhook_url, json=payload, headers=headers_for(self.webhook_url), timeout=5)
             response.raise_for_status()  # check error in case of error status
 
             print("✅ Log Webhook call success : ", payload)
@@ -40,6 +40,10 @@ class WebHookLogger:
 
         except requests.HTTPError as http_err:
             print(f"❌ Log Webhook HTTP error : {response.status_code} – {http_err}")
+
+        except requests.exceptions.SSLError:
+            from pybiscus.session.tls import untrusted_hint
+            print(f"❌ Log Webhook: {untrusted_hint(self.webhook_url)}")
 
         except requests.exceptions.RequestException as err:
             print(f"❌ Log Webhook Other error : {err}")

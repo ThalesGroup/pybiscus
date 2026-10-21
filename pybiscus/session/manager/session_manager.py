@@ -13,6 +13,7 @@ LINK_TRANSPORT_ENV = "PYBISCUS_LINK_TRANSPORT"
 
 from pybiscus.session.auth import SESSION_TOKEN_ENV, component_token, manager_token_names, print_access, require_tokens, tokens_required
 from pybiscus.session.csrf import HEADER, require_pybiscus_header
+from pybiscus.session import tls
 
 # **************************
 
@@ -227,7 +228,9 @@ def main():
                              "needs uv, ffmpeg and the Chromium of Playwright")
     parser.add_argument("--require-token", action="store_true",
                         help="require the tokens on the loopback too (always required when listening beyond it)")
+    tls.add_tls_arguments(parser)
     args = parser.parse_args()
+    tls.check_tls_arguments(parser, args)
     # a default is not checked against the choices: the environment's is checked here
     if args.link_transport not in LINK_TRANSPORTS:
         parser.error(f"${LINK_TRANSPORT_ENV}={args.link_transport}: one of {', '.join(LINK_TRANSPORTS)} expected")
@@ -251,12 +254,17 @@ def main():
     session_token = component_token(session_name, args.session_token)
 
     print(f"🚀 Manager starting on port {manager_port}" + (f", bouquet {bouquet}" if bouquet else ""))
+    tls.trust_ca(args.tls_ca)
+    warning = tls.plain_http_warning("manager", args.host, args)
+    if warning:
+        print(warning, flush=True)
+    web_scheme = tls.scheme(args)
     browsed_host = "127.0.0.1" if args.host in ("0.0.0.0", "::") else args.host
-    browsed_url = f"http://{browsed_host}:{manager_port}"
+    browsed_url = f"{web_scheme}://{browsed_host}:{manager_port}"
     # listening on every interface, the other managers are elsewhere: they need the machine's name
     linked_host = socket.getfqdn() if args.host in ("0.0.0.0", "::") else browsed_host
-    manager_url = f"http://{linked_host}:{manager_port}"
-    print_access("manager", f"http://{browsed_host}:{manager_port}/pybiscus-session/manage", admin_token)
+    manager_url = f"{web_scheme}://{linked_host}:{manager_port}"
+    print_access("manager", f"{browsed_url}/pybiscus-session/manage", admin_token)
     print(f"🔑 session token, for the agents (shown in the manager page too): {session_token}", flush=True)
     if args.record:
         from pybiscus.session.manager.recording import missing_requirements
@@ -266,7 +274,7 @@ def main():
     if args.upper_url:
         from pybiscus.session.manager.upper_level import report_to_upper_level
         report_to_upper_level(args.upper_url, args.upper_token)
-    pybiscus_manager_app.run(host=args.host, port=manager_port)
+    pybiscus_manager_app.run(host=args.host, port=manager_port, ssl_context=tls.ssl_context(args))
 
 # **************************
 

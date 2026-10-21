@@ -189,6 +189,11 @@ def pybiscus_manager_register_agent():
             return jsonify({"status": "error", "message": problem, "expected_bouquet": sm.bouquet}), 409
         warning = problem
         logm.console.log(f"⚠️ {problem}")
+    from pybiscus.session.tls import plain_agent_warning
+    plain = plain_agent_warning(sm.manager_url, agent_url, name)
+    if plain:
+        warning = f"{warning}; {plain}" if warning else plain
+        logm.console.log(f"⚠️ {plain}")
 
     # métadonnées transmises par le formulaire de registration (déjà envoyées, jusqu'ici ignorées)
     pybiscus.session.manager.session_manager.registered_agents_meta[name] = {
@@ -703,14 +708,6 @@ def pybiscus_manager_manage():
                            metric_key_protocol=metric_key_protocol())
 
 # **************************
-
-@pybiscus_manager_app.route("/pybiscus-session/ping-server")
-def pybiscus_manager_ping_server():
-    try:
-        res = requests.get(pybiscus.session.manager.session_manager.server_url)
-        return jsonify({"message": res.text})
-    except Exception as e:
-        return jsonify({"message": f"Error contacting server: {e}"}), 500
 
 # ************************
 # *** Agent management ***
