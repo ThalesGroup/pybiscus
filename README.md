@@ -19,6 +19,10 @@ In addition to the pybiscus command-line application, we have introduced two key
 
 - a *session manager* that synchronizes configuration of the server and clients, and handles the orchestration of the training session.
 
+From experiments on one machine to sessions across several organisations, the
+[usage scenarios](docs/usage-scenarios.md) describe what Pybiscus brings in each case, how to set it
+up and its limits.
+
 ## Get started using uv 
 
 uv is a python project and package manager ( https://github.com/astral-sh/uv )

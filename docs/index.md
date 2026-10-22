@@ -9,6 +9,7 @@ You can find here a short documentation on how to use and adapt Pybiscus. The to
 ### Using Pybiscus
 
 * [Getting started](getting_started.md) - installation and the three ways to run Pybiscus
+* [Usage scenarios](usage-scenarios.md) - one machine, a closed network, several organisations: what Pybiscus brings, the setup and the limits of each
 * [Command line interface](cli.md)
 * [Agent: lightweight client](agent.md)
 * [Session using the manager](sessionmanager.md)
