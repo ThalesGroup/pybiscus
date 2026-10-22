@@ -64,6 +64,13 @@ def pybiscus_manager_run_session():
             decoded = urllib.parse.unquote(presets_raw)
 
             presets = json.loads(decoded)
+            # the agents would ignore them: said here, under the field of the session form
+            from pybiscus.session.interpolation import resolver_paths
+            calling = resolver_paths(presets)
+            if calling:
+                return refused([{"loc": path.split(".", 1)[1].split(".") if path.startswith(("values_set.", "options_set.")) else path.split("."),
+                                 "msg": "an interpolation calling a resolver (${oc.env:…}) would read the agents' machines: "
+                                        "the agents ignore it"} for path in calling]), 409
             repeat = presets.get("repeat")
             if repeat is not None:
                 problems = repetition_refused(repeat)

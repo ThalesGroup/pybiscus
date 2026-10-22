@@ -1,5 +1,6 @@
 import sys
 import pybiscus.session.theme
+import pybiscus.core.pybiscus_logger as logm
 from flask import Flask, jsonify, request
 
 from rich import print as rich_print
@@ -310,6 +311,26 @@ def PRESETS(text):
     return f"{PRESETS_BEGIN}\n{text}\n{PRESETS_END}\n"
 
 
+IGNORED_PRESET_MESSAGE = ("imposed by the session manager, ignored: an interpolation calling a resolver (${oc.env:…}) "
+                          "would read this machine")
+
+
+def ignored_js(ignored: list, js) -> str:
+    """each ignored value said under its field, or above the form when no field matches"""
+    if not ignored:
+        return ""
+    errors = [{"loc": name.split("."), "msg": IGNORED_PRESET_MESSAGE} for name in ignored]
+    return f'''
+        {{
+            const unplaced = pybiscusCheckErrors.show(document.getElementById('top-div'), {js(errors)});
+            const box = document.getElementById('check-errors-unplaced');
+            for (const line of unplaced) {{
+                const pre = document.createElement('pre'); pre.textContent = line; box && box.appendChild(pre);
+            }}
+        }}
+'''
+
+
 def generate_param_js(payload):
     """generates the js source that matches json-described action to perform
     ie: set selected options by label, lock options so they can not be changed
@@ -330,10 +351,17 @@ def generate_param_js(payload):
     }
     """
 
-    options_set = payload.get("options_set", {})
-    options_lock = payload.get("options_lock", [])
-    values_set = payload.get("values_set", {})
-    values_lock = payload.get("values_lock", [])
+    from pybiscus.session.interpolation import calls_resolver
+
+    # the operator fills them in: left unlocked
+    ignored = [name for name, value in {**payload.get("options_set", {}), **payload.get("values_set", {})}.items()
+               if calls_resolver(value)]
+    if ignored:
+        logm.console.log(f"⚠️ values imposed by the manager ignored, they call an interpolation resolver: {', '.join(ignored)}")
+    options_set = {k: v for k, v in payload.get("options_set", {}).items() if k not in ignored}
+    options_lock = [k for k in payload.get("options_lock", []) if k not in ignored]
+    values_set = {k: v for k, v in payload.get("values_set", {}).items() if k not in ignored}
+    values_lock = [k for k in payload.get("values_lock", []) if k not in ignored]
 
     # the values come from the manager, or from an URL anyone can make: written as JSON, they cannot
     # end the string they are in, nor the page's <script> element ("</script>")
@@ -359,7 +387,7 @@ def generate_param_js(payload):
         set_values( new_values );
 
         {value_lock_lines}
-
+{ignored_js(ignored, js)}
 '''
 
     return param_js

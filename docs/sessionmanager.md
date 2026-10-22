@@ -518,6 +518,11 @@ Without tokens, a component answers only the requests naming the loopback (`loca
 as the component for the browser. Reached under another name (a reverse proxy), it refuses with
 the advice to start it with `--require-token`.
 
+The values the manager sets in the agents' forms may hold a reference to another field
+(`${root_dir}/…`), not an interpolation calling a resolver (`${oc.env:NAME}`…): resolved on the
+agent's machine, it would read it. The manager refuses one in its session form, under the field;
+an agent ignores one it receives, leaves the field free and says so under it and in its log.
+
 - **Access token of a component**: the manager and each agent have their own, for their pages and
   actions. Each prints, when it starts, the URL to open (`…?token=…`); the browser then keeps it in a
   cookie, and the page asks for it otherwise. The manager's is its administration token (launch or

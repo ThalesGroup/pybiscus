@@ -4,6 +4,10 @@
 
 ### Session
 
+* A value the manager sets in the agents' forms can no longer call an interpolation resolver
+  (`${oc.env:NAME}`…), which would read the agent's machine: the session form refuses it under its
+  field, an agent ignores it and says so under the field and in its log. References to other fields
+  (`${root_dir}/…`) stay.
 * A lower-level manager takes from its upper level only the model, its hyperparameters
   (`model.config.*`, without interpolation), the data plugin, the number of rounds and a valid link:
   any other field would have been set and locked in its agents' forms. What it ignores is named in
