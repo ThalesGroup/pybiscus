@@ -4,6 +4,10 @@
 
 ### Session
 
+* The URL an agent registers or starts with must be `http://` or `https://`: it ends in the
+  manager's page, as a link and as the session form's frame.
+* The requests to the manager and the agents are bounded at 16 MiB, a model put in the manager's
+  mailbox at 1 GiB. A vignette needs an integer column and row (a vignette without them failed).
 * A value the manager sets in the agents' forms can no longer call an interpolation resolver
   (`${oc.env:NAME}`…), which would read the agent's machine: the session form refuses it under its
   field, an agent ignores it and says so under the field and in its log. References to other fields

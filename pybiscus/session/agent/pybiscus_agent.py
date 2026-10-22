@@ -22,6 +22,8 @@ from pybiscus.session.csrf import require_pybiscus_header
 
 rest_server = Flask(__name__)
 require_pybiscus_header(rest_server)
+from pybiscus.session.limits import limit_request_size
+limit_request_size(rest_server)
 pybiscus.session.theme.install(rest_server)
 
 agent_port  = None

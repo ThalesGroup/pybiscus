@@ -164,6 +164,15 @@ def repetition_refused(repeat) -> list:
 
 # **************************
 
+def is_web_url(url) -> bool:
+    """an agent's URL ends in the manager's page, as a link and as the session form's frame: a
+    javascript: one would run in that page"""
+    if not isinstance(url, str):
+        return False
+    parsed = urllib.parse.urlsplit(url)
+    return parsed.scheme in ("http", "https") and bool(parsed.hostname)
+
+
 @pybiscus_manager_app.route("/pybiscus-session/agent", methods=["POST"])
 @session_access
 def pybiscus_manager_register_agent():
@@ -179,6 +188,8 @@ def pybiscus_manager_register_agent():
 
     if agent_url is None:
         return jsonify({"status": "error", "message": "Missing 'agent_url'"}), 400
+    if not is_web_url(agent_url):
+        return jsonify({"status": "error", "message": f"agent_url {agent_url!r}: an http:// or https:// URL is expected"}), 400
 
     role = data.get("role")
 
@@ -741,7 +752,8 @@ def pybiscus_manager_receive_agents():
     if isinstance(started, dict) and ":" in source:
         bouquet, name = source.split(":", 1)
         pybiscus.session.manager.session_manager.started_agents[name] = {
-            "url": started.get("url"), "role": started.get("role"), "bouquet": bouquet, "time": time.time()}
+            "url": started.get("url") if is_web_url(started.get("url")) else None,
+            "role": started.get("role"), "bouquet": bouquet, "time": time.time()}
 
     # the source is "<bouquet>:<agent name>", as the page reads it (checkAgentLogs)
     if state and ":" in source:
@@ -842,14 +854,12 @@ def pybiscus_manager_post_vignette():
     if file.filename == "":
         return jsonify({"error": "Empty filename"}), 400
 
-    # get metadata
-    if "metadata" in request.form:
+    # they name the file: numbers only
+    try:
         metadata = json.loads(request.form["metadata"])
-        col = metadata["col"]
-        row = metadata["row"]
-        col_row = f"{col}_{row}"
-    else:
-        metadata = None
+        col_row = f"{int(metadata['col'])}_{int(metadata['row'])}"
+    except (KeyError, TypeError, ValueError):
+        return jsonify({"error": "metadata with an integer col and row is required"}), 400
 
     # save file
     save_path = os.path.join(vignettes_dir(), f"grid_{col_row}.png")

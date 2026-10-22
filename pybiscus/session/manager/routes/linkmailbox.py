@@ -61,6 +61,8 @@ def _unknown(link_id: str):
 @pybiscus_manager_app.route("/pybiscus-session/link/<link_id>/<kind>/<int:server_round>", methods=["PUT"])
 @session_access
 def link_put(link_id, kind, server_round):
+    from pybiscus.session.limits import allow_model_size
+    allow_model_size()
     if kind not in KINDS:
         return jsonify({"status": "error", "message": f"kind {kind}: {' or '.join(KINDS)} expected"}), 400
     if not _own(link_id):

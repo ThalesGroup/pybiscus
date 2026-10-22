@@ -19,6 +19,8 @@ from pybiscus.session import tls
 
 pybiscus_manager_app = Flask(__name__)
 require_pybiscus_header(pybiscus_manager_app)
+from pybiscus.session.limits import limit_request_size
+limit_request_size(pybiscus_manager_app)
 pybiscus.session.theme.install(pybiscus_manager_app)
 
 admin_token = None     # the operator's: the manager's pages and actions

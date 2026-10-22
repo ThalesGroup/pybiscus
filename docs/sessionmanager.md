@@ -328,6 +328,8 @@ each upper manager chooses for its own links.
   level, and no token in a configuration (the reports keep them). The managers set `manager_url`
   on both ends. A manager in the middle of a tree keeps the mailbox of its links to its lower
   levels and relays the one it received from above.
+  The mailbox keeps each object in memory until it is taken, up to 1 GiB per model; the other
+  requests to the manager and the agents are bounded at 16 MiB.
 
 ```bash
 uv run session_manager --port 5595 --bouquet core --link-transport manager ...
