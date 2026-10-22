@@ -64,6 +64,8 @@ def pybiscus_manager_run_session():
             decoded = urllib.parse.unquote(presets_raw)
 
             presets = json.loads(decoded)
+            if not isinstance(presets, dict):
+                return jsonify({"status": "error", "message": "presets: a JSON object is expected"}), 400
             # the agents would ignore them: said here, under the field of the session form
             from pybiscus.session.interpolation import resolver_paths
             calling = resolver_paths(presets)

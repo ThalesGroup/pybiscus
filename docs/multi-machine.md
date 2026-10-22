@@ -34,6 +34,8 @@ a client agent only from its own operator's browser.
   agent's page was opened. Opened as `http://127.0.0.1:<port>` or `http://localhost:<port>` (its
   operator on its machine), it is allowed; opened under a host name, allow it:
   `--allow-origin http://site-a.example:5001` (one option per origin).
+- Open the manager's page under the name its agents registered it with (`manager_url`), or under
+  `localhost` / `127.0.0.1` on its machine: the server agent lets only these frame its session form.
 
 **Server agent**
 - `--host 0.0.0.0`: the client agents and the browser of the manager's operator reach it.

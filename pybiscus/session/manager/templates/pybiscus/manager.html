@@ -1585,6 +1585,8 @@
     if(url && !body.querySelector('iframe')){
       // the server agent's page, another origin: it takes this page's theme from its URL, then by message
       const themed = new URL(url, location.href); themed.searchParams.set('theme', pybiscusTheme.get());
+      // the form posts its values to this page's origin only
+      themed.searchParams.set('parent_origin', location.origin);
       const f=document.createElement('iframe'); f.src=themed;
       f.style.cssText='width:min(900px,94vw);height:78vh;border:none;background:var(--bg);display:block';
       body.appendChild(f);
@@ -1690,7 +1692,13 @@
   addEventListener('keydown', e=>{ if(e.key==='Escape') closeSessionConfig(); });
 
   // config iframe → run session
+  // the session form of the server agent's frame only: any page holding this window (a frame of
+  // another site, a window it opened) could otherwise launch a session with its own values
+  const configFrame = () => document.querySelector('#cfg-body iframe');
+  const configOrigin = () => { const f = configFrame(); return f ? new URL(f.src).origin : null; };
   window.addEventListener("message", (event)=>{
+    const frame = configFrame();
+    if(!frame || event.source !== frame.contentWindow || event.origin !== configOrigin()) return;
     if(event.data?.type === "session_config"){
       const wanted = event.data?.value?.min_clients;
       if(wanted != null && wanted !== registeredClients
@@ -1704,12 +1712,12 @@
         .then(async r=>{
           if(r.ok){ closeSessionConfig(); session.sessionState = "paramsDefined"; return; }
           const answer = await r.json().catch(()=>({message:`session refused (HTTP ${r.status})`}));
-          if(form) form.postMessage({type:'session_refused', message:answer.message, fields:answer.fields || []}, '*');
+          if(form) form.postMessage({type:'session_refused', message:answer.message, fields:answer.fields || []}, event.origin);
           else alert(answer.message);
         })
         .catch(err=>{
           console.error('Error running pybiscus session:', err);
-          if(form) form.postMessage({type:'session_refused', message:`the manager did not answer: ${err}`, fields:[]}, '*');
+          if(form) form.postMessage({type:'session_refused', message:`the manager did not answer: ${err}`, fields:[]}, event.origin);
         });
     }
   });
@@ -1954,7 +1962,7 @@
     renderCharts();
     if(lastTopology) renderTopology(...lastTopology);
     const frame = document.querySelector('#cfg-body iframe');
-    if(frame && frame.contentWindow) frame.contentWindow.postMessage({pybiscusTheme: e.detail}, '*');
+    if(frame && frame.contentWindow) frame.contentWindow.postMessage({pybiscusTheme: e.detail}, new URL(frame.src).origin);
   });
 
   // ============ start loops ============

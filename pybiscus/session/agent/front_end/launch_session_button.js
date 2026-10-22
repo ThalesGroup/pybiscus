@@ -1,3 +1,5 @@
+const MANAGER_ORIGIN = new URLSearchParams(location.search).get('parent_origin');
+
 
 const launch_session_button = document.getElementById('launch-session-button');
 
@@ -121,7 +123,13 @@ launch_session_button.addEventListener('click', function() {
 
     // console.log( server_data );
 
-    window.parent.postMessage({ type: "session_config", value: server_data }, "*");
+    // the session's values go to the manager's page only: the frame-ancestors of this agent keep
+    // another site from framing this form with its own parent_origin
+    if (!MANAGER_ORIGIN) {
+        console.error("no parent_origin: this form is opened by the manager page's ⚙ Config button");
+        return;
+    }
+    window.parent.postMessage({ type: "session_config", value: server_data }, MANAGER_ORIGIN);
 });
 
 function clearRefusal(topDiv) {
@@ -132,7 +140,7 @@ function clearRefusal(topDiv) {
 
 // the manager refused the session: its problems as the check's errors, shown under their fields
 window.addEventListener('message', event => {
-    if (event.source !== window.parent || event.data?.type !== 'session_refused') return;
+    if (event.source !== window.parent || event.origin !== MANAGER_ORIGIN || event.data?.type !== 'session_refused') return;
     const topDiv = document.getElementById('top-div');
     const fields = Array.isArray(event.data.fields) ? event.data.fields : [];
     const unplaced = pybiscusCheckErrors.show(topDiv, fields);

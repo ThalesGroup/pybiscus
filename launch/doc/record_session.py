@@ -150,6 +150,12 @@ def fill_session_form(form, options, values, shooting=None):
             shooting.tick(2)
 
 
+def form_origin(port) -> str:
+    """opened on its own, the session form is its own parent: it posts its values to the origin it
+    is given, the manager's page when it opens it"""
+    return "&parent_origin=" + urllib.parse.quote(f"{SCHEME}://localhost:{port}")
+
+
 def session_config(form):
     form.evaluate("""() => { window.__sc = null; window.addEventListener('message',
         e => { if (e.data && e.data.type === 'session_config') window.__sc = e.data.value; }); }""")
@@ -223,7 +229,8 @@ def shoot_scenario(sc, work, rushes):
             server = next(a for a in agents if a["role"] == "server")
             form = new_page()
             presets = {"values_set": {"flower_server.server_port": flower_port}, "values_lock": []}
-            form.goto(f"{SCHEME}://localhost:{server['port']}/session/config?presets=" + urllib.parse.quote(json.dumps(presets)))
+            form.goto(f"{SCHEME}://localhost:{server['port']}/session/config?presets=" + urllib.parse.quote(json.dumps(presets))
+                      + form_origin(server['port']))
             form.wait_for_timeout(1500)
             shooting.add_view("session-form", form, (), agent_label(server["name"]))
             shooting.set_focus("manager", "session-form")
@@ -402,7 +409,8 @@ def shoot_hierarchical(sc, work, rushes):
             shooting.set_focus(*managers_in_focus, "session-form")
 
             def launch_session(b, presets, options=None, values=None):
-                form.goto(f"{SCHEME}://localhost:{servers[b]['port']}/session/config?presets=" + urllib.parse.quote(json.dumps(presets)))
+                form.goto(f"{SCHEME}://localhost:{servers[b]['port']}/session/config?presets=" + urllib.parse.quote(json.dumps(presets))
+                      + form_origin(servers[b]['port']))
                 form.wait_for_timeout(1500)
                 fill_session_form(form, options, values)
                 step("session-form", bouquet=b)

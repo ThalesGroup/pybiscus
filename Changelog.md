@@ -4,6 +4,11 @@
 
 ### Session
 
+* The manager's page takes a session form's values only from the frame of its ⚙ *Config* button, at
+  the server agent's origin, and answers it at that origin only: a page of another site that framed
+  or opened the manager's page could launch a session with its own values. The session form posts
+  them to the manager's origin only. The manager's pages may be framed by their own origin only, an
+  agent's by its own and by the manager it registered with (`frame-ancestors`).
 * The URL an agent registers or starts with must be `http://` or `https://`: it ends in the
   manager's page, as a link and as the session form's frame.
 * The requests to the manager and the agents are bounded at 16 MiB, a model put in the manager's

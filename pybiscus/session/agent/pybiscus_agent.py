@@ -24,6 +24,9 @@ rest_server = Flask(__name__)
 require_pybiscus_header(rest_server)
 from pybiscus.session.limits import limit_request_size
 limit_request_size(rest_server)
+from pybiscus.session.framing import forbid_framing, manager_origins
+# the manager frames the server agent's session form
+forbid_framing(rest_server, lambda: manager_origins(registration_parameters.get("manager_url")))
 pybiscus.session.theme.install(rest_server)
 
 agent_port  = None
