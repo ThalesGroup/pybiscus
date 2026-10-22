@@ -150,6 +150,50 @@ def designate_relay(bouquet: str, client) -> None:
         sm.relays[bouquet] = client
 
 
+# a link_id names a directory under the link's: no separator, no "." or ".."
+LINK_ID = re.compile(r"^(?!\.{1,2}$)[A-Za-z0-9._-]+$")
+SCALAR = (str, int, float, bool, type(None))
+
+
+def accepted_upper_session(session) -> tuple:
+    """the upper level's session as this level applies it, and what was left out. The upper level
+    is often another organisation's: it may impose the model, its hyperparameters, the data plugin
+    and the number of rounds, and give its link, nothing else (any other field it set would be
+    locked in this level's forms, a path or an interpolation reading this level's environment)"""
+    if not isinstance(session, dict):
+        return None, []
+    ignored = []
+    constraints = {}
+    for key, value in (session.get("constraints") or {}).items():
+        if key in ("model", "data") and isinstance(value, str):
+            constraints[key] = value
+        elif key == "num_rounds" and isinstance(value, int) and not isinstance(value, bool) and value > 0:
+            constraints[key] = value
+        elif key == "model_values" and isinstance(value, dict):
+            kept = {path: v for path, v in value.items()
+                    if isinstance(path, str) and path.startswith(MODEL_VALUES) and isinstance(v, SCALAR)
+                    and not (isinstance(v, str) and "${" in v)}
+            ignored += [f"model_values.{path}" for path in value if path not in kept]
+            constraints[key] = kept
+        else:
+            ignored.append(f"constraints.{key}")
+    link = session.get("link")
+    if link is not None:
+        try:
+            link = ConfigSessionLink.model_validate(link).model_dump()
+        except ValueError as e:
+            ignored.append(f"link ({e.__class__.__name__})")
+            link = None
+    # the upper level always sends the default directory: another one would have this level's
+    # server write where the upper level chose
+    if link is not None and (not LINK_ID.match(link["link_id"]) or link["directory"] != ConfigSessionLink().directory):
+        ignored.append(f"link {link['link_id']!r} in {link['directory']!r}")
+        link = None
+    relay = session.get("relay") if isinstance(session.get("relay"), str) else None
+    return {"running": session.get("running") is True, "constraints": constraints or None,
+            "relay": relay, "link": link}, ignored
+
+
 def upper_constraints():
     """the upper level's model and data once its session runs; None while it is not configured"""
     session = (sm.upper_link or {}).get("session") or {}
@@ -219,8 +263,12 @@ def report_to_upper_level(upper_url: str, token) -> None:
     def note_contact(response, problem):
         if problem is None:
             answer = response.json()
+            session, ignored = accepted_upper_session(answer.get("session"))
+            refused = f"ignored from the upper level: {', '.join(ignored)}" if ignored else None
+            if refused and refused != sm.upper_link.get("problem"):
+                logm.console.log(f"⚠️ {refused}")
             sm.upper_link.update(bouquet=answer.get("bouquet"), color=answer.get("color"), reached=True,
-                                 problem=None, last_contact=time.time(), session=answer.get("session"))
+                                 problem=refused, last_contact=time.time(), session=session)
             follow_upper_session()
         else:
             sm.upper_link.update(reached=False, problem=problem)

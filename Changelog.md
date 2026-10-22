@@ -4,6 +4,10 @@
 
 ### Session
 
+* A lower-level manager takes from its upper level only the model, its hyperparameters
+  (`model.config.*`, without interpolation), the data plugin, the number of rounds and a valid link:
+  any other field would have been set and locked in its agents' forms. What it ignores is named in
+  its log and in the page.
 * The values a manager presets in the agents' forms are written into the page as JSON: a value
   holding a quote broke the page, and a crafted link could run a script in the agent's page. The
   server form's GET no longer changes the agent's state.

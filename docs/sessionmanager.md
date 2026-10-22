@@ -281,6 +281,11 @@ session (data partition, holdout, `min_clients`, robustness...) being its own; t
 imposes them whatever the form sends, and they reach the forms of its agents. A level in the middle
 passes them on to its own lower levels.
 
+The upper level is often another organisation's: a lower-level manager takes **only** these from
+it, and its link. It ignores any other field (a path, an interpolation `${…}` in a hyperparameter,
+a link to another directory than the default or whose `link_id` would leave it), says so in its log
+and in the tooltip of the upper level's *connected* chip, and applies the rest.
+
 Each lower level reaches the upper-level session through a **relay**: a client of the upper
 session that computes nothing and stands for the lower session. The upper-level manager designates
 it in its topology, for each lower level, among all its registered clients (agents register as
