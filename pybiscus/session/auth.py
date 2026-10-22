@@ -134,6 +134,20 @@ or paste its token (also in <code>{html.escape(str(TOKENS_DIR))}/</code> where i
 </form></body></html>"""
 
 
+def _refuse_foreign_host(component: str):
+    """without tokens, only a request naming the loopback. A site whose name an attacker re-points to
+    127.0.0.1 (DNS rebinding) is the same origin as the component for the browser: it could add the
+    X-Pybiscus header and read the answers. A reverse proxy passing its own name lands here too"""
+    host = urllib.parse.urlsplit("//" + request.host).hostname or ""
+    if is_loopback(host):
+        return None
+    message = (f"{component}: reached as '{request.host}', while it listens on the loopback without token "
+               f"(a reverse proxy, or another site). To be reached under another name, start it with --require-token")
+    if request.method == "GET" and "text/html" in request.headers.get("Accept", ""):
+        return make_response(f"<!doctype html><meta charset='utf-8'><p>{html.escape(message)}</p>", 403)
+    return jsonify({"error": message}), 403
+
+
 def require_tokens(app: Flask, component: str, enabled: Callable[[], bool], cookie: Callable[[], str],
                    access_token: Callable[[], Optional[str]], session_token: Callable[[], Optional[str]]) -> None:
     """the getters are read at each request: the tokens are known once the command line is parsed,
@@ -142,8 +156,10 @@ def require_tokens(app: Flask, component: str, enabled: Callable[[], bool], cook
     @app.before_request
     def _check_tokens():
         # a CORS preflight never carries credentials; the request that follows it does
-        if not enabled() or request.method == "OPTIONS" or request.endpoint == "static":
+        if request.method == "OPTIONS" or request.endpoint == "static":
             return None
+        if not enabled():
+            return _refuse_foreign_host(component)
 
         access = access_token()
         offered_in_url = request.args.get("token")

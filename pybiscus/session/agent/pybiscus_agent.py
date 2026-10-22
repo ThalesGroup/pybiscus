@@ -5,6 +5,7 @@ from flask import Flask, jsonify, request
 from rich import print as rich_print
 from pathlib import Path
 import click
+import json
 import os
 import subprocess
 
@@ -331,38 +332,30 @@ def generate_param_js(payload):
 
     options_set = payload.get("options_set", {})
     options_lock = payload.get("options_lock", [])
-
-    prefixes = list(options_set.keys())
-    prefixes_str = ", ".join(f'"{key}"' for key in prefixes)
-
-    new_option_items = ", ".join(f"'{key}' : '{value}'" for key, value in options_set.items())
-    option_lock_lines = "\n".join(f'lock_option("{opt}");' for opt in options_lock)
-
     values_set = payload.get("values_set", {})
     values_lock = payload.get("values_lock", [])
 
-    # a Python bool became 'True', which JSON.parse refuses: the exception left every value after
-    # it unset and every lock undone
-    new_values_items = ", ".join(f"'{key}' : '{str(value).lower() if isinstance(value, bool) else value}'"
-                                 for key, value in values_set.items())
-    value_lock_lines = "\n".join(f'lock_value("{opt}");' for opt in values_lock)
+    # the values come from the manager, or from an URL anyone can make: written as JSON, they cannot
+    # end the string they are in, nor the page's <script> element ("</script>")
+    def js(value) -> str:
+        return json.dumps(value).replace("</", "<\\/")
+
+    # the form reads every value as text. A Python bool became 'True', which JSON.parse refuses: the
+    # exception left every value after it unset and every lock undone
+    def as_text(value) -> str:
+        return str(value).lower() if isinstance(value, bool) else str(value)
+
+    option_lock_lines = "\n".join(f"lock_option({js(str(opt))});" for opt in options_lock)
+    value_lock_lines = "\n".join(f"lock_value({js(str(opt))});" for opt in values_lock)
 
     param_js = f'''
 
-        const prefixes = [{prefixes_str}];
-
-        /* let selected = selected_options(prefixes);
-        console.log("✅ Selected options before :", selected); */
-
-        const new_options = {{ {new_option_items} }}
+        const new_options = {js({str(key): as_text(value) for key, value in options_set.items()})};
         set_options( new_options );
-
-        /* selected = selected_options(prefixes);
-        console.log("✅ Selected options after :", selected); */
 
         {option_lock_lines}
 
-        const new_values = {{ {new_values_items} }}
+        const new_values = {js({str(key): as_text(value) for key, value in values_set.items()})};
         set_values( new_values );
 
         {value_lock_lines}

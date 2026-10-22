@@ -126,12 +126,11 @@ def serverConfigDownload():
             # decode and parse JSON param
             decoded = urllib.parse.unquote(presets_raw)
 
-            # store them into context
-            pybagent.session_parameters = json.loads(decoded)
+            session_parameters = json.loads(decoded)
 
-            presets_js = PRESETS(generate_param_js(pybagent.session_parameters))
+            presets_js = PRESETS(generate_param_js(session_parameters))
 
-            logm.console.log("server: received session parameters: ", pybagent.session_parameters)
+            logm.console.log("server: received session parameters: ", session_parameters)
             # logm.console.log("generated params :\n", presets_js)
 
         except Exception as e:

@@ -508,6 +508,10 @@ whoever reaches a port opened to the network must not drive the session nor laun
 with other users). Each component decides for itself: a client agent on 127.0.0.1 requires no
 token, while the manager and the server agent it registers with, listening on the network, do.
 It prints at start either `🔑 … open …?token=…`, or `🔓 … no token required`.
+Without tokens, a component answers only the requests naming the loopback (`localhost`, `127.x`,
+`::1`): a page of another site whose name points to 127.0.0.1 would otherwise be the same origin
+as the component for the browser. Reached under another name (a reverse proxy), it refuses with
+the advice to start it with `--require-token`.
 
 - **Access token of a component**: the manager and each agent have their own, for their pages and
   actions. Each prints, when it starts, the URL to open (`…?token=…`); the browser then keeps it in a

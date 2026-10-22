@@ -4,6 +4,13 @@
 
 ### Session
 
+* The values a manager presets in the agents' forms are written into the page as JSON: a value
+  holding a quote broke the page, and a crafted link could run a script in the agent's page. The
+  server form's GET no longer changes the agent's state.
+* Without tokens (on the loopback), the manager and the agents answer only a request naming the
+  loopback (`localhost`, `127.x`, `::1`): a site re-pointing its name to 127.0.0.1 (DNS rebinding)
+  could otherwise drive them. A reverse proxy passing its own host name is refused too, with the
+  advice to start the component with `--require-token`.
 * HTTPS between the manager and the agents: `--tls-cert` / `--tls-key` serve HTTPS, `--tls-ca`
   trusts the session's CA, here and in the runs launched, besides the usual authorities. The
   printed and linked URLs, the access cookie (`Secure`) and the network view follow; a component

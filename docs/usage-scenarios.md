@@ -157,7 +157,9 @@ share of a partition); no session can be reproduced exactly.
 ## Behind a tunnel or a reverse proxy
 
 An SSH tunnel or a reverse proxy on the same machine lets a component listen on 127.0.0.1 while
-others reach it: it then requires no token. **Start it with `--require-token`.** A reverse proxy
+others reach it: it then requires no token. **Start it with `--require-token`.** Without it, a
+component refuses the requests under another name than the loopback's (a reverse proxy passing its
+own host name), not those of an SSH tunnel, which arrive as `localhost`. A reverse proxy
 also has to pass the long requests (the runs' event streams, the links' waits of up to a minute).
 
 ## Common mistakes

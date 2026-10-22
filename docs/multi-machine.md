@@ -70,7 +70,8 @@ configuration (`--config`, see `pybiscus_agent_registration_config/`) to prefill
 Without TLS, the tokens, the configurations and the logs travel in clear: a manager or an agent
 listening beyond the loopback without `--tls-cert` says so when it starts. Either use the built-in
 TLS below, or an SSH tunnel, a VPN, or an HTTPS reverse proxy in front of the manager and the
-server agent.
+server agent. Behind a tunnel or a proxy on its machine, a component listening on 127.0.0.1 needs
+`--require-token` ([usage scenarios](usage-scenarios.md#behind-a-tunnel-or-a-reverse-proxy)).
 
 ### Certificates
 
