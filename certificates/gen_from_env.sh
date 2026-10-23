@@ -11,10 +11,7 @@ fi
 # the Flower clients present no certificate (they check the server's with the CA): none by default
 NUM_CLIENTS=${NUM_CLIENTS:-0}
 
-if [ -z "$rootCApass" ]; then
-  echo "ERROR: rootCApass environment variable is not set."
-  exit 1
-fi
+ca_password new
 
 # DN Elements for the CA
 CA_C=${CA_C:-"US"}
@@ -47,9 +44,9 @@ mkdir -p server
 
 # 1. Créer une CA racine
 echo "Creating Root CA..."
-openssl genpkey -algorithm RSA -out ca/ca.key -aes256 -pass pass:"$rootCApass"
+openssl genpkey -algorithm RSA -out ca/ca.key -aes256 -pass env:rootCApass
 openssl req -x509 -new -nodes -utf8 -key ca/ca.key -sha256 -days 1024 -out ca/ca.crt \
-  -subj "/C=$CA_C/ST=$CA_ST/L=$CA_L/O=$CA_O/OU=$CA_OU/CN=$CA_CN" -passin pass:"$rootCApass"
+  -subj "/C=$CA_C/ST=$CA_ST/L=$CA_L/O=$CA_O/OU=$CA_OU/CN=$CA_CN" -passin env:rootCApass
 
 # 2. Créer une clé privée et une CSR pour le serveur
 echo "Creating Server Key and CSR..."
@@ -67,7 +64,7 @@ echo "Signing Server CSR with Root CA..."
 # the server's name, plus the local ones for a session on one machine (SERVER_SAN adds others)
 SERVER_SAN=${SERVER_SAN:-"DNS:$SERVER_CN,DNS:localhost,IP:127.0.0.1,IP:::1"}
 openssl x509 -req -in server/server.csr -CA ca/ca.crt -CAkey ca/ca.key -CAcreateserial \
-  -out server/server.crt -days 500 -sha256 -passin pass:"$rootCApass" \
+  -out server/server.crt -days 500 -sha256 -passin env:rootCApass \
   -extfile <(printf "subjectAltName=%s" "$SERVER_SAN")
 
 # 3. Créer des clés privées et des CSR pour les clients
@@ -85,7 +82,7 @@ for i in $(seq 1 $NUM_CLIENTS); do
   # Signer le CSR du client avec la CA racine
   echo "Signing Client $i CSR with Root CA..."
   openssl x509 -req -in clients/client$i.csr -CA ca/ca.crt -CAkey ca/ca.key -CAcreateserial \
-    -out clients/client$i.crt -days 500 -sha256 -passin pass:"$rootCApass"
+    -out clients/client$i.crt -days 500 -sha256 -passin env:rootCApass
 done
 
 echo "All keys and certificates have been created."

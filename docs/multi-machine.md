@@ -80,8 +80,12 @@ server agent. Behind a tunnel or a proxy on its machine, a component listening o
 One certificate authority (CA), in `certificates/`, and one certificate per machine: the manager
 and the agents of a machine share it, and so does the Flower server running there.
 
-1. Once, where the CA is kept: edit `certificates/set_env.sh` (names of the organisation, and
-   `rootCApass`: the demo's password protects nothing), then `cd certificates && ./gen_from_env.sh`.
+1. Once, where the CA is kept: edit the names of the organisation in `certificates/set_env.sh`, then
+   `cd certificates && ./gen_from_env.sh`. It asks twice for the password of the CA's key
+   (`ca/ca.key`), and `sign_component_csr.sh` asks for it at each signature; without a terminal, give
+   it in the environment (`rootCApass=… ./gen_from_env.sh`). It is never written in a file of the
+   repository, and the key is the one file to protect: whoever holds both signs certificates every
+   component of the session trusts.
    It refuses to replace an existing CA (`FORCE_NEW_CA=1` forces it): a new CA invalidates every
    certificate it signed.
 2. For each machine:

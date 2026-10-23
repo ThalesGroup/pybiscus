@@ -20,6 +20,7 @@ if [ ! -f ca/ca.crt ] || [ ! -f ca/ca.key ]; then
   echo "ERROR: no CA in $(pwd)/ca: create it once with gen_from_env.sh" >&2
   exit 1
 fi
+ca_password
 if [[ "$name" =~ ^[0-9.]+$ || "$name" == *:* ]]; then
   first="IP:$name"
 else
@@ -31,8 +32,11 @@ san="$first,DNS:localhost,IP:127.0.0.1,IP:::1${extra:+,$extra}"
 
 dir="components/$name"
 mkdir -p "$dir"
+# written aside first: a wrong password left an empty certificate in place
+trap 'rm -f "$dir/$name.crt.new"' EXIT
 openssl x509 -req -in "$csr" -CA ca/ca.crt -CAkey ca/ca.key -CAcreateserial \
-  -out "$dir/$name.crt" -days 500 -sha256 -passin pass:"$rootCApass" \
+  -out "$dir/$name.crt.new" -days 500 -sha256 -passin env:rootCApass \
   -extfile <(printf "subjectAltName=%s\nbasicConstraints=CA:FALSE\nextendedKeyUsage=serverAuth\n" "$san")
+mv "$dir/$name.crt.new" "$dir/$name.crt"
 echo "certificate: $(pwd)/$dir/$name.crt ($san)"
 echo "send it back with $(pwd)/ca/ca.crt, which every component and browser trusts (--tls-ca)"

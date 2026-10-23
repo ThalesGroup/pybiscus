@@ -4,6 +4,10 @@
 
 ### Session
 
+* `certificates/`: no default password for the CA's key any more (`set_env.sh` held `12345678`):
+  `gen_from_env.sh` asks for it twice, `sign_component_csr.sh` once, or both read it from
+  `rootCApass`; openssl gets it from the environment, not from its command line. A signature with
+  a wrong password no longer leaves an empty certificate.
 * The manager's page takes a session form's values only from the frame of its ⚙ *Config* button, at
   the server agent's origin, and answers it at that origin only: a page of another site that framed
   or opened the manager's page could launch a session with its own values. The session form posts
