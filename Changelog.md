@@ -4,6 +4,18 @@
 
 ### Session
 
+* `docs/security.md`: what the manager and the agents protect, code and data, the defences against
+  the participants, the known limits and a checklist by scenario; linked from the usage scenarios,
+  the docs index, `multi-machine.md` and `sessionmanager.md`.
+* `docs/usage-scenarios.md`: a deployment diagram for the scenarios that differ (one machine,
+  automated runs, closed network, several organisations, tunnel or proxy), and a link from each
+  scenario to its checklist in `docs/security.md`, which links back.
+* `docs/multi-machine.md`: one agent per machine, with the machine's role (two on a machine that
+  both aggregates and holds data), the manager on the server's machine or on its own. The client
+  agents listen beyond the loopback too: the manager calls them for the state, the stop and the
+  relaunch of their runs (the page said they could stay on 127.0.0.1).
+* The server loads its initial weights (`server_run.weights_path`) as tensors only
+  (`weights_only=True`): for a path starting with `http`, Lightning unpickled the file whole.
 * `certificates/`: no default password for the CA's key any more (`set_env.sh` held `12345678`):
   `gen_from_env.sh` asks for it twice, `sign_component_csr.sh` once, or both read it from
   `rootCApass`; openssl gets it from the environment, not from its command line. A signature with

@@ -322,7 +322,9 @@ def launch_config(
     initial_parameters_log_message = "No weights provided, random server-side initialization instead."
 
     if weights_path is not None:
-        state = fabric.load(weights_path)["model"]
+        # Lightning unpickles a path starting with "http" whole (weights_only=False): a configuration
+        # could otherwise have the server run the code of a file it downloads
+        state = fabric.load(weights_path, weights_only=True)["model"]
         model.load_state_dict(state)
         initial_parameters_log_message = f"Loaded weights from {weights_path}"
 

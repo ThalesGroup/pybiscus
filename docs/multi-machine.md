@@ -5,7 +5,7 @@ names `localhost`. A session spread over several machines needs the settings bel
 on `localhost` breaks it without an error message (the component calls itself).
 
 The session and its tokens are described in [sessionmanager.md](sessionmanager.md). Listening
-beyond the loopback, the manager and the server agent require their tokens: open them with the URL
+beyond the loopback, the manager and the agents require their tokens: open them with the URL
 they print (`…?token=…`), and give the session token at each registration.
 
 ## Who calls whom
@@ -21,10 +21,16 @@ they print (`…?token=…`), and give the session token at each registration.
 | runs (server, clients) | manager | webhooks: logs, metrics, vignettes |
 | Flower clients | **Flower server** | the training itself |
 
-So the manager, the server agent and the Flower server must be reachable from the other machines;
-a client agent only from its own operator's browser.
+So the manager, the server agent and the Flower server must be reachable from the other machines,
+and each client agent from its operator's browser and from the manager.
 
 ## Machine by machine
+
+One agent per machine, its role being that of the machine: the server's machine runs the server
+agent, each client machine a client agent. A machine that both aggregates and holds data runs two
+agents, a server one and a client one (an agent registers with one role). The manager runs on the
+server's machine (one operator, one certificate, one port fewer to open between machines) or on a
+machine of its own (then it must reach every agent, and every run must reach it).
 
 **Manager**
 - `launch/session/run_manager.sh --host 0.0.0.0` (or the address of the right interface).
@@ -43,7 +49,8 @@ a client agent only from its own operator's browser.
   others reach it (not `localhost`), and the session token.
 
 **Client agents**
-- May stay on 127.0.0.1 (their operator uses them from their machine).
+- `--host 0.0.0.0`: the manager calls them for the state, the stop and the relaunch of their runs
+  (left on 127.0.0.1, the manager shows them *not reachable* and cannot stop their runs).
 - Their registration: `manager_url` = the manager's real URL, `agent_url` = their URL, the session
   token.
 
@@ -64,15 +71,18 @@ configuration (`--config`, see `pybiscus_agent_registration_config/`) to prefill
 | port (default) | component | reached by |
 |---|---|---|
 | 5555 | manager | every browser, every run |
-| 5000 | server agent | the manager's operator's browser, the client agents |
+| 5000 | server agent | the manager's operator's browser, the client agents, the manager |
+| 5000 | each client agent | its operator's browser, the manager |
 | 3333 | Flower server | the Flower clients |
 
 ## Encryption
 
+What the components protect, and their known limits: [security.md](security.md).
+
 Without TLS, the tokens, the configurations and the logs travel in clear: a manager or an agent
 listening beyond the loopback without `--tls-cert` says so when it starts. Either use the built-in
 TLS below, or an SSH tunnel, a VPN, or an HTTPS reverse proxy in front of the manager and the
-server agent. Behind a tunnel or a proxy on its machine, a component listening on 127.0.0.1 needs
+agents. Behind a tunnel or a proxy on its machine, a component listening on 127.0.0.1 needs
 `--require-token` ([usage scenarios](usage-scenarios.md#behind-a-tunnel-or-a-reverse-proxy)).
 
 ### Certificates

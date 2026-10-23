@@ -509,6 +509,8 @@ registration and logs), start it with `--host 0.0.0.0` (or a given address), e.g
 
 ### Access tokens
 
+The other protections and the known limits: [security.md](security.md).
+
 A component listening beyond the loopback (`--host 0.0.0.0` or an address) requires tokens:
 whoever reaches a port opened to the network must not drive the session nor launch runs. On
 127.0.0.1 (the default), it requires none, unless started with `--require-token` (a machine shared
