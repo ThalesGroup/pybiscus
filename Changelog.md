@@ -86,6 +86,15 @@
   configuration that relied on the former behavior sets `size_scaling: none` (the bundled
   campaigns measured before it do).
 
+### Dependencies
+
+* Flower 1.40.0 → 1.42.0 (`flwr>=1.42.0`): it requires `uv` ≥ 0.13.5 and `certifi` ≥ 2026.10.19
+  after the eMudhra CA incident; no change in Pybiscus.
+* Known vulnerabilities fixed: `pillow` 12.3.0 → 13.0.0 (35, in its TIFF, GIF, PDF, EPS, BMP and
+  JPEG 2000 decoders), `certifi` 2026.2.25 → 2026.10.23 (PYSEC-2026-4320), `gitpython` 3.1.62 →
+  3.2.1 (CVE-2026-114145, through wandb), `uv` 0.12.24 → 0.13.5 (PYSEC-2026-4321, through Flower);
+  `pip-audit` finds none left in `uv.lock`.
+
 ## [Version 0.14.0]
 
 Since `version0.13.0` (2026-10-19): the manager tells what to do next, sums up an ended session and
