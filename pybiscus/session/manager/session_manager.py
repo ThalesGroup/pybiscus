@@ -204,8 +204,8 @@ def start_recording(directory, automatic=True):
     return recording
 
 def agent_headers(name: str) -> dict:
-    """to call a registered agent: its call token, or the session token for an agent that gave none
-    (a page of a former version)"""
+    """to call a registered agent: its call token. One registered without (by a script) gets the
+    session token, which only an agent requiring no token lets through"""
     return {HEADER: "1", "Authorization": f"Bearer {agent_call_tokens.get(name) or session_token}"}
 
 def flag_from_env(name: str) -> bool:

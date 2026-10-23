@@ -25,6 +25,7 @@ asks for its own (uv run --with playwright==<version> playwright install chromiu
 import argparse
 import json
 import os
+import re
 import shutil
 import secrets
 import signal
@@ -320,7 +321,10 @@ def shoot_hierarchical(sc, work, rushes):
     takes = sc.get("takes", [])
     viewport = sc.get("viewport", {"width": 1500, "height": 1250})
     form_viewport = sc.get("form_viewport", {"width": 1500, "height": 950})
-    managers = {m["bouquet"]: {**m, "port": free_port(), "flower": free_port()} for m in sc["managers"]}
+    # the tokens of each manager, chosen here: its page and its administration routes behind the first,
+    # the registrations of its agents and the webhooks of their runs behind the second
+    managers = {m["bouquet"]: {**m, "port": free_port(), "flower": free_port(), "admin": secrets.token_urlsafe(24),
+                               "session": secrets.token_urlsafe(24)} for m in sc["managers"]}
     root = next(b for b, m in managers.items() if not m.get("upper"))
     children = {b: [c for c, m in managers.items() if m.get("upper") == b] for b in managers}
     order, queue = [], [root]
@@ -330,9 +334,22 @@ def shoot_hierarchical(sc, work, rushes):
     servers = {a["bouquet"]: a for a in agents if a["role"] == "server"}
     url = lambda b: f"{SCHEME}://localhost:{managers[b]['port']}"
     procs = Processes(work, sc.get("plugin_manifests"))
-    # invitations: each upper level invites its lower levels, which start with --invitation (HTTPS only)
+    # invitations: each upper level invites its lower levels, which start with --invitation (HTTPS only);
+    # require_invitation: the upper levels refuse a lower level without one; require_token: every manager
+    # requires its tokens; intruders: managers without invitation, which the upper level must refuse
     if sc.get("invitations") and not TLS_ARGS:
         raise SystemExit("invitations: true needs --tls-cert, --tls-key and --tls-ca (an invitation is for an HTTPS manager)")
+    if (sc.get("require_invitation") or sc.get("intruders")) and not sc.get("invitations"):
+        raise SystemExit("require_invitation and intruders need invitations: true (no lower level could report otherwise)")
+    for b, m in managers.items():
+        m["requires"] = [*(["--require-token"] if sc.get("require_token") else []),
+                         *(["--require-invitation"] if sc.get("require_invitation") and children[b] else [])]
+    # an administration page or route of a manager requiring its tokens: the first opening of a page
+    # passes the token, which the manager moves to a cookie of its own port
+    admin_headers = lambda b: {**H, "Authorization": f"Bearer {managers[b]['admin']}"}
+    session_headers = lambda b: {**H, "Authorization": f"Bearer {managers[b]['session']}"}
+    page_url = lambda b, path: f"{url(b)}{path}" + (("&" if "?" in path else "?") + f"token={managers[b]['admin']}"
+                                                    if managers[b]["requires"] else "")
     for b in order:
         m = managers[b]
         upper = ["--upper-url", url(m["upper"])] if m.get("upper") else []
@@ -348,11 +365,17 @@ def shoot_hierarchical(sc, work, rushes):
         # the name shown for the machine in the network view: the real host name stays out of the captures
         machine = ["--machine", m.get("machine") or sc["machine"]] if m.get("machine") or sc.get("machine") else []
         procs.start(f"manager_{b}", ["session_manager", "--port", str(m["port"]), *identity, "--location", m["location"],
-                                     "--geo", ",".join(map(str, m["geo"])), *upper, *transport, *machine])
+                                     "--geo", ",".join(map(str, m["geo"])), *upper, *transport, *machine,
+                                     "--admin-token", m["admin"], "--session-token", m["session"], *m["requires"]])
+    # reporting with the upper level's session token (its token file, the same directory): refused
+    intruders = [{**i, "port": free_port()} for i in sc.get("intruders", [])]
+    for i in intruders:
+        procs.start(f"intruder_{i['bouquet']}", ["session_manager", "--port", str(i["port"]), "--bouquet", i["bouquet"],
+                                                 "--upper-url", url(i["upper"]), "--location", i.get("location", "elsewhere")])
     for a in agents:
         procs.start(f"agent_{a['name']}", ["pybiscus_agent", "--port", str(a["port"])])
     try:
-        for port in [m["port"] for m in managers.values()] + [a["port"] for a in agents]:
+        for port in [m["port"] for m in managers.values()] + [a["port"] for a in agents] + [i["port"] for i in intruders]:
             wait_for_port(port)
         with sync_playwright() as p:
             browser = p.chromium.launch(args=BROWSER_ARGS)
@@ -363,7 +386,7 @@ def shoot_hierarchical(sc, work, rushes):
                 raise SystemExit(f"film: the root manager {root} is the one the rounds are read on, it must be filmed")
             for b in filmed:
                 page = browser.new_page(viewport=viewport)
-                page.goto(f"{url(b)}/pybiscus-session/manage")
+                page.goto(page_url(b, "/pybiscus-session/manage"))
                 shooting.add_view(f"manager:{b}", page, MANAGER_PANELS, manager_label(b))
             managers_in_focus = [f"manager:{b}" for b in filmed]
             shooting.set_focus(*managers_in_focus)
@@ -379,7 +402,7 @@ def shoot_hierarchical(sc, work, rushes):
                     if take.get("path"):
                         # another page of a manager (its network view...), opened for the take
                         page = browser.new_page(viewport=viewport)
-                        page.goto(url(tab.split(":", 1)[1]) + take["path"]); page.wait_for_timeout(2500)
+                        page.goto(page_url(tab.split(":", 1)[1], take["path"])); page.wait_for_timeout(2500)
                         shooting.take(take["name"], page, take.get("full_page", False), (panel, f"#{panel}", "section") if panel else None)
                         page.close()
                         continue
@@ -404,17 +427,34 @@ def shoot_hierarchical(sc, work, rushes):
                         "geo_location": {"type": "coordinates", "latitude": lat, "longitude": lon},
                         "organisation": sc.get("organisation", "pybiscus-demo")}
                 agent_url = f"{SCHEME}://localhost:{a['port']}"
-                assert requests.post(f"{url(b)}/pybiscus-session/agent", headers=H, json={**meta, "agent_url": agent_url}).ok
-                assert requests.post(f"{agent_url}/session/agent/registration", headers=H, json={**meta, "manager_url": url(b)}).ok
+                # the token the manager calls the agent with, as its registration page gives it
+                call_token = re.search(r'call_token:\s+("[^"]*")', requests.get(f"{agent_url}/session/agent/registration").text)
+                registered = requests.post(f"{url(b)}/pybiscus-session/agent", headers=session_headers(b),
+                                           json={**meta, "agent_url": agent_url, "call_token": json.loads(call_token.group(1)) if call_token else None})
+                assert registered.ok, f"{a['name']}: {registered.status_code} {registered.text}"
+                # its runs present the session token for their webhooks
+                assert requests.post(f"{agent_url}/session/agent/registration", headers=H,
+                                     json={**meta, "manager_url": url(b), "session_token": managers[b]["session"]}).ok
                 shooting.tick()
             for b in order:
                 for _ in range(60):
-                    known = {l.get("bouquet") for l in requests.get(f"{url(b)}/pybiscus-session/agents", headers=H).json()["lower_levels"]}
+                    known = {l.get("bouquet") for l in requests.get(f"{url(b)}/pybiscus-session/agents", headers=admin_headers(b)).json()["lower_levels"]}
                     if set(children[b]) <= known:
                         break
                     shooting.tick()
                 else:
                     raise SystemExit(f"{b}: its lower levels {children[b]} did not report to it")
+            for i in intruders:
+                state = None
+                for _ in range(30):
+                    sites = requests.get(f"{url(i['upper'])}/pybiscus-session/sites.json", headers=admin_headers(i["upper"])).json()["sites"]
+                    state = next((site["state"] for site in sites if site["bouquet"] == i["bouquet"]), None)
+                    if state:
+                        break
+                    shooting.tick()
+                if state != "unexpected":
+                    raise SystemExit(f"intruder {i['bouquet']}: {state or 'not seen'} by {i['upper']}, refused (unexpected) expected")
+                log(f"intruder {i['bouquet']}: refused by {i['upper']}")
             shooting.tick(6)
             step("registered")
 
@@ -423,7 +463,7 @@ def shoot_hierarchical(sc, work, rushes):
                 view = shooting.views.get(f"manager:{owner}")
                 page = view["page"] if view else browser.new_page(viewport=viewport)
                 if not view:
-                    page.goto(f"{url(owner)}/pybiscus-session/manage"); page.wait_for_timeout(3000)
+                    page.goto(page_url(owner, "/pybiscus-session/manage")); page.wait_for_timeout(3000)
                 page.select_option(selector, value)
                 shooting.tick(3)
                 if not view:
@@ -448,14 +488,14 @@ def shoot_hierarchical(sc, work, rushes):
                 form.wait_for_timeout(1500)
                 fill_session_form(form, options, values)
                 step("session-form", bouquet=b)
-                run_session(url(b), session_config(form), b)
+                run_session(url(b), session_config(form), b, admin_headers(b))
                 log(f"{b}: session started")
 
             launch_session(root, {"values_set": {"flower_server.server_port": managers[root]["flower"]}, "values_lock": []},
                            sc["session"]["options"], sc["session"]["values"])
             for b in order[1:]:
                 for _ in range(30):
-                    up = requests.get(f"{url(b)}/pybiscus-session/agents", headers=H).json()["upper_level"]
+                    up = requests.get(f"{url(b)}/pybiscus-session/agents", headers=admin_headers(b)).json()["upper_level"]
                     if up and (up.get("session") or {}).get("link"):
                         break
                     time.sleep(1)
@@ -499,7 +539,7 @@ def shoot_hierarchical(sc, work, rushes):
                     turn = lowers[(int(current) - 1) % len(lowers)] if current.isdigit() and int(current) > 0 and lowers else (lowers or [""])[0]
                     shooting.event("round", round=current or "…", rounds=rounds, turn=turn)
                     log(f"round {current or '…'} / {rounds}"); shown = current
-                d = requests.get(f"{url(root)}/pybiscus-session/agents", headers=H).json()
+                d = requests.get(f"{url(root)}/pybiscus-session/agents", headers=admin_headers(root)).json()
                 if len(d.get("cycles", [])) >= rounds and done(d.get("lower_levels", [])):
                     break
                 if time.time() > deadline:
@@ -510,7 +550,7 @@ def shoot_hierarchical(sc, work, rushes):
             log(f"{rounds} rounds on every level")
             # the network view of every manager, kept with the rushes
             for b in order:
-                (rushes / f"network-{b}.json").write_text(requests.get(f"{url(b)}/pybiscus-session/network.json", headers=H).text)
+                (rushes / f"network-{b}.json").write_text(requests.get(f"{url(b)}/pybiscus-session/network.json", headers=admin_headers(b)).text)
             step("end")
             browser.close()
     finally:
