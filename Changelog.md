@@ -10,6 +10,8 @@
 * `docs/usage-scenarios.md`: a deployment diagram for the scenarios that differ (one machine,
   automated runs, closed network, several organisations, tunnel or proxy), and a link from each
   scenario to its checklist in `docs/security.md`, which links back.
+* `docs/usage-scenarios.md`: containers and orchestrators (Kubernetes) in the closed-network
+  scenario: the CLI suits a cluster, a session of the manager less so; no manifest provided yet.
 * `docs/security.md`, *Across sites*: the flows a VPN between the sites lets through, for one
   session over several sites and for a hierarchical one (one flow, lower manager to upper manager,
   with the `manager` link transport and the relays at the upper site).
