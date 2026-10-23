@@ -7,7 +7,7 @@ from flask import Response, jsonify, request
 import pybiscus.core.pybiscus_logger as logm
 import pybiscus.session.manager.session_manager as sm
 from pybiscus.flower.sessionlink import LINK_HEADER, MAX_WAIT_S
-from pybiscus.session.auth import invitation_access, invited_bouquet, session_access
+from pybiscus.session.auth import agent_access, invitation_access, invited_agent, invited_bouquet, session_access
 from pybiscus.session.manager.session_manager import pybiscus_manager_app
 
 # The mailbox of the links between the levels of a hierarchical session (transport "manager"). A
@@ -54,9 +54,21 @@ def _relay_up(method: str, timeout: float) -> Response:
     return response
 
 
+def _agent_links(agent: dict) -> set:
+    """the links an invited agent's run uses: a relay's, those of the lower levels it relays; a
+    server's, the one to its upper level"""
+    if agent["role"] == "server":
+        return {sm.upper_session_link["link_id"]} if sm.upper_session_link else set()
+    return {(sm.session_links.get(lower) or {}).get("link_id") for lower, relay in sm.relays.items()
+            if relay == agent["name"]} - {None}
+
+
 def _not_its_link(link_id: str):
-    """an invited site reaches the link of its own bouquet only; None when it may"""
-    invited = invited_bouquet()
+    """an invited site reaches the link of its own bouquet only, an invited agent the links of its
+    run; None when it may"""
+    invited, agent = invited_bouquet(), invited_agent()
+    if agent is not None and link_id not in _agent_links(agent):
+        return jsonify({"status": "error", "message": f"the link {link_id} is not one of {agent['name']}"}), 403
     if invited is None or (sm.session_links.get(invited) or {}).get("link_id") == link_id:
         return None
     return jsonify({"status": "error", "message": f"the link {link_id} is not the one of {invited}"}), 403
@@ -69,6 +81,7 @@ def _unknown(link_id: str):
 @pybiscus_manager_app.route("/pybiscus-session/link/<link_id>/<kind>/<int:server_round>", methods=["PUT"])
 @session_access
 @invitation_access
+@agent_access
 def link_put(link_id, kind, server_round):
     from pybiscus.session.limits import allow_model_size
     allow_model_size()
@@ -89,6 +102,7 @@ def link_put(link_id, kind, server_round):
 @pybiscus_manager_app.route("/pybiscus-session/link/<link_id>/<kind>/<int:server_round>", methods=["GET"])
 @session_access
 @invitation_access
+@agent_access
 def link_get(link_id, kind, server_round):
     """the object, taken out of the mailbox; 204 when it has not come within `wait` seconds"""
     if _not_its_link(link_id):
@@ -114,6 +128,7 @@ def link_get(link_id, kind, server_round):
 @pybiscus_manager_app.route("/pybiscus-session/link/<link_id>", methods=["DELETE"])
 @session_access
 @invitation_access
+@agent_access
 def link_reset(link_id):
     """called by the relay before its first round: the upper level starts each exchange"""
     if _not_its_link(link_id):

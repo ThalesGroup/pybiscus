@@ -35,7 +35,8 @@ machine of its own (then it must reach every agent, and every run must reach it)
 **Manager**
 - `launch/session/run_manager.sh --host 0.0.0.0` (or the address of the right interface).
 - Give the **session token** (🔑 button of the manager page, or printed at start) to the operator
-  of each agent.
+  of each agent, or, the manager in HTTPS, an [invitation](sessionmanager.md#agents-invitations) to
+  each (`session_manager invite --agent <name> --role <role>`), which gives its name, role and token.
 - The registration and waiting pages of an agent call the manager from the origin under which the
   agent's page was opened. Opened as `http://127.0.0.1:<port>` or `http://localhost:<port>` (its
   operator on its machine), it is allowed; opened under a host name, allow it:

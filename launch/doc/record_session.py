@@ -26,6 +26,7 @@ import argparse
 import json
 import os
 import shutil
+import secrets
 import signal
 import socket
 import subprocess
@@ -163,8 +164,8 @@ def session_config(form):
     return form.evaluate("window.__sc")
 
 
-def run_session(manager, config, who):
-    r = requests.post(f"{manager}/pybiscus-session/run?presets=" + urllib.parse.quote(json.dumps(config)), headers=H)
+def run_session(manager, config, who, headers=H):
+    r = requests.post(f"{manager}/pybiscus-session/run?presets=" + urllib.parse.quote(json.dumps(config)), headers=headers)
     if not r.ok:
         raise SystemExit(f"{who}: the manager refused the session: {r.status_code} {r.text}")
 
@@ -182,21 +183,39 @@ def shoot_scenario(sc, work, rushes):
     agents = [{**a, "port": free_port()} for a in sc["agents"]]
     clients = [a["name"] for a in agents if a["role"] == "client"]
     m = sc["manager"]
+    # agent_invitations: true, the manager invites each agent, which starts with --invitation; "required",
+    # it refuses the session token too (--require-agent-invitation), its pages then behind its administration token
+    invited = sc.get("agent_invitations")
+    if invited and not TLS_ARGS:
+        raise SystemExit("agent_invitations needs --tls-cert, --tls-key and --tls-ca (an invitation is for an HTTPS manager)")
+    admin = secrets.token_urlsafe(24)
+    manager_headers = {**H, "Authorization": f"Bearer {admin}"}
     procs.start("manager", ["session_manager", "--port", str(manager_port), "--bouquet", m["bouquet"],
-                            "--location", m["location"], "--geo", ",".join(map(str, m["geo"]))])
+                            "--location", m["location"], "--geo", ",".join(map(str, m["geo"])), "--admin-token", admin,
+                            *(["--require-agent-invitation"] if invited == "required" else [])])
+    manager = f"{SCHEME}://localhost:{manager_port}"
+    if invited:
+        wait_for_port(manager_port)
+        ca = TLS_ARGS[TLS_ARGS.index("--tls-ca") + 1]
+        for a in agents:
+            subprocess.run(["uv", "run", "--project", str(REPO), "session_manager", "invite", "--port", str(manager_port),
+                            "--agent", a["name"], "--role", a["role"], "--url", manager, "--ca", ca], cwd=work, env=procs.env,
+                           check=True, stdout=subprocess.DEVNULL)
     for a in agents:
-        procs.start(f"agent_{a['name']}", ["pybiscus_agent", "--port", str(a["port"])])
+        invitation = ["--invitation", f"invitations/issued/{m['bouquet']}_agent_{a['name']}.yml"] if invited else []
+        procs.start(f"agent_{a['name']}", ["pybiscus_agent", "--port", str(a["port"]), *invitation])
     try:
         for port in (manager_port, *(a["port"] for a in agents)):
             wait_for_port(port)
-        manager = f"{SCHEME}://localhost:{manager_port}"
-        log(f"manager {manager}")
+        log(f"manager {manager}" + (" (agents invited)" if invited else ""))
         with sync_playwright() as p:
             browser = p.chromium.launch(args=BROWSER_ARGS)
             new_page = lambda: browser.new_page(viewport=viewport, device_scale_factor=scale)
             shooting = Shooting(rushes, viewport, scale, sc.get("period", 0.35))
             page = new_page()
-            page.goto(f"{manager}/pybiscus-session/manage"); page.wait_for_timeout(3000)
+            # the token leaves the URL for a cookie at once (the manager redirects)
+            page.goto(f"{manager}/pybiscus-session/manage" + (f"?token={admin}" if invited == "required" else ""))
+            page.wait_for_timeout(3000)
             shooting.add_view("manager", page, MANAGER_PANELS, manager_label())
             shooting.set_focus("manager")
             shooting.event("empty"); shooting.tick(4)
@@ -209,16 +228,20 @@ def shoot_scenario(sc, work, rushes):
                 shooting.add_view(view, tab, AGENT_PANELS, agent_label(a["name"]))
                 shooting.set_focus("manager", view)
                 lat, lon = a["geo"]
-                # the form asks the manager for its bouquet once its URL is given, and locks the field
-                tab.fill("#managerUrl", manager); tab.dispatch_event("#managerUrl", "change"); tab.wait_for_timeout(1000)
+                # the form asks the manager for its bouquet once its URL is given, and locks the field; an
+                # invitation gives the manager's URL, the name and the role, locked
+                if not invited:
+                    tab.fill("#managerUrl", manager); tab.dispatch_event("#managerUrl", "change")
+                tab.wait_for_timeout(1000)
                 if not tab.eval_on_selector("#bouquet", "e => e.readOnly"):
                     tab.fill("#bouquet", m["bouquet"])
-                for field, value in (("name", a["name"]), ("baseUrl", url), ("location", a["location"]),
-                                     ("organisation", sc.get("organisation", "pybiscus-demo"))):
+                for field, value in ((() if invited else (("name", a["name"]),)) + (("baseUrl", url), ("location", a["location"]),
+                                     ("organisation", sc.get("organisation", "pybiscus-demo")))):
                     tab.fill(f"#{field}", value)
                 tab.click("#coordsToggle")
                 tab.fill("#latitude", str(lat)); tab.fill("#longitude", str(lon))
-                tab.select_option("#role", a["role"])
+                if not invited:
+                    tab.select_option("#role", a["role"])
                 shooting.event("registered", name=a["name"], role=a["role"], location=a["location"])
                 shooting.tick(2)
                 tab.click("#submitBtn")
@@ -238,7 +261,7 @@ def shoot_scenario(sc, work, rushes):
             fill_session_form(form, sc["session"]["options"], sc["session"]["values"], shooting)
             config = session_config(form)
             shooting.remove_view("session-form"); form.close()
-            run_session(manager, config, m["bouquet"])
+            run_session(manager, config, m["bouquet"], manager_headers)
             shooting.set_focus("manager")
             shooting.event("started"); shooting.tick(3)
 
@@ -272,7 +295,7 @@ def shoot_scenario(sc, work, rushes):
                 raise SystemExit(f"a run did not succeed: {dict(zip((a['name'] for a in agents), status))} (logs in {work})")
             # the agents' last states and the last round's metrics reach the page shortly after the runs end
             for _ in range(20):
-                states = requests.get(f"{manager}/pybiscus-session/agents", headers=H).json().get("states") or {}
+                states = requests.get(f"{manager}/pybiscus-session/agents", headers=manager_headers).json().get("states") or {}
                 if all(states.get(a["name"]) in AGENT_ENDED for a in agents):
                     break
                 shooting.tick()

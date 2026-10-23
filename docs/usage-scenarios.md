@@ -225,16 +225,16 @@ one. Without a hierarchy, the sites are the machines of the closed network above
 > separate sites is still to come.
 >
 > **Its security guarantees are those of a closed network, not of an open one.** The web
-> components run on the development server of Flask; within a session, the session token is shared
-> by every participant, without expiry or revocation; Flower's TLS authenticates the server, not the
+> components run on the development server of Flask; Flower's TLS authenticates the server, not the
 > clients. Keep the sites on a VPN, and do not expose the manager or the agents directly to the
 > Internet.
 >
-> Between the managers of a hierarchical session, each site is
-> [invited](sessionmanager.md#invitations): a token of its own, bound to its bouquet, expiring and
-> revocable, and the upper level lists the sites expected, present and refused. Work is in
-> progress: hardening of the web components, an invitation per agent. See
-> [security.md](security.md#known-limits).
+> Each agent is [invited](sessionmanager.md#agents-invitations) by its manager and, between the
+> managers of a hierarchical session, each site by the upper level
+> ([invitations](sessionmanager.md#invitations)): a token of its own, bound to its name and role or
+> to its bouquet, expiring and revocable, in place of the session token shared by every participant;
+> each manager lists the agents or sites expected, present and refused. Work is in progress:
+> hardening of the web components. See [security.md](security.md#known-limits).
 
 **What Pybiscus brings**: each site's operator sees and checks its form before running; the session
 form sets and locks what must be shared; [hierarchical sessions](hierarchical-session.md) give each
@@ -250,6 +250,8 @@ on the lower ones.
   the sites, the managers of the lower levels reach the upper one. The upper level
   [invites](sessionmanager.md#invitations) each site (`session_manager invite`), and refuses the
   others with `--require-invitation`; an invited site's relay runs at the upper site.
+- Each manager [invites](sessionmanager.md#agents-invitations) its agents (`session_manager invite
+  --agent`), and refuses the others with `--require-agent-invitation`.
 
 **Against the participants**: [robust aggregation](robust-aggregation.md) if some may be malicious;
 [differential privacy](configuration.md#server-side-differential-privacy) if partners are curious,

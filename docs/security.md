@@ -27,8 +27,14 @@ opens it to the network.
   beyond the loopback.
 - An **access token** per component, for its own pages and actions (the manager's is its
   administration token), and the manager's **session token**, given to the participants, accepted on
-  the routes the other components call (registration, session parameters, webhooks, a client's run
-  configuration).
+  the routes the agents and their runs call (registration, session parameters, webhooks).
+- An **invitation** per agent, optional ([details](sessionmanager.md#agents-invitations)): a token
+  of its own in place of the session token, bound to the agent's name and role, expiring, revocable;
+  `--require-agent-invitation` refuses the agents without one. The same between the managers of a
+  hierarchical session, per site ([details](sessionmanager.md#invitations)).
+- A **call token** per agent, given to the manager at its registration: the manager calls an agent
+  with it, and no other participant holds it. A client's run configuration is kept by the server's
+  agent once the manager vouches for the client's token.
 - Kept in `.pybiscus-cache/tokens/`, readable by their owner only, from one start to the next.
   Given once in the URL (`…?token=…`), then kept by the browser in a cookie (`HttpOnly`,
   `SameSite=Lax`, `Secure` in HTTPS); compared in constant time.
@@ -123,13 +129,12 @@ They are why the guarantees are those of a closed network:
 | limit | meanwhile |
 |---|---|
 | the manager and the agents run on Flask's development server | keep them out of reach of the Internet (VPN) |
-| the session token is shared by every participant, without expiry or revocation: whoever holds it may register an agent under any name | give it to the participants only; restart the manager with a new token (`--session-token`) to revoke it. Between the managers of a hierarchical session, [invitations](sessionmanager.md#invitations) replace it: a token per site, bound to its bouquet, expiring, revocable |
+| the session token is shared by every participant, without expiry or revocation: whoever holds it may register an agent under any name not invited | [invite the agents](sessionmanager.md#agents-invitations) (`--require-agent-invitation`): a token per agent, bound to its name and role, expiring, revocable; between the managers of a hierarchical session, [invite the sites](sessionmanager.md#invitations). Otherwise give it to the participants only, and restart the manager with a new token (`--session-token`) to revoke it |
 | the Flower server does not authenticate its clients (its TLS authenticates the server only): whoever reaches its port may join a round | restrict its port with a firewall to the clients' addresses |
 | an SSH tunnel to a component on 127.0.0.1 cannot be told from a local access | start it with `--require-token` |
 | the manager calls the agents (stop, relaunch): it must reach them | place it where it reaches them |
 
-Work in progress: hardening of the web components; an invitation per agent, as there is one per
-site between the managers.
+Work in progress: hardening of the web components.
 
 ## Checklist by scenario
 
@@ -161,7 +166,8 @@ required); HTTPS if the network is shared with others; a firewall on the Flower 
 
 All of the above, HTTPS, a VPN between the sites letting through only the
 [flows across sites](#across-sites); in a hierarchical session, each site
-[invited](sessionmanager.md#invitations) by the upper level, started with `--require-invitation`; robust aggregation if a participant may be malicious,
+[invited](sessionmanager.md#invitations) by the upper level, started with `--require-invitation`; each agent
+[invited](sessionmanager.md#agents-invitations) by its manager, started with `--require-agent-invitation`; robust aggregation if a participant may be malicious,
 differential privacy if partners may be curious ([against the participants](#against-the-participants)).
 [Scenario](usage-scenarios.md#several-organisations).
 

@@ -8,7 +8,6 @@ import pybiscus.core.pybiscus_logger as logm
 import pybiscus.session.manager.session_manager as sm
 from pybiscus.core.schedule import ConfigSchedule, Schedule
 from pybiscus.session.agent.agent_weblog import AgentState
-from pybiscus.session.csrf import HEADER
 from pybiscus.session.manager.network import flower_server_address
 
 # A session launched again at each deadline (variant B of the rounds at fixed times): the operator
@@ -104,17 +103,16 @@ class Repetition:
             sm.agent_states.pop(name, None)
         self.sessions += 1
         self.status, self.next_deadline = RUNNING, None
-        headers = {HEADER: "1", "Authorization": f"Bearer {sm.session_token}"}
         servers = [name for name in participants if name in sm.registered_servers]
         for name in servers:
-            if problem := self._relaunch_one(name, participants[name], headers):
+            if problem := self._relaunch_one(name, participants[name], sm.agent_headers(name)):
                 return problem
         # Flower's legacy client does not retry: started before its server listens, it fails at once
         for name in servers:
-            if problem := self._wait_listening(name, participants[name], headers):
+            if problem := self._wait_listening(name, participants[name], sm.agent_headers(name)):
                 return problem
         for name in participants:
-            if name not in sm.registered_servers and (problem := self._relaunch_one(name, participants[name], headers)):
+            if name not in sm.registered_servers and (problem := self._relaunch_one(name, participants[name], sm.agent_headers(name))):
                 return problem
         logm.console.log(f"🔁 session {self.sessions} launched")
         return None

@@ -13,8 +13,8 @@ import urllib
 import pybiscus.session.manager.session_manager
 from pybiscus.session.manager.session_manager import generate_new_cid, pybiscus_manager_app
 import pybiscus.core.pybiscus_logger as logm
-from pybiscus.session.auth import headers_for, invitation_access, session_access
-from pybiscus.session.csrf import HEADER
+from pybiscus.session.auth import agent_access, headers_for, invitation_access, invited_agent, session_access
+from pybiscus.session.manager.agent_admission import agent_problem, feed_problem, refuse_agent, vouches_for
 from pybiscus.session.manager import cycles, repetition
 from pybiscus.core.gui_events import gui_log_patterns
 from pybiscus.session.manager.feeds import Feed
@@ -177,6 +177,7 @@ def is_web_url(url) -> bool:
 
 @pybiscus_manager_app.route("/pybiscus-session/agent", methods=["POST"])
 @session_access
+@agent_access
 def pybiscus_manager_register_agent():
 
     data = request.json
@@ -197,6 +198,13 @@ def pybiscus_manager_register_agent():
 
     if role is None:
         return jsonify({"status": "error", "message": "Missing 'role'"}), 400
+
+    problem = agent_problem(name, role)
+    if problem:
+        refuse_agent(name, role, problem)
+        return jsonify({"status": "error", "message": problem}), 403
+    # the page of a former version gives none: the session token is presented to it instead
+    call_token = data.get("call_token") if isinstance(data.get("call_token"), str) else None
 
     sm = pybiscus.session.manager.session_manager
     declared = data.get("bouquet") or sm.bouquet
@@ -232,6 +240,7 @@ def pybiscus_manager_register_agent():
         if name in pybiscus.session.manager.session_manager.registered_servers:
             
             if pybiscus.session.manager.session_manager.registered_servers[name] == agent_url:
+                remember_call_token(name, call_token)
                 return jsonify({
                     "status": "success",
                     "message": f"Server '{name}' already registered.",
@@ -244,6 +253,7 @@ def pybiscus_manager_register_agent():
                 }), 400
 
         pybiscus.session.manager.session_manager.registered_servers[name] = agent_url
+        remember_call_token(name, call_token)
 
         return jsonify({
             "status": "success",
@@ -256,6 +266,7 @@ def pybiscus_manager_register_agent():
         if name in pybiscus.session.manager.session_manager.registered_clients:
             
             if pybiscus.session.manager.session_manager.registered_clients[name] == agent_url:
+                remember_call_token(name, call_token)
                 return jsonify({
                     "status": "success",
                     "message": f"Client '{name}' already registered.",
@@ -271,6 +282,7 @@ def pybiscus_manager_register_agent():
             "machine": data.get("machine"), "cpu_cores": data.get("cpu_cores"),
         }
         pybiscus.session.manager.session_manager.registered_clients[name] = agent_url
+        remember_call_token(name, call_token)
 
         return jsonify({
             "status": "success",
@@ -281,12 +293,36 @@ def pybiscus_manager_register_agent():
     else:
         return jsonify({"status": "error", "message": f"Bad role={role}, it should be server or client"}), 400
 
+def remember_call_token(name: str, call_token) -> None:
+    # a refused attempt under this name stays on its row until the operator clears it
+    sm = pybiscus.session.manager.session_manager
+    if call_token:
+        sm.agent_call_tokens[name] = call_token
+    else:
+        sm.agent_call_tokens.pop(name, None)
+
+# **************************
+
+# called by a server's agent before it keeps the run config a client posts to it: the client
+# presents its own token, which only this manager can tell apart
+@pybiscus_manager_app.route("/pybiscus-session/agent-token", methods=["POST"])
+@session_access
+@agent_access
+def pybiscus_manager_vouch_for_agent():
+    caller = invited_agent()
+    if (caller is not None and caller["role"] != "server") or feed_problem():
+        return jsonify({"status": "error", "message": "only the session's server agent asks"}), 403
+    data = request.get_json(silent=True) or {}
+    why = vouches_for(data.get("name"), data.get("role"), data.get("token"))
+    return jsonify({"vouched": why is None, **({"reason": why} if why else {})})
+
 # **************************
 
 # called by an agent's registration form: the bouquet of the session it is about to join, which the
 # form then sets and locks (the registration of another one is refused or warned about)
 @pybiscus_manager_app.route("/pybiscus-session/identity", methods=["GET"])
 @session_access
+@agent_access
 def pybiscus_manager_identity():
     sm = pybiscus.session.manager.session_manager
     return jsonify({"bouquet": sm.bouquet, "color": sm.bouquet_color, "location": sm.manager_location,
@@ -314,7 +350,12 @@ def session_cids() -> dict[str, str]:
 
 @pybiscus_manager_app.route("/pybiscus-session/params", methods=["GET"])
 @session_access
+@agent_access
 def pybiscus_manager_get_session_params():
+
+    problem = agent_problem(request.args.get("agent"))
+    if problem:
+        return jsonify({"status": "error", "message": problem}), 403
 
     from pybiscus.session.manager.upper_level import RELAY_LINK, RELAY_OPTION, SERVER_LINK, link_for_own_server, link_presets
 
@@ -457,11 +498,10 @@ def pybiscus_manager_stop_after_round():
         return jsonify({"status": "error", "message":
                         "a lower level runs the rounds of its upper level: stop the session from the upper level's manager"}), 409
 
-    headers = {HEADER: "1", "Authorization": f"Bearer {session.session_token}"}
     stopping = []
     for name, url in session.registered_servers.items():
         try:
-            response = requests.post(f"{url.rstrip('/')}/run/stop-after-round", headers=headers, timeout=5)
+            response = requests.post(f"{url.rstrip('/')}/run/stop-after-round", headers=session.agent_headers(name), timeout=5)
         except requests.RequestException as error:
             logm.console.log(f"⚠️ {name}: its run could not be stopped after its round ({type(error).__name__})")
             continue
@@ -510,10 +550,9 @@ def stop_agent_runs():
     """a dropped session's runs stop with it: they went on without a manager, and a lower level's
     server waited for a model that no longer comes"""
     session = pybiscus.session.manager.session_manager
-    headers = {HEADER: "1", "Authorization": f"Bearer {session.session_token}"}
     for name, url in {**session.registered_servers, **session.registered_clients}.items():
         try:
-            response = requests.post(f"{url.rstrip('/')}/run/stop", headers=headers, timeout=5)
+            response = requests.post(f"{url.rstrip('/')}/run/stop", headers=session.agent_headers(name), timeout=5)
         except requests.RequestException as error:
             logm.console.log(f"⚠️ {name}: its run could not be stopped ({type(error).__name__})")
             continue
@@ -558,6 +597,10 @@ def pybiscus_manager_list_clients():
         "session": session_state(),
         # the metrics feed names the clients by cid
         "cids": session_cids(),
+        # the page opens the server agent's session form with it (an administration route: this page only)
+        "server_call_tokens": {name: pybiscus.session.manager.session_manager.agent_call_tokens[name]
+                               for name in pybiscus.session.manager.session_manager.registered_servers
+                               if name in pybiscus.session.manager.session_manager.agent_call_tokens},
     })
 
 def session_recording_state():
@@ -736,7 +779,8 @@ def pybiscus_manager_manage():
                            bouquet_color=pybiscus.session.manager.session_manager.bouquet_color,
                            flower_port=pybiscus.session.manager.session_manager.proposed_flower_port(),
                            gui_log_patterns=gui_log_patterns(), agent_state_protocol=agent_state_protocol(),
-                           metric_key_protocol=metric_key_protocol(), sites_button=sites_button())
+                           metric_key_protocol=metric_key_protocol(), sites_button=sites_button(),
+                           participants_button=participants_button())
 
 
 def sites_button() -> bool:
@@ -745,6 +789,13 @@ def sites_button() -> bool:
     session = pybiscus.session.manager.session_manager
     from pybiscus.session.invitations import load_registry
     return session.serves_https or session.require_invitation or bool(load_registry(session.manager_port)["invitations"])
+
+
+def participants_button() -> bool:
+    """likewise for the agents' invitations"""
+    session = pybiscus.session.manager.session_manager
+    from pybiscus.session.invitations import load_registry
+    return session.serves_https or session.require_agent_invitation or bool(load_registry(session.manager_port)["agents"])
 
 # **************************
 
@@ -758,10 +809,15 @@ agent_feed = Feed()
 
 @pybiscus_manager_app.route('/webhook/agents', methods=['POST'])
 @session_access
+@agent_access
 def pybiscus_manager_receive_agents():
     data = request.json
     message = data.get('content', '')
     source = data.get('source', 'unknown')
+    # the source is "<bouquet>:<agent name>"
+    problem = agent_problem(str(source).split(":", 1)[-1])
+    if problem:
+        return jsonify({"status": "error", "message": problem}), 403
 
     # état déclaré explicitement par l'agent (protocole AgentState) ; absent des logs
     # purement informatifs, auquel cas le front retombe sur l'analyse du texte
@@ -799,7 +855,10 @@ REPORTING_PATH = re.compile(gui_log_patterns()["reporting_path"])
 
 @pybiscus_manager_app.route('/webhook/logs', methods=['POST'])
 @session_access
+@agent_access
 def pybiscus_manager_receive_log():
+    if feed_problem():
+        return jsonify({"status": "error", "message": feed_problem()}), 403
     data = request.json
     message = data.get('content', '')
     source = data.get('source', 'unknown')
@@ -831,7 +890,10 @@ metrics_feed = Feed()
 
 @pybiscus_manager_app.route('/webhook/metrics', methods=['POST'])
 @session_access
+@agent_access
 def pybiscus_manager_receive_metrics():
+    if feed_problem():
+        return jsonify({"status": "error", "message": feed_problem()}), 403
     data = request.json
     metrics = data.get('metrics', '')
     source = data.get('source', 'unknown')
@@ -864,7 +926,10 @@ def vignettes_dir():
 
 @pybiscus_manager_app.route('/webhook/vignettes', methods=['POST'])
 @session_access
+@agent_access
 def pybiscus_manager_post_vignette():
+    if feed_problem():
+        return jsonify({"status": "error", "message": feed_problem()}), 403
     
     # check file presence
     if "file" not in request.files:

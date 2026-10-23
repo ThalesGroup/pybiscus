@@ -15,8 +15,13 @@ from pybiscus.session.csrf import HEADER
 # - access token: one per component (the manager's is its administration token), for its own
 #   pages and actions; given once in the URL, then kept by the browser in a cookie
 # - session token: the manager's, given to the participants; accepted by the manager on the
-#   routes the agents and the runs call (registration, session parameters, webhooks), and by
-#   the agents on the routes the other components call (a client's run config, the session form)
+#   routes the agents and the runs call (registration, session parameters, webhooks)
+# - an agent's invitation token: in place of the session token for one agent and its runs, tied
+#   to the name and role the manager chose (pybiscus.session.invitations)
+# - an agent's call token: made by the agent, given to the manager at its registration, which
+#   presents it when it calls the agent (the manager keeps only the invitations' digests); a
+#   client's run config posted to the server's agent is accepted once the manager vouches for the
+#   client's token
 SESSION_TOKEN_ENV = "PYBISCUS_SESSION_TOKEN"
 
 TOKENS_DIR = Path(".pybiscus-cache/tokens")
@@ -118,6 +123,26 @@ def invited_bouquet() -> Optional[str]:
     return g.get("invited_bouquet")
 
 
+def agent_access(view: Callable) -> Callable:
+    """marks a route an agent or its runs call: an agent's invitation token opens it too, and the
+    route reads the invited agent in flask.g.invited_agent"""
+    view.pybiscus_agent_access = True
+    return view
+
+
+def invited_agent() -> Optional[dict]:
+    """{"name", "role"} of the agent whose invitation the request presented, None otherwise"""
+    return g.get("invited_agent")
+
+
+def peer_access(view: Callable) -> Callable:
+    """marks an agent's route another agent calls with its own token, which the manager vouches
+    for (a client's run config posted to the server's agent): the session token alone no longer
+    opens it, an invited client's name being reserved"""
+    view.pybiscus_peer_access = True
+    return view
+
+
 def _same(offered: Optional[str], expected: Optional[str]) -> bool:
     return bool(offered and expected) and hmac.compare_digest(offered.encode(), expected.encode())
 
@@ -163,10 +188,15 @@ def _refuse_foreign_host(component: str):
 def require_tokens(app: Flask, component: str, enabled: Callable[[], bool], cookie: Callable[[], str],
                    access_token: Callable[[], Optional[str]], session_token: Callable[[], Optional[str]],
                    invitation: Optional[Callable[[Optional[str]], Optional[str]]] = None,
-                   invitation_problem: Optional[Callable[[Optional[str]], Optional[str]]] = None) -> None:
+                   invitation_problem: Optional[Callable[[Optional[str]], Optional[str]]] = None,
+                   agent_invitation: Optional[Callable[[Optional[str]], Optional[dict]]] = None,
+                   agent_invitation_problem: Optional[Callable[[Optional[str]], Optional[str]]] = None,
+                   call_token: Optional[Callable[[], Optional[str]]] = None,
+                   peer_check: Optional[Callable[[Optional[str]], bool]] = None) -> None:
     """the getters are read at each request: the tokens are known once the command line is parsed,
     and the session token of an agent once it is registered. invitation: the bouquet whose active
-    invitation holds a token"""
+    invitation holds a token; agent_invitation: the agent whose one does; call_token: the one the
+    manager presents to an agent; peer_check: whether the manager vouches for a peer's token"""
 
     @app.before_request
     def _check_tokens():
@@ -177,9 +207,11 @@ def require_tokens(app: Flask, component: str, enabled: Callable[[], bool], cook
         # recognised even without tokens (on the loopback): the routes still tie the site to its bouquet
         if invitation is not None and getattr(view, "pybiscus_invitation_access", False):
             g.invited_bouquet = invitation(_bearer())
+        if agent_invitation is not None and getattr(view, "pybiscus_agent_access", False):
+            g.invited_agent = agent_invitation(_bearer())
         if not enabled():
             return _refuse_foreign_host(component)
-        if g.get("invited_bouquet"):
+        if g.get("invited_bouquet") or g.get("invited_agent"):
             return None
 
         access = access_token()
@@ -199,14 +231,22 @@ def require_tokens(app: Flask, component: str, enabled: Callable[[], bool], cook
             return response
 
         if getattr(view, "pybiscus_session_access", False):
-            if _same(_bearer(), session_token()) or _same(offered_in_url, session_token()):
+            offered = (_bearer(), offered_in_url)
+            if call_token is not None and any(_same(token, call_token()) for token in offered):
+                return None
+            if getattr(view, "pybiscus_peer_access", False) and peer_check is not None:
+                if _bearer() and peer_check(_bearer()):
+                    return None
+            elif any(_same(token, session_token()) for token in offered):
                 return None
 
-        # a site whose invitation was revoked or expired is told so, not only that its token is wrong
-        if invitation_problem is not None and getattr(view, "pybiscus_invitation_access", False):
-            problem = invitation_problem(_bearer())
-            if problem:
-                return jsonify({"error": f"{component}: {problem}"}), 401
+        # a site or an agent whose invitation was revoked or expired is told so, not only that its token is wrong
+        for problem_of, marker in ((invitation_problem, "pybiscus_invitation_access"),
+                                   (agent_invitation_problem, "pybiscus_agent_access")):
+            if problem_of is not None and getattr(view, marker, False):
+                problem = problem_of(_bearer())
+                if problem:
+                    return jsonify({"error": f"{component}: {problem}"}), 401
 
         # "*/*" of fetch() would count as accepting HTML: only a page navigation names it
         if request.method == "GET" and "text/html" in request.headers.get("Accept", ""):

@@ -88,7 +88,7 @@
             outline-offset: 1px;
         }
 
-        input[readonly] { color: var(--muted); background: var(--panel-2); cursor: not-allowed; }
+        input[readonly], select:disabled { color: var(--muted); background: var(--panel-2); cursor: not-allowed; }
 
         .geo-location-toggle { display: flex; gap: 0.5rem; margin-bottom: 0.75rem; }
 
@@ -169,7 +169,13 @@
         <div class="header">
             <div class="top"><div class="kicker">PYBISCUS · AGENT</div><button type="button" class="pybiscus-theme-toggle" title="dark / light theme">🌓</button></div>
             <h1>Join a session</h1>
+            {% if invited %}
+            <p class="subtitle">🎫 Invited by the manager until {{ invited.expires }}: its address, this agent's name and role and its
+                token come from the invitation. Describe where this agent is.</p>
+            {% for conflict in invited.conflicts %}<p class="field-hint warn">the invitation prevails over the configuration: {{ conflict }}</p>{% endfor %}
+            {% else %}
             <p class="subtitle">Give the manager's address and its session token, then describe this agent.</p>
+            {% endif %}
         </div>
 
         <form id="registrationForm">
@@ -179,16 +185,16 @@
 
                 <div class="form-group">
                     <label for="managerUrl">Manager URL</label>
-                    <input type="url" id="managerUrl" name="managerUrl" required
+                    <input type="url" id="managerUrl" name="managerUrl" required {% if invited %}readonly{% endif %}
                            value="{{ config.get('manager_url', 'http://manager.pybiscus.org:5555') }}">
                 </div>
 
                 <div class="form-group">
-                    <label for="sessionToken">Session token</label>
-                    <input type="password" id="sessionToken" name="sessionToken" autocomplete="off"
+                    <label for="sessionToken">{% if invited %}Invitation token{% else %}Session token{% endif %}</label>
+                    <input type="password" id="sessionToken" name="sessionToken" autocomplete="off" {% if invited %}readonly{% endif %}
                            placeholder="if the manager requires one" value="{{ session_token }}"
                            aria-describedby="sessionTokenHint">
-                    <div class="field-hint" id="sessionTokenHint">Shown by the manager's Session token button.</div>
+                    <div class="field-hint" id="sessionTokenHint">{% if invited %}This agent's own token, from its invitation.{% else %}Shown by the manager's Session token button.{% endif %}</div>
                 </div>
 
                 <div class="form-group">
@@ -205,14 +211,16 @@
                 <div class="form-row">
                     <div class="form-group">
                         <label for="name">Name</label>
-                        <input type="text" id="name" name="name" required value="{{ config.get('agent_name', 'cortaix-labs-01') }}">
+                        <input type="text" id="name" name="name" required {% if invited %}readonly{% endif %} value="{{ config.get('agent_name', 'cortaix-labs-01') }}">
                     </div>
                     <div class="form-group">
                         <label for="role">Role</label>
-                        <select id="role" name="role" required>
+                        {# a disabled select is not submitted: the invitation's role goes in a hidden field #}
+                        <select id="role" {% if invited %}disabled{% else %}name="role"{% endif %} required>
                             <option value="client" {% if config.get('role', 'client') == 'client' %}selected{% endif %}>Client</option>
                             <option value="server" {% if config.get('role', 'client') == 'server' %}selected{% endif %}>Server</option>
                         </select>
+                        {% if invited %}<input type="hidden" name="role" value="{{ config.get('role') }}">{% endif %}
                     </div>
                 </div>
 
@@ -519,6 +527,8 @@
                 // the manager shares the cores of a machine between its clients (num_threads)
                 machine:      {{ machine | tojson }},
                 cpu_cores:    {{ cpu_cores | tojson }},
+                // what the manager presents when it calls this agent (stop, relaunch, its session form)
+                call_token:   {{ call_token | tojson }},
             };
             
             const response = await fetch(registrationUrl, {

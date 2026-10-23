@@ -419,6 +419,7 @@ last_caption: 4, blend: 0}` a brisker 40-second one.
 | `session.options` | options chosen in the server's session form, by their labels (`model: MNIST CNN`); `" "` selects an optional section (`num_rounds`, `data_partition`) | required |
 | `session.values` | values of the form's fields; `num_rounds` is required | required |
 | `plugin_manifests` | manifests given to the agents, relative to the repository | the bundled one |
+| `agent_invitations` | `true`: the manager invites each agent (`session_manager invite --agent`), which starts with `--invitation`; `required`: the manager refuses the session token too (`--require-agent-invitation`), its page then opened with its administration token; needs `--tls-cert`, `--tls-key`, `--tls-ca` | none |
 | `timeout` | seconds allowed for the runs, once launched | `1800` |
 
 Each agent registers through its own registration form, then its tab follows it to its run

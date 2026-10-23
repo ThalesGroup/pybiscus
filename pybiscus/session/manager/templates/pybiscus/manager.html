@@ -320,6 +320,7 @@
       <button class="btn pybiscus-theme-toggle" title="light or dark theme, kept by this browser for this manager">🌓</button>
       <a class="btn" href="/pybiscus-session/network" target="_blank" title="the machines, ports and flows of the session">🌐 network</a>
       {% if sites_button %}<a class="btn" href="/pybiscus-session/sites" target="_blank" title="the lower-level managers: their invitations, present, refused">📨 sites</a>{% endif %}
+      {% if participants_button %}<a class="btn" href="/pybiscus-session/participants" target="_blank" title="the agents: their invitations, registered, refused">🎫 participants</a>{% endif %}
       <button class="btn" id="token-btn" title="Copy the session token: the agents give it at registration">🔑 session token</button>
       <button class="btn" id="cfg-btn" disabled title="the session can be configured once its server agent is registered">⚙ config</button>
       <button class="btn" id="rec-btn" title="film the session from now on: its video is edited and copied into the session's reports">⏺ record</button>
@@ -466,6 +467,8 @@
   const evaluate_accuracies = new CircularBuffer(40);
 
   let serverUrl = "";
+  // what the server agent's form is opened with: the call token it gave at its registration, else the session token
+  let serverToken = "";
   const setTxt = (id,v)=>{const e=document.getElementById(id); if(e) e.textContent=v;};
   const fmt = v => (v==null||isNaN(v)) ? '—' : Number(v).toFixed(2);
   // SVG attributes do not resolve var(--…): the theme's colour, read when drawn
@@ -507,7 +510,7 @@
   // port of this manager's proposed, not locked (two sessions on one machine left at 3333 shared their clients)
   const FLOWER_PORT = {{ flower_port | tojson }};
   const sessionConfigUrl = serverUrl => {
-    const url = `${serverUrl}/session/config?token=${encodeURIComponent(SESSION_TOKEN)}`;
+    const url = `${serverUrl}/session/config?token=${encodeURIComponent(serverToken || SESSION_TOKEN)}`;
     const {model, model_values = {}, ...plain} = upperConstraints() || {};
     // the model is a union: its tab selected, then its hyperparameters set
     const tabs = model ? {model} : {};
@@ -1554,6 +1557,10 @@
       if(serverUrl==="" && Object.keys(servers).length>0){
         serverUrl = Object.values(servers)[0];
         setTxt('server-url-display', serverUrl);
+      }
+      if(serverUrl !== ""){
+        const serverName = Object.keys(servers).find(name => servers[name] === serverUrl);
+        serverToken = (data.server_call_tokens || {})[serverName] || "";
       }
       // the session window no longer opens on its own (it hid the topology where the relays are
       // chosen): the config button opens it, once nothing is missing

@@ -17,6 +17,25 @@
   a manager in HTTPS. `invitations/` (not committed): `issued/<upper>_downto_<site>.yml`,
   `received/`, used by `launch/session/run_*manager.sh`. `record_session.py`: `invitations: true`
   in a hierarchical scenario (HTTPS).
+* **Agents' invitations** (`docs/sessionmanager.md`, *Agents' invitations*): the manager invites
+  each agent (`session_manager invite --agent <name> --role client|server`, or its 🎫 *participants*
+  page), with a token of its own in place of the session token, bound to its name and role, valid
+  90 days by default and revocable (`session_manager revoke --agent`); the agent starts with
+  `pybiscus_agent --invitation <file>` next to its `--config`, the invitation prevailing over the
+  configuration (manager URL, name, role, token; a contradiction warned about) and locking them in
+  the registration page; its runs present the token for their webhooks. An invited name is never
+  registered with the session token; an invitation's token acts as its own agent only (registration,
+  session parameters, states, the mailbox of the link a relay relays). `--require-agent-invitation`
+  (or `PYBISCUS_REQUIRE_AGENT_INVITATION=1`) refuses the agents without one. The participants page
+  lists the agents invited, registered, expired, revoked, registered with the session token and
+  refused. `launch/agent/cli/<port>.sh` look in `invitations/received/` for the agent's own
+  (`launch/agent/received_agent_invitation.sh`); the managers' scripts take only the
+  `*_downto_*` files there. `record_session.py`: `agent_invitations: true | required` in a simple
+  scenario (HTTPS).
+* Each agent gives the manager a **call token** at its registration, which the manager presents
+  when it calls it (stop, relaunch, the session form it opens), and the server's agent keeps a
+  client's run configuration once the manager vouches for the client's token: with the session
+  token alone, any participant could stop another one's run or post a configuration in its name.
 * `docs/security.md`: what the manager and the agents protect, code and data, the defences against
   the participants, the known limits and a checklist by scenario; linked from the usage scenarios,
   the docs index, `multi-machine.md` and `sessionmanager.md`.

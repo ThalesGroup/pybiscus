@@ -148,6 +148,11 @@ def session_registration():
             config = default_config
     else:
         config = default_config
+    from_file = config is not default_config
+    config, conflicts = pybagent.invited_config(config)
+    # the built-in defaults are no configuration: nothing for the invitation to contradict
+    if not from_file:
+        conflicts = []
 
     global client_registration_resume
     client_registration_resume = f"{config['role']} {config['agent_name']}@{config['organisation']} in {config.get('bouquet') or "the manager's bouquet"}"
@@ -155,9 +160,12 @@ def session_registration():
     # proposed, so that an agent of the manager's machine needs no copy (see session_token_for)
     session_token = config.get('session_token') or session_token_for(config.get('manager_url')) or ''
 
+    invitation = pybagent.agent_invitation
+    invited = ({"expires": f"{invitation.expires:%Y-%m-%d}", "conflicts": conflicts} if invitation is not None else None)
     from pybiscus.session.agent.machine import machine_name, physical_cores
     return render_template( 'session_agent_registration.html', config=config, session_token=session_token,
-                            machine=machine_name(), cpu_cores=physical_cores())
+                            machine=machine_name(), cpu_cores=physical_cores(), invited=invited,
+                            call_token=pybagent.call_token)
 
 # ..........................................................
 # ............ POST /session/agent/registration ...........
@@ -174,6 +182,11 @@ def session_registration_parameters():
         # any GET of the form (reload, probe, prefetch) then wiped a registration being completed
         reset_session()
         reset_registration()
+        invitation = pybagent.agent_invitation
+        if invitation is not None:
+            # whatever the page sent: the invitation's identity is the one the manager accepts
+            the_json.update({"name": invitation.agent_name, "role": invitation.role, "manager_url": invitation.manager_url,
+                             "session_token": invitation.token, **({"bouquet": invitation.bouquet} if invitation.bouquet else {})})
         pybagent.registration_parameters = the_json
         set_session_token(the_json.get('session_token'))
         # the agent's states go to the manager it registers with: the one of its --config file,

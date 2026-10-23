@@ -8,6 +8,7 @@ from pathlib import Path
 import click
 import json
 import os
+import secrets
 import subprocess
 
 import argparse
@@ -17,7 +18,8 @@ from pybiscus.core.pybiscusexception import PybiscusInternalException, PybiscusP
 from pybiscus.commands.apps_common import CHECK_ERRORS_FILE_ENV, CONFIG_VALIDATION_EXIT_CODE, PLUGIN_ERROR_EXIT_CODE
 from pybiscus.session.agent import agent_weblog
 from pybiscus.session.agent.agent_weblog import AgentState
-from pybiscus.session.auth import SESSION_TOKEN_ENV, agent_token_name, component_token, print_access, require_tokens, tokens_required
+from pybiscus.session.auth import (SESSION_TOKEN_ENV, agent_token_name, component_token, headers_for, print_access,
+                                   require_tokens, set_session_token, tokens_required)
 from pybiscus.session.csrf import require_pybiscus_header
 
 rest_server = Flask(__name__)
@@ -34,13 +36,43 @@ agent_token = None
 # the scheme of the default URLs in the registration form
 web_scheme  = "http"
 tokens_are_required = False
+# --invitation: the one this agent registers with (pybiscus.session.invitations.AgentInvitation)
+agent_invitation = None
+# given to the manager at the registration, which presents it when it calls this agent: the session
+# token, shared by the participants, let any of them stop another one's run
+call_token = secrets.token_urlsafe(32)
 
-# the session token is the one given at the registration (set_session_token)
+
+def peer_vouched(token: str) -> bool:
+    """a client's token, as the manager this agent registered with vouches for it"""
+    from flask import request as flask_request
+    client = (flask_request.view_args or {}).get("client_name")
+    manager_url = registration_parameters.get("manager_url")
+    if not manager_url:
+        # used alone, without a manager: the session token it was given, as before
+        own = os.environ.get(SESSION_TOKEN_ENV)
+        return bool(own) and secrets.compare_digest(token, own)
+    import requests
+    try:
+        answer = requests.post(f"{manager_url.rstrip('/')}/pybiscus-session/agent-token", headers=headers_for(manager_url),
+                               json={"name": client, "role": "client", "token": token}, timeout=5)
+        vouched = answer.ok and answer.json().get("vouched") is True
+    except (requests.RequestException, ValueError):
+        vouched = False
+    if not vouched:
+        logm.console.log(f"⛔ the run config of {client} refused: the manager does not vouch for its token")
+    return vouched
+
+
+# the session token opens none of the agent's routes: the manager calls it with its call token,
+# a client's run config is vouched for by the manager
 require_tokens(rest_server, "agent",
                enabled=lambda: tokens_are_required,
                cookie=lambda: f"pybiscus-agent-{agent_port}",
                access_token=lambda: agent_token,
-               session_token=lambda: os.environ.get(SESSION_TOKEN_ENV))
+               session_token=lambda: None,
+               call_token=lambda: call_token,
+               peer_check=peer_vouched)
 # no CORS: every page of the agent calls it with relative URLs (same origin); other agents
 # and the session manager reach it server to server, where CORS does not apply. A wildcard
 # let any web page open in a browser of the host read the agent's responses
@@ -61,6 +93,29 @@ def agent_identity() -> dict:
     """what the forms' top bar shows; empty for an agent used alone"""
     return {key: registration_parameters[key] for key in ("name", "role", "location", "bouquet")
             if registration_parameters.get(key)}
+
+INVITED_FIELDS = ("manager_url", "agent_name", "role", "bouquet")
+
+
+def invited_config(config: dict) -> tuple[dict, list]:
+    """the registration configuration, the invitation's fields over it: the configuration is a
+    default, often copied from another agent's; what they contradict"""
+    if agent_invitation is None:
+        return config, []
+    merged, conflicts = dict(config), []
+    for key in INVITED_FIELDS:
+        value = getattr(agent_invitation, key)
+        if value is None:
+            continue
+        given = config.get(key)
+        if given not in (None, "") and str(given).rstrip("/") != str(value).rstrip("/"):
+            conflicts.append(f"{key}: the configuration says {given!r}, the invitation {value!r}")
+        merged[key] = value
+    if config.get("session_token"):
+        conflicts.append("session_token: the configuration's is ignored, the invitation's token is used")
+    merged["session_token"] = agent_invitation.token
+    return merged, conflicts
+
 
 def reset_registration():
 
@@ -456,6 +511,15 @@ def parse_args():
         action='store_true',
         help="require the tokens on the loopback too (always required when listening beyond it)"
     )
+    from pybiscus.session import invitations
+    parser.add_argument(
+        '--invitation',
+        default=os.environ.get(invitations.AGENT_INVITATION_ENV),
+        metavar="FILE",
+        help="invitation of the manager (session_manager invite --agent there): gives its URL, this agent's name and "
+             "role, and its token, over the --config file's; the agent's runs present the token too "
+             f"(default: ${invitations.AGENT_INVITATION_ENV})"
+    )
     from pybiscus.session import tls
     tls.add_tls_arguments(parser)
     args = parser.parse_args()
@@ -478,11 +542,24 @@ def main():
 
     set_upload_folder(args.port)
 
-    global agent_port, agent_token, tokens_are_required, web_scheme
+    global agent_port, agent_token, tokens_are_required, web_scheme, agent_invitation
     agent_port  = args.port
+    from pybiscus.session import invitations
+    if args.invitation:
+        try:
+            agent_invitation, warnings = invitations.read_agent_invitation(args.invitation)
+        except ValueError as e:
+            print(f"❌ {e}", file=sys.stderr)
+            sys.exit(2)
+        for warning in warnings:
+            print(f"⚠️  {warning}", flush=True)
+        # inherited by the runs, for their webhooks: they present the invitation's token
+        set_session_token(agent_invitation.token)
+        print(f"🎫 invited by {agent_invitation.manager_url} as {agent_invitation.agent_name} ({agent_invitation.role}), "
+              f"until {agent_invitation.expires:%Y-%m-%d}", flush=True)
     # before the first call to the manager (initAgentLogger), and inherited by the runs
     from pybiscus.session import tls
-    tls.trust_ca(args.tls_ca)
+    tls.trust_ca(*filter(None, (args.tls_ca, invitation_ca(agent_invitation, args.port))))
     web_scheme = tls.scheme(args)
     # inherited by the server runs this agent launches
     from pybiscus.commands.apps_common import CLIENT_CONFIGS_ENV
@@ -494,17 +571,22 @@ def main():
     ui_settings.set_agent_port(args.port)
 
     started = None
-    if args.config is not None:
+    if args.config is not None or agent_invitation is not None:
 
         try:
-            import yaml
-            with open(args.config, 'r', encoding='utf-8') as file:
-                config = yaml.safe_load(file)
+            config = {}
+            if args.config is not None:
+                import yaml
+                with open(args.config, 'r', encoding='utf-8') as file:
+                    config = yaml.safe_load(file) or {}
+            config, conflicts = invited_config(config)
+            for conflict in conflicts:
+                print(f"⚠️  the invitation prevails: {conflict}", flush=True)
 
-                from pybiscus.session.agent.agent_weblog import initAgentLogger
+            from pybiscus.session.agent.agent_weblog import initAgentLogger
 
-                initAgentLogger( f'{config["manager_url"]}/webhook/agents', config["bouquet"], config["agent_name"] )
-                started = {"url": config.get("agent_url"), "role": config.get("role")}
+            initAgentLogger( f'{config["manager_url"]}/webhook/agents', config.get("bouquet"), config["agent_name"] )
+            started = {"url": config.get("agent_url"), "role": config.get("role")}
 
         except Exception as e:
             print(f"YAML config loading error : {e}")
@@ -523,6 +605,15 @@ def main():
     print_access("agent", f"{tls.scheme(args)}://{browsed_host}:{args.port}/session/agent/registration", agent_token)
 
     rest_server.run(debug=args.debug, host=args.host, port=args.port, ssl_context=tls.ssl_context(args))
+
+def invitation_ca(invitation, port):
+    """the CA of the invitation, in a file requests can trust"""
+    if invitation is None:
+        return None
+    path = Path(".pybiscus-cache/tls") / f"agent-invitation-ca-{port}.pem"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(invitation.ca_certificate, encoding="utf-8")
+    return str(path)
 
 if __name__ == "__main__":
     # run as a script (container entrypoint), this file is a second copy of the module named

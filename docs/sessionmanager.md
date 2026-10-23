@@ -429,6 +429,7 @@ its session token (never under an invited bouquet). Started with **`--require-in
 `PYBISCUS_REQUIRE_INVITATION=1`), it refuses every lower level without an invitation, from its
 start; the option requires the tokens, on the loopback too. It concerns its own lower levels only:
 a manager in the middle of a tree may run with both `--invitation` and `--require-invitation`.
+Each manager may invite its own agents too ([Agents' invitations](#agents-invitations)).
 
 ## Network view
 
@@ -584,9 +585,13 @@ an agent ignores one it receives, leaves the field free and says so under it and
 - **Session token**: the manager's, given to the participants (created even when the manager
   requires none, since a server agent listening on the network requires it from the others). An agent gives it at its
   registration (field *Session token* of its registration page, copied from the manager's
-  🔑 button); it then presents it to the manager (registration, session parameters, logs), passes
-  it to the runs it launches (webhooks), and accepts it from the other components (a client's run
-  configuration, the session form opened by the manager). It does not open the manager's pages.
+  🔑 button); it then presents it to the manager (registration, session parameters, logs) and passes
+  it to the runs it launches (webhooks). It does not open the manager's pages.
+- **Call token of an agent**: made by the agent at its start and given to the manager at its
+  registration; the manager presents it when it calls the agent (stop, relaunch, the session form
+  it opens). The run configuration a client posts to the server's agent is kept once the manager
+  vouches for the client's token (`/pybiscus-session/agent-token`): the session token alone, held by
+  every participant, let any of them stop another one's run or post a configuration in its name.
 
 A token is kept, readable by its owner only, in `.pybiscus-cache/tokens/` of the directory where
 the component was started: a restart keeps it (the browsers stay logged in). Delete the file to get
@@ -607,6 +612,49 @@ registration configuration).
 A scripted call presents the token as `Authorization: Bearer <token>` (see below).
 
 Without TLS, the tokens travel in clear between machines: see [multi-machine.md](multi-machine.md).
+
+### Agents' invitations
+
+Whoever holds the session token registers under any name and role not taken yet, and posts logs and
+states in the name of any agent. The manager may **invite** each agent instead: an invitation names
+the agent and its role, and carries a token of its own, accepted until its expiry date or until it
+is revoked; the agent and its runs present it in place of the session token. An invitation is for a
+manager in HTTPS (`--tls-cert`, `--tls-key`). The same model as the [sites'](#invitations), from the
+manager's directory, while it runs or not:
+
+```bash
+uv run session_manager invite --agent cortaix-labs-01 --role client   # --port (5555), --days (90)
+uv run session_manager invitations                                     # the sites' and the agents'
+uv run session_manager revoke --agent cortaix-labs-01
+```
+
+or from the **🎫 participants** page of the manager (a button of its top bar, in HTTPS), which also
+lists its agents: invited and not registered yet, registered with their invitation, expired,
+revoked, registered with the session token, and the registrations refused (an agent without
+invitation, or one taking an invited name without its token, kept on its row until cleared). The
+invitation is written to `invitations/issued/<the manager's bouquet>_agent_<the agent's name>.yml`
+(and downloaded by the page), readable by its owner only; it holds the manager's URL and the
+session's CA certificate, which the agent then trusts.
+
+**The agent starts with it**, `pybiscus_agent --invitation <file>` (or `$PYBISCUS_AGENT_INVITATION`),
+next to its `--config`: the invitation gives the manager's URL, the agent's name, role and token, and
+prevails over the registration configuration, a default often copied from another agent's; the agent
+warns at start, and its registration page shows, what they contradict. The registration page shows
+*🎫 Invited by the manager until …*, these fields locked; the agent's address, site, organisation and
+coordinates stay its own. The scripts `launch/agent/cli/<port>.sh` look in `invitations/received/`
+(`launch/agent/received_agent_invitation.sh`): the file named after the agent and bouquet of the
+configuration, else the only agent invitation there, its name then prevailing; several and none
+named after it, they stop rather than choose.
+
+The manager accepts an invitation's token for its own agent only: its registration under its name
+and role, its session parameters, its states, its runs' logs, metrics and vignettes and, for a
+relay, the mailbox of the link it relays. An invited name is never registered with the session token.
+Without an option, the manager accepts both its invited agents and agents registering with the
+session token. Started with **`--require-agent-invitation`** (or `PYBISCUS_REQUIRE_AGENT_INVITATION=1`),
+it refuses every agent without an invitation and the session token on the agents' routes (a lower
+level's manager still reports with it, unless `--require-invitation`); the option requires the tokens,
+on the loopback too. In a hierarchical session, each manager invites its own agents, the relays of
+its lower levels included, since they are its clients.
 
 ### Requests from other sites
 

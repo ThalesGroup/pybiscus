@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Pybiscus participants{% if bouquet %} · {{ bouquet }}{% endif %}</title>
+{{ pybiscus_theme_head() | safe }}
+<style>
+  *{box-sizing:border-box}
+  body{margin:0; background:radial-gradient(1200px 700px at 82% -12%, var(--bg-glow) 0%, transparent 60%), var(--bg);
+    color:var(--text); font-family:var(--mono); font-size:13px; line-height:1.5}
+  .app{padding:12px; display:grid; gap:12px; max-width:1200px}
+  .topbar{display:flex; align-items:center; gap:14px; padding:10px 14px; border:1px solid var(--border);
+    border-radius:10px; background:linear-gradient(180deg,var(--panel-2),var(--panel))}
+  .topbar .right{margin-left:auto; display:flex; gap:8px}
+  .eyebrow{font-size:10.5px; letter-spacing:.22em; text-transform:uppercase; color:var(--text-soft); font-weight:600}
+  .btn{background:var(--panel-2); color:var(--text); border:1px solid var(--border); border-radius:8px; padding:5px 10px;
+    font:inherit; text-decoration:none; cursor:pointer}
+  .btn:disabled{opacity:.5; cursor:default}
+  .btn.danger{border-color:var(--danger-border); color:var(--danger-text)}
+  .btn.danger:hover{border-color:var(--danger-hover); color:var(--err)}
+  .panel{border:1px solid var(--border); border-radius:10px; background:var(--panel); padding:10px 14px}
+  .panel>header{display:flex; align-items:center; gap:10px; margin-bottom:8px; flex-wrap:wrap}
+  .note{color:var(--muted)}
+  .chip{padding:1px 8px; border-radius:999px; border:1px solid var(--border); color:var(--muted); font-size:11.5px}
+  .problem{color:var(--warn)}
+  form{display:flex; gap:10px; align-items:center; flex-wrap:wrap}
+  input, select{background:var(--panel-2); color:var(--text); border:1px solid var(--border); border-radius:6px; padding:5px 8px; font:inherit}
+  input[type=number]{width:6em}
+  table{border-collapse:collapse; width:100%}
+  th,td{text-align:left; padding:5px 8px; border-bottom:1px solid var(--border); vertical-align:top}
+  th{color:var(--muted); font-weight:500}
+  tr[data-state="registered"] .state{color:var(--done)}
+  tr[data-state="expired"] .state, tr[data-state="refused"] .state{color:var(--warn)}
+  tr[data-state="revoked"] .state{color:var(--err)}
+  td.when, td.actions{white-space:nowrap}
+  .soon{color:var(--warn)}
+  .issued{border-color:var(--done)}
+  code{color:var(--eval)}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="topbar">
+    <span class="eyebrow">Pybiscus · participants</span>
+    <span id="mode" class="chip"></span>
+    <div class="right">
+      <button class="btn pybiscus-theme-toggle" title="light or dark theme, kept by this browser for this manager">🌓</button>
+      <a class="btn" href="/pybiscus-session/manage">← session</a>
+    </div>
+  </div>
+
+  <section class="panel">
+    <header><span class="eyebrow">Invite an agent</span>
+      <span class="note">an agent started with <code>pybiscus_agent --invitation &lt;file&gt;</code>: it registers under the name
+        and the role given here, with a token of its own its runs present too, until the invitation expires or is revoked</span></header>
+    <p class="problem" id="invite-problem" hidden></p>
+    <form id="invite-form">
+      <label>name <input id="name" required pattern="[A-Za-z0-9._\-]+" placeholder="cortaix-labs-01"
+             title="letters, digits, '.', '_' or '-'"></label>
+      <label>role <select id="role">{% for role in roles %}<option value="{{ role }}">{{ role }}</option>{% endfor %}</select></label>
+      <label>valid for <input id="days" type="number" min="1" value="{{ default_days }}"> days</label>
+      <button class="btn" type="submit">🎫 invite</button>
+    </form>
+  </section>
+
+  <section class="panel issued" id="issued-panel" hidden>
+    <header><span class="eyebrow">Invitation issued</span></header>
+    <p id="issued-text"></p>
+  </section>
+
+  <section class="panel">
+    <header><span class="eyebrow">Agents</span><span class="note">the agents of this manager's session: invited, registered, refused</span></header>
+    <table>
+      <thead><tr><th>state</th><th>agent</th><th>role</th><th>organisation</th><th>expires</th><th></th></tr></thead>
+      <tbody id="participants"><tr><td colspan="6" class="note">…</td></tr></tbody>
+    </table>
+  </section>
+</div>
+<script>
+  // the states, their icons and texts: pybiscus.session.invitations.ParticipantState
+  const PARTICIPANT_STATES = {{ participant_states | tojson }};
+  const SOON_DAYS = {{ soon_days | tojson }};
+  const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const post = (url, body) => fetch(url, {method:'POST', headers:{'Content-Type':'application/json', 'X-Pybiscus':'1'},
+                                          body: JSON.stringify(body)}).then(r => r.json().then(answer => {
+    if(!r.ok) throw new Error(answer.message || r.status); return answer; }));
+  const day = iso => iso ? iso.slice(0, 10) : '';
+  const button = (act, agent, role, text, title, danger) =>
+    `<button class="btn${danger ? ' danger' : ''}" data-act="${act}" data-name="${esc(agent)}" data-role="${esc(role || 'client')}" title="${esc(title)}">${esc(text)}</button>`;
+
+  function render(data){
+    const mode = document.getElementById('mode');
+    mode.textContent = data.require_agent_invitation ? 'invitations required' : 'invitations or session token';
+    mode.title = data.require_agent_invitation ? 'started with --require-agent-invitation: an agent without an invitation is refused'
+                                               : 'an agent may also register with the session token, under a name not invited (--require-agent-invitation to refuse it)';
+    const problem = document.getElementById('invite-problem');
+    problem.hidden = !data.invitation_problem; problem.textContent = data.invitation_problem || '';
+    document.querySelector('#invite-form button').disabled = !!data.invitation_problem;
+    const rows = data.participants.map(agent => {
+      const st = PARTICIPANT_STATES[agent.state] || {icon:'?', text:agent.state};
+      const actions = [];
+      if(['invited', 'registered'].includes(agent.state))
+        actions.push(button('revoke', agent.name, agent.role, 'revoke', 'refuse its token from now on', true));
+      if(['expired', 'revoked', 'invited'].includes(agent.state))
+        actions.push(button('reissue', agent.name, agent.role, 'invite again', 'a new invitation: the former one stops working'));
+      if(['refused', 'admitted'].includes(agent.state))
+        actions.push(button('reissue', agent.name, agent.role, 'invite', 'invite this agent under this name and role'));
+      if(['expired', 'revoked', 'refused'].includes(agent.state))
+        actions.push(button('forget', agent.name, agent.role, 'forget', 'out of this list'));
+      else if(agent.reason)
+        actions.push(button('forget', agent.name, agent.role, 'clear', 'clear the refused attempt'));
+      const expires = agent.expires ? `<span class="${agent.expires_soon ? 'soon' : ''}" title="${agent.expires_soon ? 'within ' + SOON_DAYS + ' days' : ''}">${esc(day(agent.expires))}${agent.expires_soon ? ' ⚠' : ''}</span>` : '';
+      const why = agent.reason ? `<div class="${agent.state === 'refused' ? 'note' : 'problem'}">${agent.state === 'refused' ? '' : '⛔ refused: '}`+
+        `${esc(agent.reason)}, ${esc(new Date(agent.refused_at * 1000).toLocaleString())}</div>` : '';
+      return `<tr data-state="${esc(agent.state)}"><td class="state" title="${esc(st.text)}">${esc(st.icon)} ${esc(st.text)}</td>`+
+        `<td>${esc(agent.name)}${agent.location ? ` <span class="note">· ${esc(agent.location)}</span>` : ''}${why}</td>`+
+        `<td>${esc(agent.role || '')}</td><td>${esc(agent.organisation || '')}</td><td class="when">${expires}</td>`+
+        `<td class="actions">${actions.join(' ')}</td></tr>`;
+    });
+    document.getElementById('participants').innerHTML = rows.join('') || '<tr><td colspan="6" class="note">no agent yet: invite one above</td></tr>';
+  }
+
+  function refresh(){
+    fetch('/pybiscus-session/participants.json').then(r => r.json()).then(render).catch(()=>{});
+  }
+
+  // the file is given once: the manager keeps only its token's digest
+  function invite(name, role, days){
+    post('/pybiscus-session/participants/invite', {name, role, days}).then(answer => {
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(new Blob([answer.content], {type:'application/x-yaml'}));
+      link.download = answer.file_name; link.click(); URL.revokeObjectURL(link.href);
+      document.getElementById('issued-panel').hidden = false;
+      document.getElementById('issued-text').innerHTML =
+        `<b>${esc(answer.file_name)}</b> downloaded, and written on this manager's machine in <code>${esc(answer.path)}</code>. `+
+        `It holds the agent's token: hand it to its operator only, who starts the agent with <code>pybiscus_agent --invitation ${esc(answer.file_name)}</code> `+
+        `(or puts it in <code>invitations/received/</code>). It is not shown again: lost, invite the agent again.`;
+      refresh();
+    }).catch(e => alert(e.message));
+  }
+
+  document.getElementById('invite-form').addEventListener('submit', ev => {
+    ev.preventDefault();
+    invite(document.getElementById('name').value.trim(), document.getElementById('role').value,
+           parseInt(document.getElementById('days').value, 10));
+  });
+  document.getElementById('participants').addEventListener('click', ev => {
+    const target = ev.target.closest('button[data-act]'); if(!target) return;
+    const {name, role, act} = target.dataset;
+    if(act === 'reissue') return invite(name, role, parseInt(document.getElementById('days').value, 10));
+    if(act === 'revoke' && !confirm(`Revoke the invitation of ${name}? The agent and its runs will be refused from now on.`)) return;
+    post(`/pybiscus-session/participants/${act}`, {name}).then(refresh).catch(e => alert(e.message));
+  });
+  refresh();
+  setInterval(refresh, 3000);
+</script>
+</body>
+</html>

@@ -10,5 +10,12 @@ CONFIG_PATH="$SCRIPT_DIR/../../../pybiscus_agent_registration_config"
 REPO_ROOT="$SCRIPT_DIR/../../.."
 export PYBISCUS_PLUGIN_CONF_PATH="${PYBISCUS_PLUGIN_CONF_PATH:-$REPO_ROOT/pybiscus-plugins/plugins-conf.yml:$REPO_ROOT/pybiscus-plugins-hierarchical/plugins-conf.yml}"
 
+# an invitation of the manager (invitations/received/, or $PYBISCUS_AGENT_INVITATION) gives the
+# agent's name, role and token, over the configuration's
+CONFIG_FILE="$CONFIG_PATH/agent_5008.yml"
+source "$SCRIPT_DIR/../received_agent_invitation.sh"
+invitation=()
+[ -n "$AGENT_INVITATION" ] && invitation=(--invitation "$AGENT_INVITATION")
+
 # Launch the Python app with the config path
-uv run pybiscus_agent --port 5008 --config "$CONFIG_PATH/agent_5008.yml" "$@"
+PYBISCUS_AGENT_INVITATION= uv run pybiscus_agent --port 5008 --config "$CONFIG_FILE" "${invitation[@]}" "$@"

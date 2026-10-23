@@ -38,7 +38,9 @@ require_tokens(pybiscus_manager_app, "manager",
                access_token=lambda: admin_token,
                session_token=lambda: session_token,
                invitation=lambda token: invitations.invited_bouquet(manager_port, token),
-               invitation_problem=lambda token: invitations.invitation_problem(manager_port, token))
+               invitation_problem=lambda token: invitations.invitation_problem(manager_port, token),
+               agent_invitation=lambda token: invitations.invited_agent(manager_port, token),
+               agent_invitation_problem=lambda token: invitations.agent_invitation_problem(manager_port, token))
 
 # the agents' pages call the manager from their own origin (registration, waiting for the session):
 # the local ones are always allowed, those of other hosts through --allow-origin. The former "*"
@@ -99,6 +101,12 @@ invitation = None
 require_invitation = False
 # lower-level bouquet -> {"time", "reason"}: the reports refused, shown as unexpected sites
 refused_lower_levels = {}
+# --require-agent-invitation: an agent without an invitation is refused
+require_agent_invitation = False
+# agent name -> {"time", "reason", "role"}: the registrations refused, shown in the participants page
+refused_agents = {}
+# agent name -> the token it gave at its registration, which this manager presents when it calls it
+agent_call_tokens = {}
 serves_https = False
 recording = None       # --record or the session form: pybiscus.session.manager.recording.Recording
 browsed_url = None     # the manager's address from its own machine, where its recorder opens its page
@@ -145,6 +153,8 @@ def clear_session():
     session_links = {}
     global upper_session_link
     upper_session_link = None
+    global agent_call_tokens
+    agent_call_tokens = {}
 
 def client_threads(name):
     """the physical cores of the client's machine shared between the session's clients on it, or
@@ -192,6 +202,11 @@ def start_recording(directory, automatic=True):
     recording.start()
     atexit.register(recording.stop)
     return recording
+
+def agent_headers(name: str) -> dict:
+    """to call a registered agent: its call token, or the session token for an agent that gave none
+    (a page of a former version)"""
+    return {HEADER: "1", "Authorization": f"Bearer {agent_call_tokens.get(name) or session_token}"}
 
 def flag_from_env(name: str) -> bool:
     return os.environ.get(name, "").strip().lower() in ("1", "true", "yes", "on")
@@ -255,6 +270,11 @@ def main():
     parser.add_argument("--require-invitation", action="store_true", default=flag_from_env(invitations.REQUIRE_INVITATION_ENV),
                         help="refuse the lower-level managers without an invitation of this one (session_manager invite); "
                              f"requires the tokens (default: ${invitations.REQUIRE_INVITATION_ENV})")
+    parser.add_argument("--require-agent-invitation", action="store_true",
+                        default=flag_from_env(invitations.REQUIRE_AGENT_INVITATION_ENV),
+                        help="refuse the agents without an invitation of this manager (session_manager invite --agent): "
+                             f"the session token no longer registers one; requires the tokens "
+                             f"(default: ${invitations.REQUIRE_AGENT_INVITATION_ENV})")
     tls.add_tls_arguments(parser)
     args = parser.parse_args()
     tls.check_tls_arguments(parser, args)
@@ -280,9 +300,10 @@ def main():
     CORS(pybiscus_manager_app, origins=[LOCAL_ORIGINS, *args.allow_origin], allow_headers=["Content-Type", "Authorization", HEADER])
 
     global browsed_url, manager_port, admin_token, session_token, tokens_are_required, bouquet, bouquet_color, bouquet_mismatch, link_transport, manager_host, machine_name, manager_url, manager_location, manager_geo
-    global invitation, require_invitation, serves_https
+    global invitation, require_invitation, serves_https, require_agent_invitation
     invitation = invited
     require_invitation = args.require_invitation
+    require_agent_invitation = args.require_agent_invitation
     manager_port=args.port
     manager_location, manager_geo = args.location, args.geo
     bouquet = args.bouquet
@@ -292,7 +313,8 @@ def main():
     manager_host = args.host
     machine_name = args.machine
     # without tokens, every request passes: the invitations would protect nothing
-    tokens_are_required = tokens_required(args.host, args.require_token or args.require_invitation)
+    tokens_are_required = tokens_required(args.host, args.require_token or args.require_invitation
+                                          or args.require_agent_invitation)
     admin_name, session_name = manager_token_names(manager_port)
     admin_token = component_token(admin_name, args.admin_token) if tokens_are_required else None
     session_token = component_token(session_name, args.session_token)
@@ -312,6 +334,8 @@ def main():
     invitations.record_manager(manager_port, manager_url, bouquet, serves_https, args.tls_ca)
     if require_invitation:
         print("📨 lower-level managers: an invitation of this one required (session_manager invite)", flush=True)
+    if require_agent_invitation:
+        print("🎫 agents: an invitation of this manager required (session_manager invite --agent)", flush=True)
     if invited:
         print(f"📨 invited by {invited.upper_bouquet} ({invited.upper_url}) as {invited.bouquet}, "
               f"until {invited.expires:%Y-%m-%d}", flush=True)
