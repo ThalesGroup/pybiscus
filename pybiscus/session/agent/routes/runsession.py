@@ -103,13 +103,17 @@ def runRelaunch():
 # called by the manager before it launches the clients of a repeated session again: Flower's
 # legacy client does not retry, one started before its server listens fails at once. Probed here,
 # on the server's machine: the manager may not reach a server listening on the loopback only.
+# Only the port of this agent's server run is probed: any port asked for would tell which services
+# listen on this machine's loopback.
 @rest_server.route("/run/listening", methods=["GET"])
 @session_access
 def runListening():
-    try:
-        port = int(request.args.get("port", ""))
-    except ValueError:
-        return jsonify({"status": "a port is required"}), 400
+    port = run_session.server_port()
+    if port is None:
+        return jsonify({"status": "no server run whose port is known"}), 409
+    asked = request.args.get("port")
+    if asked is not None and asked != str(port):
+        return jsonify({"status": f"only the port of this agent's server run is probed ({port})"}), 400
     listening = False
     # localhost may resolve to IPv4 only, and the session form listens on [::1] or [::]
     for loopback in ("::1", "127.0.0.1"):

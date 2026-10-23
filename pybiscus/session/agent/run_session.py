@@ -65,6 +65,25 @@ class RunSession:
         with self._lock:
             return self.status == RUNNING
 
+    def server_port(self) -> int | None:
+        """the port the last server run listens on, read from its configuration: None if the last
+        run was not a server's, or its address cannot be read"""
+        with self._lock:
+            mode, command = self.mode, self._command
+        if mode != "server" or not command:
+            return None
+        from omegaconf import OmegaConf
+        from pybiscus.flower_config.config_server import ConfigFlowerServer
+        try:
+            listen = OmegaConf.select(OmegaConf.load(command[-1]), "flower_server.listen_address", default=None)
+        except Exception:
+            return None
+        listen = listen or ConfigFlowerServer.model_fields["listen_address"].default
+        try:
+            return int(str(listen).rpartition(":")[2])
+        except ValueError:
+            return None
+
     # ---------- diffusion ----------
 
     def subscribe(self) -> queue.Queue:

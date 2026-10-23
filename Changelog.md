@@ -36,6 +36,9 @@
   when it calls it (stop, relaunch, the session form it opens), and the server's agent keeps a
   client's run configuration once the manager vouches for the client's token: with the session
   token alone, any participant could stop another one's run or post a configuration in its name.
+* An agent's `/run/listening`, which the manager asks before it launches the clients of a repeated
+  session again, probes only the port of the agent's server run (read from its configuration):
+  any port asked for told which services listen on the loopback of its machine.
 * `docs/security.md`: what the manager and the agents protect, code and data, the defences against
   the participants, the known limits and a checklist by scenario; linked from the usage scenarios,
   the docs index, `multi-machine.md` and `sessionmanager.md`.

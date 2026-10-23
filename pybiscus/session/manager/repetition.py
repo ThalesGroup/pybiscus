@@ -133,9 +133,12 @@ class Repetition:
         deadline = time.monotonic() + SERVER_START_LIMIT_S
         while time.monotonic() < deadline:
             try:
-                state = requests.get(f"{url.rstrip('/')}/run/listening", params={"port": port}, headers=headers, timeout=10).json()
+                response = requests.get(f"{url.rstrip('/')}/run/listening", params={"port": port}, headers=headers, timeout=10)
+                state = response.json()
             except (requests.RequestException, ValueError) as error:
                 return f"{name} could not be reached while its server starts ({type(error).__name__})"
+            if response.status_code != 200:
+                return f"{name} did not probe its server's port {port} (HTTP {response.status_code}: {state.get('status', '')})"
             if state.get("listening"):
                 return None
             if not state.get("running"):
