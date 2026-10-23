@@ -380,6 +380,56 @@ gets the topology again at the next heartbeat. When the upper-level manager requ
 its session token with `--upper-token` (or `PYBISCUS_UPPER_TOKEN`); a manager started from the same
 directory on the same machine finds it on its own.
 
+### Invitations
+
+With `--upper-token`, a lower level holds the upper level's session token, the one of every
+participant: whoever holds it may report under any bouquet, and it can only be revoked for all. Between
+organisations, the upper level **invites** each site instead: an invitation names the site's bouquet
+and carries a token of its own, accepted until its expiry date or until it is revoked, and only on the
+routes of a lower level (its reports, the mailbox of its own link). An invitation is for a manager in
+HTTPS (`--tls-cert`, `--tls-key`): its token travels at each contact.
+
+**The upper level invites**, while its manager runs or not, from its directory:
+
+```bash
+uv run session_manager invite --bouquet edge1            # --port of the manager (5555), --days (90)
+uv run session_manager invitations                        # the invitations, active, expired or revoked
+uv run session_manager revoke --bouquet edge1
+```
+
+or from the **📨 sites** page of its manager (a button of its top bar, in HTTPS), which also lists
+the sites: invited and not come yet, present, gone silent, expired, revoked, and the ones refused
+(a manager without invitation, or one reporting under an invited bouquet without its token). The
+invitation is written to `invitations/issued/<its bouquet>_downto_<the site's>.yml` (and downloaded
+by the page), readable by its owner only: it holds the token, which the manager does not keep (only
+its digest), so a lost invitation is issued again, the former one then refused. It holds the upper
+manager's URL (the one of its last start, else `--url`) and the session's CA certificate (its
+`--tls-ca`, else `--ca`, default `certificates/ca/ca.crt`), which the site then trusts for this link.
+`invitations/` is not committed (its `.gitignore`).
+
+**The site starts its manager with it**, in place of `--bouquet`, `--upper-url` and `--upper-token`
+(refused together):
+
+```bash
+uv run session_manager --port 5556 --invitation edge1.yml   # or $PYBISCUS_INVITATION
+```
+
+The scripts `launch/session/run_manager.sh` and `run_lower_level_manager.sh` use the invitation of
+`invitations/received/` when there is one (one only). The manager warns when the file is readable
+by others or the invitation is about to expire, shows *📨 invited until …* above its topology, and
+the upper level's refusal (revoked, expired) in its *not reached* chip.
+
+**An invited site's link goes through the upper manager's mailbox** (`link: manager`, fixed in the
+upper level's topology): its token gives its relay no registration with the upper level, so the relay
+is one of the upper level's own clients, on its side. Between the sites, only the lower manager then
+reaches the upper one ([security.md](security.md#across-sites)).
+
+Without an option, an upper level accepts both its invited sites and lower levels reporting with
+its session token (never under an invited bouquet). Started with **`--require-invitation`** (or
+`PYBISCUS_REQUIRE_INVITATION=1`), it refuses every lower level without an invitation, from its
+start; the option requires the tokens, on the loopback too. It concerns its own lower levels only:
+a manager in the middle of a tree may run with both `--invitation` and `--require-invitation`.
+
 ## Network view
 
 The **🌐 network** button of the manager's page opens `/pybiscus-session/network`: the session seen

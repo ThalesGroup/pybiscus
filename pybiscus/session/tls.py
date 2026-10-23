@@ -34,10 +34,11 @@ def scheme(args: argparse.Namespace) -> str:
     return "https" if args.tls_cert else "http"
 
 
-def trust_ca(ca_path: Optional[str], bundle_path: Path = BUNDLE_PATH) -> Optional[Path]:
-    """makes requests, here and in the runs this process launches, trust ca_path besides the usual
+def trust_ca(*ca_paths: str, bundle_path: Path = BUNDLE_PATH) -> Optional[Path]:
+    """makes requests, here and in the runs this process launches, trust the CAs besides the usual
     authorities; returns the bundle written"""
-    if not ca_path:
+    ca_paths = [path for path in ca_paths if path]
+    if not ca_paths:
         return None
     # REQUESTS_CA_BUNDLE replaces the authorities requests trusts: with the CA alone, every call to
     # another site (W&B, a dataset hub) would fail its certificate check
@@ -46,7 +47,7 @@ def trust_ca(ca_path: Optional[str], bundle_path: Path = BUNDLE_PATH) -> Optiona
         import certifi
         base = certifi.where()
     bundle_path.parent.mkdir(parents=True, exist_ok=True)
-    bundle_path.write_text(Path(base).read_text() + "\n" + Path(ca_path).read_text())
+    bundle_path.write_text("\n".join([Path(base).read_text(), *(Path(p).read_text() for p in ca_paths)]))
     os.environ[CA_BUNDLE_ENV] = str(bundle_path.resolve())
     return bundle_path
 

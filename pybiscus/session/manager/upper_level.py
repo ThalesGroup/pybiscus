@@ -63,7 +63,40 @@ def lower_levels() -> list:
     now = time.time()
     with sm.lower_levels_lock:
         reports = list(sm.lower_levels.values())
-    return [{**report["topology"], "stale": now - report["last_seen"] > STALE_AFTER_S} for report in reports]
+    return [{**report["topology"], "stale": now - report["last_seen"] > STALE_AFTER_S, "invited": report.get("invited", False)}
+            for report in reports]
+
+
+# refused reports kept for the page: a few, a stranger could send many
+MAX_REFUSED = 50
+
+
+def _refuse(claimed, reason: str):
+    from pybiscus.session.invitations import valid_bouquet
+    name = claimed if valid_bouquet(claimed) else "?"
+    if name in sm.refused_lower_levels or len(sm.refused_lower_levels) < MAX_REFUSED:
+        if name not in sm.refused_lower_levels or sm.refused_lower_levels[name]["reason"] != reason:
+            logm.console.log(f"⛔ lower level {name!r} refused: {reason}")
+        sm.refused_lower_levels[name] = {"time": time.time(), "reason": reason}
+    return None, False, reason
+
+
+def admitted_lower_level(claimed) -> tuple:
+    """(bouquet, invited, None) for a lower level this manager accepts, (None, False, why) otherwise.
+    With an invitation, the bouquet is the invitation's; without, the bouquet must not be an invited
+    one (whoever holds the session token could report in its place)"""
+    from pybiscus.session.auth import invited_bouquet
+    from pybiscus.session.invitations import has_active_invitation
+    invited = invited_bouquet()
+    if invited:
+        if claimed != invited:
+            return _refuse(claimed, f"its invitation is the one of {invited!r}")
+        return invited, True, None
+    if sm.require_invitation:
+        return _refuse(claimed, "no invitation, which this manager requires (session_manager invite)")
+    if isinstance(claimed, str) and has_active_invitation(sm.manager_port, claimed):
+        return _refuse(claimed, "this bouquet is invited: its invitation's token expected")
+    return claimed, False, None
 
 
 def upper_level():
@@ -83,8 +116,17 @@ def session_for_lower_levels(bouquet: str) -> dict:
             "relay": sm.relays.get(bouquet), "link": sm.session_links.get(bouquet) if running else None}
 
 
+def invited_lower_level(lower: str) -> bool:
+    with sm.lower_levels_lock:
+        return bool((sm.lower_levels.get(lower) or {}).get("invited"))
+
+
 def transport_of(lower: str) -> str:
-    """the transport of a lower level's link: chosen in the page, else the manager's default"""
+    """the transport of a lower level's link: chosen in the page, else the manager's default. An
+    invited site's goes through the mailbox: its token gives its relay no registration here, the
+    relay runs on this level's side"""
+    if invited_lower_level(lower):
+        return "manager"
     return sm.link_transports.get(lower, sm.link_transport)
 
 
@@ -226,9 +268,9 @@ def record_session_constraints(presets: dict) -> None:
     sm.session_constraints = {key: chosen[key] for key in CONSTRAINED if chosen.get(key)} or None
 
 
-def record_lower_level(topology: dict) -> None:
+def record_lower_level(topology: dict, invited: bool = False) -> None:
     with sm.lower_levels_lock:
-        sm.lower_levels[topology["bouquet"]] = {"topology": topology, "last_seen": time.time()}
+        sm.lower_levels[topology["bouquet"]] = {"topology": topology, "last_seen": time.time(), "invited": invited}
 
 
 def lower_level_alive(bouquet: str) -> bool:
@@ -258,7 +300,8 @@ def report_to_upper_level(upper_url: str, token) -> None:
     base = upper_url.rstrip("/") + "/pybiscus-session/lower-level"
     sm.upper_token = token
     sm.upper_link = {"url": upper_url.rstrip("/"), "bouquet": None, "color": None, "reached": None,
-                     "problem": None, "last_contact": None, "session": None, "dropped": None}
+                     "problem": None, "last_contact": None, "session": None, "dropped": None,
+                     "invitation": sm.invitation.expires.isoformat() if sm.invitation else None}
 
     def note_contact(response, problem):
         if problem is None:
@@ -276,7 +319,15 @@ def report_to_upper_level(upper_url: str, token) -> None:
     def post(endpoint, payload):
         try:
             response = requests.post(endpoint, json=payload, headers=_headers(upper_url, token), timeout=5)
-            return response, None if response.ok else f"HTTP {response.status_code}"
+            if response.ok:
+                return response, None
+            # a refusal says why: no invitation, an invitation revoked or for another bouquet
+            try:
+                answer = response.json()
+                message = answer.get("message") or answer.get("error")
+            except ValueError:
+                message = None
+            return response, f"HTTP {response.status_code}" + (f": {message}" if message else "")
         except requests.RequestException as e:
             return None, type(e).__name__
 

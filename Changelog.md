@@ -4,6 +4,19 @@
 
 ### Session
 
+* **Invitations** between the managers of a hierarchical session (`docs/sessionmanager.md`,
+  *Invitations*): the upper level invites each site (`session_manager invite --bouquet <site>`, or
+  its 📨 *sites* page), with a token of its own, bound to its bouquet, valid 90 days by default and
+  revocable (`session_manager revoke`); the site's manager starts with `--invitation <file>` in place
+  of `--bouquet`, `--upper-url` and `--upper-token`, and trusts the CA the invitation carries. The
+  token opens only the routes of a lower level (its reports, the mailbox of its own link); a bouquet
+  invited cannot be reported under with the session token; an invited site's link goes through the
+  upper manager's mailbox, its relay at the upper site. `--require-invitation` (or
+  `PYBISCUS_REQUIRE_INVITATION=1`) refuses the lower levels without an invitation. The sites page
+  lists the sites invited, present, gone silent, expired, revoked and refused. Invitations only for
+  a manager in HTTPS. `invitations/` (not committed): `issued/<upper>_downto_<site>.yml`,
+  `received/`, used by `launch/session/run_*manager.sh`. `record_session.py`: `invitations: true`
+  in a hierarchical scenario (HTTPS).
 * `docs/security.md`: what the manager and the agents protect, code and data, the defences against
   the participants, the known limits and a checklist by scenario; linked from the usage scenarios,
   the docs index, `multi-machine.md` and `sessionmanager.md`.

@@ -1,0 +1,4 @@
+# the invitations hold tokens: never committed
+*
+!.gitignore
+!README.md

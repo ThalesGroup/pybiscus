@@ -440,6 +440,7 @@ walkthrough into `docs/images` (check them with `git diff` before committing).
 | `plugin_manifests` | the relay and `upper_level_link` need the hierarchical plugins |
 | `link_transport` | `directory` (default) or `manager`: given to the managers as `--link-transport` |
 | `link_transports` | the transport of some links, by lower bouquet (`{north: manager, south: directory}`), chosen in their upper manager's page |
+| `invitations` | `true`: each upper level invites its lower levels (`session_manager invite`), which start with `--invitation`; needs `--tls-cert`, `--tls-key`, `--tls-ca` |
 | `machine` | the name of the machine in the network view (`--machine` of every manager; a manager may give its own `machine`): the real host name stays out of the captures |
 | `viewport`, `form_viewport` | the managers' pages, the forms |
 | `film` | the managers having a page, which a cut can show (default: all); fewer pages save memory on a large tree, and the root must be one |

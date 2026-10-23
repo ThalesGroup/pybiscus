@@ -194,43 +194,47 @@ flowchart BT
   subgraph U["upper site"]
     UM["manager"]
     US["🧠 Flower server"]
+    R1["🔁 relay of site 1"]
+    R2["🔁 relay of site 2"]
   end
   subgraph S1["site 1"]
     M1["manager"]
-    R1["🔁 relay"]
     S1S["🧠 Flower server"]
     C1["💻 clients"]
   end
   subgraph S2["site 2"]
     M2["manager"]
-    R2["🔁 relay"]
     S2S["🧠 Flower server"]
     C2["💻 clients"]
   end
-  M1 & M2 -- "🔒 VPN, HTTPS: topology, constraints<br/>(--upper-token)" --> UM
-  R1 & R2 -- "🔒 VPN: Flower" --> US
-  R1 <-. link .-> S1S
-  R2 <-. link .-> S2S
+  M1 & M2 -- "🔒 VPN, HTTPS, invitation:<br/>topology, constraints, link" --> UM
+  R1 & R2 -- Flower --> US
+  R1 & R2 <-. "link (mailbox)" .-> UM
+  S1S <-. link .-> M1
+  S2S <-. link .-> M2
   C1 -- Flower --> S1S
   C2 -- Flower --> S2S
 ```
 
-A hierarchical session, the agents left out; each site is a closed network of its own. Without a
-hierarchy, the sites are the machines of the closed network above, joined by the VPN.
+A hierarchical session, the agents left out: each site, invited by the upper level, is a closed
+network of its own, and its relay runs at the upper site; only the lower managers reach the upper
+one. Without a hierarchy, the sites are the machines of the closed network above, joined by the VPN.
 
 > **Status.** This scenario works: sessions with one manager per site, hierarchical ones included,
 > run over HTTPS. They have been run with every site on one machine; a run across the machines of
 > separate sites is still to come.
 >
 > **Its security guarantees are those of a closed network, not of an open one.** The web
-> components run on the development server of Flask; the session token is shared by every
-> participant, without expiry or revocation; Flower's TLS authenticates the server, not the
+> components run on the development server of Flask; within a session, the session token is shared
+> by every participant, without expiry or revocation; Flower's TLS authenticates the server, not the
 > clients. Keep the sites on a VPN, and do not expose the manager or the agents directly to the
 > Internet.
 >
-> Work is in progress: hardening of the web components, then an invitation per site (a token of
-> its own, bound to its name, revocable), the list of the expected sites against the present ones,
-> and a check of the connectivity when a site joins. See [security.md](security.md#known-limits).
+> Between the managers of a hierarchical session, each site is
+> [invited](sessionmanager.md#invitations): a token of its own, bound to its bouquet, expiring and
+> revocable, and the upper level lists the sites expected, present and refused. Work is in
+> progress: hardening of the web components, an invitation per agent. See
+> [security.md](security.md#known-limits).
 
 **What Pybiscus brings**: each site's operator sees and checks its form before running; the session
 form sets and locks what must be shared; [hierarchical sessions](hierarchical-session.md) give each
@@ -243,8 +247,9 @@ on the lower ones.
 - A **VPN between the sites** (see the status above), letting through only the
   [flows across sites](security.md#across-sites).
 - In a hierarchical session, each link is its own scenario: inside a site, a closed network; between
-  the sites, the managers of the lower levels reach the upper one, and each relay reaches the
-  upper Flower server ([sessionmanager.md](sessionmanager.md#bouquets-of-a-hierarchical-session)).
+  the sites, the managers of the lower levels reach the upper one. The upper level
+  [invites](sessionmanager.md#invitations) each site (`session_manager invite`), and refuses the
+  others with `--require-invitation`; an invited site's relay runs at the upper site.
 
 **Against the participants**: [robust aggregation](robust-aggregation.md) if some may be malicious;
 [differential privacy](configuration.md#server-side-differential-privacy) if partners are curious,

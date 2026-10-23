@@ -77,7 +77,7 @@ networks, and let through only the flows below.
 
 **A hierarchical session** (a manager per site): each site keeps its own closed network, and only
 the links between the levels cross the VPN. With the `manager` link transport and each relay run
-at the upper site, **one flow** crosses it: from each lower manager to the upper one (its topology,
+at the upper site, as for an [invited site](sessionmanager.md#invitations), **one flow** crosses it: from each lower manager to the upper one (its topology,
 the constraints it receives, the link's mailbox). With a relay at the lower site (the `directory`
 transport requires it), the relay's flows cross too: its agent, its operator's browser and its run
 to the upper manager and server agent, its Flower client to the upper Flower server, and the upper
@@ -123,14 +123,13 @@ They are why the guarantees are those of a closed network:
 | limit | meanwhile |
 |---|---|
 | the manager and the agents run on Flask's development server | keep them out of reach of the Internet (VPN) |
-| the session token is shared by every participant, without expiry or revocation: whoever holds it may register under any name | give it to the participants only; restart the manager with a new token (`--session-token`) to revoke it |
+| the session token is shared by every participant, without expiry or revocation: whoever holds it may register an agent under any name | give it to the participants only; restart the manager with a new token (`--session-token`) to revoke it. Between the managers of a hierarchical session, [invitations](sessionmanager.md#invitations) replace it: a token per site, bound to its bouquet, expiring, revocable |
 | the Flower server does not authenticate its clients (its TLS authenticates the server only): whoever reaches its port may join a round | restrict its port with a firewall to the clients' addresses |
 | an SSH tunnel to a component on 127.0.0.1 cannot be told from a local access | start it with `--require-token` |
 | the manager calls the agents (stop, relaunch): it must reach them | place it where it reaches them |
 
-Work in progress: hardening of the web components, then an invitation per site (a token of its own,
-bound to its name, revocable), the list of the expected sites against the present ones, and a check of
-the connectivity when a site joins.
+Work in progress: hardening of the web components; an invitation per agent, as there is one per
+site between the managers.
 
 ## Checklist by scenario
 
@@ -161,7 +160,8 @@ required); HTTPS if the network is shared with others; a firewall on the Flower 
 ### Several organisations
 
 All of the above, HTTPS, a VPN between the sites letting through only the
-[flows across sites](#across-sites); robust aggregation if a participant may be malicious,
+[flows across sites](#across-sites); in a hierarchical session, each site
+[invited](sessionmanager.md#invitations) by the upper level, started with `--require-invitation`; robust aggregation if a participant may be malicious,
 differential privacy if partners may be curious ([against the participants](#against-the-participants)).
 [Scenario](usage-scenarios.md#several-organisations).
 

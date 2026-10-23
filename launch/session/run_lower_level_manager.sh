@@ -9,7 +9,19 @@
 # http://localhost:5555), whose page then shows the bouquets' tree and the lower-level agents.
 # Its agents in one page, for a test on one machine:
 #   3frames.html?server=5100&client=5101&clients=8&bouquet=cortaixlabs-edge1
+# With an invitation of the upper level (invitations/received/, or $PYBISCUS_INVITATION), it starts
+# with it: the invitation gives its bouquet, the upper level's URL and its token.
 
-uv run session_manager \
-	--port "${PYBISCUS_LOWER_MANAGER_PORT:-5556}" --bouquet cortaixlabs-edge1 --location palaiseau-dc --geo 48.71439,2.20278 \
-	--upper-url "${PYBISCUS_UPPER_MANAGER_URL:-http://localhost:5555}" "$@"
+source "$(dirname "$0")/received_invitation.sh"
+if [ -n "$INVITATION" ]; then
+	identity=(--invitation "$INVITATION")
+else
+	identity=(--bouquet cortaixlabs-edge1 --upper-url "${PYBISCUS_UPPER_MANAGER_URL:-http://localhost:5555}")
+fi
+
+PYBISCUS_INVITATION= uv run session_manager \
+	--port "${PYBISCUS_LOWER_MANAGER_PORT:-5556}" \
+	"${identity[@]}" \
+	--location palaiseau-dc \
+	--geo 48.71439,2.20278 \
+	"$@"

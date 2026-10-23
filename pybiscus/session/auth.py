@@ -6,7 +6,7 @@ import urllib.parse
 from pathlib import Path
 from typing import Callable, Optional
 
-from flask import Flask, jsonify, make_response, redirect, request
+from flask import Flask, g, jsonify, make_response, redirect, request
 
 from pybiscus.session.csrf import HEADER
 
@@ -106,6 +106,18 @@ def session_access(view: Callable) -> Callable:
     return view
 
 
+def invitation_access(view: Callable) -> Callable:
+    """marks a route a lower-level manager calls: an invitation's token opens it too, and the route
+    reads the invited bouquet in flask.g.invited_bouquet"""
+    view.pybiscus_invitation_access = True
+    return view
+
+
+def invited_bouquet() -> Optional[str]:
+    """the bouquet whose invitation the request presented, None otherwise"""
+    return g.get("invited_bouquet")
+
+
 def _same(offered: Optional[str], expected: Optional[str]) -> bool:
     return bool(offered and expected) and hmac.compare_digest(offered.encode(), expected.encode())
 
@@ -149,17 +161,26 @@ def _refuse_foreign_host(component: str):
 
 
 def require_tokens(app: Flask, component: str, enabled: Callable[[], bool], cookie: Callable[[], str],
-                   access_token: Callable[[], Optional[str]], session_token: Callable[[], Optional[str]]) -> None:
+                   access_token: Callable[[], Optional[str]], session_token: Callable[[], Optional[str]],
+                   invitation: Optional[Callable[[Optional[str]], Optional[str]]] = None,
+                   invitation_problem: Optional[Callable[[Optional[str]], Optional[str]]] = None) -> None:
     """the getters are read at each request: the tokens are known once the command line is parsed,
-    and the session token of an agent once it is registered"""
+    and the session token of an agent once it is registered. invitation: the bouquet whose active
+    invitation holds a token"""
 
     @app.before_request
     def _check_tokens():
         # a CORS preflight never carries credentials; the request that follows it does
         if request.method == "OPTIONS" or request.endpoint == "static":
             return None
+        view = app.view_functions.get(request.endpoint)
+        # recognised even without tokens (on the loopback): the routes still tie the site to its bouquet
+        if invitation is not None and getattr(view, "pybiscus_invitation_access", False):
+            g.invited_bouquet = invitation(_bearer())
         if not enabled():
             return _refuse_foreign_host(component)
+        if g.get("invited_bouquet"):
+            return None
 
         access = access_token()
         offered_in_url = request.args.get("token")
@@ -177,10 +198,15 @@ def require_tokens(app: Flask, component: str, enabled: Callable[[], bool], cook
             response.set_cookie(cookie(), access, httponly=True, samesite="Lax", secure=request.is_secure)
             return response
 
-        view = app.view_functions.get(request.endpoint)
         if getattr(view, "pybiscus_session_access", False):
             if _same(_bearer(), session_token()) or _same(offered_in_url, session_token()):
                 return None
+
+        # a site whose invitation was revoked or expired is told so, not only that its token is wrong
+        if invitation_problem is not None and getattr(view, "pybiscus_invitation_access", False):
+            problem = invitation_problem(_bearer())
+            if problem:
+                return jsonify({"error": f"{component}: {problem}"}), 401
 
         # "*/*" of fetch() would count as accepting HTML: only a page navigation names it
         if request.method == "GET" and "text/html" in request.headers.get("Accept", ""):

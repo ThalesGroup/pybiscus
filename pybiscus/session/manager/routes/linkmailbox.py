@@ -7,7 +7,7 @@ from flask import Response, jsonify, request
 import pybiscus.core.pybiscus_logger as logm
 import pybiscus.session.manager.session_manager as sm
 from pybiscus.flower.sessionlink import LINK_HEADER, MAX_WAIT_S
-from pybiscus.session.auth import session_access
+from pybiscus.session.auth import invitation_access, invited_bouquet, session_access
 from pybiscus.session.manager.session_manager import pybiscus_manager_app
 
 # The mailbox of the links between the levels of a hierarchical session (transport "manager"). A
@@ -54,15 +54,26 @@ def _relay_up(method: str, timeout: float) -> Response:
     return response
 
 
+def _not_its_link(link_id: str):
+    """an invited site reaches the link of its own bouquet only; None when it may"""
+    invited = invited_bouquet()
+    if invited is None or (sm.session_links.get(invited) or {}).get("link_id") == link_id:
+        return None
+    return jsonify({"status": "error", "message": f"the link {link_id} is not the one of {invited}"}), 403
+
+
 def _unknown(link_id: str):
     return jsonify({"status": "error", "message": f"no running session of this manager has the link {link_id}"}), 404
 
 
 @pybiscus_manager_app.route("/pybiscus-session/link/<link_id>/<kind>/<int:server_round>", methods=["PUT"])
 @session_access
+@invitation_access
 def link_put(link_id, kind, server_round):
     from pybiscus.session.limits import allow_model_size
     allow_model_size()
+    if _not_its_link(link_id):
+        return _not_its_link(link_id)
     if kind not in KINDS:
         return jsonify({"status": "error", "message": f"kind {kind}: {' or '.join(KINDS)} expected"}), 400
     if not _own(link_id):
@@ -77,8 +88,11 @@ def link_put(link_id, kind, server_round):
 
 @pybiscus_manager_app.route("/pybiscus-session/link/<link_id>/<kind>/<int:server_round>", methods=["GET"])
 @session_access
+@invitation_access
 def link_get(link_id, kind, server_round):
     """the object, taken out of the mailbox; 204 when it has not come within `wait` seconds"""
+    if _not_its_link(link_id):
+        return _not_its_link(link_id)
     if kind not in KINDS:
         return jsonify({"status": "error", "message": f"kind {kind}: {' or '.join(KINDS)} expected"}), 400
     wait = min(max(request.args.get("wait", 0, type=float), 0), MAX_WAIT_S)
@@ -99,8 +113,11 @@ def link_get(link_id, kind, server_round):
 
 @pybiscus_manager_app.route("/pybiscus-session/link/<link_id>", methods=["DELETE"])
 @session_access
+@invitation_access
 def link_reset(link_id):
     """called by the relay before its first round: the upper level starts each exchange"""
+    if _not_its_link(link_id):
+        return _not_its_link(link_id)
     if not _own(link_id):
         return _relay_up("DELETE", 10) if _upper(link_id) else _unknown(link_id)
     with _arrived:

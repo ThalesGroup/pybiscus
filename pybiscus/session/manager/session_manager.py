@@ -2,6 +2,7 @@ import argparse
 import atexit
 import os
 import socket
+import sys
 from threading import Lock
 import pybiscus.session.theme
 from flask import Flask
@@ -13,7 +14,7 @@ LINK_TRANSPORT_ENV = "PYBISCUS_LINK_TRANSPORT"
 
 from pybiscus.session.auth import SESSION_TOKEN_ENV, component_token, manager_token_names, print_access, require_tokens, tokens_required
 from pybiscus.session.csrf import HEADER, require_pybiscus_header
-from pybiscus.session import tls
+from pybiscus.session import invitations, tls
 
 # **************************
 
@@ -35,7 +36,9 @@ require_tokens(pybiscus_manager_app, "manager",
                enabled=lambda: tokens_are_required,
                cookie=lambda: f"pybiscus-manager-{manager_port}",
                access_token=lambda: admin_token,
-               session_token=lambda: session_token)
+               session_token=lambda: session_token,
+               invitation=lambda token: invitations.invited_bouquet(manager_port, token),
+               invitation_problem=lambda token: invitations.invitation_problem(manager_port, token))
 
 # the agents' pages call the manager from their own origin (registration, waiting for the session):
 # the local ones are always allowed, those of other hosts through --allow-origin. The former "*"
@@ -88,8 +91,15 @@ session_relays = []
 session_links = {}
 # with --upper-url: the link to the upper level the session was launched with
 upper_session_link = None
-# --upper-token: kept apart from upper_link, which the page shows
+# --upper-token, or the invitation's: kept apart from upper_link, which the page shows
 upper_token = None
+# --invitation: the one this manager reports with (pybiscus.session.invitations.Invitation)
+invitation = None
+# --require-invitation: a lower level without an invitation is refused
+require_invitation = False
+# lower-level bouquet -> {"time", "reason"}: the reports refused, shown as unexpected sites
+refused_lower_levels = {}
+serves_https = False
 recording = None       # --record or the session form: pybiscus.session.manager.recording.Recording
 browsed_url = None     # the manager's address from its own machine, where its recorder opens its page
 session_is_running = False
@@ -183,7 +193,13 @@ def start_recording(directory, automatic=True):
     atexit.register(recording.stop)
     return recording
 
+def flag_from_env(name: str) -> bool:
+    return os.environ.get(name, "").strip().lower() in ("1", "true", "yes", "on")
+
 def main():
+
+    if sys.argv[1:2] and sys.argv[1] in invitations.COMMANDS:
+        sys.exit(invitations.cli(sys.argv[1:]))
 
     parser = argparse.ArgumentParser(description="Start the Federated Learning Manager Server.")
     parser.add_argument("--port", type=int, default=5555, help="Port to run the manager on")
@@ -232,18 +248,41 @@ def main():
                              "needs uv, ffmpeg and the Chromium of Playwright")
     parser.add_argument("--require-token", action="store_true",
                         help="require the tokens on the loopback too (always required when listening beyond it)")
+    parser.add_argument("--invitation", default=os.environ.get(invitations.INVITATION_ENV), metavar="FILE",
+                        help="invitation of the upper-level manager (session_manager invite there): gives the upper level's "
+                             "URL, this manager's bouquet and its token, instead of --upper-url, --bouquet and --upper-token "
+                             f"(default: ${invitations.INVITATION_ENV})")
+    parser.add_argument("--require-invitation", action="store_true", default=flag_from_env(invitations.REQUIRE_INVITATION_ENV),
+                        help="refuse the lower-level managers without an invitation of this one (session_manager invite); "
+                             f"requires the tokens (default: ${invitations.REQUIRE_INVITATION_ENV})")
     tls.add_tls_arguments(parser)
     args = parser.parse_args()
     tls.check_tls_arguments(parser, args)
     # a default is not checked against the choices: the environment's is checked here
     if args.link_transport not in LINK_TRANSPORTS:
         parser.error(f"${LINK_TRANSPORT_ENV}={args.link_transport}: one of {', '.join(LINK_TRANSPORTS)} expected")
+    invited = None
+    if args.invitation:
+        given = [option for option, value in (("--bouquet", args.bouquet), ("--upper-url", args.upper_url),
+                                              ("--upper-token", args.upper_token)) if value]
+        if given:
+            parser.error(f"--invitation gives the bouquet, the upper level's URL and token: not with {', '.join(given)}")
+        try:
+            invited, warnings = invitations.read_invitation(args.invitation)
+        except ValueError as e:
+            parser.error(str(e))
+        for warning in warnings:
+            print(f"⚠️  {warning}", flush=True)
+        args.bouquet, args.upper_url, args.upper_token = invited.bouquet, invited.upper_url, invited.token
     if args.upper_url and not args.bouquet:
         parser.error("--upper-url requires --bouquet: the upper-level manager tells its lower levels apart by their bouquet")
 
     CORS(pybiscus_manager_app, origins=[LOCAL_ORIGINS, *args.allow_origin], allow_headers=["Content-Type", "Authorization", HEADER])
 
     global browsed_url, manager_port, admin_token, session_token, tokens_are_required, bouquet, bouquet_color, bouquet_mismatch, link_transport, manager_host, machine_name, manager_url, manager_location, manager_geo
+    global invitation, require_invitation, serves_https
+    invitation = invited
+    require_invitation = args.require_invitation
     manager_port=args.port
     manager_location, manager_geo = args.location, args.geo
     bouquet = args.bouquet
@@ -252,13 +291,14 @@ def main():
     link_transport = args.link_transport
     manager_host = args.host
     machine_name = args.machine
-    tokens_are_required = tokens_required(args.host, args.require_token)
+    # without tokens, every request passes: the invitations would protect nothing
+    tokens_are_required = tokens_required(args.host, args.require_token or args.require_invitation)
     admin_name, session_name = manager_token_names(manager_port)
     admin_token = component_token(admin_name, args.admin_token) if tokens_are_required else None
     session_token = component_token(session_name, args.session_token)
 
     print(f"🚀 Manager starting on port {manager_port}" + (f", bouquet {bouquet}" if bouquet else ""))
-    tls.trust_ca(args.tls_ca)
+    tls.trust_ca(*filter(None, (args.tls_ca, invitation_ca(invited))))
     warning = tls.plain_http_warning("manager", args.host, args)
     if warning:
         print(warning, flush=True)
@@ -268,6 +308,13 @@ def main():
     # listening on every interface, the other managers are elsewhere: they need the machine's name
     linked_host = socket.getfqdn() if args.host in ("0.0.0.0", "::") else browsed_host
     manager_url = f"{web_scheme}://{linked_host}:{manager_port}"
+    serves_https = web_scheme == "https"
+    invitations.record_manager(manager_port, manager_url, bouquet, serves_https, args.tls_ca)
+    if require_invitation:
+        print("📨 lower-level managers: an invitation of this one required (session_manager invite)", flush=True)
+    if invited:
+        print(f"📨 invited by {invited.upper_bouquet} ({invited.upper_url}) as {invited.bouquet}, "
+              f"until {invited.expires:%Y-%m-%d}", flush=True)
     print_access("manager", f"{browsed_url}/pybiscus-session/manage", admin_token)
     print(f"🔑 session token, for the agents (shown in the manager page too): {session_token}", flush=True)
     if args.record:
@@ -279,6 +326,16 @@ def main():
         from pybiscus.session.manager.upper_level import report_to_upper_level
         report_to_upper_level(args.upper_url, args.upper_token)
     pybiscus_manager_app.run(host=args.host, port=manager_port, ssl_context=tls.ssl_context(args))
+
+def invitation_ca(invited):
+    """the CA of the invitation, in a file requests can trust"""
+    if invited is None:
+        return None
+    from pathlib import Path
+    path = Path(".pybiscus-cache/tls") / f"invitation-ca-{manager_port}.pem"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(invited.ca_certificate, encoding="utf-8")
+    return str(path)
 
 # **************************
 

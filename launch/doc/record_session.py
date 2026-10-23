@@ -307,13 +307,24 @@ def shoot_hierarchical(sc, work, rushes):
     servers = {a["bouquet"]: a for a in agents if a["role"] == "server"}
     url = lambda b: f"{SCHEME}://localhost:{managers[b]['port']}"
     procs = Processes(work, sc.get("plugin_manifests"))
+    # invitations: each upper level invites its lower levels, which start with --invitation (HTTPS only)
+    if sc.get("invitations") and not TLS_ARGS:
+        raise SystemExit("invitations: true needs --tls-cert, --tls-key and --tls-ca (an invitation is for an HTTPS manager)")
     for b in order:
         m = managers[b]
         upper = ["--upper-url", url(m["upper"])] if m.get("upper") else []
+        identity = ["--bouquet", b]
+        if m.get("upper") and sc.get("invitations"):
+            wait_for_port(managers[m["upper"]]["port"])
+            ca = TLS_ARGS[TLS_ARGS.index("--tls-ca") + 1]
+            subprocess.run(["uv", "run", "--project", str(REPO), "session_manager", "invite", "--port", str(managers[m["upper"]]["port"]),
+                            "--bouquet", b, "--url", url(m["upper"]), "--ca", ca], cwd=work, env=procs.env, check=True,
+                           stdout=subprocess.DEVNULL)
+            upper, identity = [], ["--invitation", f"invitations/issued/{m['upper']}_downto_{b}.yml"]
         transport = ["--link-transport", sc["link_transport"]] if sc.get("link_transport") else []
         # the name shown for the machine in the network view: the real host name stays out of the captures
         machine = ["--machine", m.get("machine") or sc["machine"]] if m.get("machine") or sc.get("machine") else []
-        procs.start(f"manager_{b}", ["session_manager", "--port", str(m["port"]), "--bouquet", b, "--location", m["location"],
+        procs.start(f"manager_{b}", ["session_manager", "--port", str(m["port"]), *identity, "--location", m["location"],
                                      "--geo", ",".join(map(str, m["geo"])), *upper, *transport, *machine])
     for a in agents:
         procs.start(f"agent_{a['name']}", ["pybiscus_agent", "--port", str(a["port"])])

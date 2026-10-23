@@ -319,6 +319,7 @@
         <svg id="droundSpark" width="76" height="22"></svg></span>
       <button class="btn pybiscus-theme-toggle" title="light or dark theme, kept by this browser for this manager">🌓</button>
       <a class="btn" href="/pybiscus-session/network" target="_blank" title="the machines, ports and flows of the session">🌐 network</a>
+      {% if sites_button %}<a class="btn" href="/pybiscus-session/sites" target="_blank" title="the lower-level managers: their invitations, present, refused">📨 sites</a>{% endif %}
       <button class="btn" id="token-btn" title="Copy the session token: the agents give it at registration">🔑 session token</button>
       <button class="btn" id="cfg-btn" disabled title="the session can be configured once its server agent is registered">⚙ config</button>
       <button class="btn" id="rec-btn" title="film the session from now on: its video is edited and copied into the session's reports">⏺ record</button>
@@ -1294,7 +1295,7 @@
   // bouquet, in tree order; nodes are keyed by bouquet, two sites may reuse an agent name
   function flattenLowerLevels(levels, parent, depth, groups){
     (levels||[]).forEach(lv=>{
-      const group = {bouquet:lv.bouquet, color:lv.color || bouquetColor(lv.bouquet), stale:!!lv.stale,
+      const group = {bouquet:lv.bouquet, color:lv.color || bouquetColor(lv.bouquet), stale:!!lv.stale, invited:!!lv.invited,
                      url:lv.manager_url, manager:lv.manager || {}, relays:lv.relays || {}, cycles:lv.cycles || [], session:lv.session || null, parent, depth, nodes:[]};
       (lv.agents||[]).forEach(a=>group.nodes.push({key:`${lv.bouquet}/${a.name}`, name:a.name, role:a.role,
         state:a.state || 'declared', geo:a.geo_location, bouquet:lv.bouquet, loc:a.location, org:a.organisation, group}));
@@ -1347,7 +1348,9 @@
     // how the link to a direct lower level is made, chosen with its relay before the launch
     const TRANSPORT_HINT = {directory: 'files in a directory: its relay runs on the machine of its server',
                             manager: "this manager's mailbox, over HTTP: its relay and its server on any machines"};
-    const transportPicker = gr => linkTransportChoices.length ?
+    const transportPicker = gr => gr.invited ?
+      `<span class="chip" title="an invited site: its link goes through this manager's mailbox, its relay runs on this level's side">link: manager · 📨 invited</span>` :
+      linkTransportChoices.length ?
       `<select class="transport-select tool" data-bouquet="${esc(gr.bouquet)}"${sessionRunning || DETACHED_PANEL ? ' disabled' : ''}`+
       ` title="${sessionRunning ? 'the session is running: its links no longer change' : 'how the link to ' + esc(gr.bouquet) + ' is made'}">`+
       linkTransportChoices.map(t=>`<option value="${esc(t)}"${t===linkTransports[gr.bouquet]?' selected':''} title="${esc(TRANSPORT_HINT[t] || t)}">link: ${esc(t)}</option>`).join('')+
@@ -1391,6 +1394,7 @@
       `<span class="chip" title="${esc(upper.problem || '')}">${upper.reached ? 'connected' : upper.reached === false ? 'not reached' : 'connecting…'}</span>`+
       `<span class="chip" title="this session's model (with its hyperparameters), data and number of rounds follow the upper level's session">${upper.session && upper.session.running ? 'session configured' : 'session not configured'}</span>`+
       `<span class="chip" title="the client of the upper-level session that relays this one">relay: ${esc((upper.session && upper.session.relay) || '—')}</span>`+
+      (upper.invitation ? `<span class="chip" title="this manager reports with an invitation of the upper level (--invitation)">📨 invited until ${esc(upper.invitation.slice(0, 10))}</span>` : '')+
       (upper.dropped ? `<span class="chip alert" title="${esc(upper.dropped)}">⚠ session dropped</span>` : '')+`</div>` : '';
     if(groups.length || upper){
       // the tree: this session, then each lower level indented under its parent

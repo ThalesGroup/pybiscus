@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Pybiscus sites{% if bouquet %} · {{ bouquet }}{% endif %}</title>
+{{ pybiscus_theme_head() | safe }}
+<style>
+  *{box-sizing:border-box}
+  body{margin:0; background:radial-gradient(1200px 700px at 82% -12%, var(--bg-glow) 0%, transparent 60%), var(--bg);
+    color:var(--text); font-family:var(--mono); font-size:13px; line-height:1.5}
+  .app{padding:12px; display:grid; gap:12px; max-width:1200px}
+  .topbar{display:flex; align-items:center; gap:14px; padding:10px 14px; border:1px solid var(--border);
+    border-radius:10px; background:linear-gradient(180deg,var(--panel-2),var(--panel))}
+  .topbar .right{margin-left:auto; display:flex; gap:8px}
+  .eyebrow{font-size:10.5px; letter-spacing:.22em; text-transform:uppercase; color:var(--text-soft); font-weight:600}
+  .btn{background:var(--panel-2); color:var(--text); border:1px solid var(--border); border-radius:8px; padding:5px 10px;
+    font:inherit; text-decoration:none; cursor:pointer}
+  .btn:disabled{opacity:.5; cursor:default}
+  .btn.danger{border-color:var(--danger-border); color:var(--danger-text)}
+  .btn.danger:hover{border-color:var(--danger-hover); color:var(--err)}
+  .panel{border:1px solid var(--border); border-radius:10px; background:var(--panel); padding:10px 14px}
+  .panel>header{display:flex; align-items:center; gap:10px; margin-bottom:8px; flex-wrap:wrap}
+  .note{color:var(--muted)}
+  .chip{padding:1px 8px; border-radius:999px; border:1px solid var(--border); color:var(--muted); font-size:11.5px}
+  .chip.alert{border-color:var(--warn); color:var(--warn)}
+  .problem{color:var(--warn)}
+  form{display:flex; gap:10px; align-items:center; flex-wrap:wrap}
+  input{background:var(--panel-2); color:var(--text); border:1px solid var(--border); border-radius:6px; padding:5px 8px; font:inherit}
+  input[type=number]{width:6em}
+  table{border-collapse:collapse; width:100%}
+  th,td{text-align:left; padding:5px 8px; border-bottom:1px solid var(--border); vertical-align:top}
+  th{color:var(--muted); font-weight:500}
+  tr[data-state="present"] .state{color:var(--done)}
+  tr[data-state="missing"] .state, tr[data-state="unexpected"] .state, tr[data-state="expired"] .state{color:var(--warn)}
+  tr[data-state="revoked"] .state{color:var(--err)}
+  td.when, td.actions{white-space:nowrap}
+  .soon{color:var(--warn)}
+  .issued{border-color:var(--done)}
+  code{color:var(--eval)}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="topbar">
+    <span class="eyebrow">Pybiscus · sites</span>
+    <span id="mode" class="chip"></span>
+    <div class="right">
+      <button class="btn pybiscus-theme-toggle" title="light or dark theme, kept by this browser for this manager">🌓</button>
+      <a class="btn" href="/pybiscus-session/manage">← session</a>
+    </div>
+  </div>
+
+  <section class="panel">
+    <header><span class="eyebrow">Invite a site</span>
+      <span class="note">a lower-level manager, started with <code>--invitation &lt;file&gt;</code>: it reports under the bouquet
+        given here, with a token of its own, until the invitation expires or is revoked</span></header>
+    <p class="problem" id="invite-problem" hidden></p>
+    <form id="invite-form">
+      <label>bouquet <input id="bouquet" required pattern="[A-Za-z0-9._\-]+" placeholder="edge1"
+             title="letters, digits, '.', '_' or '-'"></label>
+      <label>valid for <input id="days" type="number" min="1" value="{{ default_days }}"> days</label>
+      <button class="btn" type="submit">📨 invite</button>
+    </form>
+  </section>
+
+  <section class="panel issued" id="issued-panel" hidden>
+    <header><span class="eyebrow">Invitation issued</span></header>
+    <p id="issued-text"></p>
+  </section>
+
+  <section class="panel">
+    <header><span class="eyebrow">Sites</span><span class="note">the lower levels of this manager: invited, present, refused</span></header>
+    <table>
+      <thead><tr><th>state</th><th>site (bouquet)</th><th>expires</th><th>link</th><th>relay</th><th></th></tr></thead>
+      <tbody id="sites"><tr><td colspan="6" class="note">…</td></tr></tbody>
+    </table>
+  </section>
+</div>
+<script>
+  // the states, their icons and texts: pybiscus.session.invitations.SiteState
+  const SITE_STATES = {{ site_states | tojson }};
+  const SOON_DAYS = {{ soon_days | tojson }};
+  const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const post = (url, body) => fetch(url, {method:'POST', headers:{'Content-Type':'application/json', 'X-Pybiscus':'1'},
+                                          body: JSON.stringify(body)}).then(r => r.json().then(answer => {
+    if(!r.ok) throw new Error(answer.message || r.status); return answer; }));
+  const day = iso => iso ? iso.slice(0, 10) : '';
+
+  function render(data){
+    const mode = document.getElementById('mode');
+    mode.textContent = data.require_invitation ? 'invitations required' : 'invitations or session token';
+    mode.title = data.require_invitation ? 'started with --require-invitation: a lower level without an invitation is refused'
+                                         : 'a lower level may also report with the session token (--require-invitation to refuse it)';
+    const problem = document.getElementById('invite-problem');
+    problem.hidden = !data.invitation_problem; problem.textContent = data.invitation_problem || '';
+    document.querySelector('#invite-form button').disabled = !!data.invitation_problem;
+    const rows = data.sites.map(site => {
+      const st = SITE_STATES[site.state] || {icon:'?', text:site.state};
+      const actions = [];
+      if(['invited', 'present', 'missing'].includes(site.state))
+        actions.push(`<button class="btn danger" data-act="revoke" data-bouquet="${esc(site.bouquet)}" title="refuse its token from now on">revoke</button>`);
+      if(['expired', 'revoked', 'unexpected', 'invited', 'missing'].includes(site.state))
+        actions.push(site.state === 'unexpected'
+          ? `<button class="btn" data-act="reissue" data-bouquet="${esc(site.bouquet)}" title="invite this site">invite</button>`
+          : `<button class="btn" data-act="reissue" data-bouquet="${esc(site.bouquet)}" title="a new invitation: the former one stops working">invite again</button>`);
+      if(['expired', 'revoked', 'unexpected'].includes(site.state))
+        actions.push(`<button class="btn" data-act="forget" data-bouquet="${esc(site.bouquet)}" title="out of this list">forget</button>`);
+      else if(site.reason)
+        actions.push(`<button class="btn" data-act="forget" data-bouquet="${esc(site.bouquet)}" title="clear the refused attempt">clear</button>`);
+      const expires = site.expires ? `<span class="${site.expires_soon ? 'soon' : ''}" title="${site.expires_soon ? 'within ' + SOON_DAYS + ' days' : ''}">${esc(day(site.expires))}${site.expires_soon ? ' ⚠' : ''}</span>` : '';
+      const why = site.reason ? `<div class="${site.state === 'unexpected' ? 'note' : 'problem'}">${site.state === 'unexpected' ? '' : '⛔ refused: '}`+
+        `${esc(site.reason)}, ${esc(new Date(site.refused_at * 1000).toLocaleString())}</div>` : '';
+      return `<tr data-state="${esc(site.state)}"><td class="state" title="${esc(st.text)}">${esc(st.icon)} ${esc(st.text)}</td>`+
+        `<td>💐 ${esc(site.bouquet)}${why}</td><td class="when">${expires}</td><td>${esc(site.transport || '')}</td><td>${esc(site.relay || '')}</td>`+
+        `<td class="actions">${actions.join(' ')}</td></tr>`;
+    });
+    document.getElementById('sites').innerHTML = rows.join('') || '<tr><td colspan="6" class="note">no site yet: invite one above</td></tr>';
+  }
+
+  function refresh(){
+    fetch('/pybiscus-session/sites.json').then(r => r.json()).then(render).catch(()=>{});
+  }
+
+  // the file is given once: the manager keeps only its token's digest
+  function invite(bouquet, days){
+    post('/pybiscus-session/sites/invite', {bouquet, days}).then(answer => {
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(new Blob([answer.content], {type:'application/x-yaml'}));
+      link.download = answer.file_name; link.click(); URL.revokeObjectURL(link.href);
+      document.getElementById('issued-panel').hidden = false;
+      document.getElementById('issued-text').innerHTML =
+        `<b>${esc(answer.file_name)}</b> downloaded, and written on this manager's machine in <code>${esc(answer.path)}</code>. `+
+        `It holds the site's token: hand it to its operator only, who starts its manager with <code>--invitation ${esc(answer.file_name)}</code> `+
+        `(or puts it in <code>invitations/received/</code>). It is not shown again: lost, invite the site again.`;
+      refresh();
+    }).catch(e => alert(e.message));
+  }
+
+  document.getElementById('invite-form').addEventListener('submit', ev => {
+    ev.preventDefault();
+    invite(document.getElementById('bouquet').value.trim(), parseInt(document.getElementById('days').value, 10));
+  });
+  document.getElementById('sites').addEventListener('click', ev => {
+    const button = ev.target.closest('button[data-act]'); if(!button) return;
+    const bouquet = button.dataset.bouquet, act = button.dataset.act;
+    if(act === 'reissue') return invite(bouquet, parseInt(document.getElementById('days').value, 10));
+    if(act === 'revoke' && !confirm(`Revoke the invitation of ${bouquet}? Its manager will be refused from now on.`)) return;
+    post(`/pybiscus-session/sites/${act}`, {bouquet}).then(refresh).catch(e => alert(e.message));
+  });
+  refresh();
+  setInterval(refresh, 3000);
+</script>
+</body>
+</html>

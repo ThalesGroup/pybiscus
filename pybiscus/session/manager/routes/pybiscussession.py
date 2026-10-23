@@ -13,7 +13,7 @@ import urllib
 import pybiscus.session.manager.session_manager
 from pybiscus.session.manager.session_manager import generate_new_cid, pybiscus_manager_app
 import pybiscus.core.pybiscus_logger as logm
-from pybiscus.session.auth import headers_for, session_access
+from pybiscus.session.auth import headers_for, invitation_access, session_access
 from pybiscus.session.csrf import HEADER
 from pybiscus.session.manager import cycles, repetition
 from pybiscus.core.gui_events import gui_log_patterns
@@ -670,6 +670,9 @@ def pybiscus_manager_choose_link_transport():
         known = bouquet in session.lower_levels
     if not known:
         return jsonify({"status": "error", "message": f"no lower level named {bouquet!r}"}), 400
+    from pybiscus.session.manager.upper_level import invited_lower_level
+    if invited_lower_level(bouquet):
+        return jsonify({"status": "error", "message": f"{bouquet} is invited: its link goes through this manager's mailbox"}), 409
     if transport is not None and transport not in LINK_TRANSPORTS:
         return jsonify({"status": "error", "message": f"transport {transport!r}: one of {', '.join(LINK_TRANSPORTS)} expected"}), 400
     if transport is None:
@@ -684,13 +687,17 @@ def pybiscus_manager_choose_link_transport():
 # a lower-level manager (started with --upper-url) reports its bouquet's topology here
 @pybiscus_manager_app.route("/pybiscus-session/lower-level", methods=["POST"])
 @session_access
+@invitation_access
 def pybiscus_manager_receive_lower_level():
-    from pybiscus.session.manager.upper_level import record_lower_level
+    from pybiscus.session.manager.upper_level import admitted_lower_level, record_lower_level
     topology = request.get_json(silent=True)
     if not isinstance(topology, dict) or not isinstance(topology.get("bouquet"), str) or not topology["bouquet"] \
             or not isinstance(topology.get("agents"), list):
         return jsonify({"status": "error", "message": "expected a bouquet name and a list of agents"}), 400
-    record_lower_level(topology)
+    bouquet, invited, refusal = admitted_lower_level(topology["bouquet"])
+    if refusal:
+        return jsonify({"status": "error", "message": refusal}), 403
+    record_lower_level(topology, invited)
     # the lower level shows which upper level it reports to, in its colour
     from pybiscus.session.manager.upper_level import session_for_lower_levels
     return jsonify({"status": "ok", "bouquet": pybiscus.session.manager.session_manager.bouquet,
@@ -699,11 +706,15 @@ def pybiscus_manager_receive_lower_level():
 # between two changes of its topology, a lower-level manager only says it is alive
 @pybiscus_manager_app.route("/pybiscus-session/lower-level/heartbeat", methods=["POST"])
 @session_access
+@invitation_access
 def pybiscus_manager_lower_level_heartbeat():
-    from pybiscus.session.manager.upper_level import lower_level_alive
+    from pybiscus.session.manager.upper_level import admitted_lower_level, lower_level_alive
     bouquet = (request.get_json(silent=True) or {}).get("bouquet")
     if not isinstance(bouquet, str) or not bouquet:
         return jsonify({"status": "error", "message": "expected a bouquet name"}), 400
+    bouquet, _, refusal = admitted_lower_level(bouquet)
+    if refusal:
+        return jsonify({"status": "error", "message": refusal}), 403
     from pybiscus.session.manager.upper_level import session_for_lower_levels
     return jsonify({"status": "ok", "known": lower_level_alive(bouquet),
                     "bouquet": pybiscus.session.manager.session_manager.bouquet,
@@ -725,7 +736,15 @@ def pybiscus_manager_manage():
                            bouquet_color=pybiscus.session.manager.session_manager.bouquet_color,
                            flower_port=pybiscus.session.manager.session_manager.proposed_flower_port(),
                            gui_log_patterns=gui_log_patterns(), agent_state_protocol=agent_state_protocol(),
-                           metric_key_protocol=metric_key_protocol())
+                           metric_key_protocol=metric_key_protocol(), sites_button=sites_button())
+
+
+def sites_button() -> bool:
+    """the sites page is shown where invitations make sense: a manager in HTTPS, or one that
+    requires or issued some"""
+    session = pybiscus.session.manager.session_manager
+    from pybiscus.session.invitations import load_registry
+    return session.serves_https or session.require_invitation or bool(load_registry(session.manager_port)["invitations"])
 
 # **************************
 
