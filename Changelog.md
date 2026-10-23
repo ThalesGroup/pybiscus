@@ -10,6 +10,9 @@
 * `docs/usage-scenarios.md`: a deployment diagram for the scenarios that differ (one machine,
   automated runs, closed network, several organisations, tunnel or proxy), and a link from each
   scenario to its checklist in `docs/security.md`, which links back.
+* `docs/security.md`, *Across sites*: the flows a VPN between the sites lets through, for one
+  session over several sites and for a hierarchical one (one flow, lower manager to upper manager,
+  with the `manager` link transport and the relays at the upper site).
 * `docs/multi-machine.md`: one agent per machine, with the machine's role (two on a machine that
   both aggregates and holds data), the manager on the server's machine or on its own. The client
   agents listen beyond the loopback too: the manager calls them for the state, the stop and the

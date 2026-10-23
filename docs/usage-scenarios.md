@@ -231,7 +231,8 @@ on the lower ones.
 **Setup**:
 - HTTPS between the components, with a CA for the session and one certificate per machine (the
   key stays on its machine: [multi-machine.md](multi-machine.md#certificates)).
-- A **VPN between the sites** (see the status above).
+- A **VPN between the sites** (see the status above), letting through only the
+  [flows across sites](security.md#across-sites).
 - In a hierarchical session, each link is its own scenario: inside a site, a closed network; between
   the sites, the managers of the lower levels reach the upper one, and each relay reaches the
   upper Flower server ([sessionmanager.md](sessionmanager.md#bouquets-of-a-hierarchical-session)).

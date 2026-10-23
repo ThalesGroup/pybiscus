@@ -58,6 +58,38 @@ beyond the loopback without `--tls-cert` says so when it starts. HTTPS between t
 CA per session, one certificate per machine, the key never leaving its machine, the CA's key
 protected by a password never written in the repository ([multi-machine.md](multi-machine.md#encryption)).
 
+## Across sites
+
+Until the [known limits](#known-limits) are lifted, the sites are joined by a **VPN**: no component
+of Pybiscus faces the Internet, only the VPN's gateway, software made for it. The VPN bounds the
+network, not the trust: every member reaches the ports it lets through, the other organisations'
+machines included. Inside it, keep the tokens, use HTTPS unless every site trusts the others'
+networks, and let through only the flows below.
+
+**One session over several sites** (one manager, an agent per machine), from each client site:
+
+| from | to | port (default) |
+|---|---|---|
+| client agent, its operator's browser, its runs (webhooks) | manager | 5555 |
+| client agent | server agent | 5000 |
+| Flower client | Flower server | 3333 |
+| manager | each client agent (state, stop, relaunch) | 5000 |
+
+**A hierarchical session** (a manager per site): each site keeps its own closed network, and only
+the links between the levels cross the VPN. With the `manager` link transport and each relay run
+at the upper site, **one flow** crosses it: from each lower manager to the upper one (its topology,
+the constraints it receives, the link's mailbox). With a relay at the lower site (the `directory`
+transport requires it), the relay's flows cross too: its agent, its operator's browser and its run
+to the upper manager and server agent, its Flower client to the upper Flower server, and the upper
+manager to the relay's agent ([link transports](sessionmanager.md#bouquets-of-a-hierarchical-session)).
+
+The ports are the defaults of the code: the manager's `--port` (5555), an agent's `--port` (5000),
+the Flower server's `server_port` in the session form (proposed as 3333 + the manager's port −
+5555). Each can be changed; the URLs that name the manager (registrations, webhooks) follow its port.
+The manager's [network view](sessionmanager.md#network-view) lists the flows between machines of a
+running session, with their ports (**⬇ flows (CSV)**): the list to give to whoever sets the VPN
+or the firewall.
+
 ## Code and data
 
 - **No deserialisation that runs code**: models and weights are loaded as tensors only
@@ -128,9 +160,9 @@ required); HTTPS if the network is shared with others; a firewall on the Flower 
 
 ### Several organisations
 
-All of the above, HTTPS, a VPN between the sites ([known limits](#known-limits)); robust
-aggregation if a participant may be malicious, differential privacy if partners may be curious
-([against the participants](#against-the-participants)).
+All of the above, HTTPS, a VPN between the sites letting through only the
+[flows across sites](#across-sites); robust aggregation if a participant may be malicious,
+differential privacy if partners may be curious ([against the participants](#against-the-participants)).
 [Scenario](usage-scenarios.md#several-organisations).
 
 ### Behind a tunnel or a reverse proxy
