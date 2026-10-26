@@ -122,6 +122,11 @@
   3.2.1 (CVE-2026-114145, through wandb), `uv` 0.12.24 → 0.13.5 (PYSEC-2026-4321, through Flower);
   `pip-audit` finds none left in `uv.lock`.
 * Added: `cheroot` 11.1 (the web server of the manager and of the agents; pure Python).
+* Known vulnerabilities fixed: `filelock` 3.25.1 → 4.2.4 (CVE-2026-112940, CVE-2026-112913,
+  CVE-2026-112907: its SQLite reader/writer locks and, on Windows, its soft locks; Pybiscus uses
+  `FileLock` only), `setuptools` 83.0.0 → 84.2.1 (GHSA-xmj3-9gf7-h52w: its legacy wheel-to-egg
+  installation, on Windows); `setuptools<84` becomes `setuptools>=84.1`, `filelock>=3.25`
+  `filelock>=4.2.1`.
 
 ## [Version 0.14.0]
 

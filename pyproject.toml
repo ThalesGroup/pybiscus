@@ -30,10 +30,10 @@ dependencies = [
     "matplotlib>=3.10.0",
     "scikit-learn>=1.7.2",
     "seaborn>=0.13.2",
-    "setuptools<84",
+    "setuptools>=84.1",
     "onnxscript>=0.6.2",
     "torchmetrics[detection]>=1.9.0",
-    "filelock>=3.25",
+    "filelock>=4.2.1",
     "cronsim>=2.7",
     "cheroot>=11",
 ]
