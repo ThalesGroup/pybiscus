@@ -49,6 +49,11 @@
 * The listening probe, which the manager asks before it launches the clients of a repeated session
   again, checks only the port of the agent's server run (read from its configuration): any port
   asked for would tell which services listen on the loopback of its machine.
+* `pybiscus/session/agent/presets.py`: the session's presets (options and values the manager imposes)
+  applied to a configuration in Python, as the agent's form applies them in the browser, for an agent
+  launched without its form; the form and the Python merge share the filter of the values calling an
+  interpolation resolver. `launch/ci/smoke.sh presets` (`launch/ci/presets_check.py`) checks that both
+  give the same configuration, on the presets of a session, of a hierarchical one and synthetic cases.
 * `record_session.py`: scenario keys `repeat` and `sessions`, `stop_after_round`,
   `drop_after_round` (`docs/recording.md`).
 * `docs/security.md`: what the manager and the agents protect, code and data, the defences against

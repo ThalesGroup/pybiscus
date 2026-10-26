@@ -390,27 +390,17 @@ def generate_param_js(payload):
     }
     """
 
-    from pybiscus.session.interpolation import calls_resolver
+    from pybiscus.session.agent.presets import accepted, as_text
 
     # the operator fills them in: left unlocked
-    ignored = [name for name, value in {**payload.get("options_set", {}), **payload.get("values_set", {})}.items()
-               if calls_resolver(value)]
+    options_set, options_lock, values_set, values_lock, ignored = accepted(payload)
     if ignored:
         logm.console.log(f"⚠️ values imposed by the manager ignored, they call an interpolation resolver: {', '.join(ignored)}")
-    options_set = {k: v for k, v in payload.get("options_set", {}).items() if k not in ignored}
-    options_lock = [k for k in payload.get("options_lock", []) if k not in ignored]
-    values_set = {k: v for k, v in payload.get("values_set", {}).items() if k not in ignored}
-    values_lock = [k for k in payload.get("values_lock", []) if k not in ignored]
 
     # the values come from the manager, or from an URL anyone can make: written as JSON, they cannot
     # end the string they are in, nor the page's <script> element ("</script>")
     def js(value) -> str:
         return json.dumps(value).replace("</", "<\\/")
-
-    # the form reads every value as text. A Python bool became 'True', which JSON.parse refuses: the
-    # exception left every value after it unset and every lock undone
-    def as_text(value) -> str:
-        return str(value).lower() if isinstance(value, bool) else str(value)
 
     option_lock_lines = "\n".join(f"lock_option({js(str(opt))});" for opt in options_lock)
     value_lock_lines = "\n".join(f"lock_value({js(str(opt))});" for opt in values_lock)
@@ -464,9 +454,9 @@ def parse_args():
         default=None,
         help="Path to the YAML configuration file"
     )
-    # loopback by default: client agents are only reached by the local browser. A server agent
-    # of a multi-host session must listen on the network (client agents post their run config
-    # to it, the session manager pings it), as must an agent in a container
+    # loopback by default: an agent asks the manager for its orders and is reached only by its
+    # operator's browser. A server agent of a multi-host session must listen on the network (the
+    # manager's operator opens its session form), as must an agent in a container
     parser.add_argument(
         '--host',
         type=str,

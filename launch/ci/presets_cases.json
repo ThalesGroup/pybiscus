@@ -1,0 +1,402 @@
+{
+ "session-server": {
+  "role": "server",
+  "presets": {
+   "options_lock": [
+    "flower_server.ssl",
+    "flower_client.ssl",
+    "data",
+    "model"
+   ],
+   "options_set": {
+    "data": "Mnist",
+    "flower_client.ssl": "  ",
+    "flower_server.ssl": "  ",
+    "model": "MNIST CNN"
+   },
+   "values_lock": [
+    "root_dir",
+    "flower_server.listen_address",
+    "flower_client.server_address",
+    "model.config.hidden",
+    "model.config.n_classes",
+    "model.config.lr",
+    "server_strategy.strategy.config.min_fit_clients",
+    "server_strategy.strategy.config.min_evaluate_clients",
+    "server_strategy.strategy.config.min_available_clients",
+    "server_run.num_rounds",
+    "server_strategy.robustness",
+    "manager_url"
+   ],
+   "values_set": {
+    "flower_client.server_address": "localhost:39091",
+    "flower_server.listen_address": "[::1]:39091",
+    "manager_url": "https://localhost:51843",
+    "model.config.hidden": "128",
+    "model.config.lr": "0.001",
+    "model.config.n_classes": "10",
+    "server_run.num_rounds": 5,
+    "server_run.reporting.basedir": "${root_dir}/experiments/demo",
+    "server_strategy.robustness": "none",
+    "server_strategy.strategy.config.min_available_clients": 2,
+    "server_strategy.strategy.config.min_evaluate_clients": 2,
+    "server_strategy.strategy.config.min_fit_clients": 2
+   }
+  }
+ },
+ "session-client": {
+  "role": "client",
+  "presets": {
+   "options_lock": [
+    "flower_server.ssl",
+    "flower_client.ssl",
+    "data",
+    "model",
+    "data.config.train.partition"
+   ],
+   "options_set": {
+    "client_compute_context.num_threads": " ",
+    "data": "Mnist",
+    "data.config.train.partition": " ",
+    "flower_client.ssl": "  ",
+    "flower_server.ssl": "  ",
+    "model": "MNIST CNN"
+   },
+   "values_lock": [
+    "root_dir",
+    "flower_server.listen_address",
+    "flower_client.server_address",
+    "model.config.hidden",
+    "model.config.n_classes",
+    "model.config.lr",
+    "manager_url",
+    "client_run.cid",
+    "data.config.train.partition.scheme",
+    "data.config.train.partition.seed",
+    "data.config.train.partition.alpha",
+    "data.config.train.partition.min_partition_size",
+    "data.config.train.partition.shards_per_partition",
+    "data.config.train.partition.num_partitions",
+    "data.config.train.partition.partition_id"
+   ],
+   "values_set": {
+    "client_compute_context.num_threads": 7,
+    "client_run.cid": "0",
+    "data.config.train.partition.alpha": "0.5",
+    "data.config.train.partition.min_partition_size": "10",
+    "data.config.train.partition.num_partitions": 2,
+    "data.config.train.partition.partition_id": 0,
+    "data.config.train.partition.scheme": "iid",
+    "data.config.train.partition.seed": "42",
+    "data.config.train.partition.shards_per_partition": "2",
+    "flower_client.server_address": "localhost:39091",
+    "flower_server.listen_address": "[::1]:39091",
+    "manager_url": "https://localhost:51843",
+    "model.config.hidden": "128",
+    "model.config.lr": "0.001",
+    "model.config.n_classes": "10"
+   }
+  }
+ },
+ "hierarchical-core-server": {
+  "role": "server",
+  "presets": {
+   "options_lock": [
+    "flower_server.ssl",
+    "flower_client.ssl",
+    "data",
+    "model"
+   ],
+   "options_set": {
+    "data": "Mnist",
+    "flower_client.ssl": "  ",
+    "flower_server.ssl": "  ",
+    "model": "MNIST CNN"
+   },
+   "values_lock": [
+    "root_dir",
+    "flower_server.listen_address",
+    "flower_client.server_address",
+    "model.config.hidden",
+    "model.config.n_classes",
+    "model.config.lr",
+    "server_strategy.strategy.config.min_fit_clients",
+    "server_strategy.strategy.config.min_evaluate_clients",
+    "server_strategy.strategy.config.min_available_clients",
+    "server_run.num_rounds",
+    "server_strategy.robustness",
+    "manager_url"
+   ],
+   "values_set": {
+    "flower_client.server_address": "localhost:51911",
+    "flower_server.listen_address": "[::1]:51911",
+    "manager_url": "http://localhost:48633",
+    "model.config.hidden": "128",
+    "model.config.lr": "0.001",
+    "model.config.n_classes": "10",
+    "server_run.num_rounds": 3,
+    "server_run.reporting.basedir": "${root_dir}/experiments/core",
+    "server_strategy.robustness": "none",
+    "server_strategy.strategy.config.min_available_clients": 2,
+    "server_strategy.strategy.config.min_evaluate_clients": 2,
+    "server_strategy.strategy.config.min_fit_clients": 2
+   }
+  }
+ },
+ "hierarchical-edge-server": {
+  "role": "server",
+  "presets": {
+   "options_lock": [
+    "flower_server.ssl",
+    "flower_client.ssl",
+    "data",
+    "model",
+    "server_strategy.upper_level_link"
+   ],
+   "options_set": {
+    "data": "Mnist",
+    "flower_client.ssl": "  ",
+    "flower_server.ssl": "  ",
+    "model": "MNIST CNN",
+    "server_strategy.upper_level_link": " "
+   },
+   "values_lock": [
+    "root_dir",
+    "flower_server.listen_address",
+    "flower_client.server_address",
+    "model.config.hidden",
+    "model.config.n_classes",
+    "model.config.lr",
+    "server_strategy.strategy.config.min_fit_clients",
+    "server_strategy.strategy.config.min_evaluate_clients",
+    "server_strategy.strategy.config.min_available_clients",
+    "server_run.num_rounds",
+    "server_strategy.upper_level_link.transport",
+    "server_strategy.upper_level_link.directory",
+    "server_strategy.upper_level_link.manager_url",
+    "server_strategy.upper_level_link.link_id",
+    "server_strategy.upper_level_link.timeout",
+    "server_strategy.upper_level_link.poll_interval",
+    "server_strategy.robustness",
+    "manager_url"
+   ],
+   "values_set": {
+    "flower_client.server_address": "localhost:54181",
+    "flower_server.listen_address": "[::1]:54181",
+    "manager_url": "http://localhost:37335",
+    "model.config.hidden": "128",
+    "model.config.lr": "0.001",
+    "model.config.n_classes": "10",
+    "server_run.num_rounds": 3,
+    "server_run.reporting.basedir": "${root_dir}/experiments/edge1",
+    "server_strategy.robustness": "none",
+    "server_strategy.strategy.config.min_available_clients": 2,
+    "server_strategy.strategy.config.min_evaluate_clients": 2,
+    "server_strategy.strategy.config.min_fit_clients": 2,
+    "server_strategy.upper_level_link.directory": "/tmp/pybiscus-links",
+    "server_strategy.upper_level_link.link_id": "core-edge1-20261026T160531",
+    "server_strategy.upper_level_link.manager_url": "",
+    "server_strategy.upper_level_link.poll_interval": 0.5,
+    "server_strategy.upper_level_link.timeout": 3600,
+    "server_strategy.upper_level_link.transport": "directory"
+   }
+  }
+ },
+ "hierarchical-edge-client": {
+  "role": "client",
+  "presets": {
+   "options_lock": [
+    "flower_server.ssl",
+    "flower_client.ssl",
+    "data",
+    "model",
+    "data.config.train.partition"
+   ],
+   "options_set": {
+    "data": "Mnist",
+    "data.config.train.partition": " ",
+    "flower_client.ssl": "  ",
+    "flower_server.ssl": "  ",
+    "model": "MNIST CNN"
+   },
+   "values_lock": [
+    "root_dir",
+    "flower_server.listen_address",
+    "flower_client.server_address",
+    "model.config.hidden",
+    "model.config.n_classes",
+    "model.config.lr",
+    "manager_url",
+    "client_run.cid",
+    "data.config.train.partition.scheme",
+    "data.config.train.partition.seed",
+    "data.config.train.partition.alpha",
+    "data.config.train.partition.min_partition_size",
+    "data.config.train.partition.shards_per_partition",
+    "data.config.train.partition.num_partitions",
+    "data.config.train.partition.partition_id"
+   ],
+   "values_set": {
+    "client_run.cid": "0",
+    "data.config.train.partition.alpha": "0.5",
+    "data.config.train.partition.min_partition_size": "10",
+    "data.config.train.partition.num_partitions": 2,
+    "data.config.train.partition.partition_id": 0,
+    "data.config.train.partition.scheme": "iid",
+    "data.config.train.partition.seed": "42",
+    "data.config.train.partition.shards_per_partition": "2",
+    "flower_client.server_address": "localhost:54181",
+    "flower_server.listen_address": "[::1]:54181",
+    "manager_url": "http://localhost:37335",
+    "model.config.hidden": "128",
+    "model.config.lr": "0.001",
+    "model.config.n_classes": "10"
+   }
+  }
+ },
+ "hierarchical-relay": {
+  "role": "client",
+  "presets": {
+   "options_lock": [
+    "flower_server.ssl",
+    "flower_client.ssl",
+    "data",
+    "model",
+    "flower_client.alternate_client_class"
+   ],
+   "options_set": {
+    "data": "Mnist",
+    "flower_client.alternate_client_class": "Relay",
+    "flower_client.ssl": "  ",
+    "flower_server.ssl": "  ",
+    "model": "MNIST CNN"
+   },
+   "values_lock": [
+    "root_dir",
+    "flower_server.listen_address",
+    "flower_client.server_address",
+    "model.config.hidden",
+    "model.config.n_classes",
+    "model.config.lr",
+    "flower_client.alternate_client_class.config.transport",
+    "flower_client.alternate_client_class.config.directory",
+    "flower_client.alternate_client_class.config.manager_url",
+    "flower_client.alternate_client_class.config.link_id",
+    "flower_client.alternate_client_class.config.timeout",
+    "flower_client.alternate_client_class.config.poll_interval",
+    "manager_url",
+    "client_run.cid"
+   ],
+   "values_set": {
+    "client_run.cid": "0",
+    "flower_client.alternate_client_class.config.directory": "/tmp/pybiscus-links",
+    "flower_client.alternate_client_class.config.link_id": "core-edge1-20261026T160531",
+    "flower_client.alternate_client_class.config.manager_url": "",
+    "flower_client.alternate_client_class.config.poll_interval": 0.5,
+    "flower_client.alternate_client_class.config.timeout": 3600,
+    "flower_client.alternate_client_class.config.transport": "directory",
+    "flower_client.server_address": "localhost:51911",
+    "flower_server.listen_address": "[::1]:51911",
+    "manager_url": "http://localhost:48633",
+    "model.config.hidden": "128",
+    "model.config.lr": "0.001",
+    "model.config.n_classes": "10"
+   }
+  }
+ },
+ "server-repeat": {
+  "role": "server",
+  "presets": {
+   "options_set": {
+    "data": "Mnist",
+    "model": "MNIST CNN",
+    "flower_server.ssl": "  ",
+    "server_run.reporting.save_on_train_end": " ",
+    "server_run.weights_path": " "
+   },
+   "values_set": {
+    "server_run.weights_path": "latest",
+    "server_run.stop_without_new_data": true,
+    "server_run.num_rounds": 4,
+    "server_strategy.robustness": "safeguard",
+    "flower_server.listen_address": "[::]:4444",
+    "manager_url": "https://m:5555"
+   }
+  }
+ },
+ "server-fedprox": {
+  "role": "server",
+  "presets": {
+   "options_set": {
+    "server_strategy.strategy": "FedProx",
+    "server_strategy.upper_level_link": "  ",
+    "data": "Mnist",
+    "model": "MNIST CNN"
+   },
+   "values_set": {
+    "server_strategy.strategy.config.proximal_mu": 0.3,
+    "server_strategy.strategy.config.min_fit_clients": 5,
+    "server_strategy.upper_level_link.timeout": 10
+   }
+  }
+ },
+ "client-partition": {
+  "role": "client",
+  "presets": {
+   "options_set": {
+    "data": "Mnist",
+    "model": "MNIST CNN",
+    "client_compute_context.num_threads": " ",
+    "data.config.train.partition": " "
+   },
+   "values_set": {
+    "client_compute_context.num_threads": 3,
+    "client_run.cid": "4",
+    "data.config.train.partition.scheme": "dirichlet",
+    "data.config.train.partition.alpha": 0.3,
+    "data.config.train.partition.num_partitions": 5,
+    "data.config.train.partition.partition_id": 4,
+    "data.config.val.source": "holdout",
+    "data.config.val.fraction": 0.2,
+    "data.config.val.seed": 7
+   }
+  }
+ },
+ "client-cifar": {
+  "role": "client",
+  "presets": {
+   "options_set": {
+    "data": "Cifar 10"
+   },
+   "values_set": {
+    "client_run.cid": "1",
+    "data.config.train.partition.alpha": 0.9
+   }
+  }
+ },
+ "client-resolver": {
+  "role": "client",
+  "presets": {
+   "options_set": {
+    "data": "Mnist",
+    "model": "MNIST CNN"
+   },
+   "values_set": {
+    "client_run.cid": "${oc.env:HOME}",
+    "flower_client.server_address": "h:1"
+   }
+  }
+ },
+ "client-relay-some": {
+  "role": "client",
+  "presets": {
+   "options_set": {
+    "data": "Mnist",
+    "flower_client.alternate_client_class": " "
+   },
+   "values_set": {
+    "flower_client.alternate_client_class.config.link_id": "x"
+   }
+  }
+ }
+}
