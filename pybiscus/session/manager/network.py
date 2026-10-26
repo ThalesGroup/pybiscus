@@ -81,8 +81,8 @@ def local_view() -> dict:
             processes.append({"id": agent_id, "bouquet": bouquet, "kind": "agent", "name": name,
                               "machine": agent_machine[name], "port": host_and_port(url)[1], "protocol": web_protocol(url),
                               "listen": None, "role": f"relay of {', '.join(relayed)}" if relayed else f"{role} agent"})
-            flow(agent_id, manager_id, manager_protocol, sm.manager_port, "registration, states, logs and metrics of its runs")
-            flow(manager_id, agent_id, web_protocol(url), host_and_port(url)[1], "ping, launch and stop of its run")
+            # the manager calls no agent: its orders are asked for
+            flow(agent_id, manager_id, manager_protocol, sm.manager_port, "registration, orders, states, logs and metrics of its runs")
 
     port, listen = flower_server_address()
     server = next(iter(sm.registered_servers), None)

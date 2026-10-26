@@ -63,6 +63,7 @@ a release or in a pipeline:
 
 ```bash
 ./launch/ci/smoke.sh                       # check + run
+./launch/ci/smoke.sh session               # the same run in a session of the manager, no browser
 ./launch/ci/smoke.sh presets               # the presets, applied by the form and in Python
 ./launch/ci/smoke.sh build container-run   # the container images, then the same run in containers
 ```
@@ -71,6 +72,12 @@ a release or in a pipeline:
   `docs/plugins-reference.md` is up to date, and the configurations of every campaign run of
   `launch/campaign/` are valid (`--check` of the campaign tool, below);
 - `run`: the mnist demo, server and two clients on CPU, 2 rounds on 2000 examples, on a free port;
+- `session`: the same run in a session of the manager, without a browser
+  (`launch/ci/session_check.py`): three agents started with `--register --accept-launch` before
+  their manager register by themselves, with the run's configurations as `--launch-config`; a
+  registration under a name taken is refused without touching the registered agent; the session is
+  launched through the manager's API and the three runs, launched by order, succeed. Run it after a
+  change to the registration, the orders, the launch by order or the session parameters;
 - `presets`: the session's presets (what the manager imposes on each agent) give the same
   configuration applied by the agent's form, in the browser, and by an agent launched by an order,
   in Python (`launch/ci/presets_check.py`, cases in `launch/ci/presets_cases.json`; Playwright's

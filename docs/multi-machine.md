@@ -56,7 +56,8 @@ machine of its own (every agent and every run must reach it).
   token.
 
 `manager_url`, `agent_url` and `session_token` can be written in the agent's registration
-configuration (`--config`, see `pybiscus_agent_registration_config/`) to prefill the page.
+configuration (`--config`, see `pybiscus_agent_registration_config/`) to prefill the page, or to
+register without it (`--register`, [without a browser](sessionmanager.md#3-register-the-agents)).
 
 ## Session form
 
@@ -174,6 +175,7 @@ The server logs `SSL is enabled` when it starts. Outside a session, the demo of
 `configs/cifar10_cnn/distributed/ssl/` does the same ([cli.md](cli.md#encrypting-the-flower-traffic-ssl)).
 
 Flower's TLS encrypts the traffic and authenticates the server only: the Flower clients of
-Pybiscus present no certificate (the legacy API takes none), so whoever reaches the port can join
-as a client; restrict it with a firewall. `gen_from_env.sh` no longer makes client certificates
+Pybiscus present no certificate (the legacy API takes none). In a session, each client presents a
+token of the session instead, and the server refuses the others ([security.md](security.md#flower-clients));
+outside a session (CLI), whoever reaches the port can join as a client: restrict it with a firewall. `gen_from_env.sh` no longer makes client certificates
 (`NUM_CLIENTS` of `set_env.sh`, 0 by default).

@@ -2,12 +2,15 @@
 
 # Smoke checks of a Pybiscus checkout, each step failing with a non-zero exit code:
 #
-#   launch/ci/smoke.sh [check] [run] [presets] [build] [container-run]     (default: check run)
+#   launch/ci/smoke.sh [check] [run] [session] [presets] [build] [container-run]     (default: check run)
 #
 #   check          every configuration of configs/ passes `server check` / `client check`, with the
 #                  manifests of every plugin directory; docs/plugins-reference.md is up to date;
 #                  the configurations of every run of launch/campaign/ are valid (campaign --check)
 #   run            a short federated run (mnist demo, server + 2 clients, CPU)
+#   session        the same run in a session of the manager, without a browser: agents started with
+#                  --register --accept-launch before their manager, the session launched through its
+#                  API (launch/ci/session_check.py)
 #   presets        the session's presets give the same configuration applied by an agent's form
 #                  and by an agent launched by an order (launch/ci/presets_check.py, Playwright)
 #   build          the two container images
@@ -184,6 +187,12 @@ step_run() {
     judge_run "$dir" "${codes[@]}"
 }
 
+step_session() {
+    local dir="$WORK/session"
+    prepare_run_dir "$dir" || return 1
+    $PYTHON "$REPO/launch/ci/session_check.py" "$dir" "$dir/configs" "$ROUNDS" "$TIMEOUT"
+}
+
 step_presets() {
     uv run --quiet "$REPO/launch/ci/presets_check.py"
 }
@@ -245,6 +254,7 @@ for step in "$@"; do
     case "$step" in
         check)         step_check ;;
         run)           step_run ;;
+        session)       step_session ;;
         presets)       step_presets ;;
         build)         step_build ;;
         container-run) step_container_run ;;

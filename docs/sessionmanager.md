@@ -75,6 +75,20 @@ registration.
 
 The registered agents appear in the manager's topology and on its map.
 
+**Without a browser**: an agent started with `--register` (or `PYBISCUS_REGISTER=1`) registers
+itself at its start, from its registration configuration (`--config`, see
+`pybiscus_agent_registration_config/`) and its `--invitation` if it has one, as the page would: the
+manager's bouquet when the file names none, its place, its machine. It registers again every 5 s
+while the manager does not answer (started after the agents, restarting); a refusal (a name taken,
+an invitation required) is in its log and is not retried. The session token is the file's
+`session_token`, else `$PYBISCUS_SESSION_TOKEN`, else the token file of a manager of the same
+machine started from the same directory. With [`--accept-launch`](#launched-by-order), no page of
+the agent is ever needed:
+
+```bash
+pybiscus_agent --port 5001 --config agent_5001.yml --register --accept-launch --launch-config my-client.yml
+```
+
 ### 4. Configure and run the session
 
 The ⚙ *Config* button opens the session configuration. It is greyed out until the server agent
@@ -137,8 +151,9 @@ pybiscus_agent --port 5001 --accept-launch --launch-config my-client.yml
 - The servers are launched first; the clients launched by order once every server listens (Flower's
   client does not retry), even a server its operator launches from its form.
 - An agent registered after the launch is launched at its registration.
-- The registration still goes through the agent's page; its waiting page then follows the run's
-  monitor once the order started it. The manager's page marks such an agent *🚀 by order*.
+- The registration goes through the agent's page, whose waiting page then follows the run's monitor
+  once the order started it, or through `--register` ([without a browser](#3-register-the-agents)).
+  The manager's page marks such an agent *🚀 by order*.
 - A session can mix both: the agents without `--accept-launch` are launched from their form.
 
 Nobody reads the configuration before the run starts: start an agent with `--accept-launch` only
@@ -465,8 +480,8 @@ as a system administrator sees it.
 - **A graph of the machines**, each with the processes listening on it: the session manager
   (HTTP), the agents (HTTP), the Flower server of the session (gRPC, once the session is
   configured). Each arrow goes from the process opening the connection to the one listening:
-  an agent's registration, states and its runs' logs and metrics to the manager; the manager's
-  ping, launch and stop to an agent; the training rounds of the clients to the Flower server; a
+  an agent's registration, its questions for orders, its states and its runs' logs and metrics to
+  the manager (the manager calls no agent); the training rounds of the clients to the Flower server; a
   lower manager's reports to its parent; the links between the levels (the mailbox over HTTP, or a
   shared directory). Hover an arrow or a process for its purpose.
 - **The flows between machines**: from which machine to which machine, port and protocol, what a

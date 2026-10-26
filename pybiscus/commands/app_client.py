@@ -204,12 +204,24 @@ def launch_config(
         ssl_root_certificate=conf.flower_client.ssl.root_certificate
 
     hide_legacy_entry_point_warnings()
-    fl.client.start_client(
-        server_address=conf.flower_client.server_address,
-        client=WithdrawingClient(client.to_client()),
-        root_certificates=ssl_root_certificate,
-        insecure= not ssl_secure_cnx,
-    )
+    from pybiscus.flower import clientauth
+    credential = clientauth.client_credential()
+    if credential is not None:
+        clientauth.present_client_token(*credential)
+        logm.console.log(f"🔐 Flower client presenting the session's credential of {credential[0]}")
+    import grpc
+    try:
+        fl.client.start_client(
+            server_address=conf.flower_client.server_address,
+            client=WithdrawingClient(client.to_client()),
+            root_certificates=ssl_root_certificate,
+            insecure= not ssl_secure_cnx,
+        )
+    except grpc.RpcError as error:
+        if error.code() != grpc.StatusCode.UNAUTHENTICATED:
+            raise
+        logm.console.log(f"❌ {error.details()}")
+        raise typer.Exit(code=1)
 
     # only on a normal end: the server disconnected its clients
     finalize = getattr(client, "finalize", None)

@@ -109,9 +109,9 @@ running variants and seeds and gathering the results.
 **Setup**: the CLI only; no manager, no agent.
 
 **Limits**:
-- A session of the manager needs a browser for the registrations and the session form. The agents
-  started with `--accept-launch` are then [launched by order](sessionmanager.md#launched-by-order),
-  without a tab; the others from their pages. A [repeated session](sessionmanager.md#repeated-sessions)
+- A session of the manager needs a browser for its session form. The agents started with
+  `--register` register without one, those started with `--accept-launch` are
+  [launched by order](sessionmanager.md#launched-by-order), without a tab; the others from their pages. A [repeated session](sessionmanager.md#repeated-sessions)
   is launched again by the manager alone.
 - The CLI has no tokens: only the [TLS of Flower](multi-machine.md#flower) protects its traffic.
   Keep it on one machine or a closed network.
@@ -180,8 +180,8 @@ scripts to run them, are described in [containers.md](containers.md). A cluster 
 a closed network of this kind, its network policies limiting the flows to
 [who calls whom](multi-machine.md#who-calls-whom). The CLI suits it: the Flower server as a service,
 the clients as jobs, the configurations and each client's data mounted. A session of the manager
-fits less: the tokens must outlast a restart (a persistent volume), and the registrations and the
-session form need a browser (agents started with `--accept-launch` then launch without one). No manifest
+fits less: the tokens must outlast a restart (a persistent volume), and the session form needs a
+browser (agents started with `--register --accept-launch` register and launch without one). No manifest
 is provided or tested yet.
 
 **Security**: [checklist](security.md#several-machines-on-a-closed-network).
@@ -226,7 +226,8 @@ one. Without a hierarchy, the sites are the machines of the closed network above
 > separate sites is still to come.
 >
 > **Its security guarantees are those of a closed network, not of an open one.** Flower's TLS
-> authenticates the server, not the clients. Keep the sites on a VPN, and do not expose the manager
+> authenticates the server; the session's clients present a token of their own
+> ([Flower clients](security.md#flower-clients)). Keep the sites on a VPN, and do not expose the manager
 > or the agents directly to the Internet.
 >
 > Each agent is [invited](sessionmanager.md#agents-invitations) by its manager and, between the

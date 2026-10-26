@@ -131,9 +131,27 @@ class Processes:
                 pass
 
 
+def registers(sc, a) -> bool:
+    """started with --register: it registers by itself, no page; its run then launched by order"""
+    return bool(a.get("register", sc.get("register")))
+
+
 def by_order(sc, a) -> bool:
     """started with --accept-launch: the agent's own key, else the scenario's"""
-    return bool(a.get("accept_launch", sc.get("accept_launch")))
+    return bool(a.get("accept_launch", sc.get("accept_launch"))) or registers(sc, a)
+
+
+def register_args(sc, a, work, manager, bouquet) -> list:
+    """its registration configuration, as its page would be filled in"""
+    if not registers(sc, a):
+        return []
+    lat, lon = a["geo"]
+    path = work / f"registration_{a['name']}.yml"
+    path.write_text(yaml.safe_dump({"manager_url": manager, "agent_name": a["name"], "role": a["role"],
+                                    "agent_url": f"{SCHEME}://localhost:{a['port']}", "bouquet": bouquet,
+                                    "location": a["location"], "organisation": sc.get("organisation", "pybiscus-demo"),
+                                    "geo_location": {"type": "coordinates", "latitude": lat, "longitude": lon}}))
+    return ["--config", str(path), "--register"]
 
 
 def by_order_args(sc, a) -> list:
@@ -223,7 +241,8 @@ def shoot_scenario(sc, work, rushes):
     for a in agents:
         invitation = ["--invitation", f"invitations/issued/{m['bouquet']}_agent_{a['name']}.yml"] if invited else []
         # accept_launch: the manager launches its run by order, no click in its configuration form
-        procs.start(f"agent_{a['name']}", ["pybiscus_agent", "--port", str(a["port"]), *invitation, *by_order_args(sc, a)])
+        procs.start(f"agent_{a['name']}", ["pybiscus_agent", "--port", str(a["port"]), *invitation, *by_order_args(sc, a),
+                                           *register_args(sc, a, work, manager, m["bouquet"])])
     try:
         for port in (manager_port, *(a["port"] for a in agents)):
             wait_for_port(port)
@@ -244,6 +263,20 @@ def shoot_scenario(sc, work, rushes):
             for a in agents:
                 tab, view = new_page(), f"agent:{a['name']}"
                 url = f"{SCHEME}://localhost:{a['port']}"
+                if registers(sc, a):
+                    # registered by itself: its waiting page only, once the manager knows it
+                    for _ in range(120):
+                        listing = requests.get(f"{manager}/pybiscus-session/agents", headers=manager_headers).json()
+                        if a["name"] in {**listing["clients"], **listing["servers"]}:
+                            break
+                        shooting.tick()
+                    else:
+                        raise SystemExit(f"{a['name']}: not registered by itself within 2 min (see {work}/agent_{a['name']}.log)")
+                    tab.goto(f"{url}/session/agent/registration/waiting"); tab.wait_for_timeout(1000)
+                    shooting.add_view(view, tab, AGENT_PANELS, agent_label(a["name"]))
+                    shooting.event("registered", name=a["name"], role=a["role"], location=a["location"])
+                    shooting.tick(2)
+                    continue
                 tab.goto(f"{url}/session/agent/registration"); tab.wait_for_timeout(1000)
                 shooting.add_view(view, tab, AGENT_PANELS, agent_label(a["name"]))
                 shooting.set_focus("manager", view)

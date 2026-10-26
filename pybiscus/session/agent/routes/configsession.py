@@ -3,9 +3,9 @@ import json
 import urllib.parse
 
 from flask import jsonify, redirect, render_template, request
-from pybiscus.session.agent.pybiscus_agent import reset_registration, reset_session, rest_server
+from pybiscus.session.agent.pybiscus_agent import rest_server
 import pybiscus.session.agent.pybiscus_agent as pybagent
-from pybiscus.session.auth import session_token_for, set_session_token
+from pybiscus.session.auth import session_token_for
 
 client_registration_resume = ""
 
@@ -204,24 +204,10 @@ def session_registration_parameters():
 
     if the_json:
 
-        # a new registration starts a new session; done here and not when the form is shown, since
-        # any GET of the form (reload, probe, prefetch) then wiped a registration being completed
-        reset_session()
-        reset_registration()
-        invitation = pybagent.agent_invitation
-        if invitation is not None:
-            # whatever the page sent: the invitation's identity is the one the manager accepts
-            the_json.update({"name": invitation.agent_name, "role": invitation.role, "manager_url": invitation.manager_url,
-                             "session_token": invitation.token, **({"bouquet": invitation.bouquet} if invitation.bouquet else {})})
-        pybagent.registration_parameters = the_json
-        set_session_token(the_json.get('session_token'))
-        # the agent's states go to the manager it registers with: the one of its --config file,
-        # read at start, kept them otherwise, and an agent started without one sent them nowhere
-        if the_json.get('manager_url'):
-            from pybiscus.session.agent.agent_weblog import initAgentLogger
-            initAgentLogger(f"{the_json['manager_url'].rstrip('/')}/webhook/agents", the_json.get('bouquet'), the_json.get('name'))
-            from pybiscus.session.agent import orders
-            orders.follow(the_json['manager_url'], the_json.get('name'), pybagent.call_token)
+        # done here and not when the form is shown, since any GET of the form (reload, probe,
+        # prefetch) then wiped a registration being completed
+        from pybiscus.session.agent.registration import adopt
+        adopt(the_json)
 
         return jsonify({"status": "ok"})
     

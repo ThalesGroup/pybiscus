@@ -61,6 +61,37 @@
   default list items (loggers, metrics loggers, pipeline) come from `presets.LIST_DEFAULTS`, shared
   with the launch. `record_session.py`: `accept_launch: true` (scenario or agent) and an agent's
   `launch_config`.
+* **Registration without a browser** (`docs/sessionmanager.md`, *Register the agents*): an agent
+  started with `pybiscus_agent --register` (or `PYBISCUS_REGISTER=1`) registers itself at its start
+  from its `--config` registration file and its `--invitation`, as its page would (the manager's
+  bouquet when the file names none, its place, machine, call token, `--accept-launch`); it registers
+  again every 5 s while the manager does not answer, a refusal logged and not retried. With
+  `--accept-launch`, an agent takes part in a session without any of its pages. The page and
+  `--register` share `pybiscus/session/agent/registration.py`. `record_session.py`: `register: true`
+  (scenario or agent) starts the agents with `--register`.
+* `launch/ci/smoke.sh session` (`launch/ci/session_check.py`): the smoke run in a session of the
+  manager, without a browser: three agents started with `--register --accept-launch` before their
+  manager register by themselves (the smoke run's configurations as `--launch-config`), a
+  registration under a name taken is refused without touching the registered agent, the session is
+  launched through the manager's API, the three runs launched by order succeed (round reached, final
+  checkpoint, no traceback).
+* **Flower clients authenticated in a session** (`docs/security.md`, *Flower clients*): the Flower
+  server of a session accepts only the session's clients, one connection each. The manager draws a
+  key at each session launch (kept by its repetitions); a client's token is the HMAC of its agent's
+  name under it. Each agent asks for its credential before its run (`GET
+  /pybiscus-session/flower-credential`, with its call token: a client its token, the server the key)
+  and passes it to the run through the environment, never in a YAML file. The client presents it in
+  its gRPC metadata; a client without one, with another's or under a name already connected is
+  refused (`UNAUTHENTICATED`) and stops. Flower's legacy API takes no credential:
+  `pybiscus/flower/clientauth.py` gives its gRPC server an interceptor and wraps the client's
+  channel. Outside a session (CLI), nothing changes. `smoke.sh session` launches two intruders.
+* Fix: the flows of a session left over from before the agents asked for their orders: the network
+  view (and its CSV for the firewalls) no longer lists a flow from the manager to each agent, and
+  `docs/security.md` (*Across sites*) no longer lists the client agent to the server agent nor the
+  manager to the client agents; no flow enters a client site.
+* Fix: a refused registration (a name registered under another URL) no longer replaces the
+  registered agent's metadata in the manager (its URL, place, whether it is launched by order): its
+  run was no longer launched by order.
 * `pybiscus/session/agent/presets.py`: the session's presets (options and values the manager imposes)
   applied to a configuration in Python, as the agent's form applies them in the browser, for an agent
   launched without its form; the form and the Python merge share the filter of the values calling an

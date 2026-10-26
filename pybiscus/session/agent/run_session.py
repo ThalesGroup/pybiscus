@@ -4,6 +4,7 @@ import re
 import subprocess
 import threading
 from collections import deque
+from typing import Optional
 
 import click
 from rich import print as rich_print
@@ -49,6 +50,7 @@ class RunSession:
         self.detail = ""
         # the last run launched, which the manager has run again at the deadlines of a repeated session
         self._command = None
+        self._env = {}
 
     # ---------- lecture ----------
 
@@ -115,7 +117,7 @@ class RunSession:
 
     # ---------- exécution ----------
 
-    def start(self, mode: str, command: list[str]) -> None:
+    def start(self, mode: str, command: list[str], env: Optional[dict] = None) -> None:
         with self._lock:
             if self.status == RUNNING:
                 raise PybiscusValueException("a run is already in progress")
@@ -126,21 +128,22 @@ class RunSession:
             self._stop_requested = False
             self._stop_after_round_requested = False
             self._command = command
+            self._env = env or {}
 
         self._publish({"type": "reset", "mode": mode})
 
         agent_weblog.agent_logger.log(f"launching pybiscus {mode}", state=AgentState.EXECUTING)
 
-        threading.Thread(target=self._run, args=(command,), daemon=True).start()
+        threading.Thread(target=self._run, args=(command, self._env), daemon=True).start()
 
     def relaunch(self) -> bool:
         """the last run again, with the configuration it was launched with: False if none was, or if
         it still runs"""
         with self._lock:
-            mode, command, running = self.mode, self._command, self.status == RUNNING
+            mode, command, env, running = self.mode, self._command, self._env, self.status == RUNNING
         if command is None or running:
             return False
-        self.start(mode, command)
+        self.start(mode, command, env)
         return True
 
     def stop(self) -> bool:
@@ -160,7 +163,7 @@ class RunSession:
         process.send_signal(STOP_SIGNAL)
         return True
 
-    def _run(self, command: list[str]) -> None:
+    def _run(self, command: list[str], env: dict) -> None:
         try:
             process = subprocess.Popen(
                 command,
@@ -168,7 +171,7 @@ class RunSession:
                 stderr=subprocess.STDOUT,
                 text=True,
                 bufsize=1,
-                env={**os.environ, "COLUMNS": RUN_CONSOLE_COLUMNS},
+                env={**os.environ, "COLUMNS": RUN_CONSOLE_COLUMNS, **env},
             )
             self._process = process
 

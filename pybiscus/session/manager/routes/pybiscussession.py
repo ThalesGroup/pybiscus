@@ -113,6 +113,10 @@ def pybiscus_manager_run_session():
     if session.upper_link is not None:
         session.upper_link["dropped"] = None
 
+    # a client of a former session no longer joins
+    import secrets
+    session.flower_key = secrets.token_hex(32)
+
     # set the session running flag
     pybiscus.session.manager.session_manager.session_is_running = True
     # --record films every session; the form's record, the sessions asking for it
@@ -225,8 +229,9 @@ def pybiscus_manager_register_agent():
         warning = f"{warning}; {plain}" if warning else plain
         logm.console.log(f"⚠️ {plain}")
 
-    # métadonnées transmises par le formulaire de registration (déjà envoyées, jusqu'ici ignorées)
-    pybiscus.session.manager.session_manager.registered_agents_meta[name] = {
+    # kept once the registration is accepted: a refused one (a name taken under another URL) would
+    # rewrite the registered agent's, its URL and whether it is launched by order
+    meta = {
         "role": role,
         "agent_url": agent_url,
         "geo_location": data.get("geo_location"),
@@ -239,16 +244,17 @@ def pybiscus_manager_register_agent():
         "accept_launch": data.get("accept_launch") is True,
     }
 
+    def accepted(message: str):
+        pybiscus.session.manager.session_manager.registered_agents_meta[name] = meta
+        remember_call_token(name, call_token)
+        return jsonify({"status": "success", "message": message, **({"warning": warning} if warning else {})})
+
     if role == "server":
 
         if name in pybiscus.session.manager.session_manager.registered_servers:
             
             if pybiscus.session.manager.session_manager.registered_servers[name] == agent_url:
-                remember_call_token(name, call_token)
-                return jsonify({
-                    "status": "success",
-                    "message": f"Server '{name}' already registered.",
-                })
+                return accepted(f"Server '{name}' already registered.")
 
             else:
                 return jsonify({
@@ -257,25 +263,16 @@ def pybiscus_manager_register_agent():
                 }), 400
 
         pybiscus.session.manager.session_manager.registered_servers[name] = agent_url
-        remember_call_token(name, call_token)
+        answer = accepted(f"Server '{name}' registered.")
         launch.registered_late(name)
-
-        return jsonify({
-            "status": "success",
-            "message": f"Server '{name}' registered.",
-            **({"warning": warning} if warning else {}),
-        })
+        return answer
 
     if role == "client":
 
         if name in pybiscus.session.manager.session_manager.registered_clients:
             
             if pybiscus.session.manager.session_manager.registered_clients[name] == agent_url:
-                remember_call_token(name, call_token)
-                return jsonify({
-                    "status": "success",
-                    "message": f"Client '{name}' already registered.",
-                })
+                return accepted(f"Client '{name}' already registered.")
 
             else:
                 return jsonify({
@@ -287,14 +284,9 @@ def pybiscus_manager_register_agent():
             "machine": data.get("machine"), "cpu_cores": data.get("cpu_cores"),
         }
         pybiscus.session.manager.session_manager.registered_clients[name] = agent_url
-        remember_call_token(name, call_token)
+        answer = accepted(f"Client '{name}' registered.")
         launch.registered_late(name)
-
-        return jsonify({
-            "status": "success",
-            "message": f"Client '{name}' registered.",
-            **({"warning": warning} if warning else {}),
-        })
+        return answer
 
     else:
         return jsonify({"status": "error", "message": f"Bad role={role}, it should be server or client"}), 400
@@ -378,6 +370,31 @@ def pybiscus_manager_orders():
     pace = orders.POLL_BUSY_S if sm.session_is_running else orders.POLL_IDLE_S
     # an agent started and not registered yet asks too: alive, nothing to do
     return jsonify({"orders": orders.take(name, request.headers.get(orders.CALL_TOKEN_HEADER)), "next": pace})
+
+
+# an agent about to launch its run: a client's Flower token, or the server's key to check them. Given
+# against the call token: the session token is every participant's, and would give another's token
+@pybiscus_manager_app.route("/pybiscus-session/flower-credential", methods=["GET"])
+@session_access
+@agent_access
+def pybiscus_manager_flower_credential():
+    from pybiscus.flower.clientauth import client_token
+    sm = pybiscus.session.manager.session_manager
+    name = request.args.get("agent")
+    refusal = order_refusal(name)
+    if refusal:
+        return refusal
+    expected = sm.agent_call_tokens.get(name)
+    offered = request.headers.get(orders.CALL_TOKEN_HEADER, "")
+    if not expected or not hmac.compare_digest(offered.encode(), expected.encode()):
+        return jsonify({"status": "error", "message": f"{name} is not an agent registered with this call token"}), 403
+    if sm.flower_key is None:
+        return jsonify({"status": "error", "message": "no session is launched: its Flower credentials are drawn at its launch"}), 409
+    if name in sm.registered_servers:
+        return jsonify({"status": "success", "key": sm.flower_key})
+    if name in sm.registered_clients:
+        return jsonify({"status": "success", "client": name, "token": client_token(sm.flower_key, name)})
+    return jsonify({"status": "error", "message": f"{name} is not registered"}), 403
 
 
 @pybiscus_manager_app.route("/pybiscus-session/orders/<int:order_id>", methods=["POST"])

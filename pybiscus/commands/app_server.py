@@ -381,6 +381,12 @@ def launch_config(
 
     hide_legacy_entry_point_warnings()
 
+    from pybiscus.flower import clientauth
+    key = clientauth.server_key()
+    if key is not None:
+        clientauth.require_client_tokens(key)
+        logm.console.log("🔐 Flower clients authenticated: only the clients of the session are accepted, one connection each")
+
     # starting flower server
     fl.server.start_server(
         server_address = conf.flower_server.listen_address,

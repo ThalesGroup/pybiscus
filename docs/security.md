@@ -83,18 +83,22 @@ networks, and let through only the flows below.
 
 | from | to | port (default) |
 |---|---|---|
-| client agent, its operator's browser, its runs (webhooks) | manager | 5555 |
-| client agent | server agent | 5000 |
+| client agent (its registration, its orders), its operator's browser, its runs (webhooks) | manager | 5555 |
 | Flower client | Flower server | 3333 |
-| manager | each client agent (state, stop, relaunch) | 5000 |
+
+No flow enters a client site: the manager calls no agent, and the agents call no other agent
+([who calls whom](multi-machine.md#who-calls-whom)). A client agent may listen on its loopback
+when its operator's browser runs on its machine. The browser of the manager's operator also reaches
+the server agent (5000) for the session form: a flow into the server's site when that browser is
+elsewhere.
 
 **A hierarchical session** (a manager per site): each site keeps its own closed network, and only
 the links between the levels cross the VPN. With the `manager` link transport and each relay run
 at the upper site, as for an [invited site](sessionmanager.md#invitations), **one flow** crosses it: from each lower manager to the upper one (its topology,
 the constraints it receives, the link's mailbox). With a relay at the lower site (the `directory`
 transport requires it), the relay's flows cross too: its agent, its operator's browser and its run
-to the upper manager and server agent, its Flower client to the upper Flower server, and the upper
-manager to the relay's agent ([link transports](sessionmanager.md#bouquets-of-a-hierarchical-session)).
+to the upper manager, its Flower client to the upper Flower server
+([link transports](sessionmanager.md#bouquets-of-a-hierarchical-session)).
 
 The ports are the defaults of the code: the manager's `--port` (5555), an agent's `--port` (5000),
 the Flower server's `server_port` in the session form (proposed as 3333 + the manager's port −
@@ -102,6 +106,21 @@ the Flower server's `server_port` in the session form (proposed as 3333 + the ma
 The manager's [network view](sessionmanager.md#network-view) lists the flows between machines of a
 running session, with their ports (**⬇ flows (CSV)**): the list to give to whoever sets the VPN
 or the firewall.
+
+## Flower clients
+
+In a session of the manager, the Flower server accepts only the clients of the session, one
+connection each. At each session launch, the manager draws a key; a client's token is derived from
+it and from its agent's name. Each agent asks the manager for its credential with its call token
+(the session token, every participant's, gives none) and passes it to its run through the
+environment, never in a configuration file: a client presents its name and token in the metadata of
+its gRPC connection, the server checks them with the key and refuses a second connection under the
+same name. A client launched outside the session, with a token of another session or under a name
+already connected, is refused (`UNAUTHENTICATED`, said in both logs) and stops. A participant thus
+opens no more Flower clients than it registered agents, which bounds the colluders of an attack
+against the [robust aggregation](robust-aggregation.md). The repetitions of a session keep its
+tokens. The legacy API of Flower takes no credential: Pybiscus adds it to its gRPC server and
+channel (`pybiscus/flower/clientauth.py`).
 
 ## Code and data
 
@@ -140,7 +159,8 @@ They are why the guarantees are those of a closed network:
 | limit | meanwhile |
 |---|---|
 | the session token is shared by every participant, without expiry or revocation: whoever holds it may register an agent under any name not invited | [invite the agents](sessionmanager.md#agents-invitations) (`--require-agent-invitation`): a token per agent, bound to its name and role, expiring, revocable; between the managers of a hierarchical session, [invite the sites](sessionmanager.md#invitations). Otherwise give it to the participants only, and restart the manager with a new token (`--session-token`) to revoke it |
-| the Flower server does not authenticate its clients (its TLS authenticates the server only): whoever reaches its port may join a round | restrict its port with a firewall to the clients' addresses |
+| outside a session of the manager (CLI, campaigns), the Flower server does not authenticate its clients (its TLS authenticates the server only): whoever reaches its port may join a round | restrict its port with a firewall to the clients' addresses. In a session, [the clients are authenticated](#flower-clients) |
+| in a session, a Flower client's token travels in clear without Flower's TLS: whoever reads the traffic may replay it | [Flower's TLS](multi-machine.md#flower) beyond one machine |
 | an SSH tunnel to a component on 127.0.0.1 cannot be told from a local access | start it with `--require-token` |
 
 ## Checklist by scenario

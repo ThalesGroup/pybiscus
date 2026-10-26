@@ -241,13 +241,34 @@ def interpretConfigurationFile( mode: str, file_path: str ):
 
         from pybiscus.session.agent.run_session import run_session
 
-        run_session.start( mode, ["uv", "run", "pybiscus", mode, "launch", file_path ] )
+        run_session.start( mode, ["uv", "run", "pybiscus", mode, "launch", file_path ], flower_credential_env(mode) )
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
     return jsonify({mode: "pybiscus run started", "monitor": "/run"}), 202
 
+
+def flower_credential_env(mode: str) -> dict:
+    """the run's Flower credential, asked of the manager the agent is registered with; none for an
+    agent used alone"""
+    manager_url, name = registration_parameters.get("manager_url"), registration_parameters.get("name")
+    if not manager_url or not name:
+        return {}
+    import requests
+    from pybiscus.flower import clientauth
+    from pybiscus.session.manager.orders import CALL_TOKEN_HEADER
+    url = f"{manager_url.rstrip('/')}/pybiscus-session/flower-credential"
+    try:
+        answer = requests.get(url, params={"agent": name}, headers={**headers_for(url), CALL_TOKEN_HEADER: call_token}, timeout=10)
+        credential = answer.json()
+    except (requests.RequestException, ValueError) as error:
+        raise PybiscusInternalException(f"the manager gave no Flower credential: {type(error).__name__}") from error
+    if answer.status_code != 200:
+        raise PybiscusInternalException(f"the manager gave no Flower credential: {credential.get('message', answer.status_code)}")
+    if mode == "server":
+        return {clientauth.KEY_ENV: credential["key"]}
+    return {clientauth.CLIENT_ENV: credential["client"], clientauth.TOKEN_ENV: credential["token"]}
 
 # ..........................................................
 # ............ POST /config/json/to_yaml ...................
@@ -511,9 +532,18 @@ def parse_args():
         help="with --accept-launch: the run's configuration the session's presets apply to (this machine's data "
              "paths, devices...); default: the configuration form's defaults ($PYBISCUS_LAUNCH_CONFIG)"
     )
+    parser.add_argument(
+        '--register',
+        action='store_true',
+        default=os.environ.get("PYBISCUS_REGISTER") == "1",
+        help="register with the manager at the start, from the --config file (and the --invitation), without the "
+             "registration page; asked again while the manager does not answer (default: $PYBISCUS_REGISTER=1)"
+    )
     from pybiscus.session import tls
     tls.add_tls_arguments(parser)
     args = parser.parse_args()
+    if args.register and not (args.config or args.invitation):
+        parser.error("--register needs the registration configuration: --config, or --invitation")
     if args.launch_config and not args.accept_launch:
         parser.error("--launch-config goes with --accept-launch")
     if args.launch_config and not os.path.isfile(args.launch_config):
@@ -567,6 +597,9 @@ def main():
     from pybiscus.session.agent import ui_settings
     ui_settings.set_agent_port(args.port)
 
+    browsed_host = "127.0.0.1" if args.host in ("0.0.0.0", "::") else args.host
+    own_url = f"{web_scheme}://{browsed_host}:{args.port}"
+
     started = None
     if args.config is not None or agent_invitation is not None:
 
@@ -588,8 +621,17 @@ def main():
             from pybiscus.session.agent import orders
             orders.follow(config["manager_url"], config["agent_name"], call_token)
 
+            if args.register:
+                if config.get("role") not in ("server", "client"):
+                    raise ValueError(f"role: 'server' or 'client' expected, not {config.get('role')!r}")
+                from pybiscus.session.agent.registration import register_until_accepted
+                register_until_accepted(config, own_url)
+
         except Exception as e:
             print(f"YAML config loading error : {e}")
+            # registering was asked for: an agent waiting for a page nobody opens would look started
+            if args.register:
+                sys.exit(2)
 
     agent_weblog.agent_logger.log(f"Starting Pybiscus-Agent on {args.host}:{args.port}", started=started)
 
@@ -601,8 +643,7 @@ def main():
     warning = tls.plain_http_warning("agent", args.host, args)
     if warning:
         print(warning, flush=True)
-    browsed_host = "127.0.0.1" if args.host in ("0.0.0.0", "::") else args.host
-    print_access("agent", f"{tls.scheme(args)}://{browsed_host}:{args.port}/session/agent/registration", agent_token)
+    print_access("agent", f"{own_url}/session/agent/registration", agent_token)
 
     web_server.serve(rest_server, args.host, args.port, tls.ssl_context(args), debug=args.debug)
 

@@ -414,8 +414,9 @@ last_caption: 4, blend: 0}` a brisker 40-second one.
 | `inset_viewport` | the window of an agent's tab once its run is launched, narrow so that its run monitor stays readable as an inset | `760 × 470` |
 | `period` | pause between two captures, in seconds (the captures themselves take a few tenths) | `0.35` |
 | `manager` | `bouquet` (the session's name), `location`, `geo` (`[latitude, longitude]`) | required |
-| `agents` | `name`, `role` (`server` or `client`), `location`, `geo`; the first server holds the session; `accept_launch: true`: the agent is started with `--accept-launch`, the manager launches its run by order (no click in its form, its tab follows the run), with `launch_config: <file>` (relative to the repository) as its `--launch-config` | required |
+| `agents` | `name`, `role` (`server` or `client`), `location`, `geo`; the first server holds the session; `accept_launch: true`: the agent is started with `--accept-launch`, the manager launches its run by order (no click in its form, its tab follows the run), with `launch_config: <file>` (relative to the repository) as its `--launch-config`; `register: true`: the agent is started with `--register` (a registration configuration written from its keys) and registers by itself, its tab opened on its waiting page once the manager knows it; it implies `accept_launch` | required |
 | `organisation` | organisation declared by every agent | `pybiscus-demo` |
+| `accept_launch`, `register` | as the agents' keys, for every agent without its own | none |
 | `session.options` | options chosen in the server's session form, by their labels (`model: MNIST CNN`); `" "` selects an optional section (`num_rounds`, `data_partition`) | required |
 | `session.values` | values of the form's fields; `num_rounds` is required | required |
 | `plugin_manifests` | manifests given to the agents, relative to the repository | the bundled one |

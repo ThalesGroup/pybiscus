@@ -119,6 +119,9 @@ session_client_id_counter = -1
 session_clients = []
 late_client_cids = {}         # name -> cid of the clients registered after the launch
 registered_clients_cpu = {}   # name -> {machine, cpu_cores}, sent by the agent at registration
+# drawn at each session launch, kept by its repetitions (their runs are launched again as they were):
+# the clients' Flower tokens derive from it (pybiscus.flower.clientauth)
+flower_key = None
 
 def clear_session():
     global registered_clients
@@ -156,6 +159,8 @@ def clear_session():
     upper_session_link = None
     global agent_call_tokens
     agent_call_tokens = {}
+    global flower_key
+    flower_key = None
 
 def client_threads(name):
     """the physical cores of the client's machine shared between the session's clients on it, or
