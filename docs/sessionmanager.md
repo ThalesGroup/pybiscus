@@ -138,10 +138,9 @@ The manager shows, live:
   running, finished, failed, stopped, invalid config), the round and the last value of the main
   metric (the server's test, a client's evaluation on its data); under it, dimmed, the agents
   started with a registration configuration (`--config`, as `launch/agent/cli/500x.sh`) that have
-  not registered yet, each with *register ↗* to its registration page; the manager asks them every
-  15 s whether they still run, and marks *not reachable* those that do not answer (stopped, or a
-  firewall between the manager and the agent: such an agent can still register); the map of the
-  sites;
+  not registered yet, each with *register ↗* to its registration page; they ask the manager for
+  its orders every 5 s, and those silent for 15 s are marked *not reachable* (stopped, or cut from
+  the manager); the map of the sites;
 - the main metric per round, its last 40 rounds: the clients' training and evaluation (the average of
   all the clients, weighted by their examples), the server's test; curves that coincide (evaluation
   and test when the clients validate on the official test set) are drawn in dashes of their colours
@@ -588,10 +587,17 @@ an agent ignores one it receives, leaves the field free and says so under it and
   🔑 button); it then presents it to the manager (registration, session parameters, logs) and passes
   it to the runs it launches (webhooks). It does not open the manager's pages.
 - **Call token of an agent**: made by the agent at its start and given to the manager at its
-  registration; the manager presents it when it calls the agent (stop, relaunch, the session form
-  it opens). The run configuration a client posts to the server's agent is kept once the manager
-  vouches for the client's token (`/pybiscus-session/agent-token`): the session token alone, held by
-  every participant, let any of them stop another one's run or post a configuration in its name.
+  registration. The agent presents it when it asks the manager for its orders and posts a client's
+  run configuration (the session token alone, held by every participant, would let any of them take
+  another one's orders or post a configuration in its name); the manager's page opens the server
+  agent's session form with it.
+
+**Orders.** The manager calls no agent: each agent asks it for its orders
+(`/pybiscus-session/orders`), every second during a session, every 5 s otherwise, and posts their
+results. The orders are the stop of a run (*Drop session*), its stop after the current round, the
+relaunch of a repeated session, the probe of the server's port before its clients are relaunched,
+and a client's run configuration for the server agent, kept in the server's reports. An agent may
+thus sit behind a NAT, or listen on its loopback only.
 
 A token is kept, readable by its owner only, in `.pybiscus-cache/tokens/` of the directory where
 the component was started: a restart keeps it (the browsers stay logged in). Delete the file to get

@@ -1,4 +1,3 @@
-import hmac
 import time
 from typing import Optional
 
@@ -44,22 +43,3 @@ def refuse_agent(name, role, reason: str) -> None:
     while len(sm.refused_agents) > MAX_REFUSED:
         sm.refused_agents.pop(next(iter(sm.refused_agents)))
     logm.console.log(f"⛔ registration of {name} refused: {reason}")
-
-
-def vouches_for(name, role, token) -> Optional[str]:
-    """why this manager does not vouch for the token as the one of this agent, None when it does
-    (a server's agent checking the run config a client posts to it)"""
-    if not isinstance(token, str) or not token:
-        return "no token"
-    invited = invitations.invited_agent(sm.manager_port, token)
-    if invited is not None:
-        if invited["name"] != name or invited["role"] != role:
-            return f"the token is the invitation of {invited['name']} ({invited['role']}), not of {name} ({role})"
-        return None
-    if sm.session_token and hmac.compare_digest(token.encode(), sm.session_token.encode()):
-        if invitations.reserved_agent(sm.manager_port, name):
-            return f"{name} is an invited agent: its invitation's token is required"
-        if sm.require_agent_invitation:
-            return "this manager requires an invitation of its agents"
-        return None
-    return invitations.agent_invitation_problem(sm.manager_port, token) or "not a token of this session"

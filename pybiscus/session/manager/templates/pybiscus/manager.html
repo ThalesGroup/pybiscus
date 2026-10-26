@@ -1382,7 +1382,7 @@
       const t = ag.time ? new Date(ag.time * 1000) : null;
       const when = t ? `started ${pad2(t.getHours())}:${pad2(t.getMinutes())}` : 'started';
       const lost = ag.reachable === false
-        ? '<span class="chip" title="the manager could not reach it: stopped, or a firewall in between">not reachable</span>' : '';
+        ? '<span class="chip" title="the manager no longer hears from it: stopped, or cut from the manager">not reachable</span>' : '';
       const link = ag.url ? `<a href="${esc(ag.url.replace(/\/$/, ''))}/session/agent/registration" target="_blank" rel="noopener" title="open its registration page">register ↗</a>` : '';
       return `<div class="node started${lost ? ' lost' : ''}" title="${esc([name, ag.role, ag.bouquet && '💐 ' + ag.bouquet, ag.url].filter(Boolean).join(' · '))}">`+
         `<span class="st"></span><span>${ROLE_ICON[ag.role] || '⚪'}</span><span class="name">${esc(name)}</span><span class="when">${lost || when}</span>${link}</div>`;

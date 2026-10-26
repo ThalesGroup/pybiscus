@@ -2,10 +2,9 @@ import threading
 import time
 from typing import Optional
 
-import requests
-
 import pybiscus.core.pybiscus_logger as logm
 import pybiscus.session.manager.session_manager as sm
+from pybiscus.session.manager import orders
 from pybiscus.core.schedule import ConfigSchedule, Schedule
 from pybiscus.session.agent.agent_weblog import AgentState
 from pybiscus.session.manager.network import flower_server_address
@@ -105,40 +104,37 @@ class Repetition:
         self.status, self.next_deadline = RUNNING, None
         servers = [name for name in participants if name in sm.registered_servers]
         for name in servers:
-            if problem := self._relaunch_one(name, participants[name], sm.agent_headers(name)):
+            if problem := self._relaunch_one(name):
                 return problem
         # Flower's legacy client does not retry: started before its server listens, it fails at once
         for name in servers:
-            if problem := self._wait_listening(name, participants[name], sm.agent_headers(name)):
+            if problem := self._wait_listening(name):
                 return problem
         for name in participants:
-            if name not in sm.registered_servers and (problem := self._relaunch_one(name, participants[name], sm.agent_headers(name))):
+            if name not in sm.registered_servers and (problem := self._relaunch_one(name)):
                 return problem
         logm.console.log(f"🔁 session {self.sessions} launched")
         return None
 
-    def _relaunch_one(self, name: str, url: str, headers: dict) -> Optional[str]:
-        try:
-            response = requests.post(f"{url.rstrip('/')}/run/relaunch", headers=headers, timeout=10)
-        except requests.RequestException as error:
-            return f"{name} could not be reached to launch session {self.sessions} ({type(error).__name__})"
-        if response.status_code != 202:
-            return f"{name} did not launch session {self.sessions} (HTTP {response.status_code}: {response.text.strip()})"
+    def _relaunch_one(self, name: str) -> Optional[str]:
+        answer = orders.ask(name, orders.RELAUNCH)
+        if answer is None:
+            return f"{name} did not take the order to launch session {self.sessions} (stopped, or cut from the manager)"
+        if not answer.get("done"):
+            return f"{name} did not launch session {self.sessions} ({answer.get('reason', '')})"
         return None
 
-    def _wait_listening(self, name: str, url: str, headers: dict) -> Optional[str]:
+    def _wait_listening(self, name: str) -> Optional[str]:
         port, _ = flower_server_address()
         if port is None:
             return f"the port of {name}'s Flower server is unknown: its clients cannot wait for it"
         deadline = time.monotonic() + SERVER_START_LIMIT_S
         while time.monotonic() < deadline:
-            try:
-                response = requests.get(f"{url.rstrip('/')}/run/listening", params={"port": port}, headers=headers, timeout=10)
-                state = response.json()
-            except (requests.RequestException, ValueError) as error:
-                return f"{name} could not be reached while its server starts ({type(error).__name__})"
-            if response.status_code != 200:
-                return f"{name} did not probe its server's port {port} (HTTP {response.status_code}: {state.get('status', '')})"
+            state = orders.ask(name, orders.LISTENING, port=port)
+            if state is None:
+                return f"{name} did not answer while its server starts"
+            if "listening" not in state:
+                return f"{name} did not probe its server's port {port} ({state.get('reason', '')})"
             if state.get("listening"):
                 return None
             if not state.get("running"):

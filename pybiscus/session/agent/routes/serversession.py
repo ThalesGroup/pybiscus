@@ -15,7 +15,7 @@ from pybiscus.session.agent.ConfigSession import make_session_model
 from pybiscus.session.agent.pybiscus_agent import rest_server
 from pathlib import Path
 import pybiscus.core.pybiscus_logger as logm
-from pybiscus.session.auth import session_access, peer_access
+from pybiscus.session.auth import session_access
 import pybiscus.session.agent.pybiscus_agent as pybagent
 
 # the form's state (options, list items, values), replayed on a freshly generated page: the
@@ -230,37 +230,3 @@ def sessionConfigDownload():
 
     return generate_model_page(config_session,'pybiscus.session.agent.front_end','agent.html','launch_session_button', lists_management + presets_js,
                                identity=pybagent.agent_identity())
-
-# ..........................................................
-# ... POST /session/log/client/<client_name>/runconfig .....
-# ..........................................................
-# called by client back-end to store its pybiscus yaml run parameters
-# ..........................................................    
-
-@rest_server.route("/session/log/client/<client_name>/runconfig", methods=["POST"])
-@session_access
-@peer_access
-def log_client_runconfig(client_name: str):
-    """ the client agent front-end after setting its run configuration
-    send it to the server which stores them
-    """
-
-    if "file" not in request.files:
-        return jsonify({"error": "no file sent"}), 400
-
-    file = request.files["file"]
-
-    # check YAML extension
-    if not file.filename.endswith((".yaml", ".yml")):
-        return jsonify({"error": "Bad file format: yaml file required"}), 400
-
-    # define storage path
-    from pybiscus.commands.apps_common import client_configs_dir
-    file_path = client_configs_dir() / f"{client_name}.yml"
-
-    # create the directory
-    ensure_file_dir_exists(file_path)
-
-    file.save(file_path)
-
-    return jsonify({"message": "yaml file received", "path": str(file_path)})

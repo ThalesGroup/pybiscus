@@ -32,13 +32,25 @@
   (`launch/agent/received_agent_invitation.sh`); the managers' scripts take only the
   `*_downto_*` files there. `record_session.py`: `agent_invitations: true | required` in a simple
   scenario (HTTPS).
-* Each agent gives the manager a **call token** at its registration, which the manager presents
-  when it calls it (stop, relaunch, the session form it opens), and the server's agent keeps a
-  client's run configuration once the manager vouches for the client's token: with the session
-  token alone, any participant could stop another one's run or post a configuration in its name.
-* An agent's `/run/listening`, which the manager asks before it launches the clients of a repeated
-  session again, probes only the port of the agent's server run (read from its configuration):
-  any port asked for told which services listen on the loopback of its machine.
+* **The agents ask the manager for orders**: the manager never calls an agent any more. Each agent
+  asks the manager every second during a session, every 5 s otherwise
+  (`GET /pybiscus-session/orders`), executes the orders queued for it (stop, stop after the round,
+  relaunch of a repeated session, whether its server listens) and posts their results; an agent
+  unheard of for 15 s is shown as no longer heard from. A client's run configuration goes to the
+  server's agent through the manager (`POST /pybiscus-session/runconfig`), no longer from agent to
+  agent. A client agent may thus sit behind a NAT, or listen on its loopback when its operator's
+  browser runs on its machine; the server agent is still opened by the browser of the manager's
+  operator (the session form), the Flower server by the Flower clients. The agent's routes `/run/relaunch`, `/run/listening`,
+  `/run/stop-after-round` and the server's `/session/log/client/<name>/runconfig` are gone.
+* Each agent gives the manager a **call token** at its registration, which it presents when it asks
+  for its orders (`X-Pybiscus-Call-Token`) and when it sends a client's run configuration: with the
+  session token alone, any participant could take another one's orders or post a configuration in
+  its name. The manager presents it to open the server agent's session form.
+* The listening probe, which the manager asks before it launches the clients of a repeated session
+  again, checks only the port of the agent's server run (read from its configuration): any port
+  asked for would tell which services listen on the loopback of its machine.
+* `record_session.py`: scenario keys `repeat` and `sessions`, `stop_after_round`,
+  `drop_after_round` (`docs/recording.md`).
 * `docs/security.md`: what the manager and the agents protect, code and data, the defences against
   the participants, the known limits and a checklist by scenario; linked from the usage scenarios,
   the docs index, `multi-machine.md` and `sessionmanager.md`.
@@ -51,9 +63,7 @@
   session over several sites and for a hierarchical one (one flow, lower manager to upper manager,
   with the `manager` link transport and the relays at the upper site).
 * `docs/multi-machine.md`: one agent per machine, with the machine's role (two on a machine that
-  both aggregates and holds data), the manager on the server's machine or on its own. The client
-  agents listen beyond the loopback too: the manager calls them for the state, the stop and the
-  relaunch of their runs (the page said they could stay on 127.0.0.1).
+  both aggregates and holds data), the manager on the server's machine or on its own.
 * The server loads its initial weights (`server_run.weights_path`) as tensors only
   (`weights_only=True`): for a path starting with `http`, Lightning unpickled the file whole.
 * `certificates/`: no default password for the CA's key any more (`set_env.sh` held `12345678`):

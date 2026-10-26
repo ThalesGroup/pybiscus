@@ -179,8 +179,8 @@ scripts to run them, are described in [containers.md](containers.md). A cluster 
 a closed network of this kind, its network policies limiting the flows to
 [who calls whom](multi-machine.md#who-calls-whom). The CLI suits it: the Flower server as a service,
 the clients as jobs, the configurations and each client's data mounted. A session of the manager
-fits less: the manager calls each agent, which needs a stable service name, the tokens must outlast
-a restart (a persistent volume), and the launch needs a browser on the agents' pages. No manifest
+fits less: the tokens must outlast a restart (a persistent volume), and the launch needs a browser
+on the agents' pages. No manifest
 is provided or tested yet.
 
 **Security**: [checklist](security.md#several-machines-on-a-closed-network).

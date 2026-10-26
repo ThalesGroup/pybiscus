@@ -194,6 +194,8 @@ def session_registration_parameters():
         if the_json.get('manager_url'):
             from pybiscus.session.agent.agent_weblog import initAgentLogger
             initAgentLogger(f"{the_json['manager_url'].rstrip('/')}/webhook/agents", the_json.get('bouquet'), the_json.get('name'))
+            from pybiscus.session.agent import orders
+            orders.follow(the_json['manager_url'], the_json.get('name'), pybagent.call_token)
 
         return jsonify({"status": "ok"})
     

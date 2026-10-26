@@ -38,9 +38,10 @@ never on a machine others reach.
   of its own in place of the session token, bound to the agent's name and role, expiring, revocable;
   `--require-agent-invitation` refuses the agents without one. The same between the managers of a
   hierarchical session, per site ([details](sessionmanager.md#invitations)).
-- A **call token** per agent, given to the manager at its registration: the manager calls an agent
-  with it, and no other participant holds it. A client's run configuration is kept by the server's
-  agent once the manager vouches for the client's token.
+- A **call token** per agent, given to the manager at its registration: the agent proves with it
+  that it is the one registered under its name when it asks the manager for its orders, and no
+  other participant holds it. The manager calls no agent: the agents ask it for their orders (stop,
+  relaunch), and a client's run configuration reaches the server agent through it.
 - Kept in `.pybiscus-cache/tokens/`, readable by their owner only, from one start to the next.
   Given once in the URL (`…?token=…`), then kept by the browser in a cookie (`HttpOnly`,
   `SameSite=Lax`, `Secure` in HTTPS); compared in constant time.
@@ -137,7 +138,6 @@ They are why the guarantees are those of a closed network:
 | the session token is shared by every participant, without expiry or revocation: whoever holds it may register an agent under any name not invited | [invite the agents](sessionmanager.md#agents-invitations) (`--require-agent-invitation`): a token per agent, bound to its name and role, expiring, revocable; between the managers of a hierarchical session, [invite the sites](sessionmanager.md#invitations). Otherwise give it to the participants only, and restart the manager with a new token (`--session-token`) to revoke it |
 | the Flower server does not authenticate its clients (its TLS authenticates the server only): whoever reaches its port may join a round | restrict its port with a firewall to the clients' addresses |
 | an SSH tunnel to a component on 127.0.0.1 cannot be told from a local access | start it with `--require-token` |
-| the manager calls the agents (stop, relaunch): it must reach them | place it where it reaches them |
 
 ## Checklist by scenario
 

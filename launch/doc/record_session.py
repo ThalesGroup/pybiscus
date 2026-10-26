@@ -262,6 +262,9 @@ def shoot_scenario(sc, work, rushes):
             fill_session_form(form, sc["session"]["options"], sc["session"]["values"], shooting)
             config = session_config(form)
             shooting.remove_view("session-form"); form.close()
+            # repeat: launched again at each deadline (the manager orders the agents to relaunch their runs)
+            if sc.get("repeat"):
+                config["repeat"] = sc["repeat"]
             run_session(manager, config, m["bouquet"], manager_headers)
             shooting.set_focus("manager")
             shooting.event("started"); shooting.tick(3)
@@ -280,20 +283,48 @@ def shoot_scenario(sc, work, rushes):
 
             shooting.set_focus("manager", *(f"agent:{c}" for c in clients))
             shown, deadline = None, time.time() + sc.get("timeout", 1800)
+            # the manager's orders to the agents, exercised: stop after a round, drop, sessions of a repetition
+            stop_after, drop_after, sessions = sc.get("stop_after_round"), sc.get("drop_after_round"), sc.get("sessions", 1)
+            ordered = last_running = False
             while True:
                 current = page_text(page, "round-num")
                 if current != shown:
                     turn = clients[(int(current) - 1) % len(clients)] if current.isdigit() and int(current) > 0 and clients else (clients or [""])[0]
                     shooting.event("round", round=current or "…", rounds=rounds, turn=turn)
                     log(f"round {current or '…'} / {rounds}"); shown = current
+                if not ordered and current.isdigit() and (stop_after or drop_after) and int(current) >= (stop_after or drop_after):
+                    ordered = True
+                    if stop_after:
+                        r = requests.post(f"{manager}/pybiscus-session/stop-after-round", headers=manager_headers)
+                        assert r.status_code == 202, f"stop after round: {r.status_code} {r.text}"
+                        shooting.event("stopping", round=current); log(f"stop after round {current} ordered")
+                    else:
+                        r = requests.delete(f"{manager}/pybiscus-session/params", headers=manager_headers)
+                        assert r.ok, f"drop: {r.status_code} {r.text}"
+                        shooting.event("dropped"); log(f"session dropped at round {current}")
                 shooting.tick()
                 status = [requests.get(f"{SCHEME}://localhost:{a['port']}/run/status", headers=H).json().get("status") for a in agents]
-                if all(s in RUN_ENDED for s in status):
+                repetition = requests.get(f"{manager}/pybiscus-session/agents", headers=manager_headers).json().get("repetition") or {}
+                if repetition.get("status") == "failed":
+                    raise SystemExit(f"the repetition failed: {repetition.get('reason')} (logs in {work})")
+                # the last session's runs seen going: the previous one's had ended too
+                last_running = last_running or (repetition.get("sessions", 1) >= sessions and any(s not in RUN_ENDED for s in status))
+                if all(s in RUN_ENDED for s in status) and (sessions == 1 or last_running):
                     break
                 if time.time() > deadline:
                     raise SystemExit(f"the runs did not end within {sc.get('timeout', 1800)} s: {status}")
-            if any(s != "success" for s in status):
+            if drop_after:
+                if any(s == "success" for s in status):
+                    raise SystemExit(f"a run went on after the drop: {dict(zip((a['name'] for a in agents), status))} (logs in {work})")
+                log(f"runs after the drop: {dict(zip((a['name'] for a in agents), status))}")
+                browser.close()
+                return
+            # a server stopped after its round ends "stopped", its clients as at the last round
+            expected = {a["name"]: "stopped" if stop_after and a["role"] == "server" else "success" for a in agents}
+            if any(s != expected[a["name"]] for a, s in zip(agents, status)):
                 raise SystemExit(f"a run did not succeed: {dict(zip((a['name'] for a in agents), status))} (logs in {work})")
+            if sessions > 1:
+                log(f"{repetition.get('sessions')} sessions of the repetition")
             # the agents' last states and the last round's metrics reach the page shortly after the runs end
             for _ in range(20):
                 states = requests.get(f"{manager}/pybiscus-session/agents", headers=manager_headers).json().get("states") or {}

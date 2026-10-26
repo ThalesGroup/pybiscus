@@ -38,41 +38,20 @@ web_scheme  = "http"
 tokens_are_required = False
 # --invitation: the one this agent registers with (pybiscus.session.invitations.AgentInvitation)
 agent_invitation = None
-# given to the manager at the registration, which presents it when it calls this agent: the session
-# token, shared by the participants, let any of them stop another one's run
+# given to the manager at the registration: this agent presents it when it asks for its orders (the
+# session token, shared by the participants, would let any of them take another one's orders), and
+# the manager's page opens the server agent's session form with it
 call_token = secrets.token_urlsafe(32)
 
 
-def peer_vouched(token: str) -> bool:
-    """a client's token, as the manager this agent registered with vouches for it"""
-    from flask import request as flask_request
-    client = (flask_request.view_args or {}).get("client_name")
-    manager_url = registration_parameters.get("manager_url")
-    if not manager_url:
-        # used alone, without a manager: the session token it was given, as before
-        own = os.environ.get(SESSION_TOKEN_ENV)
-        return bool(own) and secrets.compare_digest(token, own)
-    import requests
-    try:
-        answer = requests.post(f"{manager_url.rstrip('/')}/pybiscus-session/agent-token", headers=headers_for(manager_url),
-                               json={"name": client, "role": "client", "token": token}, timeout=5)
-        vouched = answer.ok and answer.json().get("vouched") is True
-    except (requests.RequestException, ValueError):
-        vouched = False
-    if not vouched:
-        logm.console.log(f"⛔ the run config of {client} refused: the manager does not vouch for its token")
-    return vouched
-
-
-# the session token opens none of the agent's routes: the manager calls it with its call token,
-# a client's run config is vouched for by the manager
+# the session token opens none of the agent's routes: the manager's page opens the session form with
+# the call token
 require_tokens(rest_server, "agent",
                enabled=lambda: tokens_are_required,
                cookie=lambda: f"pybiscus-agent-{agent_port}",
                access_token=lambda: agent_token,
                session_token=lambda: None,
-               call_token=lambda: call_token,
-               peer_check=peer_vouched)
+               call_token=lambda: call_token)
 # no CORS: every page of the agent calls it with relative URLs (same origin); other agents
 # and the session manager reach it server to server, where CORS does not apply. A wildcard
 # let any web page open in a browser of the host read the agent's responses
@@ -587,6 +566,9 @@ def main():
 
             initAgentLogger( f'{config["manager_url"]}/webhook/agents', config.get("bouquet"), config["agent_name"] )
             started = {"url": config.get("agent_url"), "role": config.get("role")}
+            # its manager knows it is alive from its questions, and orders it once it is registered
+            from pybiscus.session.agent import orders
+            orders.follow(config["manager_url"], config["agent_name"], call_token)
 
         except Exception as e:
             print(f"YAML config loading error : {e}")

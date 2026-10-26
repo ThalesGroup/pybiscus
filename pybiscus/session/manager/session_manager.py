@@ -105,7 +105,8 @@ refused_lower_levels = {}
 require_agent_invitation = False
 # agent name -> {"time", "reason", "role"}: the registrations refused, shown in the participants page
 refused_agents = {}
-# agent name -> the token it gave at its registration, which this manager presents when it calls it
+# agent name -> the token it gave at its registration: it opens the server agent's session form to
+# this manager's page, and proves an agent asking for its orders is the one registered
 agent_call_tokens = {}
 serves_https = False
 recording = None       # --record or the session form: pybiscus.session.manager.recording.Recording
@@ -202,11 +203,6 @@ def start_recording(directory, automatic=True):
     recording.start()
     atexit.register(recording.stop)
     return recording
-
-def agent_headers(name: str) -> dict:
-    """to call a registered agent: its call token. One registered without (by a script) gets the
-    session token, which only an agent requiring no token lets through"""
-    return {HEADER: "1", "Authorization": f"Bearer {agent_call_tokens.get(name) or session_token}"}
 
 def flag_from_env(name: str) -> bool:
     return os.environ.get(name, "").strip().lower() in ("1", "true", "yes", "on")

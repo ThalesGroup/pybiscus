@@ -16,13 +16,13 @@ they print (`…?token=…`), and give the session token at each registration.
 | browser of the manager's operator | **server agent** | session form, opened by the manager page |
 | browser of each agent's operator | its agent | registration, configuration, run pages |
 | browser of each agent's operator | manager | registration, waiting for the session launch (the run starts from this page: keep it open) |
-| manager | agents | state and stop of their runs, relaunch of a repeated session |
-| client agent | **server agent** | the client's run configuration |
+| agents | manager | their orders (stop, stop after the round, relaunch of a repeated session), asked every second during a session, every 5 s otherwise; a client's run configuration, which the manager passes on to the server agent with an order |
 | runs (server, clients) | manager | webhooks: logs, metrics, vignettes |
 | Flower clients | **Flower server** | the training itself |
 
-So the manager, the server agent and the Flower server must be reachable from the other machines,
-and each client agent from its operator's browser and from the manager.
+So the manager and the Flower server must be reachable from the other machines, the server agent
+from the browser of the manager's operator, and each client agent from its operator's browser only:
+the manager calls no agent.
 
 ## Machine by machine
 
@@ -30,7 +30,7 @@ One agent per machine, its role being that of the machine: the server's machine 
 agent, each client machine a client agent. A machine that both aggregates and holds data runs two
 agents, a server one and a client one (an agent registers with one role). The manager runs on the
 server's machine (one operator, one certificate, one port fewer to open between machines) or on a
-machine of its own (then it must reach every agent, and every run must reach it).
+machine of its own (every agent and every run must reach it).
 
 **Manager**
 - `launch/session/run_manager.sh --host 0.0.0.0` (or the address of the right interface).
@@ -45,13 +45,13 @@ machine of its own (then it must reach every agent, and every run must reach it)
   `localhost` / `127.0.0.1` on its machine: the server agent lets only these frame its session form.
 
 **Server agent**
-- `--host 0.0.0.0`: the client agents and the browser of the manager's operator reach it.
+- `--host 0.0.0.0`: the browser of the manager's operator reaches it (the session form).
 - Its registration: `manager_url` = the manager's real URL, `agent_url` = the URL under which the
   others reach it (not `localhost`), and the session token.
 
 **Client agents**
-- `--host 0.0.0.0`: the manager calls them for the state, the stop and the relaunch of their runs
-  (left on 127.0.0.1, the manager shows them *not reachable* and cannot stop their runs).
+- They may stay on 127.0.0.1 when their operator's browser runs on their machine: they ask the
+  manager for its orders. `--host 0.0.0.0` when the browser is elsewhere.
 - Their registration: `manager_url` = the manager's real URL, `agent_url` = their URL, the session
   token.
 
@@ -72,8 +72,8 @@ configuration (`--config`, see `pybiscus_agent_registration_config/`) to prefill
 | port (default) | component | reached by |
 |---|---|---|
 | 5555 | manager | every browser, every run |
-| 5000 | server agent | the manager's operator's browser, the client agents, the manager |
-| 5000 | each client agent | its operator's browser, the manager |
+| 5000 | server agent | the manager's operator's browser, its operator's browser |
+| 5000 | each client agent | its operator's browser |
 | 3333 | Flower server | the Flower clients |
 
 ## Encryption

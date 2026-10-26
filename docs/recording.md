@@ -420,6 +420,10 @@ last_caption: 4, blend: 0}` a brisker 40-second one.
 | `session.values` | values of the form's fields; `num_rounds` is required | required |
 | `plugin_manifests` | manifests given to the agents, relative to the repository | the bundled one |
 | `agent_invitations` | `true`: the manager invites each agent (`session_manager invite --agent`), which starts with `--invitation`; `required`: the manager refuses the session token too (`--require-agent-invitation`), its page then opened with its administration token; needs `--tls-cert`, `--tls-key`, `--tls-ca` | none |
+| `repeat` | the session's repetition, as the manager takes it (`{every: 1min}`) | none |
+| `sessions` | with `repeat`: how many sessions the shooting waits for, the first included | `1` |
+| `stop_after_round` | the server is asked to stop after this round (the manager's *stop after round*); the shooting expects the server's run `stopped`, the clients' `success` | none |
+| `drop_after_round` | the session is dropped after this round (the manager's *drop*); the shooting expects no run to succeed, then ends | none |
 | `timeout` | seconds allowed for the runs, once launched | `1800` |
 
 Each agent registers through its own registration form, then its tab follows it to its run

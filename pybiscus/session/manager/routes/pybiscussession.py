@@ -1,4 +1,5 @@
 import copy
+import hmac
 import re
 import time
 import os
@@ -7,15 +8,14 @@ import json
 import threading
 from typing import Optional
 from flask import render_template, request, jsonify
-import requests
 
 import urllib
 import pybiscus.session.manager.session_manager
 from pybiscus.session.manager.session_manager import generate_new_cid, pybiscus_manager_app
 import pybiscus.core.pybiscus_logger as logm
-from pybiscus.session.auth import agent_access, headers_for, invitation_access, invited_agent, session_access
-from pybiscus.session.manager.agent_admission import agent_problem, feed_problem, refuse_agent, vouches_for
-from pybiscus.session.manager import cycles, repetition
+from pybiscus.session.auth import agent_access, invitation_access, session_access
+from pybiscus.session.manager.agent_admission import agent_problem, feed_problem, refuse_agent
+from pybiscus.session.manager import cycles, orders, repetition
 from pybiscus.core.gui_events import gui_log_patterns
 from pybiscus.session.manager.feeds import Feed
 
@@ -303,18 +303,38 @@ def remember_call_token(name: str, call_token) -> None:
 
 # **************************
 
-# called by a server's agent before it keeps the run config a client posts to it: the client
-# presents its own token, which only this manager can tell apart
-@pybiscus_manager_app.route("/pybiscus-session/agent-token", methods=["POST"])
+# a client agent launching its run: its configuration goes to the server agent with an order, kept
+# in the server run's reports (no agent calls another one)
+@pybiscus_manager_app.route("/pybiscus-session/runconfig", methods=["POST"])
 @session_access
 @agent_access
-def pybiscus_manager_vouch_for_agent():
-    caller = invited_agent()
-    if (caller is not None and caller["role"] != "server") or feed_problem():
-        return jsonify({"status": "error", "message": "only the session's server agent asks"}), 403
+def pybiscus_manager_client_runconfig():
+    sm = pybiscus.session.manager.session_manager
+    name = request.args.get("agent")
+    refusal = order_refusal(name)
+    if refusal:
+        return refusal
+    problem = agent_problem(name, "client")
+    expected = sm.agent_call_tokens.get(name)
+    offered = request.headers.get(orders.CALL_TOKEN_HEADER, "")
+    # the session token is every participant's: the call token tells the registered client apart
+    if problem or name not in sm.registered_clients or not expected or not hmac.compare_digest(offered.encode(), expected.encode()):
+        return jsonify({"status": "error", "message": problem or f"{name} is not a client registered with this call token"}), 403
     data = request.get_json(silent=True) or {}
-    why = vouches_for(data.get("name"), data.get("role"), data.get("token"))
-    return jsonify({"vouched": why is None, **({"reason": why} if why else {})})
+    text = data.get("yaml")
+    if not isinstance(text, str) or not text:
+        return jsonify({"status": "error", "message": "Missing 'yaml'"}), 400
+    for server in sm.registered_servers:
+        order = orders.send(server, orders.CLIENT_RUNCONFIG, client=name, yaml=text)
+        threading.Thread(target=log_runconfig, args=(order, name), daemon=True).start()
+    return jsonify({"status": "success", "servers": list(sm.registered_servers)}), 202
+
+
+def log_runconfig(order, client: str) -> None:
+    if not order.done.wait(orders.ORDER_EXPIRY_S):
+        logm.console.log(f"⚠️ the run config of {client} did not reach {order.agent} (the agent did not answer)")
+    elif not order.result.get("done"):
+        logm.console.log(f"⚠️ {order.agent} did not keep the run config of {client} ({order.result.get('reason', '')})")
 
 # **************************
 
@@ -327,6 +347,46 @@ def pybiscus_manager_identity():
     sm = pybiscus.session.manager.session_manager
     return jsonify({"bouquet": sm.bouquet, "color": sm.bouquet_color, "location": sm.manager_location,
                     "bouquet_mismatch": sm.bouquet_mismatch})
+
+# **************************
+
+def order_refusal(name) -> Optional[tuple]:
+    if not isinstance(name, str) or not name:
+        return jsonify({"status": "error", "message": "Missing 'agent'"}), 400
+    problem = agent_problem(name)
+    if problem:
+        return jsonify({"status": "error", "message": problem}), 403
+    return None
+
+
+# an agent asks for the manager's orders: stop, relaunch... The manager calls no agent
+@pybiscus_manager_app.route("/pybiscus-session/orders", methods=["GET"])
+@session_access
+@agent_access
+def pybiscus_manager_orders():
+    name = request.args.get("agent")
+    refusal = order_refusal(name)
+    if refusal:
+        return refusal
+    sm = pybiscus.session.manager.session_manager
+    pace = orders.POLL_BUSY_S if sm.session_is_running else orders.POLL_IDLE_S
+    # an agent started and not registered yet asks too: alive, nothing to do
+    return jsonify({"orders": orders.take(name, request.headers.get(orders.CALL_TOKEN_HEADER)), "next": pace})
+
+
+@pybiscus_manager_app.route("/pybiscus-session/orders/<int:order_id>", methods=["POST"])
+@session_access
+@agent_access
+def pybiscus_manager_order_result(order_id: int):
+    name = request.args.get("agent")
+    refusal = order_refusal(name)
+    if refusal:
+        return refusal
+    result = request.get_json(silent=True)
+    if not isinstance(result, dict) or not orders.complete(name, request.headers.get(orders.CALL_TOKEN_HEADER), order_id, result):
+        return jsonify({"status": "error", "message": "no such order for this agent"}), 404
+    return jsonify({"status": "success"})
+
 
 # **************************
 
@@ -499,17 +559,14 @@ def pybiscus_manager_stop_after_round():
                         "a lower level runs the rounds of its upper level: stop the session from the upper level's manager"}), 409
 
     stopping = []
-    for name, url in session.registered_servers.items():
-        try:
-            response = requests.post(f"{url.rstrip('/')}/run/stop-after-round", headers=session.agent_headers(name), timeout=5)
-        except requests.RequestException as error:
-            logm.console.log(f"⚠️ {name}: its run could not be stopped after its round ({type(error).__name__})")
-            continue
-        if response.status_code == 202:
+    for name, answer in ask_all(list(session.registered_servers), orders.STOP_AFTER_ROUND).items():
+        if answer is None:
+            logm.console.log(f"⚠️ {name}: its run could not be stopped after its round (the agent did not answer)")
+        elif answer.get("done"):
             logm.console.log(f"🛑 {name}: its run stops after the current round")
             stopping.append(name)
         else:
-            logm.console.log(f"⚠️ {name}: its run could not be stopped after its round (HTTP {response.status_code})")
+            logm.console.log(f"⚠️ {name}: its run could not be stopped after its round ({answer.get('reason', '')})")
 
     if not stopping:
         return jsonify({"status": "error", "message": "no server run could be stopped after its round"}), 409
@@ -546,20 +603,35 @@ def pybiscus_manager_stop_recording():
     return jsonify({"status": "success", "recording": recording.state()}), 202
 
 
+def ask_all(names: list, kind: str) -> dict:
+    """each agent's answer to the same order, asked of all at once: None for one that did not answer"""
+    answers = {}
+    threads = [threading.Thread(target=lambda n=name: answers.__setitem__(n, orders.ask(n, kind)), daemon=True)
+               for name in names]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join()
+    return answers
+
+
 def stop_agent_runs():
     """a dropped session's runs stop with it: they went on without a manager, and a lower level's
     server waited for a model that no longer comes"""
     session = pybiscus.session.manager.session_manager
-    for name, url in {**session.registered_servers, **session.registered_clients}.items():
-        try:
-            response = requests.post(f"{url.rstrip('/')}/run/stop", headers=session.agent_headers(name), timeout=5)
-        except requests.RequestException as error:
-            logm.console.log(f"⚠️ {name}: its run could not be stopped ({type(error).__name__})")
-            continue
-        if response.status_code == 202:
-            logm.console.log(f"🛑 {name}: run stopped with the session")
-        elif response.status_code != 409:
-            logm.console.log(f"⚠️ {name}: its run could not be stopped (HTTP {response.status_code})")
+    names = list({**session.registered_servers, **session.registered_clients})
+    for name in names:
+        # not awaited: the drop answers the page at once, the agents stop at their next question
+        # (the order outlives the session's registrations, cleared right after)
+        order = orders.send(name, orders.STOP)
+        threading.Thread(target=log_stop, args=(order,), daemon=True).start()
+
+
+def log_stop(order) -> None:
+    if not order.done.wait(orders.ORDER_EXPIRY_S):
+        logm.console.log(f"⚠️ {order.agent}: its run could not be stopped (the agent did not answer)")
+    elif order.result.get("done"):
+        logm.console.log(f"🛑 {order.agent}: run stopped with the session")
 
 
 def drop_session():
@@ -615,35 +687,19 @@ def unregistered_started_agents() -> dict:
     session = pybiscus.session.manager.session_manager
     unregistered = {name: agent for name, agent in session.started_agents.items()
                     if name not in session.registered_servers and name not in session.registered_clients}
-    for agent in unregistered.values():
-        check_reachable(agent)
-    return {name: {key: value for key, value in agent.items() if key != "checking"}
-            for name, agent in unregistered.items()}
+    for name, agent in unregistered.items():
+        mark_reachable(name, agent)
+    return unregistered
 
 
-STARTED_CHECK_EVERY = 15   # seconds
-
-def check_reachable(agent: dict) -> None:
-    """an agent stopped before registering said nothing: the manager asks it, in the background so
-    that the page's poll does not wait for a timeout"""
-    if agent.get("checking") or not agent.get("url") or time.time() - agent.get("checked", 0) < STARTED_CHECK_EVERY:
-        return
-    agent["checking"] = True
-
-    def ask():
-        try:
-            # any answer, a refusal or a login page included, says the agent runs
-            requests.get(f"{agent['url'].rstrip('/')}/run/status", headers=headers_for(agent["url"]),
-                         timeout=3, allow_redirects=False)
-            agent["reachable"] = True
-        except requests.RequestException:
-            # marked, not removed: a firewall can stop the manager's requests and let the agent's
-            # webhooks through, and such an agent can still be registered
-            agent["reachable"] = False
-        agent["checked"] = time.time()
-        agent["checking"] = False
-
-    threading.Thread(target=ask, daemon=True).start()
+def mark_reachable(name: str, agent: dict) -> None:
+    """an agent started before registering asks for orders like the others: unheard of, it stopped
+    (or lost its way to the manager)"""
+    heard = orders.seen(name)
+    if heard is None and time.time() - agent.get("time", 0) < orders.SEEN_WITHIN_S:
+        agent.pop("reachable", None)
+    else:
+        agent["reachable"] = bool(heard)
 
 # **************************
 

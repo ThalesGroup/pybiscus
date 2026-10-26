@@ -93,38 +93,29 @@ def client():
 
     try:
 
-        # upload the client configuration yaml file to the server
-        # which is in charge of storing it into the session context
-        target_url = f"{pybagent.session_server_url}/session/log/client/{pybagent.registration_parameters['name']}/runconfig"
-        send_yaml_file(pybagent.uploaded_file_path, target_url)
+        # kept in the server run's reports: the manager passes it on to the server agent
+        send_runconfig(pybagent.uploaded_file_path)
     
         return interpretConfigurationFile( "client", str(pybagent.uploaded_file_path) )
     
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-def send_yaml_file(yaml_file, url, timeout=10):
-
+def send_runconfig(yaml_file) -> None:
     import requests
-    from requests.exceptions import RequestException, Timeout
-
+    from pybiscus.session.manager.orders import CALL_TOKEN_HEADER
+    manager_url = (pybagent.registration_parameters.get("manager_url") or "").rstrip("/")
+    name = pybagent.registration_parameters.get("name")
+    if not manager_url or not name:
+        logm.console.log("⚠️ the run config is not kept in the server's reports: this agent is registered with no manager")
+        return
+    url = f"{manager_url}/pybiscus-session/runconfig"
     try:
-        with open(yaml_file, "rb") as f:
-            files = {
-                "file": (f.name, f, "application/x-yaml")
-            }
-
-            response = requests.post(url, files=files, timeout=timeout, headers=headers_for(url))
-            response.raise_for_status()
-
-            print("✅ Status:", response.status_code)
-            print("📝 Response:", response.text)
-
-    except FileNotFoundError:
-        print(f"❌ Fichier introuvable : {yaml_file}")
-    except Timeout:
-        print(f"⏱️ Timeout après {timeout} secondes")
-    except RequestException as e:
-        print(f"❌ Erreur HTTP : {e}")
-    except Exception as e:
-        print(f"❗ Erreur inattendue : {e}")
+        with open(yaml_file, encoding="utf-8") as file:
+            text = file.read()
+        response = requests.post(url, params={"agent": name}, json={"yaml": text}, timeout=10,
+                                 headers={**headers_for(url), CALL_TOKEN_HEADER: pybagent.call_token})
+        response.raise_for_status()
+    except (OSError, requests.RequestException) as error:
+        # the run goes on: only the server's reports miss this client's configuration
+        logm.console.log(f"⚠️ the run config was not sent to the manager for the server's reports: {error}")
