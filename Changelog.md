@@ -1,6 +1,12 @@
 # Changelog
 
-## Unreleased
+## [Version 0.15.0]
+
+Since `version0.14.0` (2026-10-20): sessions over several machines secured. HTTPS between the
+manager and the agents, invitations of the sites and of the agents, a production web server; the
+manager calls no agent any more, the agents ask it for their orders, may register and launch their
+runs without a browser; the Flower clients of a session authenticated by its Flower server; the
+usage scenarios and `docs/security.md`; Flower 1.42.0.
 
 ### Session
 
