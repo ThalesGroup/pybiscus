@@ -498,7 +498,7 @@ def parse_args():
     parser.add_argument(
         '--debug',
         action='store_true',
-        help="Development mode: auto-reload on code change and in-browser debugger"
+        help="Development mode: Werkzeug's server, auto-reload on code change and in-browser debugger"
     )
     parser.add_argument(
         '--token',
@@ -558,7 +558,7 @@ def main():
         print(f"🎫 invited by {agent_invitation.manager_url} as {agent_invitation.agent_name} ({agent_invitation.role}), "
               f"until {agent_invitation.expires:%Y-%m-%d}", flush=True)
     # before the first call to the manager (initAgentLogger), and inherited by the runs
-    from pybiscus.session import tls
+    from pybiscus.session import tls, web_server
     tls.trust_ca(*filter(None, (args.tls_ca, invitation_ca(agent_invitation, args.port))))
     web_scheme = tls.scheme(args)
     # inherited by the server runs this agent launches
@@ -604,7 +604,7 @@ def main():
     browsed_host = "127.0.0.1" if args.host in ("0.0.0.0", "::") else args.host
     print_access("agent", f"{tls.scheme(args)}://{browsed_host}:{args.port}/session/agent/registration", agent_token)
 
-    rest_server.run(debug=args.debug, host=args.host, port=args.port, ssl_context=tls.ssl_context(args))
+    web_server.serve(rest_server, args.host, args.port, tls.ssl_context(args), debug=args.debug)
 
 def invitation_ca(invitation, port):
     """the CA of the invitation, in a file requests can trust"""

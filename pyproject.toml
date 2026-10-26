@@ -35,6 +35,7 @@ dependencies = [
     "torchmetrics[detection]>=1.9.0",
     "filelock>=3.25",
     "cronsim>=2.7",
+    "cheroot>=11",
 ]
 
 [project.scripts]

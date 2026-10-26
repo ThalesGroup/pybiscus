@@ -21,6 +21,12 @@ by a VPN). It is **not designed yet to be exposed directly to the Internet** ([l
 **Listening.** Every component listens on 127.0.0.1 by default. `--host 0.0.0.0` (or an address)
 opens it to the network.
 
+**Web server.** The manager and the agents run on [cheroot](https://cheroot.cherrypy.dev), a
+production WSGI server: a pool of 64 threads (an open run monitor holds one), a client that stops
+reading dropped after 30 s, TLS with `--tls-cert`. `--debug` switches to Werkzeug's development
+server, for its reload on code change and its in-browser debugger, a Python console behind a PIN:
+never on a machine others reach.
+
 **Tokens** ([details](sessionmanager.md#access-tokens)):
 - Required as soon as a component listens beyond the loopback; on the loopback, only with
   `--require-token` (a machine shared with other users). There is no option to do without them
@@ -128,13 +134,10 @@ They are why the guarantees are those of a closed network:
 
 | limit | meanwhile |
 |---|---|
-| the manager and the agents run on Flask's development server | keep them out of reach of the Internet (VPN) |
 | the session token is shared by every participant, without expiry or revocation: whoever holds it may register an agent under any name not invited | [invite the agents](sessionmanager.md#agents-invitations) (`--require-agent-invitation`): a token per agent, bound to its name and role, expiring, revocable; between the managers of a hierarchical session, [invite the sites](sessionmanager.md#invitations). Otherwise give it to the participants only, and restart the manager with a new token (`--session-token`) to revoke it |
 | the Flower server does not authenticate its clients (its TLS authenticates the server only): whoever reaches its port may join a round | restrict its port with a firewall to the clients' addresses |
 | an SSH tunnel to a component on 127.0.0.1 cannot be told from a local access | start it with `--require-token` |
 | the manager calls the agents (stop, relaunch): it must reach them | place it where it reaches them |
-
-Work in progress: hardening of the web components.
 
 ## Checklist by scenario
 

@@ -14,7 +14,7 @@ LINK_TRANSPORT_ENV = "PYBISCUS_LINK_TRANSPORT"
 
 from pybiscus.session.auth import SESSION_TOKEN_ENV, component_token, manager_token_names, print_access, require_tokens, tokens_required
 from pybiscus.session.csrf import HEADER, require_pybiscus_header
-from pybiscus.session import invitations, tls
+from pybiscus.session import invitations, tls, web_server
 
 # **************************
 
@@ -257,6 +257,9 @@ def main():
     parser.add_argument("--upper-token", default=None,
                         help="session token of the upper-level manager (default: $PYBISCUS_UPPER_TOKEN, else its token file "
                              "when it runs on this machine, started from the same directory)")
+    # off by default: the Werkzeug debugger exposes a Python console to whoever reaches the manager
+    parser.add_argument("--debug", action="store_true",
+                        help="Development mode: Werkzeug's server, auto-reload on code change and in-browser debugger")
     parser.add_argument("--record", nargs="?", const="experiments/recordings", default=None, metavar="DIR",
                         help="film each session from this manager's page (and the agents' run monitors) into DIR "
                              "(default experiments/recordings): rushes and video, by launch/doc/record_session.py; "
@@ -349,7 +352,7 @@ def main():
     if args.upper_url:
         from pybiscus.session.manager.upper_level import report_to_upper_level
         report_to_upper_level(args.upper_url, args.upper_token)
-    pybiscus_manager_app.run(host=args.host, port=manager_port, ssl_context=tls.ssl_context(args))
+    web_server.serve(pybiscus_manager_app, args.host, manager_port, tls.ssl_context(args), debug=args.debug)
 
 def invitation_ca(invited):
     """the CA of the invitation, in a file requests can trust"""

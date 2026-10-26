@@ -224,17 +224,17 @@ one. Without a hierarchy, the sites are the machines of the closed network above
 > run over HTTPS. They have been run with every site on one machine; a run across the machines of
 > separate sites is still to come.
 >
-> **Its security guarantees are those of a closed network, not of an open one.** The web
-> components run on the development server of Flask; Flower's TLS authenticates the server, not the
-> clients. Keep the sites on a VPN, and do not expose the manager or the agents directly to the
-> Internet.
+> **Its security guarantees are those of a closed network, not of an open one.** Flower's TLS
+> authenticates the server, not the clients. Keep the sites on a VPN, and do not expose the manager
+> or the agents directly to the Internet.
 >
 > Each agent is [invited](sessionmanager.md#agents-invitations) by its manager and, between the
 > managers of a hierarchical session, each site by the upper level
 > ([invitations](sessionmanager.md#invitations)): a token of its own, bound to its name and role or
 > to its bouquet, expiring and revocable, in place of the session token shared by every participant;
-> each manager lists the agents or sites expected, present and refused. Work is in progress:
-> hardening of the web components. See [security.md](security.md#known-limits).
+> each manager lists the agents or sites expected, present and refused; the web components run on a
+> production server ([cheroot](security.md#the-manager-and-the-agents)). See
+> [security.md](security.md#known-limits).
 
 **What Pybiscus brings**: each site's operator sees and checks its form before running; the session
 form sets and locks what must be shared; [hierarchical sessions](hierarchical-session.md) give each

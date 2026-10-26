@@ -97,6 +97,11 @@
 * `launch/doc/record_session.py shoot --tls-cert --tls-key --tls-ca`: a scenario's managers and
   agents in HTTPS.
 * Removed: the `/pybiscus-session/ping-server` route (unused, read an undefined attribute).
+* The manager and the agents run on **cheroot**, a production WSGI server (a pool of 64 threads,
+  a client that stops reading dropped after 30 s, TLS with `--tls-cert`), in place of Flask's
+  development server; Ctrl+C still ends them at once, an open run monitor included. `--debug`
+  (the agent's, and now the manager's) keeps Werkzeug's server for its reload on code change and its
+  in-browser debugger; `docs/security.md`.
 
 ### Robust aggregation and privacy
 
@@ -116,6 +121,7 @@
   JPEG 2000 decoders), `certifi` 2026.2.25 → 2026.10.23 (PYSEC-2026-4320), `gitpython` 3.1.62 →
   3.2.1 (CVE-2026-114145, through wandb), `uv` 0.12.24 → 0.13.5 (PYSEC-2026-4321, through Flower);
   `pip-audit` finds none left in `uv.lock`.
+* Added: `cheroot` 11.1 (the web server of the manager and of the agents; pure Python).
 
 ## [Version 0.14.0]
 
