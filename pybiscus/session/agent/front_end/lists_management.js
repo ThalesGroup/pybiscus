@@ -239,11 +239,8 @@
   // Ne pré-alloue que si la liste est vide (évite les doublons quand la config
   // vient du cache ou après un rechargement).
   // =========================================================================
-  const PYBISCUS_LIST_DEFAULTS = {
-    'server_run.loggers': ['WebHook'],
-    'server_compute_context.metrics_loggers': ['WebHook'],
-    'server_strategy.pipeline': ['MetricDiffCompute', 'TimeDiffCompute', 'VisualizeModelLayers'],
-  };
+  // PYBISCUS_LIST_DEFAULTS: written before this script by the agent (presets.list_defaults_js), whose
+  // launch by order starts from the same lists
 
   function listOptionAvailable(container, name){
     // le template contient l'union avec tous les onglets d'options disponibles

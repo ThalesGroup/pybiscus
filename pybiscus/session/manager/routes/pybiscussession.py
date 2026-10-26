@@ -15,7 +15,7 @@ from pybiscus.session.manager.session_manager import generate_new_cid, pybiscus_
 import pybiscus.core.pybiscus_logger as logm
 from pybiscus.session.auth import agent_access, invitation_access, session_access
 from pybiscus.session.manager.agent_admission import agent_problem, feed_problem, refuse_agent
-from pybiscus.session.manager import cycles, orders, repetition
+from pybiscus.session.manager import cycles, launch, orders, repetition
 from pybiscus.core.gui_events import gui_log_patterns
 from pybiscus.session.manager.feeds import Feed
 
@@ -120,6 +120,8 @@ def pybiscus_manager_run_session():
         session.recording.session_launched()
     elif (session.agent_gui_json_presets or {}).get("record"):
         (session.recording or session.start_recording(None, automatic=False)).session_launched()
+
+    launch.session_launched()
 
     repeat = (session.agent_gui_json_presets or {}).get("repeat")
     if repeat is not None:
@@ -233,6 +235,8 @@ def pybiscus_manager_register_agent():
         "organisation": data.get("organisation"),
         # the machine it runs on, as it names itself: the addresses say localhost on one machine
         "machine": data.get("machine"),
+        # started with --accept-launch: its run is launched by order, without its configuration form
+        "accept_launch": data.get("accept_launch") is True,
     }
 
     if role == "server":
@@ -254,6 +258,7 @@ def pybiscus_manager_register_agent():
 
         pybiscus.session.manager.session_manager.registered_servers[name] = agent_url
         remember_call_token(name, call_token)
+        launch.registered_late(name)
 
         return jsonify({
             "status": "success",
@@ -283,6 +288,7 @@ def pybiscus_manager_register_agent():
         }
         pybiscus.session.manager.session_manager.registered_clients[name] = agent_url
         remember_call_token(name, call_token)
+        launch.registered_late(name)
 
         return jsonify({
             "status": "success",
@@ -636,6 +642,7 @@ def log_stop(order) -> None:
 
 def drop_session():
     repetition.cancel()
+    launch.cancel()
     stop_agent_runs()
     cycles.reset()
     pybiscus.session.manager.session_manager.clear_session()

@@ -11,8 +11,8 @@ import requests
 
 from pybiscus.session.agent.run_session import run_session
 from pybiscus.session.auth import headers_for
-from pybiscus.session.manager.orders import (CALL_TOKEN_HEADER, CLIENT_RUNCONFIG, LISTENING, POLL_IDLE_S, RELAUNCH,
-                                             STOP, STOP_AFTER_ROUND)
+from pybiscus.session.manager.orders import (CALL_TOKEN_HEADER, CLIENT_RUNCONFIG, LAUNCH, LISTENING, POLL_IDLE_S,
+                                             RELAUNCH, SLOW_KINDS, STOP, STOP_AFTER_ROUND)
 
 _lock = threading.Lock()
 _target: Optional[dict] = None   # {"manager_url", "name", "call_token"}
@@ -60,10 +60,21 @@ def _ask(session: requests.Session, target: dict) -> float:
         return POLL_IDLE_S
     answer = response.json()
     for order in answer.get("orders", []):
-        result = execute(order.get("kind"), order.get("args") or {})
-        session.post(f"{url}/{order['id']}", params={"agent": target["name"]}, json=result, headers=headers, timeout=10)
+        if order.get("kind") in SLOW_KINDS:
+            threading.Thread(target=_execute_and_answer, args=(order, url, target, headers), daemon=True).start()
+        else:
+            _execute_and_answer(order, url, target, headers, session)
     pace = answer.get("next")
     return pace if isinstance(pace, (int, float)) and 0.2 <= pace <= 60 else POLL_IDLE_S
+
+
+def _execute_and_answer(order: dict, url: str, target: dict, headers: dict, session=requests) -> None:
+    result = execute(order.get("kind"), order.get("args") or {})
+    try:
+        session.post(f"{url}/{order['id']}", params={"agent": target["name"]}, json=result, headers=headers, timeout=10)
+    except requests.RequestException:
+        # the manager waits for no answer for long: the order's effect stands (a run started, stopped)
+        pass
 
 
 def execute(kind: str, args: dict) -> dict:
@@ -79,6 +90,9 @@ def execute(kind: str, args: dict) -> dict:
         return server_listening(args.get("port"))
     if kind == CLIENT_RUNCONFIG:
         return keep_client_runconfig(args.get("client"), args.get("yaml"))
+    if kind == LAUNCH:
+        from pybiscus.session.agent.launch import launch
+        return launch()
     return {"done": False, "reason": f"unknown order {kind!r}"}
 
 

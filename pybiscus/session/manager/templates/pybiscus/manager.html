@@ -1314,7 +1314,7 @@
     const nodes=[];
     Object.keys(servers).forEach(n=>nodes.push({key:n, name:n, role:'server', state:session.getAgentState(n)}));
     Object.keys(clients).forEach(n=>nodes.push({key:n, name:n, role:'client', state:session.getAgentState(n)}));
-    nodes.forEach(nd=>{ const m=meta[nd.name]||{}; nd.geo=m.geo_location; nd.bouquet=m.bouquet; nd.loc=m.location; nd.org=m.organisation; });
+    nodes.forEach(nd=>{ const m=meta[nd.name]||{}; nd.geo=m.geo_location; nd.bouquet=m.bouquet; nd.loc=m.location; nd.org=m.organisation; nd.byOrder=m.accept_launch; });
     const groups = flattenLowerLevels(lowerLevels, null, 1, []);
     const lowerNodes = groups.flatMap(gr=>gr.nodes), allNodes = nodes.concat(lowerNodes);
     setTxt('agents-count', nodes.length+' agents' + (lowerNodes.length ? ` + ${lowerNodes.length} lower` : ''));
@@ -1343,6 +1343,7 @@
         `<span class="st"></span><span class="ico">${nd.relays ? '🔁' : (ROLE_ICON[nd.role]||'❔')}</span>`+
         `<span class="name">${esc(nd.name)}`+
         (nd.relays ? ` <span class="bouquet-pill" style="--session-color:${esc(colourOf(nd.relays))}" title="relays this lower level">→ ${esc(nd.relays)}</span>` : '')+
+        (nd.byOrder ? ' <span class="chip" title="started with --accept-launch: this manager launches its run by order, from the session\'s presets">🚀 by order</span>' : '')+
         `</span><span class="site">${esc(nd.loc || nd.org || '')}</span>`+
         `<span class="state" data-state="${esc(nd.state)}">${STATE_ICON[nd.state]||'⚪'} ${esc(STATE_TEXT[nd.state] || nd.state)}</span>`+
         `<span class="round">${esc(roundOf(nd))}</span><span class="metric" title="${esc(metricTip(nd))}">${esc(metricOf(nd))}</span></div>`;

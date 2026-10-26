@@ -17,6 +17,7 @@ from pathlib import Path
 import pybiscus.core.pybiscus_logger as logm
 from pybiscus.session.auth import session_access
 import pybiscus.session.agent.pybiscus_agent as pybagent
+from pybiscus.session.agent.presets import list_defaults_js
 
 # the form's state (options, list items, values), replayed on a freshly generated page: the
 # former HTML snapshot froze the interface injected by the scripts, which then got it twice.
@@ -150,7 +151,7 @@ def serverConfigDownload():
         fold_fieldsets = file.read()
 
     with importlib.resources.files("pybiscus.session.agent.front_end").joinpath("lists_management.js").open('r') as file:
-        lists_management = file.read()
+        lists_management = list_defaults_js() + file.read()
 
     # after the lists' default items (the pinned lists replace them), before the session presets
     # (which override and lock)
@@ -226,7 +227,7 @@ def sessionConfigDownload():
 
     # no list in the session form today; a plugin's model holding one would get a ➕📝 doing nothing
     with importlib.resources.files("pybiscus.session.agent.front_end").joinpath("lists_management.js").open('r') as file:
-        lists_management = file.read()
+        lists_management = list_defaults_js() + file.read()
 
     return generate_model_page(config_session,'pybiscus.session.agent.front_end','agent.html','launch_session_button', lists_management + presets_js,
                                identity=pybagent.agent_identity())

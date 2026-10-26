@@ -9,6 +9,7 @@ from pybiscus.flower_config.config_client import ConfigClient
 from pybiscus.pydantic2xxx.pydantic2html import generate_model_page
 from pybiscus.session.agent.pybiscus_agent import checkConfigurationFile, generate_param_js, interpretConfigurationFile, rest_server, saveConfigFromRequest
 import pybiscus.session.agent.pybiscus_agent as pybagent
+from pybiscus.session.agent.presets import list_defaults_js
 import pybiscus.core.pybiscus_logger as logm
 from pybiscus.session.auth import headers_for
  
@@ -52,7 +53,7 @@ def clientConfigDownload():
 
     # without it, the ➕📝 of the client's lists (a dataset's engines...) did nothing
     with importlib.resources.files("pybiscus.session.agent.front_end").joinpath("lists_management.js").open('r') as file:
-        lists_management = file.read()
+        lists_management = list_defaults_js() + file.read()
 
     # before the session presets, which may fill the lists
     return generate_model_page(ConfigClient,'pybiscus.session.agent.front_end','agent.html','check_exec_buttons', fold_fieldsets + lists_management + presets_js,

@@ -39,7 +39,7 @@ from pathlib import Path
 
 import requests
 import yaml
-from playwright.sync_api import Error as PlaywrightError, sync_playwright
+from playwright.sync_api import Error as PlaywrightError, TimeoutError as PlaywrightTimeout, sync_playwright
 
 from rushes import Shooting, edit, log
 
@@ -131,6 +131,24 @@ class Processes:
                 pass
 
 
+def by_order(sc, a) -> bool:
+    """started with --accept-launch: the agent's own key, else the scenario's"""
+    return bool(a.get("accept_launch", sc.get("accept_launch")))
+
+
+def by_order_args(sc, a) -> list:
+    args = ["--accept-launch"] if by_order(sc, a) else []
+    return args + (["--launch-config", str(REPO / a["launch_config"])] if by_order(sc, a) and a.get("launch_config") else [])
+
+
+def wait_run_by_order(tab, name, work):
+    # its waiting page follows the run the order starts
+    try:
+        tab.wait_for_url(lambda u: u.rstrip("/").endswith("/run"), timeout=600000)
+    except PlaywrightTimeout:
+        raise SystemExit(f"{name}: its run was not launched by order within 10 min (see the managers' logs in {work})")
+
+
 def check_and_launch(tab, name, work, shooting=None):
     tab.click("#check-config-button")
     tab.wait_for_function(CHECK_DONE_JS, timeout=60000)
@@ -192,7 +210,7 @@ def shoot_scenario(sc, work, rushes):
     admin = secrets.token_urlsafe(24)
     manager_headers = {**H, "Authorization": f"Bearer {admin}"}
     procs.start("manager", ["session_manager", "--port", str(manager_port), "--bouquet", m["bouquet"],
-                            "--location", m["location"], "--geo", ",".join(map(str, m["geo"])), "--admin-token", admin,
+                            "--location", m["location"], "--geo", ",".join(map(str, m["geo"])), f"--admin-token={admin}",
                             *(["--require-agent-invitation"] if invited == "required" else [])])
     manager = f"{SCHEME}://localhost:{manager_port}"
     if invited:
@@ -204,7 +222,8 @@ def shoot_scenario(sc, work, rushes):
                            check=True, stdout=subprocess.DEVNULL)
     for a in agents:
         invitation = ["--invitation", f"invitations/issued/{m['bouquet']}_agent_{a['name']}.yml"] if invited else []
-        procs.start(f"agent_{a['name']}", ["pybiscus_agent", "--port", str(a["port"]), *invitation])
+        # accept_launch: the manager launches its run by order, no click in its configuration form
+        procs.start(f"agent_{a['name']}", ["pybiscus_agent", "--port", str(a["port"]), *invitation, *by_order_args(sc, a)])
     try:
         for port in (manager_port, *(a["port"] for a in agents)):
             wait_for_port(port)
@@ -269,9 +288,17 @@ def shoot_scenario(sc, work, rushes):
             shooting.set_focus("manager")
             shooting.event("started"); shooting.tick(3)
 
-            for a in agents:
+            # the clients launched by order wait for every server to listen: the others first
+            for a in sorted(agents, key=lambda a: (a["role"] != "server", by_order(sc, a))):
                 view = f"agent:{a['name']}"
                 tab = shooting.views[view]["page"]
+                if by_order(sc, a):
+                    wait_run_by_order(tab, a["name"], work)
+                    shooting.set_focus("manager", view)
+                    shooting.event("launched", name=a["name"], role=a["role"], location=a["location"], by_order=True)
+                    shooting.tick(2)
+                    tab.set_viewport_size(sc.get("inset_viewport", INSET_VIEWPORT))
+                    continue
                 tab.wait_for_url(lambda u: "/config?" in u, timeout=60000); tab.wait_for_timeout(2500)
                 shooting.set_focus("manager", view)
                 shooting.event("launched", name=a["name"], role=a["role"], location=a["location"]); shooting.tick(1)
@@ -397,14 +424,15 @@ def shoot_hierarchical(sc, work, rushes):
         machine = ["--machine", m.get("machine") or sc["machine"]] if m.get("machine") or sc.get("machine") else []
         procs.start(f"manager_{b}", ["session_manager", "--port", str(m["port"]), *identity, "--location", m["location"],
                                      "--geo", ",".join(map(str, m["geo"])), *upper, *transport, *machine,
-                                     "--admin-token", m["admin"], "--session-token", m["session"], *m["requires"]])
+                                     # one '=': a random token may start with '-', which argparse took for an option
+                                     f"--admin-token={m['admin']}", f"--session-token={m['session']}", *m["requires"]])
     # reporting with the upper level's session token (its token file, the same directory): refused
     intruders = [{**i, "port": free_port()} for i in sc.get("intruders", [])]
     for i in intruders:
         procs.start(f"intruder_{i['bouquet']}", ["session_manager", "--port", str(i["port"]), "--bouquet", i["bouquet"],
                                                  "--upper-url", url(i["upper"]), "--location", i.get("location", "elsewhere")])
     for a in agents:
-        procs.start(f"agent_{a['name']}", ["pybiscus_agent", "--port", str(a["port"])])
+        procs.start(f"agent_{a['name']}", ["pybiscus_agent", "--port", str(a["port"]), *by_order_args(sc, a)])
     try:
         for port in [m["port"] for m in managers.values()] + [a["port"] for a in agents] + [i["port"] for i in intruders]:
             wait_for_port(port)
@@ -461,7 +489,9 @@ def shoot_hierarchical(sc, work, rushes):
                 # the token the manager calls the agent with, as its registration page gives it
                 call_token = re.search(r'call_token:\s+("[^"]*")', requests.get(f"{agent_url}/session/agent/registration").text)
                 registered = requests.post(f"{url(b)}/pybiscus-session/agent", headers=session_headers(b),
-                                           json={**meta, "agent_url": agent_url, "call_token": json.loads(call_token.group(1)) if call_token else None})
+                                           json={**meta, "agent_url": agent_url, "call_token": json.loads(call_token.group(1)) if call_token else None,
+                                                 # as its registration page tells it
+                                                 "accept_launch": by_order(sc, a)})
                 assert registered.ok, f"{a['name']}: {registered.status_code} {registered.text}"
                 # its runs present the session token for their webhooks
                 assert requests.post(f"{agent_url}/session/agent/registration", headers=H,
@@ -550,6 +580,11 @@ def shoot_hierarchical(sc, work, rushes):
             for a in ordered:
                 tab, view = browser.new_page(viewport=form_viewport), f"agent:{a['name']}"
                 tab.goto(f"{SCHEME}://localhost:{a['port']}/session/agent/registration/waiting")
+                if by_order(sc, a):
+                    wait_run_by_order(tab, a["name"], work)
+                    tab.close()
+                    log(f"{a['name']}: launched by order")
+                    continue
                 tab.wait_for_url(lambda u: "/config?" in u, timeout=60000); tab.wait_for_timeout(2500)
                 shooting.add_view(view, tab, AGENT_PANELS, agent_label(a["name"]))
                 shooting.set_focus(*managers_in_focus, view)

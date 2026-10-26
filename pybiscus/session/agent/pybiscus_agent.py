@@ -10,6 +10,7 @@ import json
 import os
 import secrets
 import subprocess
+from typing import Optional
 
 import argparse
 
@@ -42,6 +43,10 @@ agent_invitation = None
 # session token, shared by the participants, would let any of them take another one's orders), and
 # the manager's page opens the server agent's session form with it
 call_token = secrets.token_urlsafe(32)
+# --accept-launch: the manager launches this agent's run by order, from the session's presets
+# applied to --launch-config (else to the defaults), without the configuration form
+accept_launch = False
+launch_config: Optional[str] = None
 
 
 # the session token opens none of the agent's routes: the manager's page opens the session form with
@@ -489,9 +494,30 @@ def parse_args():
              "role, and its token, over the --config file's; the agent's runs present the token too "
              f"(default: ${invitations.AGENT_INVITATION_ENV})"
     )
+    # opt-in: no one reads the configuration before the run starts, as an operator who would launch
+    # the form's without looking
+    parser.add_argument(
+        '--accept-launch',
+        action='store_true',
+        default=os.environ.get("PYBISCUS_ACCEPT_LAUNCH") == "1",
+        help="the manager launches this agent's run by order when the session is launched, its configuration "
+             "being the session's presets applied to --launch-config (no configuration form, no browser tab "
+             "kept open; default: $PYBISCUS_ACCEPT_LAUNCH=1)"
+    )
+    parser.add_argument(
+        '--launch-config',
+        default=os.environ.get("PYBISCUS_LAUNCH_CONFIG"),
+        metavar="FILE",
+        help="with --accept-launch: the run's configuration the session's presets apply to (this machine's data "
+             "paths, devices...); default: the configuration form's defaults ($PYBISCUS_LAUNCH_CONFIG)"
+    )
     from pybiscus.session import tls
     tls.add_tls_arguments(parser)
     args = parser.parse_args()
+    if args.launch_config and not args.accept_launch:
+        parser.error("--launch-config goes with --accept-launch")
+    if args.launch_config and not os.path.isfile(args.launch_config):
+        parser.error(f"--launch-config {args.launch_config}: no such file")
     tls.check_tls_arguments(parser, args)
     return args
 
@@ -511,7 +537,9 @@ def main():
 
     set_upload_folder(args.port)
 
-    global agent_port, agent_token, tokens_are_required, web_scheme, agent_invitation
+    global agent_port, agent_token, tokens_are_required, web_scheme, agent_invitation, accept_launch, launch_config
+    accept_launch = args.accept_launch
+    launch_config = os.path.abspath(args.launch_config) if args.launch_config else None
     agent_port  = args.port
     from pybiscus.session import invitations
     if args.invitation:

@@ -1,5 +1,4 @@
 import threading
-import time
 from typing import Optional
 
 import pybiscus.core.pybiscus_logger as logm
@@ -7,7 +6,7 @@ import pybiscus.session.manager.session_manager as sm
 from pybiscus.session.manager import orders
 from pybiscus.core.schedule import ConfigSchedule, Schedule
 from pybiscus.session.agent.agent_weblog import AgentState
-from pybiscus.session.manager.network import flower_server_address
+from pybiscus.session.manager import launch
 
 # A session launched again at each deadline (variant B of the rounds at fixed times): the operator
 # checks and launches the first one as any other; when all its runs have ended, the manager waits
@@ -17,8 +16,6 @@ from pybiscus.session.manager.network import flower_server_address
 
 RUNNING, WAITING, ENDED, FAILED = "running", "waiting", "ended", "failed"
 POLL_S = 1.0
-# loading the plugins and the model before listening: tens of seconds on a loaded machine
-SERVER_START_LIMIT_S = 600
 
 
 class Repetition:
@@ -125,23 +122,8 @@ class Repetition:
         return None
 
     def _wait_listening(self, name: str) -> Optional[str]:
-        port, _ = flower_server_address()
-        if port is None:
-            return f"the port of {name}'s Flower server is unknown: its clients cannot wait for it"
-        deadline = time.monotonic() + SERVER_START_LIMIT_S
-        while time.monotonic() < deadline:
-            state = orders.ask(name, orders.LISTENING, port=port)
-            if state is None:
-                return f"{name} did not answer while its server starts"
-            if "listening" not in state:
-                return f"{name} did not probe its server's port {port} ({state.get('reason', '')})"
-            if state.get("listening"):
-                return None
-            if not state.get("running"):
-                return f"the Flower server of agent {name} ended before listening, in session {self.sessions}"
-            if self.cancelled.wait(POLL_S):
-                return "cancelled"
-        return f"the Flower server of agent {name} did not listen within {SERVER_START_LIMIT_S} s, in session {self.sessions}"
+        problem = launch.wait_listening(name, launch.SERVER_START_LIMIT_S, self.cancelled)
+        return f"{problem}, in session {self.sessions}" if problem and problem != "cancelled" else problem
 
 
 repetition: Optional[Repetition] = None

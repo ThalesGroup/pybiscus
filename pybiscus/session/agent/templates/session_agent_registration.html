@@ -527,8 +527,10 @@
                 // the manager shares the cores of a machine between its clients (num_threads)
                 machine:      {{ machine | tojson }},
                 cpu_cores:    {{ cpu_cores | tojson }},
-                // what the manager presents when it calls this agent (stop, relaunch, its session form)
+                // what this agent presents when it asks for its orders, and the manager to open its session form
                 call_token:   {{ call_token | tojson }},
+                // started with --accept-launch: the manager launches its run by order
+                accept_launch: {{ accept_launch | tojson }},
             };
             
             const response = await fetch(registrationUrl, {

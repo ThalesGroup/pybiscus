@@ -49,6 +49,18 @@
 * The listening probe, which the manager asks before it launches the clients of a repeated session
   again, checks only the port of the agent's server run (read from its configuration): any port
   asked for would tell which services listen on the loopback of its machine.
+* **Launch by order** (`docs/sessionmanager.md`, *Launched by order*): an agent started with
+  `pybiscus_agent --accept-launch` (or `PYBISCUS_ACCEPT_LAUNCH=1`) needs neither its form nor an open
+  tab at the launch. When the session is launched, the manager orders it to launch its run: the agent
+  asks the session's presets, applies them to `--launch-config <file>` (its own data paths, devices...;
+  default: the form's defaults) as the form would, checks the result and starts the run. The servers
+  first, the clients once every server listens (even one its operator launches from its form); an
+  agent registered after the launch is launched at its registration; a failure is in the manager's
+  log. A session may mix both. The registration still goes through the agent's page, whose waiting
+  page follows the run's monitor; the manager's page marks such an agent *🚀 by order*. The form's
+  default list items (loggers, metrics loggers, pipeline) come from `presets.LIST_DEFAULTS`, shared
+  with the launch. `record_session.py`: `accept_launch: true` (scenario or agent) and an agent's
+  `launch_config`.
 * `pybiscus/session/agent/presets.py`: the session's presets (options and values the manager imposes)
   applied to a configuration in Python, as the agent's form applies them in the browser, for an agent
   launched without its form; the form and the Python merge share the filter of the values calling an

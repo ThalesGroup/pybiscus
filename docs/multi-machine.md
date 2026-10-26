@@ -15,7 +15,7 @@ they print (`…?token=…`), and give the session token at each registration.
 | browser of the manager's operator | manager | manager page |
 | browser of the manager's operator | **server agent** | session form, opened by the manager page |
 | browser of each agent's operator | its agent | registration, configuration, run pages |
-| browser of each agent's operator | manager | registration, waiting for the session launch (the run starts from this page: keep it open) |
+| browser of each agent's operator | manager | registration, waiting for the session launch (the run starts from this page: keep it open, unless the agent is [launched by order](sessionmanager.md#launched-by-order)) |
 | agents | manager | their orders (stop, stop after the round, relaunch of a repeated session), asked every second during a session, every 5 s otherwise; a client's run configuration, which the manager passes on to the server agent with an order |
 | runs (server, clients) | manager | webhooks: logs, metrics, vignettes |
 | Flower clients | **Flower server** | the training itself |

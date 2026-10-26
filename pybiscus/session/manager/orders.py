@@ -17,7 +17,14 @@ CALL_TOKEN_HEADER = "X-Pybiscus-Call-Token"
 STOP, STOP_AFTER_ROUND, RELAUNCH, LISTENING = "stop", "stop_after_round", "relaunch", "listening"
 # to the server agent: a client's run configuration, kept in the server run's reports
 CLIENT_RUNCONFIG = "client_runconfig"
-KINDS = (STOP, STOP_AFTER_ROUND, RELAUNCH, LISTENING, CLIENT_RUNCONFIG)
+# to an agent started with --accept-launch: its run, configured from the session's presets
+LAUNCH = "launch"
+KINDS = (STOP, STOP_AFTER_ROUND, RELAUNCH, LISTENING, CLIENT_RUNCONFIG, LAUNCH)
+# an agent executes them in a thread of their own and posts their result later: a launch checks its
+# configuration first (seconds), during which a stop must still be taken
+SLOW_KINDS = (LAUNCH,)
+# a check on a machine busy training: the manager waits this long for a launch's result
+SLOW_ANSWER_S = 300.0
 
 # seconds between two questions of an agent: a stop or a relaunch waits at most this long
 POLL_BUSY_S = 1.0
@@ -42,6 +49,7 @@ class Order:
         self.id, self.agent, self.token, self.kind, self.args = next(_ids), agent, token, kind, args
         self.created = time.monotonic()
         self.result: Optional[dict] = None
+        self.taken = threading.Event()
         self.done = threading.Event()
 
     def message(self) -> dict:
@@ -70,14 +78,19 @@ def withdraw(order: Order) -> bool:
     return False
 
 
-def ask(agent: str, kind: str, timeout: float = POLL_IDLE_S + 5, **args) -> Optional[dict]:
+def ask(agent: str, kind: str, timeout: float = POLL_IDLE_S + 5, answer_within: Optional[float] = None,
+        **args) -> Optional[dict]:
     """the agent's answer, None when it did not take the order in time (the order is withdrawn) or
-    did not answer"""
+    did not answer; answer_within: the time it has once it took the order"""
     order = send(agent, kind, **args)
-    if order.done.wait(timeout):
-        return order.result
-    withdraw(order)
-    return None
+    if answer_within is None:
+        if order.done.wait(timeout):
+            return order.result
+        withdraw(order)
+        return None
+    if not order.taken.wait(timeout) and withdraw(order):
+        return None
+    return order.result if order.done.wait(answer_within) else None
 
 
 def heard(agent: str) -> None:
@@ -96,10 +109,12 @@ def take(agent: str, token: Optional[str]) -> list:
         if rest:
             _queued[agent] = rest
         # taken by an agent that ended before answering
-        for order_id in [i for i, order in _taken.items() if now - order.created >= ORDER_EXPIRY_S]:
+        for order_id in [i for i, order in _taken.items()
+                         if now - order.created >= (SLOW_ANSWER_S if order.kind in SLOW_KINDS else ORDER_EXPIRY_S)]:
             del _taken[order_id]
         for order in fresh:
             _taken[order.id] = order
+            order.taken.set()
     return [order.message() for order in fresh]
 
 

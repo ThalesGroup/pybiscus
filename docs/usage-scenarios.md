@@ -32,7 +32,7 @@ and the [privacy evaluation](privacy-evaluation.md) for curious partners.
 | | what changes |
 |---|---|
 | **connectivity** | who must reach whom ([table](multi-machine.md#who-calls-whom)), which ports are open, what a firewall, a NAT or a proxy cuts |
-| **operation** | one operator for everything or one per site; a browser tab to launch a session; restarts |
+| **operation** | one operator for everything or one per site; a browser tab to launch a session, or agents [launched by order](sessionmanager.md#launched-by-order); restarts |
 | **resources** | memory and GPU shared by every process on one machine; network time per round across sites |
 | **consistency of the settings** | how many forms are filled by how many operators: the [usual mistakes](#common-mistakes) grow with the sites |
 | **meaning of the results** | simulated shares of one dataset (reproducible) or real data of each site (not reproducible) |
@@ -109,9 +109,10 @@ running variants and seeds and gathering the results.
 **Setup**: the CLI only; no manager, no agent.
 
 **Limits**:
-- A session of the manager is launched from the agents' pages, in a browser: the first launch is
-  not scriptable. A [repeated session](sessionmanager.md#repeated-sessions) is then launched again
-  by the manager alone.
+- A session of the manager needs a browser for the registrations and the session form. The agents
+  started with `--accept-launch` are then [launched by order](sessionmanager.md#launched-by-order),
+  without a tab; the others from their pages. A [repeated session](sessionmanager.md#repeated-sessions)
+  is launched again by the manager alone.
 - The CLI has no tokens: only the [TLS of Flower](multi-machine.md#flower) protects its traffic.
   Keep it on one machine or a closed network.
 
@@ -179,8 +180,8 @@ scripts to run them, are described in [containers.md](containers.md). A cluster 
 a closed network of this kind, its network policies limiting the flows to
 [who calls whom](multi-machine.md#who-calls-whom). The CLI suits it: the Flower server as a service,
 the clients as jobs, the configurations and each client's data mounted. A session of the manager
-fits less: the tokens must outlast a restart (a persistent volume), and the launch needs a browser
-on the agents' pages. No manifest
+fits less: the tokens must outlast a restart (a persistent volume), and the registrations and the
+session form need a browser (agents started with `--accept-launch` then launch without one). No manifest
 is provided or tested yet.
 
 **Security**: [checklist](security.md#several-machines-on-a-closed-network).

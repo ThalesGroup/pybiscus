@@ -109,6 +109,10 @@ or the firewall.
   (`weights_only=True`, `allow_pickle=False`), YAML with `safe_load`.
 - **A run is a fixed command** (`uv run pybiscus <server|client> launch <file>`), without a shell.
   A configuration selects among the plugins already loaded; it cannot load one.
+- **A launch by order is opt-in**: an agent started with `--accept-launch` runs the configuration
+  the manager's presets make of its launch configuration, which nobody reads first
+  ([Launched by order](sessionmanager.md#launched-by-order)). The presets are the form's, the values
+  calling an interpolation resolver ignored; the agent's log lists them.
 - **A plugin is code**, run with the rights of the agent's user: the plugin manifest
   (`PYBISCUS_PLUGIN_CONF_PATH`, `pybiscus.env`) belongs to the operator of each machine. Load only
   plugins you trust.

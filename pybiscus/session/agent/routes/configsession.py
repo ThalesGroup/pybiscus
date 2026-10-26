@@ -20,6 +20,32 @@ def session_registration_waiting():
     if not {'manager_url', 'role'} <= pybagent.registration_parameters.keys():
         return redirect('/session/agent/registration')
 
+    from pybiscus.session.agent.launch import waiting_for_order
+    by_order = waiting_for_order()
+    if by_order:
+        # no form: the run's monitor once the order started it (a run of a former session does not count)
+        return render_template('session_agent_waiting.html',
+                               state='Waiting for the session launch',
+                               action='Registration',
+                               explanation=by_order,
+                               callback='''
+        let initial = null;
+        function followRun() {
+            fetch('/run/status')
+                .then(res => res.json())
+                .then(data => {
+                    if (initial === null) initial = data.status;
+                    if (data.status === 'running' || data.status !== initial) {
+                        window.location.href = '/run';
+                        return;
+                    }
+                    setTimeout(followRun, 2000);
+                })
+                .catch(() => setTimeout(followRun, 2000));
+        }
+        followRun();
+''')
+
     manager_url = pybagent.registration_parameters['manager_url']
     role        = pybagent.registration_parameters['role']
     # the manager gives each client a stable cid and its share of the data from the agent's name
@@ -165,7 +191,7 @@ def session_registration():
     from pybiscus.session.agent.machine import machine_name, physical_cores
     return render_template( 'session_agent_registration.html', config=config, session_token=session_token,
                             machine=machine_name(), cpu_cores=physical_cores(), invited=invited,
-                            call_token=pybagent.call_token)
+                            call_token=pybagent.call_token, accept_launch=pybagent.accept_launch)
 
 # ..........................................................
 # ............ POST /session/agent/registration ...........

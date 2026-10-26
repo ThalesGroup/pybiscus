@@ -2,15 +2,28 @@
 form applies them in the browser: an agent launched by an order has no form."""
 
 import copy
+import json
 from typing import Annotated, Optional, Union, get_args, get_origin
 
-from pydantic import BaseModel
+from pydantic import BaseModel, TypeAdapter
 
 from pybiscus.pydantic2xxx.pydantic2html import generate_tab_name, option_name
 from pybiscus.session.interpolation import calls_resolver
 
 # the form's names of an Optional's tabs: ' ' holds a value, '  ' is None
 SOME, NONE = " ", "  "
+
+# the items an empty list starts with, by their option's label: the form adds them (lists_management.js),
+# and so does an agent launched by order from the defaults
+LIST_DEFAULTS = {
+    "server_run.loggers": ["WebHook"],
+    "server_compute_context.metrics_loggers": ["WebHook"],
+    "server_strategy.pipeline": ["MetricDiffCompute", "TimeDiffCompute", "VisualizeModelLayers"],
+}
+
+
+def list_defaults_js() -> str:
+    return f"const PYBISCUS_LIST_DEFAULTS = {json.dumps(LIST_DEFAULTS)};\n"
 
 
 def accepted(presets: dict) -> tuple[dict, list, dict, list, list]:
@@ -65,17 +78,59 @@ def _model_of(declared, value) -> Optional[type]:
     return None
 
 
-def _fresh(model) -> dict:
+def fresh(model) -> dict:
     """an option newly selected, as its tab shows it: its required sections too (a data's config,
     whose fields all have defaults, has none itself), with their first option"""
-    fresh = {"name": option_name(model)} if option_name(model) else {}
+    sections = {"name": option_name(model)} if option_name(model) else {}
     for key, field in model.model_fields.items():
         if key == "name" or not field.is_required() or _is_optional(field.annotation):
             continue
         models = [m for m in _members(field.annotation) if _is_model(m)]
         if models:
-            fresh[key] = _fresh(models[0])
-    return fresh
+            sections[key] = fresh(models[0])
+    return sections
+
+
+def defaults(model) -> dict:
+    """the configuration the form shows before any preset: the first option of each union, the required
+    sections, the lists' default items (an option a plugin not loaded brings is left out, as the form does)"""
+    config = fresh(model)
+    for prefix, labels in LIST_DEFAULTS.items():
+        keys = prefix.split(".")
+        located = _parent(model, config, keys)
+        if located is None:
+            continue
+        declared, node = located
+        holder = _model_of(declared, node)
+        if holder is None or keys[-1] not in holder.model_fields or node.get(keys[-1]):
+            continue
+        elements = [get_args(m)[0] for m in _members(holder.model_fields[keys[-1]].annotation) if get_origin(m) is list]
+        options = {generate_tab_name(m, ""): m for e in elements for m in _members(e) if _is_model(m)}
+        node[keys[-1]] = [fresh(options[label]) for label in labels if label in options]
+    return config
+
+
+def complete(declared, node) -> None:
+    """every field the configuration leaves out, with its default, as the form writes them all: the
+    check resolves the interpolations (${root_dir}/...) before Pydantic adds the defaults, and one
+    naming a key absent from the file fails"""
+    if isinstance(node, list):
+        elements = [get_args(m)[0] for m in _members(declared) if get_origin(m) is list and get_args(m)]
+        for item in node:
+            if elements:
+                complete(elements[0], item)
+        return
+    if not isinstance(node, dict):
+        return
+    model = _model_of(declared, node)
+    if model is None:
+        return
+    for key, field in model.model_fields.items():
+        if key not in node and not field.is_required():
+            default = field.get_default(call_default_factory=True)
+            node[key] = None if default is None else TypeAdapter(field.annotation).dump_python(default, mode="json", warnings=False)
+        if key in node:
+            complete(field.annotation, node[key])
 
 
 def _child(declared, node, key: str):
@@ -132,13 +187,13 @@ def set_option(model, config: dict, prefix: str, label: str) -> bool:
             node[key] = None
             return True
         if current is None:
-            node[key] = _fresh(by_label[0] if by_label else members[0]) if members else {}
+            node[key] = fresh(by_label[0] if by_label else members[0]) if members else {}
             return True
     if not by_label:
         # another union of the same name without this option, or an Optional's ' ': left as it is
         return label.strip() == "" or any(generate_tab_name(m, "") == label for m in _members(field_type))
     if _model_of(field_type, current) is not by_label[0]:
-        node[key] = _fresh(by_label[0])
+        node[key] = fresh(by_label[0])
     return True
 
 
@@ -170,4 +225,5 @@ def apply(model, config: dict, presets: dict) -> tuple[dict, list, list]:
     # the options first, as the form: a value goes into the option the session selects
     unplaced = [prefix for prefix, label in options_set.items() if not set_option(model, config, prefix, str(label))]
     unplaced += [path for path, value in values_set.items() if not set_value(model, config, path, value)]
+    complete(model, config)
     return config, unplaced, ignored

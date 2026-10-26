@@ -118,6 +118,33 @@ Every agent's page then switches to its run monitor (state, live log, stop butto
 
 ![Run monitor](images/agent_run_monitor.png "Run monitor")
 
+### Launched by order
+
+An agent started with `--accept-launch` (or `PYBISCUS_ACCEPT_LAUNCH=1`) needs neither its form nor
+an open tab at the launch: when the session is launched, the manager orders it to launch its run.
+The agent asks the manager for the session's presets, as its waiting page does, applies them to its
+launch configuration as the form would, checks the result and starts the run; a failure (a check
+refused, no presets) is in the manager's log.
+
+```bash
+pybiscus_agent --port 5001 --accept-launch --launch-config my-client.yml
+```
+
+- `--launch-config <file>` (or `PYBISCUS_LAUNCH_CONFIG`): the run's configuration the presets apply
+  to, with this machine's own values (data paths, devices, threads...). Without it, the form's
+  defaults. The presets impose the same as in the form: the options and values the session sets
+  replace the file's, and the file's other values stay.
+- The servers are launched first; the clients launched by order once every server listens (Flower's
+  client does not retry), even a server its operator launches from its form.
+- An agent registered after the launch is launched at its registration.
+- The registration still goes through the agent's page; its waiting page then follows the run's
+  monitor once the order started it. The manager's page marks such an agent *🚀 by order*.
+- A session can mix both: the agents without `--accept-launch` are launched from their form.
+
+Nobody reads the configuration before the run starts: start an agent with `--accept-launch` only
+for a manager you would trust to fill its form. The values calling an interpolation resolver
+(`${oc.env:…}`) are ignored, as in the form, and the agent's log lists the presets it applied.
+
 ### 7. Follow the session
 
 The manager shows, live:
@@ -596,7 +623,8 @@ an agent ignores one it receives, leaves the field free and says so under it and
 (`/pybiscus-session/orders`), every second during a session, every 5 s otherwise, and posts their
 results. The orders are the stop of a run (*Drop session*), its stop after the current round, the
 relaunch of a repeated session, the probe of the server's port before its clients are relaunched,
-and a client's run configuration for the server agent, kept in the server's reports. An agent may
+a client's run configuration for the server agent, kept in the server's reports, and the launch of
+the run of an agent started with `--accept-launch` ([Launched by order](#launched-by-order)). An agent may
 thus sit behind a NAT, or listen on its loopback only.
 
 A token is kept, readable by its owner only, in `.pybiscus-cache/tokens/` of the directory where

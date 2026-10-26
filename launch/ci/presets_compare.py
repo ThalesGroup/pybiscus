@@ -6,6 +6,9 @@ import json
 import sys
 from contextlib import redirect_stdout
 
+from omegaconf import OmegaConf
+from omegaconf.errors import OmegaConfBaseException
+
 with redirect_stdout(io.StringIO()):
     # the plugin manager says what it loads
     from pybiscus.flower_config.config_client import ConfigClient
@@ -24,10 +27,12 @@ def as_texts(value):
 
 
 def validated(model, config) -> tuple[str, object]:
-    # both are text as the form reads it: compared once validated, "2" and 2 are the same
+    # both are text as the form reads it: compared once validated, "2" and 2 are the same. Resolved
+    # first, as the check does: an interpolation naming a key the file leaves out fails there
     try:
-        return "valid", model.model_validate(config).model_dump(mode="json")
-    except ValueError:
+        resolved = OmegaConf.to_container(OmegaConf.create(config), resolve=True)
+        return "valid", model.model_validate(resolved).model_dump(mode="json")
+    except (ValueError, OmegaConfBaseException):
         return "invalid", as_texts(config)
 
 
@@ -44,17 +49,20 @@ def main() -> int:
     failures = 0
     for name, case in dump["cases"].items():
         model = MODELS[case["role"]]
-        config, unplaced, ignored = presets.apply(model, dump["bases"][case["role"]], case["presets"])
-        (form_state, form), (python_state, python) = validated(model, case["form"]), validated(model, config)
-        found = list(differences(form, python))
-        same = form_state == python_state and not found
-        failures += not same
-        print(f"  {'ok    ' if same else 'FAILED'}   {name} ({case['role']}, form {form_state}, python {python_state})"
-              + (f"; no place for {', '.join(unplaced)}" if unplaced else "")
-              + (f"; ignored {', '.join(ignored)}" if ignored else ""))
-        for line in found[:20]:
-            print(f"             {line}")
-    print(f"  {len(dump['cases'])} case(s), {failures} failed")
+        # the form's base, and the one of an agent launched without --launch-config: the form's defaults
+        # computed in Python
+        for base_name, base in (("form's base", dump["bases"][case["role"]]), ("defaults", presets.defaults(model))):
+            config, unplaced, ignored = presets.apply(model, base, case["presets"])
+            (form_state, form), (python_state, python) = validated(model, case["form"]), validated(model, config)
+            found = list(differences(form, python))
+            same = form_state == python_state and not found
+            failures += not same
+            print(f"  {'ok    ' if same else 'FAILED'}   {name}, {base_name} ({case['role']}, form {form_state}, python {python_state})"
+                  + (f"; no place for {', '.join(unplaced)}" if unplaced else "")
+                  + (f"; ignored {', '.join(ignored)}" if ignored else ""))
+            for line in found[:20]:
+                print(f"             {line}")
+    print(f"  {2 * len(dump['cases'])} comparison(s), {failures} failed")
     return 1 if failures else 0
 
 
