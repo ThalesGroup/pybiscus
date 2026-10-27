@@ -74,10 +74,10 @@ satisfied (its extras included, `torchmetrics[detection]`), or an import the fil
 (an import inside `try: … except ImportError:` is optional and not counted). It reads the manifests
 of `PYBISCUS_PLUGIN_CONF_PATH`, as the other commands.
 
-- `--install` uses `uv pip install` (pip without uv), which ignores `uv.lock`, and `uv sync` later
-  removes what `pyproject.toml` does not declare (`uv sync --inexact` keeps it). When an extra of
-  Pybiscus provides the missing packages (`privacy-evaluation`), the command names it instead:
-  `uv sync --extra privacy-evaluation` installs the locked versions.
+- When an extra of Pybiscus provides the missing packages (`privacy-evaluation`), `--install` runs
+  `uv sync --inexact --extra=<it>`: the versions of `uv.lock`. Otherwise it runs `uv pip install`
+  (pip without uv), which ignores `uv.lock`. Either way, a later `uv sync` without that extra
+  removes them (`uv sync --inexact` keeps them).
 - `launch/ci/smoke.sh check` runs it on every plugin directory (`--declarations`), and fully on
   the bundled and hierarchical plugins; the container images install every extra and fail their
   build when a plugin's requirements are missing.

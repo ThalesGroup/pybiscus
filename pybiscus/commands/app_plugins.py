@@ -229,9 +229,12 @@ def manifest_modules() -> dict:
     return plugin_modules(load_config_with_env(env_var=PLUGIN_MANIFEST_ENV, default=default_plugin_manifest()))
 
 
-def install_command(requirements) -> list[str]:
+def install_command(requirements, extras) -> list[str]:
     import shutil
     # the project's environment is uv's: pip may be absent from it
+    if shutil.which("uv") and extras and Path("uv.lock").is_file():
+        # the locked versions, and --inexact keeps what other extras installed
+        return ["uv", "sync", "--inexact", *(f"--extra={e}" for e in sorted(extras))]
     if shutil.which("uv"):
         return ["uv", "pip", "install", "--python", sys.executable, *map(str, requirements)]
     return [sys.executable, "-m", "pip", "install", *map(str, requirements)]
@@ -280,16 +283,18 @@ def deps(
         failed |= bool(plugin.errors or plugin.undeclared)
         missing += [r for r in plugin.missing if r not in missing]
 
+    extras = pybiscus_extras(missing) if missing else set()
     if missing and install:
-        command = install_command(missing)
+        command = install_command(missing, extras)
         logm.console.print(f"📦 {' '.join(command)}")
         if subprocess.run(command).returncode != 0:
             raise typer.Exit(1)
-        # pyproject.toml does not declare them: a later `uv sync` would uninstall them
-        logm.console.print("⚠️ installed outside pyproject.toml: `uv sync` removes them, `uv sync --inexact` keeps them")
+        # pyproject.toml does not declare them, or only in an extra: a later `uv sync` would uninstall them
+        logm.console.print("⚠️ a later `uv sync` removes them"
+                           + (f" (keep them: uv sync {' '.join(f'--extra {e}' for e in sorted(extras))})" if extras
+                              else ", `uv sync --inexact` keeps them"))
         missing = []
     elif missing and not declarations:
-        extras = pybiscus_extras(missing)
         # uv pip install ignores uv.lock: the extra installs the locked versions
         how = (f"uv sync {' '.join(f'--extra {e}' for e in sorted(extras))}, with the versions of uv.lock"
                if extras else "pybiscus plugins deps --install")
