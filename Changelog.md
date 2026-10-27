@@ -42,6 +42,18 @@
   using it on synthetic data. The name is refused when it is not a lowercase identifier, is
   already a module (it would shadow the plugin) or a plugin of the family. `launch/ci/smoke.sh
   new` creates one of each family and runs their examples; `docs/how-to.md`, *The quickest way*.
+* `pybiscus plugins lint` (`pybiscus/plugin/pluginlint.py`, `docs/plugins.md`, *A plugin's
+  conventions*): each plugin of the manifest(s) against the conventions the forms and the sessions
+  rely on: it imports, the manifest lists every plugin package beside its modules, no `print`,
+  `extra="forbid"` and a description on each field of the configuration models it defines, a
+  `PYBISCUS_ALIAS` (warning only), a `PYBISCUS_GROUP` for a strategy or a strategy decorator, a
+  strategy built on `FlowerStrategyFactory` whose `aggregate_fit` calls Flower's, a data
+  configuration in `train` / `val` / `test` sections, `ReportingOutputs` for a plugin reading the
+  reporting directory; exit 1 on an error, `# pybiscus-lint: ignore=<rule>` for a justified
+  exception, `--rules`. `launch/ci/smoke.sh check` runs it on the bundled and the hierarchical
+  plugins, `smoke.sh new` on the plugins `plugins new` creates; the privacy evaluation's are left
+  out until finalized. The bundled plugins needed two fixes: the `print` of the `randomvector` and
+  `vector` examples, and the test plugin `omniscientalie`, unlisted on purpose.
 * An image with plugins of your own: `container/build_container_with_plugins.sh <plugin directory>
   [image]` builds on the Pybiscus image (or the agent's, `PYBISCUS_IMAGE`), installs each plugin's
   `requirements.txt`, adds its manifest to `PYBISCUS_PLUGIN_CONF_PATH` and runs

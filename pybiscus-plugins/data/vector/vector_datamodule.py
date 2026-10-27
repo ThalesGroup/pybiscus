@@ -2,6 +2,7 @@ import lightning.pytorch as pl
 import torch
 from torch.utils.data import Dataset
 
+import pybiscus.core.pybiscus_logger as logm
 from pybiscus.ml.datasplit import limit, make_loader, reject_former_fields
 
 from vector.vector_dataconfig import FORMER_FIELDS, VectorTestSet, VectorTrainSet, VectorValSet
@@ -61,7 +62,7 @@ if __name__ == "__main__":
     data_module = VectorLightningDataModule(int_value=42, train={"num_samples": 10, "batch_size": 4})
     data_module.setup()
 
-    # print an example dataset
+    # an example batch
     train_loader = data_module.train_dataloader()
     batch = next(iter(train_loader))
-    print(batch)
+    logm.console.print(batch)

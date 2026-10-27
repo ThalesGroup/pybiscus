@@ -5,7 +5,9 @@
 #   launch/ci/smoke.sh [check] [run] [session] [presets] [new] [build] [container-run]     (default: check run)
 #
 #   check          every configuration of configs/ passes `server check` / `client check`, with the
-#                  manifests of every plugin directory; docs/plugins-reference.md is up to date;
+#                  manifests of every plugin directory; docs/plugins-reference.md is up to date; the
+#                  plugins' requirements (plugins deps) and conventions (plugins lint, bundled and
+#                  hierarchical plugins);
 #                  the configurations of every run of launch/campaign/ are valid (campaign --check)
 #   run            a short federated run (mnist demo, server + 2 clients, CPU)
 #   session        the same run in a session of the manager, without a browser: agents started with
@@ -14,7 +16,7 @@
 #   presets        the session's presets give the same configuration applied by an agent's form
 #                  and by an agent launched by an order (launch/ci/presets_check.py, Playwright)
 #   new            a plugin of each family created by `pybiscus plugins new`: its requirements, its
-#                  example configurations and a short run of each, as created
+#                  conventions, its example configurations and a short run of each, as created
 #   build          the two container images
 #   container-run  the same short run, in containers of the pybiscus image
 #
@@ -121,6 +123,15 @@ step_check() {
         echo "  FAILED   the plugins' requirements.txt (pybiscus plugins deps, see $log)"
         failed=$((failed + 1))
     fi
+    # the privacy evaluation's plugins are not finalized: left out until they are
+    log="$logs/plugins-lint.log"
+    if (cd "$REPO" && PYBISCUS_PLUGIN_CONF_PATH=pybiscus-plugins/plugins-conf.yml:pybiscus-plugins-hierarchical/plugins-conf.yml \
+            $PYTHON pybiscus/main.py plugins lint) >"$log" 2>&1; then
+        echo "  ok       the plugins' conventions (pybiscus plugins lint)"
+    else
+        echo "  FAILED   the plugins' conventions (pybiscus plugins lint, see $log)"
+        failed=$((failed + 1))
+    fi
     # the campaigns with the manifests their runs load (the default one and their plugin_manifests),
     # not the configs' list above: a test-only plugin they need is declared there only
     while IFS= read -r config; do
@@ -219,6 +230,10 @@ step_new() {
         echo "  FAILED   their requirements (pybiscus plugins deps, see $dir/deps.log)"
         return 1
     fi
+    if ! (cd "$REPO" && PYBISCUS_PLUGIN_CONF_PATH="$plugins/plugins-conf.yml" $PYTHON pybiscus/main.py plugins lint) >"$dir/lint.log" 2>&1; then
+        echo "  FAILED   their conventions (pybiscus plugins lint, see $dir/lint.log)"
+        return 1
+    fi
     for kind in model data strategydecorator; do
         name="my$kind"
         for config in server client_1 client_2; do
@@ -231,7 +246,7 @@ step_new() {
         done
     done
     [ "$failed" -eq 0 ] || return 1
-    echo "  ok       a plugin of each family created, its requirements and its 3 examples valid"
+    echo "  ok       a plugin of each family created, its requirements, conventions and 3 examples valid"
     for kind in model data strategydecorator; do
         name="my$kind"
         mkdir -p "$dir/run-$name/experiments"

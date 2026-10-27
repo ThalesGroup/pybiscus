@@ -61,6 +61,7 @@ def plugins():
       defaults and descriptions, and the shipped configurations that use it.
     * The command deps checks each plugin's requirements.txt: installed, and covering what it imports.
     * The command new creates a model, data or strategy decorator plugin that runs as it is.
+    * The command lint checks each plugin against the conventions the forms and the session rely on.
     """
 
 
@@ -344,4 +345,34 @@ def deps(
                if extras else "pybiscus plugins deps --install")
         logm.console.print(f"📦 missing: {' '.join(map(str, missing))} ({how})")
     if failed or (missing and not declarations):
+        raise typer.Exit(1)
+
+
+@app.command(name="lint")
+def lint(
+    rules: Annotated[bool, typer.Option("--rules", help="list the rules and exit")] = False,
+) -> None:
+    """Check the plugins of the manifest(s) against Pybiscus's conventions (pybiscus plugins lint
+    --rules lists them). Exit 1 on an error; a warning does not fail. A finding is silenced by a
+    `# pybiscus-lint: ignore=<rule>` comment on its line, for a justified exception."""
+    from pybiscus.plugin.pluginlint import ERROR, RULES, lint as lint_plugins
+
+    if rules:
+        for name, (severity, text) in RULES.items():
+            logm.console.print(f"[bold]{name}[/bold] ({severity}): {text}", soft_wrap=True)
+        return
+    modules = manifest_modules()
+    findings = lint_plugins(modules)
+    root = Path.cwd().resolve()
+    for f in sorted(findings, key=lambda f: (str(f.file), f.line)):
+        try:
+            place = f.file.resolve().relative_to(root)
+        except ValueError:
+            place = f.file
+        mark = "❌" if f.severity == ERROR else "⚠️"
+        logm.console.print(f"{mark} {place}:{f.line}: {f.message} [{f.rule}]", soft_wrap=True, highlight=False, markup=False)
+    errors = sum(f.severity == ERROR for f in findings)
+    count = sum(len(entries) for entries in modules.values())
+    logm.console.print(f"{'❌' if errors else '✅'} {count} plugin(s): {errors} error(s), {len(findings) - errors} warning(s)")
+    if errors:
         raise typer.Exit(1)

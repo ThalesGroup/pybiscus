@@ -2,6 +2,7 @@ import lightning.pytorch as pl
 import torch
 from torch.utils.data import Dataset
 
+import pybiscus.core.pybiscus_logger as logm
 from pybiscus.ml.datasplit import limit, make_loader, partition_subset, reject_former_fields
 
 from randomvector.randomvector_dataconfig import FORMER_FIELDS, RandomVectorTestSet, RandomVectorTrainSet, RandomVectorValSet
@@ -66,7 +67,7 @@ if __name__ == "__main__":
     data_module = RandomVectorLightningDataModule(feature_dim=1, train={"num_samples": 20, "batch_size": 4})
     data_module.setup()
 
-    # print an example dataset
+    # an example batch
     train_loader = data_module.train_dataloader()
     batch = next(iter(train_loader))
-    print(batch)
+    logm.console.print(batch)

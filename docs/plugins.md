@@ -86,6 +86,35 @@ of `PYBISCUS_PLUGIN_CONF_PATH`, as the other commands.
   the bundled and hierarchical plugins; the container images install every extra and fail their
   build when a plugin's requirements are missing.
 
+## A plugin's conventions: pybiscus plugins lint
+
+`pybiscus plugins lint` checks each plugin of the manifest(s) against the conventions the forms, the
+reference and the sessions rely on (`--rules` lists them); it imports the plugins, which must load
+(`pybiscus plugins deps` first). It fails (exit 1) on an error, a warning does not:
+
+| rule | severity | checks |
+|---|---|---|
+| `import` | error | the plugin imports and declares its `(class, config)` pairs |
+| `manifest` | error | a plugin package beside the manifest's modules (its `__init__.py` has `get_modules_and_configs`) is listed in it |
+| `print` | error | no `print`: `pybiscus.core.pybiscus_logger`, whose output reaches the session's pages |
+| `extra-forbid` | error | each configuration model the plugin defines has `model_config = ConfigDict(extra="forbid")` |
+| `description` | error | each of their fields has a description (`Field(description=…)` or the class docstring), shown by the forms |
+| `alias` | warning | the configuration has a `PYBISCUS_ALIAS` (its `name` labels it otherwise) |
+| `group` | error | a strategy or a strategy decorator has a `PYBISCUS_GROUP`, its family in the forms |
+| `strategy` | error | a strategy derives from `FlowerStrategyFactory`; an `aggregate_fit` it overrides calls `super().aggregate_fit` (Flower's checks and metrics) |
+| `data-sections` | error | a data configuration has `train`, `val` and `test` sections |
+| `reporting-outputs` | error | a plugin reading the reporting directory (`reporting_path`, `REPORTING_PATH`) has a configuration deriving from `ReportingOutputs` |
+
+The sections of the core a plugin's configuration uses (`ConfigPartition`) are not its own: they
+are not checked with it. A justified exception is silenced on its line, the rule named:
+
+```python
+def get_modules_and_configs():  # pybiscus-lint: ignore=manifest (a test plugin: launch/campaign/test-plugins-conf.yml lists it)
+```
+
+`launch/ci/smoke.sh check` runs it on the bundled and the hierarchical plugins, `smoke.sh new` on
+the plugins `pybiscus plugins new` creates; the privacy evaluation's (not finalized) are left out.
+
 ## Plugins in a container
 
 The images (`container/build_pybiscus_container.sh`, `build_node_container.sh` for the agent) carry

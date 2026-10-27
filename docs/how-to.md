@@ -74,7 +74,8 @@ The name is the plugin's directory, its module and the `name:` its configuration
 lowercase identifier, which neither an installed module nor a plugin of the same family has. The
 command prints what to run next: the `PYBISCUS_PLUGIN_CONF_PATH` to set for a directory of your own,
 `pybiscus plugins deps`, the examples' `check` and run. Replace the `TODO` docstrings: the forms
-and `pybiscus plugins doc` show them. `launch/ci/smoke.sh new` creates one of each family and runs
+and `pybiscus plugins doc` show them. `pybiscus plugins lint` checks the conventions as the plugin
+grows ([Plugins](plugins.md#a-plugins-conventions-pybiscus-plugins-lint)). `launch/ci/smoke.sh new` creates one of each family and runs
 their examples, so that the templates keep working.
 
 The sections below describe each family by hand.
