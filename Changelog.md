@@ -1,6 +1,13 @@
 # Changelog
 
-## Unreleased
+## [Version 0.16.0]
+
+Since `version0.15.0` (2026-10-26): plugins that describe and check themselves, lighter images. Each
+plugin declares its dependencies (`requirements.txt`, `pybiscus plugins deps`) and is checked
+against the conventions (`pybiscus plugins lint`); `get_modules_and_configs()` in `(class, config)`
+pairs; `pybiscus plugins new` creates a plugin that runs as it is; an image with plugins of your
+own; the images on Ubuntu 24.04 (13.9 GB → 6.3 GB), the GPU reached from podman as from docker;
+Lightning without its extras, the privacy evaluation's dependencies in an extra.
 
 ### Plugins
 
