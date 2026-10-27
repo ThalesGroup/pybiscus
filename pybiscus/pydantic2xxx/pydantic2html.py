@@ -112,11 +112,7 @@ def generate_tab_name(field_type, default) -> str:
             return default
     elif issubclass(field_type, BaseModel):
 
-        if hasattr(field_type, "PYBISCUS_ALIAS"):
-
-            return field_type.PYBISCUS_ALIAS
-        else:
-            return field_type.__name__
+        return option_label(field_type)
     else:
         return default
 
@@ -156,6 +152,11 @@ def option_name(option_type) -> Optional[str]:
         return name_field.default
     values = get_args(name_field.annotation)
     return values[0] if len(values) == 1 and isinstance(values[0], str) else None
+
+# a tab's text is the value the manager's presets select it by: without an alias, the plugin's name
+# (the session form's choice), not its class name, which neither the manager nor its user knows
+def option_label(option_type) -> str:
+    return getattr(option_type, "PYBISCUS_ALIAS", None) or option_name(option_type) or option_type.__name__
 
 # the tab's text is a label (MetricDiffCompute), the rules name the options by their `name` value
 def option_rules_attrs(option_type) -> str:
@@ -684,14 +685,9 @@ def generate_model_html(model: BaseModel, inFieldSet: bool, prefix: str, model_c
             legend_html = f'<legend{opt_title}><div class="pybiscus-config">{display_name}</div></legend>\n'
             prefix += f"{pybiscus_config}."
 
-        elif hasattr(model, "PYBISCUS_ALIAS"):
-            pybiscus_alias = model.PYBISCUS_ALIAS
-            legend_html = f'<legend{opt_title}>{pybiscus_alias}</legend>\n'
-            display_name = pybiscus_alias
-
         else:
-            legend_html = f'<legend{opt_title}>{model.__name__}</legend>\n'
-            display_name = model.__name__
+            display_name = option_label(model)
+            legend_html = f'<legend{opt_title}>{display_name}</legend>\n'
 
         # Un modèle dont l'unique champ est le placeholder `empty_configuration` ne porte
         # aucun paramètre réel : on le rend comme une simple ligne "label : no settings"

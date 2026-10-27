@@ -1,0 +1,6 @@
+# Plugins used by launch/ci/presets_check.py only, added to the default manifests. Never listed in
+# the default manifest: they must not appear in a real session's forms. Paths are relative to this file.
+model:
+  - path: "./test-plugins/model"
+    modules:
+      - noalias

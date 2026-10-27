@@ -7,6 +7,7 @@ from pybiscus.core.schedule import ConfigSchedule
 from pybiscus.flower_config.config_server import Robustness
 from pybiscus.ml.datasplit import ConfigPartitionScheme
 from pybiscus.plugin.registryloader import get_name_value_if_literal
+from pybiscus.pydantic2xxx.pydantic2html import option_label
 
 class FlowerServerConfiguration(BaseModel):
 
@@ -45,10 +46,7 @@ def session_choices(names: list[str], confs) -> dict[str, str]:
     types = get_args(union_type) or (union_type,)
     # each config labelled by its own name: pairing the registry's names with the labels of the
     # configs that declare one shifted every label after a config without PYBISCUS_ALIAS
-    labels = {}
-    for conf in types:
-        name = get_name_value_if_literal(conf)
-        labels[name] = getattr(conf, "PYBISCUS_ALIAS", name)
+    labels = {get_name_value_if_literal(conf): option_label(conf) for conf in types}
 
     choices = {}
     for name in names:

@@ -55,6 +55,12 @@ def main() -> int:
             config, unplaced, ignored = presets.apply(model, base, case["presets"])
             (form_state, form), (python_state, python) = validated(model, case["form"]), validated(model, config)
             found = list(differences(form, python))
+            # both may agree on a preset neither applied: a case may say what it must give
+            for path, value in (case.get("expect") or {}).items():
+                for side, got in (("form", form), ("python", python)):
+                    actual = OmegaConf.select(OmegaConf.create(got), path, default="<absent>")
+                    if actual != value:
+                        found.append(f"{path}: {side} {actual!r}, expected {value!r}")
             same = form_state == python_state and not found
             failures += not same
             print(f"  {'ok    ' if same else 'FAILED'}   {name}, {base_name} ({case['role']}, form {form_state}, python {python_state})"

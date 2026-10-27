@@ -28,7 +28,9 @@ import yaml
 from playwright.sync_api import sync_playwright
 
 REPO = Path(__file__).resolve().parents[2]
-MANIFESTS = "pybiscus-plugins/plugins-conf.yml:pybiscus-plugins-hierarchical/plugins-conf.yml"
+# the test plugins: a plugin without PYBISCUS_ALIAS, which the session labels by its name
+MANIFESTS = ("pybiscus-plugins/plugins-conf.yml:pybiscus-plugins-hierarchical/plugins-conf.yml:"
+             f"{REPO / 'launch/ci/test-plugins-conf.yml'}")
 
 
 def free_port() -> int:

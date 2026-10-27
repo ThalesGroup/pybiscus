@@ -398,5 +398,21 @@
     "flower_client.alternate_client_class.config.link_id": "x"
    }
   }
+ },
+ "client-model-without-alias": {
+  "role": "client",
+  "presets": {
+   "options_set": {
+    "model": "noalias"
+   },
+   "options_lock": [
+    "model"
+   ],
+   "values_set": {},
+   "values_lock": []
+  },
+  "expect": {
+   "model.name": "noalias"
+  }
  }
 }

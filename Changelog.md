@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased
+
+### Plugins
+
+* A plugin without `PYBISCUS_ALIAS` is labelled by its `name` Literal everywhere: its tab and its
+  legend in the agents' forms (before: its class name) as its choice in the session form, so a
+  preset of the manager selecting it selects its tab (before: the form kept its first option);
+  `pybiscus/pydantic2xxx/pydantic2html.py` `option_label`, shared. `launch/ci/smoke.sh presets`
+  loads a test plugin without alias (`launch/ci/test-plugins/`) and checks the configuration a case
+  must give (`expect`).
+
 ## [Version 0.15.0]
 
 Since `version0.14.0` (2026-10-20): sessions over several machines secured. HTTPS between the

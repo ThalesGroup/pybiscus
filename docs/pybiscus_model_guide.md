@@ -456,7 +456,7 @@ After registration, verify your model works correctly:
 
 - **Missing get_modules_and_configs()**: Model won't be discovered
 - **Incorrect return tuple**: PyBiscus can't instantiate the model
-- **Missing metadata**: GUI generation fails (`PYBISCUS_CONFIG`, `PYBISCUS_ALIAS`)
+- **Missing `PYBISCUS_ALIAS`**: not an error, the forms label the model by its `name` Literal (its tab, and its choice in the session form)
 - **Import errors**: Check all dependencies are available in PyBiscus environment
 - **Duplicate discriminators**: Ensure your `name` Literal is unique
 
