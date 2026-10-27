@@ -4,6 +4,7 @@ The demo's own files are used, not copies kept aside: a demo left behind by a ch
 configuration models fails here.
 """
 
+import os
 import sys
 from pathlib import Path
 
@@ -14,8 +15,9 @@ demo, output, max_samples, threads = Path(sys.argv[1]), Path(sys.argv[2]), int(s
 for name in ("server", "client_1", "client_2"):
     conf = OmegaConf.load(demo / f"{name}.yml")
     context = conf["server_compute_context" if name == "server" else "client_compute_context"]
-    # a runner has no GPU, and the same hardware everywhere keeps the run comparable
-    context.hardware.accelerator = "cpu"
+    # a runner has no GPU, and the same hardware everywhere keeps the run comparable; SMOKE_GPU asks
+    # for gpu, not auto, which would fall back to the CPU without a word
+    context.hardware.accelerator = "gpu" if os.getenv("SMOKE_GPU") else "cpu"
     # without it every process takes all the cores, and three of them on one machine crawl
     context.num_threads = threads
     for section in ("train", "test"):

@@ -5,7 +5,8 @@ whichever `bin/container_engine` finds first.
 
 ## Build
 
-Two images, built from the repository root (each is heavy: PyTorch with CUDA):
+Two images, built from the repository root, about 6.3 GB each: Ubuntu 24.04 and PyTorch, whose
+wheels carry their own CUDA libraries (no CUDA base image: the host's NVIDIA driver is enough):
 
 ```bash
 ./container/build_pybiscus_container.sh   # the pybiscus command (server, client, local)
@@ -32,8 +33,25 @@ with `PYBISCUS_IMAGE`).
   and its port 3333 is published on the host.
 - The clients run on the host network and reach the server at `SERVER_ADDRESS` (`localhost:3333`
   by default; give the server's name when it runs on another machine).
-- The scripts reserve the GPU with `--gpus device=0`: change it to the device of your machine (or
-  remove it to run on CPU).
+- The scripts give the containers the GPU `PYBISCUS_GPU`: a device number (`0` by default), `all`,
+  or `none` to run on CPU. `bin/container_gpu` writes the option of the engine: `--gpus device=<n>`
+  with docker, `--device nvidia.com/gpu=<n>` with podman (which reads `--gpus device=0` as a CDI
+  device that does not exist), `all` when the CDI description has only that one, as under WSL.
+
+### The GPU in a container
+
+The host needs its NVIDIA driver and the NVIDIA Container Toolkit (`nvidia-container-toolkit`
+package, NVIDIA's apt repository); no CUDA toolkit. For podman, generate its CDI description once,
+and again after a driver update:
+
+```bash
+sudo nvidia-ctk cdi generate --output=/etc/cdi/nvidia.yaml
+nvidia-ctk cdi list            # nvidia.com/gpu=0 ... (WSL2: nvidia.com/gpu=all only)
+```
+
+Under WSL2, the driver is Windows': do not install a Linux NVIDIA driver in the distribution, it
+would hide the GPU that WSL exposes (`/dev/dxg`, `/usr/lib/wsl/lib`). `SMOKE_GPU=1
+launch/ci/smoke.sh container-run` runs the smoke session in containers on the GPU.
 
 `launch/agent/container/500{0,1,2}.sh` start the agents in containers, for a session driven by
 the session manager (see [Session using the manager](sessionmanager.md)).

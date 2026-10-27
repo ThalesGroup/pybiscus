@@ -25,7 +25,7 @@ $CONTAINER_ENGINE run \
     -t \
     --rm \
     --name "pybiscus-server"                 \
-    --gpus device=0                          \
+    $(container_gpu)                         \
     -v ${PWD}/datasets/:/app/datasets/       \
     -v ${PWD}/experiments:/app/experiments   \
     -v ${PWD}/configs:/app/configs           \

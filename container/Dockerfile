@@ -2,14 +2,13 @@ ARG http_proxy
 ARG https_proxy
 ARG no_proxy
 
-ARG CUDA_VERSION="11.7.1-cudnn8"
-ARG UBUNTU_VERSION="20.04"
-
 ARG PYTHON_VERSION="3.12"
 
-ARG BASE_REGISTRY="docker.io/nvidia"
-ARG BASE_IMAGE="cuda"
-ARG BASE_IMAGE_TAG="${CUDA_VERSION}-devel-ubuntu${UBUNTU_VERSION}"
+# a plain Ubuntu: torch's wheels carry their own CUDA libraries (the nvidia-* packages of uv.lock)
+# and need only the host's driver; a CUDA base image put a second, unused CUDA in the image (7.5 GB)
+ARG BASE_REGISTRY="docker.io/library"
+ARG BASE_IMAGE="ubuntu"
+ARG BASE_IMAGE_TAG="24.04"
 ARG APP_DIR=/app
 
 ##############################################################################
@@ -20,6 +19,7 @@ FROM ${BASE_REGISTRY}/${BASE_IMAGE}:${BASE_IMAGE_TAG}
 RUN apt-get update \
 	&& DEBIAN_FRONTEND=noninteractive \
 	&& apt-get install -q -y --no-install-recommends \
+	ca-certificates \
 	curl \
 	tini \
 	&& rm -rf /var/lib/apt/lists/* /var/log/dpkg.log
@@ -29,6 +29,10 @@ RUN curl -LsSf https://astral.sh/uv/install.sh | sh
 #RUN mv /root/.local/bin/uv /usr/local/bin && chmod a+x /usr/local/bin/uv 
 #RUN mkdir -p /app/.cache/uv && chmod -R a+rwr /app/.cache/uv
 #RUN chmod -R a+rwx /root
+
+# as the CUDA images set them: the NVIDIA Container Toolkit (--gpus) reads them to mount the driver
+ENV NVIDIA_VISIBLE_DEVICES=all
+ENV NVIDIA_DRIVER_CAPABILITIES=compute,utility
 
 # Add $HOME/.local directory to PATH
 ENV PATH="/root/.local/bin:$PATH"

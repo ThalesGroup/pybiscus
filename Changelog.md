@@ -47,6 +47,14 @@
   `requirements.txt`, adds its manifest to `PYBISCUS_PLUGIN_CONF_PATH` and runs
   `pybiscus plugins deps` at build (`container/Dockerfile_with_plugins`; `docs/plugins.md`,
   *Plugins in a container*).
+* The container images on Ubuntu 24.04 instead of `nvidia/cuda:11.7.1-cudnn8-devel-ubuntu20.04`:
+  13.9 GB → 6.3 GB. torch's wheels carry their own CUDA (13.0), which the base image's 11.7 and its
+  compilers duplicated unused; the GPU is still reached through the host's driver (NVIDIA Container
+  Toolkit), `NVIDIA_VISIBLE_DEVICES` / `NVIDIA_DRIVER_CAPABILITIES` kept. `bin/container_gpu`: the
+  launch scripts' GPU option for docker or podman (`PYBISCUS_GPU`: a device, `all`, `none`); they
+  passed `--gpus device=0`, which podman cannot read. `SMOKE_GPU=1 launch/ci/smoke.sh
+  container-run`: the session in containers on the GPU; `docs/containers.md`, *The GPU in a
+  container* (WSL2 included).
 * The test-only plugins (`byzantine`, `omniscientalie`) have their `requirements.txt`, and
   `smoke.sh check` checks the declarations of the campaigns' and the presets' test manifests.
 

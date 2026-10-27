@@ -20,7 +20,8 @@
 #
 # Environment: PYBISCUS_PYTHON (default: "uv run --project <repo> python"), SMOKE_WORK (work
 # directory, default: a new temporary one, kept for its logs), SMOKE_ROUNDS (2),
-# SMOKE_MAX_SAMPLES (2000), SMOKE_THREADS (2), SMOKE_TIMEOUT (seconds per run, 900).
+# SMOKE_MAX_SAMPLES (2000), SMOKE_THREADS (2), SMOKE_TIMEOUT (seconds per run, 900), SMOKE_GPU (set:
+# container-run on the GPU PYBISCUS_GPU, bin/container_gpu).
 
 REPO="$(cd "$(dirname "$(realpath "${BASH_SOURCE[0]}")")/../.." && pwd)"
 PYTHON="${PYBISCUS_PYTHON:-uv run --project $REPO python}"
@@ -301,6 +302,8 @@ step_container_run() {
     # /app is the image's working directory, hence the configurations' root_dir
     local mounts=(-v "$REPO/datasets:/app/datasets" -v "$dir/experiments:/app/experiments"
                   -v "$dir/configs:/app/smoke-configs:ro")
+    # SMOKE_GPU=1: the containers get the GPU of PYBISCUS_GPU (bin/container_gpu); on CPU otherwise
+    [ -n "$SMOKE_GPU" ] && mounts+=($(container_gpu))
 
     container="pybiscus-smoke-server-$$"
     CONTAINERS_TO_REMOVE+=("$container")

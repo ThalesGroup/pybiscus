@@ -1,0 +1,25 @@
+#!/usr/bin/bash
+# The option of `<engine> run` that gives a container the GPU PYBISCUS_GPU: a device number (0 by
+# default), all, or none (nothing: the container runs on CPU).
+#   docker: --gpus device=<n>          (NVIDIA Container Toolkit)
+#   podman: --device nvidia.com/gpu=<n> (its CDI description: sudo nvidia-ctk cdi generate --output=/etc/cdi/nvidia.yaml)
+
+GPU="${PYBISCUS_GPU:-0}"
+[ "$GPU" = "none" ] && exit 0
+
+ENGINE="$(container_engine)" || exit 1
+if [ "$(basename "$ENGINE")" = "podman" ]; then
+    # podman reads `--gpus device=0` as the CDI device nvidia.com/gpu=device=0, which does not exist
+    if [ "$GPU" != "all" ] && command -v nvidia-ctk >/dev/null 2>&1; then
+        devices="$(nvidia-ctk cdi list 2>/dev/null)"
+        # WSL describes the GPUs as a whole only (nvidia.com/gpu=all)
+        if ! grep -qx "nvidia.com/gpu=$GPU" <<<"$devices" && grep -qx "nvidia.com/gpu=all" <<<"$devices"; then
+            GPU="all"
+        fi
+    fi
+    echo "--device nvidia.com/gpu=$GPU"
+elif [ "$GPU" = "all" ]; then
+    echo "--gpus all"
+else
+    echo "--gpus device=$GPU"
+fi
