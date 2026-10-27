@@ -2,7 +2,7 @@
 
 # Smoke checks of a Pybiscus checkout, each step failing with a non-zero exit code:
 #
-#   launch/ci/smoke.sh [check] [run] [session] [presets] [build] [container-run]     (default: check run)
+#   launch/ci/smoke.sh [check] [run] [session] [presets] [new] [build] [container-run]     (default: check run)
 #
 #   check          every configuration of configs/ passes `server check` / `client check`, with the
 #                  manifests of every plugin directory; docs/plugins-reference.md is up to date;
@@ -13,6 +13,8 @@
 #                  API (launch/ci/session_check.py)
 #   presets        the session's presets give the same configuration applied by an agent's form
 #                  and by an agent launched by an order (launch/ci/presets_check.py, Playwright)
+#   new            a plugin of each family created by `pybiscus plugins new`: its requirements, its
+#                  example configurations and a short run of each, as created
 #   build          the two container images
 #   container-run  the same short run, in containers of the pybiscus image
 #
@@ -167,6 +169,80 @@ judge_run() {
     return "$failed"
 }
 
+# a server and two clients from the configurations of $1/{server,client_1,client_2}.yml, in the
+# current directory (their root_dir), judged as the demo's run
+run_three() {
+    local configs="$1" port pids=() codes=() pid name
+    port="$(free_port)" || return 1
+    setsid $PYTHON "$REPO/pybiscus/main.py" server launch "$configs/server.yml" \
+        --num-rounds "$ROUNDS" --server-listen-address "[::]:$port" >server.log 2>&1 &
+    pids+=("$!"); GROUPS_TO_KILL+=("$!")
+    if ! wait_for_port "$port"; then
+        echo "  FAILED   the server did not open its port $port (see $PWD/server.log)"
+        return 1
+    fi
+    for name in client_1 client_2; do
+        setsid $PYTHON "$REPO/pybiscus/main.py" client launch "$configs/$name.yml" \
+            --server-address "localhost:$port" >"$name.log" 2>&1 &
+        pids+=("$!"); GROUPS_TO_KILL+=("$!")
+    done
+    if ! wait_for_exit "${pids[0]}" "$TIMEOUT"; then
+        echo "  the run exceeded $TIMEOUT s: stopped"
+        kill -- "-${pids[0]}" 2>/dev/null
+    fi
+    for pid in "${pids[@]}"; do
+        wait_for_exit "$pid" 60 || kill -- "-$pid" 2>/dev/null
+        wait "$pid"
+        codes+=("$?")
+    done
+    judge_run "$PWD" "${codes[@]}"
+}
+
+# the plugins `pybiscus plugins new` creates, one of each family, as they are: their requirements,
+# their example configurations, a run of each (synthetic data): the templates do not drift
+step_new() {
+    local dir="$WORK/new" plugins kind name failed=0 log config
+    plugins="$dir/myplugins"
+    mkdir -p "$dir"
+    for kind in model data strategydecorator; do
+        name="my$kind"
+        if ! (cd "$REPO" && $PYTHON pybiscus/main.py plugins new "$kind" "$name" --dir "$plugins") >"$dir/new-$kind.log" 2>&1; then
+            echo "  FAILED   plugins new $kind (see $dir/new-$kind.log)"
+            failed=1
+        fi
+    done
+    [ "$failed" -eq 0 ] || return 1
+    # only now: every command reads the manifests at its start, and this one did not exist
+    export PYBISCUS_PLUGIN_CONF_PATH="$REPO/pybiscus-plugins/plugins-conf.yml:$plugins/plugins-conf.yml"
+    if ! (cd "$REPO" && $PYTHON pybiscus/main.py plugins deps) >"$dir/deps.log" 2>&1; then
+        echo "  FAILED   their requirements (pybiscus plugins deps, see $dir/deps.log)"
+        return 1
+    fi
+    for kind in model data strategydecorator; do
+        name="my$kind"
+        for config in server client_1 client_2; do
+            log="$dir/check-$name-$config.log"
+            if ! (cd "$REPO" && $PYTHON pybiscus/main.py "$([ "$config" = server ] && echo server || echo client)" check \
+                    "$plugins/$kind/$name/examples/$config.yml") >"$log" 2>&1; then
+                echo "  FAILED   $kind/$name/examples/$config.yml (check, see $log)"
+                failed=1
+            fi
+        done
+    done
+    [ "$failed" -eq 0 ] || return 1
+    echo "  ok       a plugin of each family created, its requirements and its 3 examples valid"
+    for kind in model data strategydecorator; do
+        name="my$kind"
+        mkdir -p "$dir/run-$name/experiments"
+        # not in a subshell: the processes it starts must reach the cleanup's GROUPS_TO_KILL
+        cd "$dir/run-$name" || return 1
+        run_three "$plugins/$kind/$name/examples" || failed=1
+    done
+    cd "$REPO" || return 1
+    unset PYBISCUS_PLUGIN_CONF_PATH
+    [ "$failed" -eq 0 ]
+}
+
 step_run() {
     local dir="$WORK/run" port pids=() codes=() pid name
     prepare_run_dir "$dir" || return 1
@@ -269,6 +345,7 @@ for step in "$@"; do
         run)           step_run ;;
         session)       step_session ;;
         presets)       step_presets ;;
+        new)           step_new ;;
         build)         step_build ;;
         container-run) step_container_run ;;
         *)             echo "  unknown step: $step"; false ;;

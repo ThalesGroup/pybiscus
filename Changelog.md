@@ -35,6 +35,13 @@
   config without a `name` `Literal`, not a `BaseModel` or under a name taken twice is refused
   with its cause. `docs/how-to.md`'s templates; the examples of `docs/pybiscus_model_guide.md`,
   which returned `(config, class)`, a form the loader never took, corrected.
+* `pybiscus plugins new model|data|strategydecorator <name> [--dir <plugin directory>]` creates a
+  plugin that runs as it is: its package (configuration with its descriptions, implementation,
+  `get_modules_and_configs()` in pairs, `requirements.txt`), its entry in the directory's
+  `plugins-conf.yml` (created if absent, comments kept) and `examples/`, a server and two clients
+  using it on synthetic data. The name is refused when it is not a lowercase identifier, is
+  already a module (it would shadow the plugin) or a plugin of the family. `launch/ci/smoke.sh
+  new` creates one of each family and runs their examples; `docs/how-to.md`, *The quickest way*.
 * An image with plugins of your own: `container/build_container_with_plugins.sh <plugin directory>
   [image]` builds on the Pybiscus image (or the agent's, `PYBISCUS_IMAGE`), installs each plugin's
   `requirements.txt`, adds its manifest to `PYBISCUS_PLUGIN_CONF_PATH` and runs

@@ -51,6 +51,34 @@ Each `path` is added to the Python path at run time, and each listed module is i
 core's own modules (such as the `fedavg` strategy) are found without being listed. See
 [Plugins](plugins.md) for the categories and what happens when a plugin fails to load.
 
+## The quickest way: pybiscus plugins new
+
+```bash
+uv run pybiscus plugins new model mymodel                      # into pybiscus-plugins/
+uv run pybiscus plugins new data mydata --dir path/to/myplugins
+uv run pybiscus plugins new strategydecorator mydecorator --dir path/to/myplugins
+```
+
+It creates a plugin that runs as it is, which you then change:
+
+- its package `<dir>/<family>/<name>/`: the configuration (each field with its `description`),
+  the implementation, `get_modules_and_configs()`, its `requirements.txt`;
+- its entry in `<dir>/plugins-conf.yml` (created if absent, comments kept);
+- `examples/`: a server and two clients using it with bundled plugins that fit it, on synthetic
+  data, nothing to download. A model: a small regression network, tried on `randomvector`. Data:
+  examples with a linear target in `train`, `val` and `test` sections, the train one shared
+  between the clients by `partition`, tried with `linearregression`. A strategy decorator: one
+  line of log per round around the strategy.
+
+The name is the plugin's directory, its module and the `name:` its configurations give: a
+lowercase identifier, which neither an installed module nor a plugin of the same family has. The
+command prints what to run next: the `PYBISCUS_PLUGIN_CONF_PATH` to set for a directory of your own,
+`pybiscus plugins deps`, the examples' `check` and run. Replace the `TODO` docstrings: the forms
+and `pybiscus plugins doc` show them. `launch/ci/smoke.sh new` creates one of each family and runs
+their examples, so that the templates keep working.
+
+The sections below describe each family by hand.
+
 ## How to add models in Pybiscus
 
 Available models are those located in either the plugin directory,

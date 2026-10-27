@@ -60,6 +60,7 @@ def plugins():
     * The command doc writes the reference of every loaded plugin: its configuration fields,
       defaults and descriptions, and the shipped configurations that use it.
     * The command deps checks each plugin's requirements.txt: installed, and covering what it imports.
+    * The command new creates a model, data or strategy decorator plugin that runs as it is.
     """
 
 
@@ -220,6 +221,49 @@ def doc(
         return
     output.write_text(text, encoding="utf-8")
     logm.console.log(f"📚 {output} written")
+
+
+class PluginKind(str, Enum):
+    model = "model"
+    data = "data"
+    strategydecorator = "strategydecorator"
+
+
+# the family of FAMILIES each kind registers into
+KIND_FAMILY = {"model": "Models", "data": "Data", "strategydecorator": "Strategy decorators"}
+
+
+@app.command(name="new")
+def new(
+    kind: Annotated[PluginKind, typer.Argument(help="the plugin's family")],
+    name: Annotated[str, typer.Argument(help="its name: its directory, its module and the `name:` of its configuration")],
+    directory: Annotated[Path, typer.Option("--dir", help="the plugin directory (its manifest plugins-conf.yml, created if absent)")] = Path("pybiscus-plugins"),
+) -> None:
+    """Create a plugin that runs as it is: its package (configuration, implementation,
+    get_modules_and_configs, requirements.txt), its entry in the directory's manifest, and example
+    configurations of a session of two clients (examples/, synthetic data: nothing to download)."""
+    from pybiscus.core.pybiscusexception import PybiscusPluginError
+    from pybiscus.plugin.newplugin import MANIFEST, create
+
+    title, module, registry_name, *_ = next(f for f in FAMILIES if f[0] == KIND_FAMILY[kind.value])
+    taken = set(getattr(importlib.import_module(f"pybiscus.plugin.registries.{module}"), registry_name)())
+    try:
+        package = create(kind.value, name, directory, taken)
+    except PybiscusPluginError as e:
+        logm.console.log(f"❌ {e}")
+        raise typer.Exit(1)
+    import os
+    from pybiscus.plugins_of_app.pybiscusplugins import PLUGIN_MANIFEST_ENV, default_plugin_manifest
+    manifest = directory / MANIFEST
+    current = os.getenv(PLUGIN_MANIFEST_ENV, default_plugin_manifest())
+    lines = [f"🧩 {package} created, listed in {manifest}", "next:"]
+    if manifest.resolve() not in [Path(p).resolve() for p in current.split(":") if p]:
+        lines.append(f"  export {PLUGIN_MANIFEST_ENV}={current}:{manifest}")
+    lines += ["  pybiscus plugins deps",
+              f"  pybiscus server check {package / 'examples/server.yml'}   (and client check client_1.yml, client_2.yml)",
+              "  a run: server launch examples/server.yml, client launch examples/client_1.yml and client_2.yml",
+              "  the TODO docstrings: what the plugin does, shown by the forms and pybiscus plugins doc"]
+    logm.console.print("\n".join(lines), soft_wrap=True)
 
 
 def manifest_modules() -> dict:

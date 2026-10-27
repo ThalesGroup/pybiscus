@@ -1,0 +1,10 @@
+from typing import List, Tuple, Type
+
+import lightning.pytorch as pl
+from pydantic import BaseModel
+
+from $name.lit_$name import ConfigModel_$Name, Lit$Name
+
+
+def get_modules_and_configs() -> List[Tuple[Type[pl.LightningModule], Type[BaseModel]]]:
+    return [(Lit$Name, ConfigModel_$Name)]

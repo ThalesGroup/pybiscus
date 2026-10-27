@@ -1,0 +1,11 @@
+from typing import List, Tuple, Type
+
+from pydantic import BaseModel
+
+from pybiscus.interfaces.flower.strategydecorator import StrategyDecorator
+
+from $name.${name}decorator import Config${Name}Decorator, ${Name}StrategyDecorator
+
+
+def get_modules_and_configs() -> List[Tuple[Type[StrategyDecorator], Type[BaseModel]]]:
+    return [(${Name}StrategyDecorator, Config${Name}Decorator)]

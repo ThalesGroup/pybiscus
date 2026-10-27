@@ -1,0 +1,48 @@
+from typing import ClassVar, Literal
+
+from pydantic import BaseModel, ConfigDict, Field
+
+import pybiscus.core.pybiscus_logger as logm
+from pybiscus.interfaces.flower.strategydecorator import StrategyDecorator
+
+
+class Config${Name}DecoratorData(BaseModel):
+    """the settings of the $name decorator"""
+
+    PYBISCUS_CONFIG: ClassVar[str] = "config"
+
+    every: int = Field(default=1, ge=1, description="rounds between two lines of the log")
+
+    model_config = ConfigDict(extra="forbid")
+
+
+class Config${Name}Decorator(BaseModel):
+
+    PYBISCUS_ALIAS: ClassVar[str] = "$Name"
+    # the family it is listed under in the forms: Metrics, Saving, Privacy, Robustness...
+    PYBISCUS_GROUP: ClassVar[str] = "Metrics"
+    # rules checked by `server check` and in the form; see docs/plugins.md
+    # PYBISCUS_INCOMPATIBLE_WITH: ClassVar[tuple] = ("serverdpfixed",)
+    # PYBISCUS_AFTER: ClassVar[tuple] = ("personalizeclientsfitin",)
+
+    # the registry key: what an item of `server_strategy.pipeline` names
+    name: Literal["$name"]
+    config: Config${Name}DecoratorData
+
+    model_config = ConfigDict(extra="forbid")
+
+
+class ${Name}StrategyDecorator(StrategyDecorator):
+    """TODO: what the $name decorator does around the strategy, in one paragraph: the plugins
+    reference shows it. As generated: logs how many clients answered each round."""
+
+    def __init__(self, base_strategy, config: Config${Name}DecoratorData):
+        super().__init__(base_strategy)
+        self.config = config
+
+    def aggregate_fit(self, server_round, results, failures):
+        if server_round % self.config.every == 0:
+            examples = sum(fit_res.num_examples for _, fit_res in results)
+            logm.console.log(f"$name: round {server_round}, {len(results)} result(s) on {examples} example(s), {len(failures)} failure(s)")
+        # the decorated strategy aggregates: every other method is left to it by StrategyDecorator
+        return super().aggregate_fit(server_round, results, failures)
