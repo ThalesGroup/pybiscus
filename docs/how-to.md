@@ -59,6 +59,9 @@ by instance: `./pybiscus-plugins/model/`
 or in `.../ml/models/` pybiscus source tree. 
 
 
+Whatever its kind, a plugin's directory also carries a `requirements.txt`, every third-party
+package it imports: `pybiscus plugins deps` checks it ([Plugins](plugins.md#a-plugins-dependencies)).
+
 To add a new model, follow the few points below:
 
 0. choose either plugin or pybiscus directory as ROOT

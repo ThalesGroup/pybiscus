@@ -57,7 +57,11 @@ RUN uv python pin 3.12
 # Copy pyproject.toml iand uv.lock files and install dependancies
 COPY pyproject.toml .
 COPY uv.lock .
-RUN uv sync --frozen
+# every extra: the image carries every plugin directory, the privacy evaluation's analyser included
+RUN uv sync --frozen --all-extras --no-dev
+# a plugin whose requirements the image lacks fails the build, not a run
+RUN PYBISCUS_PLUGIN_CONF_PATH=pybiscus-plugins/plugins-conf.yml:pybiscus-plugins-hierarchical/plugins-conf.yml:pybiscus-plugins-privacy-evaluation/plugins-conf.yml \
+    uv run --frozen --no-sync python pybiscus/main.py plugins deps
 
 #RUN chmod 777 /app
 

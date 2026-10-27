@@ -55,13 +55,40 @@ At start-up, every module of the manifest is imported and its `get_modules_and_c
   configuration's `name` `Literal`, two plugins registering the same key.
 - `PYBISCUS_PLUGINS_VERBOSE=1` prints the details of the loading.
 
+## A plugin's dependencies
+
+Each plugin package carries a `requirements.txt`: one requirement per line (PEP 508, `#` comments),
+every third-party package it imports, `torch`, `lightning` and `pydantic` included, without a
+version unless the plugin needs one (in the repository, `uv.lock` fixes them). The plugin then
+describes itself, whatever Pybiscus installs.
+
+```bash
+uv run pybiscus plugins deps             # each plugin of the manifest(s): its requirements, installed or not
+uv run pybiscus plugins deps --install   # installs the missing ones
+uv run pybiscus plugins deps --declarations   # only: does each plugin declare what it imports
+```
+
+It reads the plugins' sources and imports none, so it works while a dependency is missing. It fails
+(exit 1) on a plugin without `requirements.txt`, an invalid line, a requirement missing or not
+satisfied (its extras included, `torchmetrics[detection]`), or an import the file does not cover
+(an import inside `try: … except ImportError:` is optional and not counted). It reads the manifests
+of `PYBISCUS_PLUGIN_CONF_PATH`, as the other commands.
+
+- `--install` uses `uv pip install` (pip without uv), which ignores `uv.lock`, and `uv sync` later
+  removes what `pyproject.toml` does not declare (`uv sync --inexact` keeps it). When an extra of
+  Pybiscus provides the missing packages (`privacy-evaluation`), the command names it instead:
+  `uv sync --extra privacy-evaluation` installs the locked versions.
+- `launch/ci/smoke.sh check` runs it on every plugin directory (`--declarations`), and fully on
+  the bundled and hierarchical plugins; the container images install every extra and fail their
+  build when a plugin's requirements are missing.
+
 ## Metadata a plugin's configuration may declare
 
 Class attributes (`ClassVar`) of the configuration classes, read by the forms and the validation:
 
 | attribute | on | effect |
 |---|---|---|
-| `PYBISCUS_ALIAS` | the `name`/`config` class | label shown in the forms instead of the class name |
+| `PYBISCUS_ALIAS` | the `name`/`config` class | label shown in the forms instead of its `name` `Literal` |
 | `PYBISCUS_GROUP` | the `name`/`config` class | family the option is grouped under in long lists (strategies: Averaging, Server optimizers, Robust aggregation...; decorators: Metrics, Saving, Robustness...) |
 | `PYBISCUS_CONFIG` | a nested configuration class | name of its section in the forms (`config`, `train`, `server_run`...) |
 | `PYBISCUS_DESCRIPTIONS` | an `Enum` (set after the class) | description of each value, shown on hover |

@@ -19,6 +19,15 @@
   `privacy-evaluation`, for the FedMIA analyser only (`uv run --extra privacy-evaluation …`,
   `docs/privacy-evaluation.md`); `pydeps` in the `dev` group; `dotenv` replaced by the package it
   redirects to, `python-dotenv`. The environment: 5.64 GB → 5.28 GB, 14 packages fewer.
+* Each plugin declares its dependencies in a `requirements.txt` of its package: every third-party
+  package it imports. `pybiscus plugins deps` checks the plugins of the manifest(s) without
+  importing them: each requirement installed and satisfied (extras included), each import covered
+  by the file; `--install` installs what is missing (when an extra of Pybiscus provides it, the
+  command names the extra instead, for the locked versions), `--declarations` checks the files
+  only. `launch/ci/smoke.sh check` runs it; `docs/plugins.md`, *A plugin's dependencies*.
+* The container images install every extra (`uv sync --frozen --all-extras --no-dev`): they carry
+  every plugin directory, the FedMIA analyser included; their build runs `pybiscus plugins deps`
+  on all of them. `pydeps` no longer in the images.
 
 ## [Version 0.15.0]
 

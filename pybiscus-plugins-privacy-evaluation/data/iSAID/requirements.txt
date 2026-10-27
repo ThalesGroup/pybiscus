@@ -1,0 +1,7 @@
+lightning
+numpy
+pandas
+pillow
+pydantic
+torch
+torchvision

@@ -1,0 +1,10 @@
+flwr
+matplotlib
+numpy
+pandas
+pydantic
+torch
+tqdm
+# the analyser only (fedmiaprivacy_analyser.py, run by hand): the extra privacy-evaluation of pyproject.toml
+scikit-learn
+jsonargparse

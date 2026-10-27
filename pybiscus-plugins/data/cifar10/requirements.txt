@@ -1,0 +1,5 @@
+lightning
+numpy
+pydantic
+torch
+torchvision

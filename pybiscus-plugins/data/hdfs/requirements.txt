@@ -1,0 +1,5 @@
+lightning
+numpy
+pandas
+pydantic
+torch

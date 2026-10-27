@@ -105,6 +105,17 @@ step_check() {
         echo "  FAILED   docs/plugins-reference.md is not up to date (pybiscus plugins doc, see $log)"
         failed=$((failed + 1))
     fi
+    # what the plugins import against their requirements.txt, for every plugin directory; installed
+    # only for those a simple session loads: the privacy evaluation's are an extra
+    log="$logs/plugins-deps.log"
+    if (cd "$REPO" && PYBISCUS_PLUGIN_CONF_PATH="$manifests" $PYTHON pybiscus/main.py plugins deps --declarations >"$log" 2>&1 \
+            && PYBISCUS_PLUGIN_CONF_PATH=pybiscus-plugins/plugins-conf.yml:pybiscus-plugins-hierarchical/plugins-conf.yml \
+               $PYTHON pybiscus/main.py plugins deps >>"$log" 2>&1); then
+        echo "  ok       the plugins' requirements.txt (pybiscus plugins deps)"
+    else
+        echo "  FAILED   the plugins' requirements.txt (pybiscus plugins deps, see $log)"
+        failed=$((failed + 1))
+    fi
     # the campaigns with the manifests their runs load (the default one and their plugin_manifests),
     # not the configs' list above: a test-only plugin they need is declared there only
     while IFS= read -r config; do

@@ -59,6 +59,7 @@ def plugins():
 
     * The command doc writes the reference of every loaded plugin: its configuration fields,
       defaults and descriptions, and the shipped configurations that use it.
+    * The command deps checks each plugin's requirements.txt: installed, and covering what it imports.
     """
 
 
@@ -219,3 +220,79 @@ def doc(
         return
     output.write_text(text, encoding="utf-8")
     logm.console.log(f"📚 {output} written")
+
+
+def manifest_modules() -> dict:
+    from pybiscus.commands.apps_common import load_config_with_env
+    from pybiscus.plugin.pluginmanager import plugin_modules
+    from pybiscus.plugins_of_app.pybiscusplugins import PLUGIN_MANIFEST_ENV, default_plugin_manifest
+    return plugin_modules(load_config_with_env(env_var=PLUGIN_MANIFEST_ENV, default=default_plugin_manifest()))
+
+
+def install_command(requirements) -> list[str]:
+    import shutil
+    # the project's environment is uv's: pip may be absent from it
+    if shutil.which("uv"):
+        return ["uv", "pip", "install", "--python", sys.executable, *map(str, requirements)]
+    return [sys.executable, "-m", "pip", "install", *map(str, requirements)]
+
+
+@app.command(name="deps")
+def deps(
+    install: Annotated[bool, typer.Option(help="install the requirements missing or not satisfied")] = False,
+    declarations: Annotated[bool, typer.Option(help="only check that each plugin declares what it imports, not what is installed")] = False,
+) -> None:
+    """The third-party packages each plugin of the manifest(s) needs: its requirements.txt, what is
+    installed, and what it imports without declaring it. Exit 1 when a requirement is missing (except
+    with --declarations), a requirements.txt is absent or invalid, or an import is not declared.
+    Reads the sources, imports no plugin: works while a dependency is missing."""
+    import subprocess
+    from pybiscus.plugin.plugindeps import REQUIREMENTS_FILE, analyse, pybiscus_extras
+
+    plugins = analyse(manifest_modules())
+    failed, missing = False, []
+    for plugin in plugins:
+        title = f"[bold]{plugin.category}/{plugin.module}[/bold]"
+        if plugin.requirements is None:
+            logm.console.print(f"❌ {title}: no {REQUIREMENTS_FILE} in {plugin.location}"
+                               + (f" (it imports {', '.join(sorted(plugin.undeclared))})" if plugin.undeclared else ""))
+            failed = True
+            continue
+        problems = list(plugin.errors)
+        for state in plugin.requirements or []:
+            if not state.applies:
+                continue
+            if state.installed is None:
+                if not declarations:
+                    problems.append(f"{state.requirement} missing")
+            elif state.missing_extras and not declarations:
+                problems.append(f"{state.requirement}: its extra needs {', '.join(state.missing_extras)}, missing")
+            elif not state.satisfied and not declarations:
+                problems.append(f"{state.requirement} not satisfied ({state.installed} installed)")
+        problems += [f"imports '{name}' without declaring it ({', '.join(files)})" for name, files in plugin.undeclared.items()]
+        if plugin.requirements is not None:
+            if problems:
+                logm.console.print(f"❌ {title}: " + "; ".join(problems))
+            else:
+                listed = ", ".join(f"{s.requirement.name} {s.installed}" if s.installed else str(s.requirement)
+                                   for s in plugin.requirements) or "nothing"
+                logm.console.print(f"✅ {title}: {listed}")
+        failed |= bool(plugin.errors or plugin.undeclared)
+        missing += [r for r in plugin.missing if r not in missing]
+
+    if missing and install:
+        command = install_command(missing)
+        logm.console.print(f"📦 {' '.join(command)}")
+        if subprocess.run(command).returncode != 0:
+            raise typer.Exit(1)
+        # pyproject.toml does not declare them: a later `uv sync` would uninstall them
+        logm.console.print("⚠️ installed outside pyproject.toml: `uv sync` removes them, `uv sync --inexact` keeps them")
+        missing = []
+    elif missing and not declarations:
+        extras = pybiscus_extras(missing)
+        # uv pip install ignores uv.lock: the extra installs the locked versions
+        how = (f"uv sync {' '.join(f'--extra {e}' for e in sorted(extras))}, with the versions of uv.lock"
+               if extras else "pybiscus plugins deps --install")
+        logm.console.print(f"📦 missing: {' '.join(map(str, missing))} ({how})")
+    if failed or (missing and not declarations):
+        raise typer.Exit(1)

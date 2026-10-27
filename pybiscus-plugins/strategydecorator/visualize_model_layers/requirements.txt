@@ -1,0 +1,6 @@
+flwr
+matplotlib
+numpy
+pydantic
+requests
+seaborn

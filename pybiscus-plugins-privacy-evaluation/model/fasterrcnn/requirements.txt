@@ -1,0 +1,8 @@
+lightning
+numpy
+pandas
+pydantic
+torch
+torchmetrics[detection]
+torchvision
+tqdm
