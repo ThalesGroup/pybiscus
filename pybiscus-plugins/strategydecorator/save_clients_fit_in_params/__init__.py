@@ -1,17 +1,14 @@
 
-from typing import Dict, List, Tuple
+from typing import List, Tuple, Type
 from pydantic import BaseModel
 
 from pybiscus.interfaces.flower.strategydecorator import StrategyDecorator
 
 from save_clients_fit_in_params.saveclientsfitinparams import ConfigSaveClientsFitInParamsDecorator, SaveClientsFitInParamsStrategyDecorator
 
-def get_modules_and_configs() -> Tuple[Dict[str, StrategyDecorator], List[BaseModel]]:
+def get_modules_and_configs() -> List[Tuple[Type[StrategyDecorator], Type[BaseModel]]]:
 
-    registry = {
-        "saveclientsfitin" : SaveClientsFitInParamsStrategyDecorator,
-        }
-    configs  = [ConfigSaveClientsFitInParamsDecorator, ]
-
-    return registry, configs
+    return [
+        (SaveClientsFitInParamsStrategyDecorator, ConfigSaveClientsFitInParamsDecorator),
+    ]
 

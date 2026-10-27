@@ -1,13 +1,12 @@
-from typing import Dict, List, Tuple
+from typing import List, Tuple, Type
 import lightning.pytorch as pl
 from pydantic import BaseModel
 
 from hdfs.hdfs_dataconfig import  ConfigData_Hdfs
 from hdfs.hdfs_datamodule import HDFSDataModule
 
-def get_modules_and_configs() -> Tuple[Dict[str, pl.LightningDataModule], List[BaseModel]]:
+def get_modules_and_configs() -> List[Tuple[Type[pl.LightningDataModule], Type[BaseModel]]]:
 
-    registry = {"hdfs": HDFSDataModule ,}
-    configs  = [ConfigData_Hdfs]
-
-    return registry, configs
+    return [
+        (HDFSDataModule, ConfigData_Hdfs),
+    ]

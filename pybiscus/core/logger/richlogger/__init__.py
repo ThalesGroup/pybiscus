@@ -1,13 +1,12 @@
-from typing import Dict, List, Tuple
+from typing import List, Tuple, Type
 from pydantic import BaseModel
 
 from pybiscus.interfaces.core.logger import LoggerFactory
 from pybiscus.core.logger.richlogger.richloggerfactory import RichLoggerFactory, ConfigRichLoggerFactory
 
 
-def get_modules_and_configs() -> Tuple[Dict[str, LoggerFactory], List[BaseModel]]:
+def get_modules_and_configs() -> List[Tuple[Type[LoggerFactory], Type[BaseModel]]]:
 
-    registry = {"rich": RichLoggerFactory, }
-    configs  = [ConfigRichLoggerFactory, ]
-
-    return registry, configs
+    return [
+        (RichLoggerFactory, ConfigRichLoggerFactory),
+    ]

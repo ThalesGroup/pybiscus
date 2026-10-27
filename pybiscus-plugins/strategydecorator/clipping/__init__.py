@@ -1,13 +1,12 @@
-from typing import Dict, List, Tuple
+from typing import List, Tuple, Type
 from pydantic import BaseModel
 
 from pybiscus.interfaces.flower.strategydecorator import StrategyDecorator
 
 from clipping.clippingdecorator import ClippingStrategyDecorator, ConfigClippingDecorator
 
-def get_modules_and_configs() -> Tuple[Dict[str, StrategyDecorator], List[BaseModel]]:
+def get_modules_and_configs() -> List[Tuple[Type[StrategyDecorator], Type[BaseModel]]]:
 
-    registry = {"clipping": ClippingStrategyDecorator,}
-    configs  = [ConfigClippingDecorator,]
-
-    return registry, configs
+    return [
+        (ClippingStrategyDecorator, ConfigClippingDecorator),
+    ]

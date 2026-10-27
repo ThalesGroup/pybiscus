@@ -14,4 +14,4 @@ class ConfigModel_NoAlias(BaseModel):
 
 
 def get_modules_and_configs():
-    return {"noalias": LitNoop}, [ConfigModel_NoAlias]
+    return [(LitNoop, ConfigModel_NoAlias)]

@@ -1,4 +1,4 @@
-from typing import Dict, List, Tuple
+from typing import List, Tuple, Type
 from pydantic import BaseModel
 
 from wandb_.wandbloggerfactory import WandbLoggerFactory, ConfigWandbLoggerFactory
@@ -6,9 +6,8 @@ from wandb_.wandbloggerfactory import WandbLoggerFactory, ConfigWandbLoggerFacto
 from pybiscus.interfaces.core.metricsloggerfactory import MetricsLoggerFactory
 
 
-def get_modules_and_configs() -> Tuple[Dict[str, MetricsLoggerFactory], List[BaseModel]]:
+def get_modules_and_configs() -> List[Tuple[Type[MetricsLoggerFactory], Type[BaseModel]]]:
 
-    registry = {"wandb": WandbLoggerFactory, }
-    configs  = [ConfigWandbLoggerFactory, ]
-
-    return registry, configs
+    return [
+        (WandbLoggerFactory, ConfigWandbLoggerFactory),
+    ]

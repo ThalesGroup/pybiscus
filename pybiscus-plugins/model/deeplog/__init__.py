@@ -1,13 +1,12 @@
 
-from typing import Dict, List, Tuple
+from typing import List, Tuple, Type
 import lightning.pytorch as pl
 from pydantic import BaseModel
 
 from deeplog.lit_deeplog import ( LitDeeplog, ConfigModel_hdfs, )
 
-def get_modules_and_configs() -> Tuple[Dict[str, pl.LightningModule], List[BaseModel]]:
+def get_modules_and_configs() -> List[Tuple[Type[pl.LightningModule], Type[BaseModel]]]:
 
-    registry = { "deeplog": LitDeeplog, }
-    configs  = [ConfigModel_hdfs]
-
-    return registry, configs
+    return [
+        (LitDeeplog, ConfigModel_hdfs),
+    ]

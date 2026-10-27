@@ -1,13 +1,12 @@
 
-from typing import Dict, List, Tuple
+from typing import List, Tuple, Type
 import lightning.pytorch as pl
 from pydantic import BaseModel
 
 from fasterrcnn.lit_fasterrcnn import ( LitFasterRCNN, ConfigModel_FasterRCNN, )
 
-def get_modules_and_configs() -> Tuple[Dict[str, pl.LightningModule], List[BaseModel]]:
+def get_modules_and_configs() -> List[Tuple[Type[pl.LightningModule], Type[BaseModel]]]:
 
-    registry = { "fasterrcnn": LitFasterRCNN, }
-    configs  = [ConfigModel_FasterRCNN]
-
-    return registry, configs
+    return [
+        (LitFasterRCNN, ConfigModel_FasterRCNN),
+    ]

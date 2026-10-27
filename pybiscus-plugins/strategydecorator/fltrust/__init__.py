@@ -1,13 +1,12 @@
-from typing import Dict, List, Tuple
+from typing import List, Tuple, Type
 from pydantic import BaseModel
 
 from pybiscus.interfaces.flower.strategydecorator import StrategyDecorator
 
 from fltrust.fltrustdecorator import ConfigFLTrustDecorator, FLTrustStrategyDecorator
 
-def get_modules_and_configs() -> Tuple[Dict[str, StrategyDecorator], List[BaseModel]]:
+def get_modules_and_configs() -> List[Tuple[Type[StrategyDecorator], Type[BaseModel]]]:
 
-    registry = {"fltrust": FLTrustStrategyDecorator,}
-    configs  = [ConfigFLTrustDecorator,]
-
-    return registry, configs
+    return [
+        (FLTrustStrategyDecorator, ConfigFLTrustDecorator),
+    ]

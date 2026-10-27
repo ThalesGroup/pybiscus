@@ -1,16 +1,13 @@
 
-from typing import Dict, List, Tuple
+from typing import List, Tuple, Type
 from pydantic import BaseModel
 
 from pybiscus.interfaces.flower.strategydecorator import StrategyDecorator
 
 from visualize_model_layers.visualizemodellayers import ConfigModelWeightVignetteStrategyDecorator, ModelWeightVignetteStrategyDecorator
 
-def get_modules_and_configs() -> Tuple[Dict[str, StrategyDecorator], List[BaseModel]]:
+def get_modules_and_configs() -> List[Tuple[Type[StrategyDecorator], Type[BaseModel]]]:
 
-    registry = {
-        "visualizemodellayers" : ModelWeightVignetteStrategyDecorator,
-        }
-    configs  = [ConfigModelWeightVignetteStrategyDecorator, ]
-
-    return registry, configs
+    return [
+        (ModelWeightVignetteStrategyDecorator, ConfigModelWeightVignetteStrategyDecorator),
+    ]

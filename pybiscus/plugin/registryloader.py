@@ -2,6 +2,7 @@ from typing import Generic, Literal, TypeVar, Type, Dict, Optional, List, Tuple,
 from typing_extensions import Annotated
 from pydantic import BaseModel, Field
 from pathlib import Path
+from collections.abc import Mapping
 import importlib
 import inspect
 import pkgutil
@@ -18,6 +19,29 @@ def get_name_value_if_literal(cls):
         return value
     
     return None
+
+
+def registry_and_configs(declared, module_name: str) -> tuple[dict, list]:
+    """get_modules_and_configs() gives [(class, config), ...], each key being its config's `name`
+    Literal, or the former (registry, configs), still accepted"""
+    if isinstance(declared, tuple) and len(declared) == 2 and isinstance(declared[0], Mapping):
+        registry, configs = declared
+        return dict(registry), list(configs)
+    registry, configs = {}, []
+    for pair in declared:
+        if not (isinstance(pair, tuple) and len(pair) == 2):
+            raise PybiscusPluginError(f"{module_name}: get_modules_and_configs() gives (class, config) pairs, not {pair!r}")
+        cls, config = pair
+        if not (isinstance(config, type) and issubclass(config, BaseModel)):
+            raise PybiscusPluginError(f"{module_name}: the config of {getattr(cls, '__name__', cls)} does not derive from BaseModel")
+        key = get_name_value_if_literal(config)
+        if not isinstance(key, str):
+            raise PybiscusPluginError(f"{module_name}: {config.__name__} has no `name: Literal[\"...\"]`, its registry key")
+        if key in registry:
+            raise PybiscusPluginError(f"{module_name}: two classes under the name '{key}'")
+        registry[key] = cls
+        configs.append(config)
+    return registry, configs
 
 
 def partition(pred, iterable):
@@ -110,7 +134,7 @@ class RegistryLoader(Generic[T]):
                                     print(f"   (class) {name}")
                     continue
 
-                sub_registry, sub_configs = mod.get_modules_and_configs()
+                sub_registry, sub_configs = registry_and_configs(mod.get_modules_and_configs(), full_module_name)
 
                 # sanity check : filtering out classes not deriving from BaseModel
                 configs_ok, configs_ko = partition(lambda config: isinstance(config, type) and issubclass(config, BaseModel), sub_configs)

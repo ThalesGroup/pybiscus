@@ -1,13 +1,12 @@
-from typing import Dict, List, Tuple
+from typing import List, Tuple, Type
 from pydantic import BaseModel
 
 from pybiscus.interfaces.flower.strategydecorator import StrategyDecorator
 
 from upperlevellink.upperlevellinkdecorator import UpperLevelLinkDecorator, ConfigUpperLevelLinkDecorator
 
-def get_modules_and_configs() -> Tuple[Dict[str, StrategyDecorator], List[BaseModel]]:
+def get_modules_and_configs() -> List[Tuple[Type[StrategyDecorator], Type[BaseModel]]]:
 
-    registry = {"upperlevellink": UpperLevelLinkDecorator,}
-    configs  = [ConfigUpperLevelLinkDecorator,]
-
-    return registry, configs
+    return [
+        (UpperLevelLinkDecorator, ConfigUpperLevelLinkDecorator),
+    ]

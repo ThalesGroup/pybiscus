@@ -1,5 +1,5 @@
 
-from typing import Dict, List, Tuple
+from typing import List, Tuple, Type
 from pydantic import BaseModel
 
 from pybiscus.flower.flowerfitresultsaggregator.flowerfitresultsaggregatorusingweightedaverage.flowerfitresultsaggregatorusingweightedaverage import (
@@ -9,9 +9,8 @@ from pybiscus.flower.flowerfitresultsaggregator.flowerfitresultsaggregatorusingw
 
 from pybiscus.interfaces.flower.flowerfitresultsaggregator import FlowerFitResultsAggregator
 
-def get_modules_and_configs() -> Tuple[Dict[str, FlowerFitResultsAggregator], List[BaseModel]]:
+def get_modules_and_configs() -> List[Tuple[Type[FlowerFitResultsAggregator], Type[BaseModel]]]:
 
-    registry = {"weightedaverage": FlowerFitResultsAggregatorUsingWeightedAverage,}
-    configs  = [ConfigFlowerFitResultsAggregatorUsingWeightedAverage,]
-
-    return registry, configs
+    return [
+        (FlowerFitResultsAggregatorUsingWeightedAverage, ConfigFlowerFitResultsAggregatorUsingWeightedAverage),
+    ]

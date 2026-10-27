@@ -1,13 +1,12 @@
 
-from typing import Dict, List, Tuple
+from typing import List, Tuple, Type
 import lightning.pytorch as pl
 from pydantic import BaseModel
 
 from cnn.lit_cnn import ( LitCNN, ConfigModel_Cifar10, )
 
-def get_modules_and_configs() -> Tuple[Dict[str, pl.LightningModule], List[BaseModel]]:
+def get_modules_and_configs() -> List[Tuple[Type[pl.LightningModule], Type[BaseModel]]]:
 
-    registry = { "cifar": LitCNN, }
-    configs  = [ConfigModel_Cifar10]
-
-    return registry, configs
+    return [
+        (LitCNN, ConfigModel_Cifar10),
+    ]

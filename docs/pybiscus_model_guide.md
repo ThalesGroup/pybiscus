@@ -420,18 +420,8 @@ from .config import ConfigModel_YourModel
 from .model import LitYourModel
 
 def get_modules_and_configs():
-    """
-    REQUIRED: Export function for PyBiscus model registration.
-    
-    This function is automatically called by PyBiscus during model discovery
-    and registration. It must return the configuration class and Lightning module.
-    
-    Returns:
-        tuple: (config_class, lightning_module_class)
-            - config_class: The discriminated union config (ConfigModel_YourModel)
-            - lightning_module_class: The Lightning module implementation (LitYourModel)
-    """
-    return ConfigModel_YourModel, LitYourModel
+    # (class, config) pairs: the registry key is the config's `name` Literal
+    return [(LitYourModel, ConfigModel_YourModel)]
 ```
 
 ### Registration Process
@@ -680,18 +670,8 @@ from .config import ConfigData_YourData
 from .datamodule import YourLightningDataModule
 
 def get_modules_and_configs():
-    """
-    REQUIRED: Export function for PyBiscus data provider registration.
-    
-    This function is automatically called by PyBiscus during data provider discovery
-    and registration. It must return the configuration class and DataModule.
-    
-    Returns:
-        tuple: (config_class, datamodule_class)
-            - config_class: The discriminated union config (ConfigData_YourData)
-            - datamodule_class: The DataModule implementation (YourLightningDataModule)
-    """
-    return ConfigData_YourData, YourLightningDataModule
+    # (class, config) pairs: the registry key is the config's `name` Literal
+    return [(YourLightningDataModule, ConfigData_YourData)]
 ```
 
 ### Data Provider Configuration Patterns

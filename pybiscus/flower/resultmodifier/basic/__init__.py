@@ -1,18 +1,12 @@
 
-from typing import Dict, List, Tuple
+from typing import List, Tuple, Type
 from pydantic import BaseModel
 
 from pybiscus.flower.resultmodifier.basic.resultidentity import ConfigResultIdentity, ResultIdentity
 from pybiscus.interfaces.flower.resultmodifier import ResultModifier
 
-def get_modules_and_configs() -> Tuple[Dict[str, ResultModifier], List[BaseModel]]:
+def get_modules_and_configs() -> List[Tuple[Type[ResultModifier], Type[BaseModel]]]:
 
-    registry = {
-                    "resultidentity": ResultIdentity,
-
-                }
-    configs  = [
-                    ConfigResultIdentity,
-                ]
-
-    return registry, configs
+    return [
+        (ResultIdentity, ConfigResultIdentity),
+    ]

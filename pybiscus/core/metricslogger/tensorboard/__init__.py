@@ -1,13 +1,12 @@
-from typing import Dict, List, Tuple
+from typing import List, Tuple, Type
 from pydantic import BaseModel
 
 from pybiscus.core.metricslogger.tensorboard.tensorboardloggerfactory import TensorBoardLoggerFactory, ConfigTensorBoardLoggerFactory
 from pybiscus.interfaces.core.metricsloggerfactory import MetricsLoggerFactory
 
 
-def get_modules_and_configs() -> Tuple[Dict[str, MetricsLoggerFactory], List[BaseModel]]:
+def get_modules_and_configs() -> List[Tuple[Type[MetricsLoggerFactory], Type[BaseModel]]]:
 
-    registry = {"tensorboard": TensorBoardLoggerFactory, }
-    configs  = [ConfigTensorBoardLoggerFactory, ]
-
-    return registry, configs
+    return [
+        (TensorBoardLoggerFactory, ConfigTensorBoardLoggerFactory),
+    ]

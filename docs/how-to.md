@@ -81,21 +81,20 @@ To add a new model, follow the few points below:
     You can follow this template:
 
 ```python
-from typing import Dict, List, Tuple
+from typing import List, Tuple, Type
 import lightning.pytorch as pl
 from pydantic import BaseModel
 
 from cnn.lit_cnn import ( LitCNN, ConfigModel_Cifar10, )
 
-def get_modules_and_configs() -> Tuple[Dict[str, pl.LightningModule], List[BaseModel]]:
+# the registry key is the config's `name` Literal
+def get_modules_and_configs() -> List[Tuple[Type[pl.LightningModule], Type[BaseModel]]]:
 
-    registry = { "cifar": LitCNN, }
-    configs  = [ConfigModel_Cifar10]
-
-    return registry, configs
+    return [(LitCNN, ConfigModel_Cifar10)]
 ```
 
-5. of course, add the needed Python libraries using uv
+5. of course, add the needed Python libraries using uv, and list every third-party package the plugin imports
+   in its `requirements.txt` (`pybiscus plugins deps` checks it)
 ```bash
 uv add needed-library1 needed-library2 ...
 ```
@@ -125,19 +124,17 @@ To add a new dataset, follow the few points below:
     You can follow this template:
 
 ```python
-from typing import Dict, List, Tuple
+from typing import List, Tuple, Type
 import lightning.pytorch as pl
 from pydantic import BaseModel
 
 from cifar10.cifar10_dataconfig import ConfigData_Cifar10 
 from cifar10.cifar10_datamodule import CifarLightningDataModule 
 
-def get_modules_and_configs() -> Tuple[Dict[str, pl.LightningDataModule], List[BaseModel]]:
+# the registry key is the config's `name` Literal
+def get_modules_and_configs() -> List[Tuple[Type[pl.LightningDataModule], Type[BaseModel]]]:
 
-    registry = {"cifar": CifarLightningDataModule,}
-    configs  = [ConfigData_Cifar10]
-
-    return registry, configs
+    return [(CifarLightningDataModule, ConfigData_Cifar10)]
 ```
 5. data arriving between rounds (`client_run.refresh_data`): before each fit the client calls the
    module's `refresh()` if it has one (by default, `setup("fit")` again). An incremental module
@@ -147,7 +144,8 @@ def get_modules_and_configs() -> Tuple[Dict[str, pl.LightningDataModule], List[B
    return numbers describing what it read, sent with the round's metrics. Empty sets are allowed:
    the client then leaves the round. The `hdfs` plugin (`train.directory`, `train.lots: new`) is an
    example.
-6. of course, add the needed Python libraries using uv
+6. of course, add the needed Python libraries using uv, and list every third-party package the plugin imports
+   in its `requirements.txt` (`pybiscus plugins deps` checks it)
 ```bash
 uv add needed-library1 needed-library2 ...
 ```
@@ -200,20 +198,19 @@ class MyStrategyFactory(FlowerStrategyFactory):
 
 ```python
 
-from typing import Dict, List, Tuple
+from typing import List, Tuple, Type
 from pydantic import BaseModel
 from pybiscus.interfaces.flower.fabricstrategyfactory import FabricStrategyFactory
 
 from mystrategy.my_strategy import MyStrategyFactory, ConfigMyStrategy
 
-def get_modules_and_configs() -> Tuple[Dict[str, FabricStrategyFactory], List[BaseModel]]:
+# the registry key is the config's `name` Literal
+def get_modules_and_configs() -> List[Tuple[Type[FabricStrategyFactory], Type[BaseModel]]]:
 
-    registry = { "mystrategy": MyStrategyFactory, }
-    configs  = [ConfigMyStrategy,]
-
-    return registry, configs
+    return [(MyStrategyFactory, ConfigMyStrategy)]
 ```
-5. of course, add the needed Python libraries using uv
+5. of course, add the needed Python libraries using uv, and list every third-party package the plugin imports
+   in its `requirements.txt` (`pybiscus plugins deps` checks it)
 ```bash
 uv add needed-library1 needed-library2 ...
 ```

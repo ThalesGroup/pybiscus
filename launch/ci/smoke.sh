@@ -108,7 +108,9 @@ step_check() {
     # what the plugins import against their requirements.txt, for every plugin directory; installed
     # only for those a simple session loads: the privacy evaluation's are an extra
     log="$logs/plugins-deps.log"
-    if (cd "$REPO" && PYBISCUS_PLUGIN_CONF_PATH="$manifests" $PYTHON pybiscus/main.py plugins deps --declarations >"$log" 2>&1 \
+    # the test-only plugins (campaigns, presets) too: their manifests are in launch/
+    if (cd "$REPO" && PYBISCUS_PLUGIN_CONF_PATH="$manifests:launch/campaign/test-plugins-conf.yml:launch/ci/test-plugins-conf.yml" \
+            $PYTHON pybiscus/main.py plugins deps --declarations >"$log" 2>&1 \
             && PYBISCUS_PLUGIN_CONF_PATH=pybiscus-plugins/plugins-conf.yml:pybiscus-plugins-hierarchical/plugins-conf.yml \
                $PYTHON pybiscus/main.py plugins deps >>"$log" 2>&1); then
         echo "  ok       the plugins' requirements.txt (pybiscus plugins deps)"

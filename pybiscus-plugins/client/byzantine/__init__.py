@@ -1,13 +1,12 @@
 
-from typing import Dict, List, Tuple
+from typing import List, Tuple, Type
 from pydantic import BaseModel
 
 from pybiscus.interfaces.flower.clientfactory import ClientFactory
 from byzantine.byzantineclient import ByzantineClientFactory, ConfigByzantineClient
 
-def get_modules_and_configs() -> Tuple[Dict[str, ClientFactory], List[BaseModel]]:
+def get_modules_and_configs() -> List[Tuple[Type[ClientFactory], Type[BaseModel]]]:
 
-    registry = {"byzantine": ByzantineClientFactory,}
-    configs  = [ConfigByzantineClient,]
-
-    return registry, configs
+    return [
+        (ByzantineClientFactory, ConfigByzantineClient),
+    ]

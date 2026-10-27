@@ -43,6 +43,9 @@ Abbreviated packages representation used in the following array :
 ## Loading: what stops Pybiscus, what does not
 
 At start-up, every module of the manifest is imported and its `get_modules_and_configs()` called.
+It returns `(class, config)` pairs, `[(LitCNN, ConfigModel_Cifar10)]`: each class is registered
+under its config's `name` `Literal`, written once. The former `({"cifar": LitCNN},
+[ConfigModel_Cifar10])` is still accepted.
 
 - A plugin whose **third-party dependency is missing** is skipped with a warning
   (`⚠️ 🧩 Plugin '…' skipped: missing dependency '…'`): the other plugins keep working, and a
@@ -51,8 +54,9 @@ At start-up, every module of the manifest is imported and its `get_modules_and_c
 - Everything else is an error that stops the command (exit code 78) with its cause: a manifest
   that cannot be read, a path that does not exist, a plugin not found or failing to import, a
   plugin **shadowed** by another module of the same name (plugins are top-level modules: name
-  yours so that no installed package has that name), a registry key that differs from its
-  configuration's `name` `Literal`, two plugins registering the same key.
+  yours so that no installed package has that name), a config without a `name` `Literal` or not
+  derived from `BaseModel`, (former format) a registry key that differs from its configuration's
+  `name`, two plugins registering the same key.
 - `PYBISCUS_PLUGINS_VERBOSE=1` prints the details of the loading.
 
 ## A plugin's dependencies

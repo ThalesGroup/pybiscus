@@ -1,18 +1,12 @@
 
-from typing import Dict, List, Tuple
+from typing import List, Tuple, Type
 from pydantic import BaseModel
 
 from clientwatermarking.resultclientwatermarking import ResultClientWatermarking, ConfigResultClientWatermarking
 from pybiscus.interfaces.flower.resultmodifier import ResultModifier
 
-def get_modules_and_configs() -> Tuple[Dict[str, ResultModifier], List[BaseModel]]:
+def get_modules_and_configs() -> List[Tuple[Type[ResultModifier], Type[BaseModel]]]:
 
-    registry = {
-                    "client watermarking": ResultClientWatermarking,
-
-                }
-    configs  = [
-                    ConfigResultClientWatermarking,
-                ]
-
-    return registry, configs
+    return [
+        (ResultClientWatermarking, ConfigResultClientWatermarking),
+    ]

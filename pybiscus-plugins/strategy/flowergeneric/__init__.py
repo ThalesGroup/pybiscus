@@ -1,13 +1,10 @@
 
-from typing import Dict, List, Tuple
+from typing import List, Tuple, Type
 from pydantic import BaseModel
 
 from flowergeneric.flowergenericstrategy import FLOWER_STRATEGIES
 from pybiscus.interfaces.flower.fabricstrategyfactory import FabricStrategyFactory
 
-def get_modules_and_configs() -> Tuple[Dict[str, FabricStrategyFactory], List[BaseModel]]:
+def get_modules_and_configs() -> List[Tuple[Type[FabricStrategyFactory], Type[BaseModel]]]:
 
-    registry = { name: factory for name, (factory, _) in FLOWER_STRATEGIES.items() }
-    configs  = [ config for _, config in FLOWER_STRATEGIES.values() ]
-
-    return registry, configs
+    return list(FLOWER_STRATEGIES.values())

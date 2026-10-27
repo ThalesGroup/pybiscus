@@ -1,5 +1,5 @@
 
-from typing import Dict, List, Tuple
+from typing import List, Tuple, Type
 from pydantic import BaseModel
 
 from pybiscus.interfaces.flower.strategydecorator import StrategyDecorator
@@ -8,16 +8,9 @@ from pybiscus.interfaces.flower.strategydecorator import StrategyDecorator
 from clientprivacyevaluation.fedmiaprivacyevaluation import ConfigFedMIAPrivacyEvaluationStrategyDecorator, FedMIAPrivacyEvaluationStrategyDecorator
 # from clientprivacyevaluation.testmetricdiffcomputestrategydecorator import ConfigTestMetricDiffComputeStrategyDecorator, TestMetricDiffComputeStrategyDecorator
 
-def get_modules_and_configs() -> Tuple[Dict[str, StrategyDecorator], List[BaseModel]]:
+def get_modules_and_configs() -> List[Tuple[Type[StrategyDecorator], Type[BaseModel]]]:
 
-    registry = {
-                    "fedmiaprivacyevaluation": FedMIAPrivacyEvaluationStrategyDecorator,
-                    # "testmetricdiffcompute": TestMetricDiffComputeStrategyDecorator,
-
-                }
-    configs  = [
-                    ConfigFedMIAPrivacyEvaluationStrategyDecorator,
-                    # ConfigTestMetricDiffComputeStrategyDecorator,
-                ]
-
-    return registry, configs
+    return [
+        (FedMIAPrivacyEvaluationStrategyDecorator, ConfigFedMIAPrivacyEvaluationStrategyDecorator),
+        # (TestMetricDiffComputeStrategyDecorator, ConfigTestMetricDiffComputeStrategyDecorator),
+    ]

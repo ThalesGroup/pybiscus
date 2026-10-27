@@ -1,13 +1,12 @@
-from typing import Dict, List, Tuple
+from typing import List, Tuple, Type
 from pydantic import BaseModel
 
 from pybiscus.interfaces.core.logger import LoggerFactory
 from pybiscus.core.logger.webhooklogger.webhookloggerfactory import ConfigWebHookLoggerFactory, WebHookLoggerFactory
 
 
-def get_modules_and_configs() -> Tuple[Dict[str, LoggerFactory], List[BaseModel]]:
+def get_modules_and_configs() -> List[Tuple[Type[LoggerFactory], Type[BaseModel]]]:
 
-    registry = {"webhook": WebHookLoggerFactory, }
-    configs  = [ConfigWebHookLoggerFactory, ]
-
-    return registry, configs
+    return [
+        (WebHookLoggerFactory, ConfigWebHookLoggerFactory),
+    ]

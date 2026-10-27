@@ -1,4 +1,4 @@
-from typing import Dict, List, Tuple
+from typing import List, Tuple, Type
 from pydantic import BaseModel
 
 from pybiscus.interfaces.flower.strategydecorator import StrategyDecorator
@@ -10,12 +10,9 @@ from serverdp.serverdpdecorator import (
     ServerDPFixedStrategyDecorator,
 )
 
-def get_modules_and_configs() -> Tuple[Dict[str, StrategyDecorator], List[BaseModel]]:
+def get_modules_and_configs() -> List[Tuple[Type[StrategyDecorator], Type[BaseModel]]]:
 
-    registry = {
-        "serverdpfixed":    ServerDPFixedStrategyDecorator,
-        "serverdpadaptive": ServerDPAdaptiveStrategyDecorator,
-        }
-    configs  = [ConfigServerDPFixed, ConfigServerDPAdaptive]
-
-    return registry, configs
+    return [
+        (ServerDPFixedStrategyDecorator, ConfigServerDPFixed),
+        (ServerDPAdaptiveStrategyDecorator, ConfigServerDPAdaptive),
+    ]

@@ -1,14 +1,13 @@
 
-from typing import Dict, List, Tuple
+from typing import List, Tuple, Type
 import lightning.pytorch as pl
 from pydantic import BaseModel
 
 from iSAID.isaid_dataconfig import ConfigData_iSAID
 from iSAID.isaid_datamodule import iSAIDLightningDataModule 
 
-def get_modules_and_configs() -> Tuple[Dict[str, pl.LightningDataModule], List[BaseModel]]:
+def get_modules_and_configs() -> List[Tuple[Type[pl.LightningDataModule], Type[BaseModel]]]:
 
-    registry = {"isaid": iSAIDLightningDataModule,}
-    configs  = [ConfigData_iSAID]
-
-    return registry, configs
+    return [
+        (iSAIDLightningDataModule, ConfigData_iSAID),
+    ]

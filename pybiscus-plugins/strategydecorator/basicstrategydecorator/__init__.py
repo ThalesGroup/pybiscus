@@ -1,5 +1,5 @@
 
-from typing import Dict, List, Tuple
+from typing import List, Tuple, Type
 from pydantic import BaseModel
 
 from basicstrategydecorator.metricdiffcomputestrategydecorator import ConfigMetricDiffComputeStrategyDecorator, MetricDiffComputeStrategyDecorator
@@ -7,12 +7,9 @@ from basicstrategydecorator.timediffcomputestrategydecorator import ConfigTimeDi
 
 from pybiscus.interfaces.flower.strategydecorator import StrategyDecorator
 
-def get_modules_and_configs() -> Tuple[Dict[str, StrategyDecorator], List[BaseModel]]:
+def get_modules_and_configs() -> List[Tuple[Type[StrategyDecorator], Type[BaseModel]]]:
 
-    registry = {
-        "metricdiffcompute": MetricDiffComputeStrategyDecorator,
-        "timediffcompute":   TimeDiffComputeStrategyDecorator,
-        }
-    configs  = [ConfigMetricDiffComputeStrategyDecorator, ConfigTimeDiffComputeStrategyDecorator,]
-
-    return registry, configs
+    return [
+        (MetricDiffComputeStrategyDecorator, ConfigMetricDiffComputeStrategyDecorator),
+        (TimeDiffComputeStrategyDecorator, ConfigTimeDiffComputeStrategyDecorator),
+    ]

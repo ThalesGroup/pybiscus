@@ -28,6 +28,15 @@
 * The container images install every extra (`uv sync --frozen --all-extras --no-dev`): they carry
   every plugin directory, the FedMIA analyser included; their build runs `pybiscus plugins deps`
   on all of them. `pydeps` no longer in the images.
+* `get_modules_and_configs()` returns `(class, config)` pairs, each class registered under its
+  config's `name` `Literal`: the name is written once (before: a registry key repeating it, refused
+  when it differed). The former `(registry, configs)` is still accepted. The 44 plugins and core
+  modules migrated, their registries unchanged (same keys, classes and order of the configs); a
+  config without a `name` `Literal`, not a `BaseModel` or under a name taken twice is refused
+  with its cause. `docs/how-to.md`'s templates; the examples of `docs/pybiscus_model_guide.md`,
+  which returned `(config, class)`, a form the loader never took, corrected.
+* The test-only plugins (`byzantine`, `omniscientalie`) have their `requirements.txt`, and
+  `smoke.sh check` checks the declarations of the campaigns' and the presets' test manifests.
 
 ## [Version 0.15.0]
 
