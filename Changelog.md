@@ -35,6 +35,11 @@
   config without a `name` `Literal`, not a `BaseModel` or under a name taken twice is refused
   with its cause. `docs/how-to.md`'s templates; the examples of `docs/pybiscus_model_guide.md`,
   which returned `(config, class)`, a form the loader never took, corrected.
+* An image with plugins of your own: `container/build_container_with_plugins.sh <plugin directory>
+  [image]` builds on the Pybiscus image (or the agent's, `PYBISCUS_IMAGE`), installs each plugin's
+  `requirements.txt`, adds its manifest to `PYBISCUS_PLUGIN_CONF_PATH` and runs
+  `pybiscus plugins deps` at build (`container/Dockerfile_with_plugins`; `docs/plugins.md`,
+  *Plugins in a container*).
 * The test-only plugins (`byzantine`, `omniscientalie`) have their `requirements.txt`, and
   `smoke.sh check` checks the declarations of the campaigns' and the presets' test manifests.
 

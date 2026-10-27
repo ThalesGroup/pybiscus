@@ -1,0 +1,27 @@
+# An image of Pybiscus with plugins of your own: built on the Pybiscus image, it adds a plugin
+# directory (its manifest plugins-conf.yml next to the plugins, each plugin with its requirements.txt)
+# and installs their dependencies. See docs/plugins.md, "Plugins in a container".
+#
+#   container/build_container_with_plugins.sh <plugin directory> [image]
+
+# set by the script: the Pybiscus image of the checkout's version
+ARG PYBISCUS_IMAGE
+FROM ${PYBISCUS_IMAGE}
+
+ARG http_proxy
+ARG https_proxy
+ARG no_proxy
+# the plugin directory's name, kept under /app; the build context is the directory itself
+ARG PLUGINS_DIR
+
+COPY . /app/${PLUGINS_DIR}
+
+# uv pip install does not read uv.lock: pin the versions in the requirements.txt for a reproducible
+# image. The image's own packages stay: `uv run` (its entry points) never removes what it did not install
+RUN find "/app/${PLUGINS_DIR}" -name requirements.txt -print0 \
+    | xargs -0 -r -n1 uv pip install --python /app/.venv/bin/python -r
+
+ENV PYBISCUS_PLUGIN_CONF_PATH=pybiscus-plugins/plugins-conf.yml:pybiscus-plugins-hierarchical/plugins-conf.yml:${PLUGINS_DIR}/plugins-conf.yml
+
+# a plugin whose requirements are missing, or that imports what it does not declare, fails the build
+RUN uv run --frozen --no-sync python pybiscus/main.py plugins deps

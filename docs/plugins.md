@@ -86,6 +86,26 @@ of `PYBISCUS_PLUGIN_CONF_PATH`, as the other commands.
   the bundled and hierarchical plugins; the container images install every extra and fail their
   build when a plugin's requirements are missing.
 
+## Plugins in a container
+
+The images (`container/build_pybiscus_container.sh`, `build_node_container.sh` for the agent) carry
+the repository's plugin directories with every extra installed: their build fails when a plugin's
+requirements are missing. A plugin directory of your own goes into an image built on them, not
+into a running container (a site may have no network, and its versions would not be the image's):
+
+```bash
+container/build_container_with_plugins.sh path/to/myplugins             # image myplugins:<version>
+PYBISCUS_IMAGE=pybiscus-agent:0.15.0 container/build_container_with_plugins.sh path/to/myplugins myagent:1
+```
+
+`path/to/myplugins` holds its manifest `plugins-conf.yml` (paths relative to it) and the plugins,
+each with its `requirements.txt`; it is the build context, copied to `/app/myplugins`
+(`container/Dockerfile_with_plugins`). The build installs every `requirements.txt` with
+`uv pip install`, which does not read `uv.lock`: pin the versions there (`tinydb==4.8.2`) for a
+reproducible image. The image sets `PYBISCUS_PLUGIN_CONF_PATH` to the bundled, the hierarchical and
+your manifest, and its build runs `pybiscus plugins deps` on them: a requirement missing or an
+import not declared fails the build, not a run.
+
 ## Metadata a plugin's configuration may declare
 
 Class attributes (`ClassVar`) of the configuration classes, read by the forms and the validation:
