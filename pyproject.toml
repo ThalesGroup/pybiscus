@@ -13,7 +13,9 @@ dependencies = [
     "flask-cors>=5.0.1",
     "flask>=3.1.0",
     "flwr>=1.42.0,<2",
-    "lightning[pytorch-extra]>=2.4.0",
+    "lightning>=2.4.0",
+    "omegaconf>=2.3.0",
+    "rich>=14.0.0",
     "pandas>=2.2.3",
     "pydantic>=2.10.4",
     "pyyaml>=6.0.2",
@@ -21,14 +23,12 @@ dependencies = [
     "trogon>=0.6.0",
     "typer>=0.15.1",
     "wandb>=0.19.10",
-    "pydeps>=3.0.1",
     "dominate>=2.9.1",
     "pillow>=11.0.0",
     "onnx>=1.18.0",
-    "dotenv>=0.9.9",
+    "python-dotenv>=1.0.0",
     "tensorboard>=2.20.0",
     "matplotlib>=3.10.0",
-    "scikit-learn>=1.7.2",
     "seaborn>=0.13.2",
     "setuptools>=84.1",
     "onnxscript>=0.6.2",
@@ -36,6 +36,19 @@ dependencies = [
     "filelock>=4.2.1",
     "cronsim>=2.7",
     "cheroot>=11",
+]
+
+# the FedMIA analyser of pybiscus-plugins-privacy-evaluation, a script run by hand: none of the
+# plugins Pybiscus loads imports them
+[project.optional-dependencies]
+privacy-evaluation = [
+    "scikit-learn>=1.7.2",
+    "jsonargparse>=4.39.0",
+]
+
+[dependency-groups]
+dev = [
+    "pydeps>=3.0.1",
 ]
 
 [project.scripts]

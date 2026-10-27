@@ -11,6 +11,15 @@
   loads a test plugin without alias (`launch/ci/test-plugins/`) and checks the configuration a case
   must give (`expect`).
 
+### Dependencies
+
+* Lightning without its `pytorch-extra` extra: of it Pybiscus and its plugins import only
+  `omegaconf` and `rich`, now declared; `bitsandbytes`, `hydra-core`, `jsonargparse`,
+  `tensorboardX` and `jsonnet` no longer installed. `scikit-learn` and `jsonargparse` in the extra
+  `privacy-evaluation`, for the FedMIA analyser only (`uv run --extra privacy-evaluation …`,
+  `docs/privacy-evaluation.md`); `pydeps` in the `dev` group; `dotenv` replaced by the package it
+  redirects to, `python-dotenv`. The environment: 5.64 GB → 5.28 GB, 14 packages fewer.
+
 ## [Version 0.15.0]
 
 Since `version0.14.0` (2026-10-20): sessions over several machines secured. HTTPS between the

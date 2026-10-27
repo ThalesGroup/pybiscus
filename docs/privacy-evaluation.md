@@ -76,10 +76,14 @@ Then, the clients' memberships and the analysis:
 
 ```bash
 uv run python pybiscus/main.py data partition <a client config> --export experiments/partition
-uv run python pybiscus-plugins-privacy-evaluation/strategydecorator/clientprivacyevaluation/fedmiaprivacy_analyser.py \
+uv run --extra privacy-evaluation python pybiscus-plugins-privacy-evaluation/strategydecorator/clientprivacyevaluation/fedmiaprivacy_analyser.py \
     --round-path <experiment>/rounds --ground-truth-folder experiments/partition \
     --save-folder plots --plot_per_label false
 ```
+
+The analyser needs scikit-learn and jsonargparse, which Pybiscus itself does not: the extra
+`privacy-evaluation` installs them (`--extra privacy-evaluation` above, or once with
+`uv sync --extra privacy-evaluation`; a later `uv sync` without it removes them).
 
 The analyser prints each client's AUC (all rounds, then per round) and saves the ROC curves.
 `--plot_per_label true` adds one curve per class when the indices folder holds an
