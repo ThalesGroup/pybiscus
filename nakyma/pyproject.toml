@@ -1,0 +1,22 @@
+[project]
+name = "nakyma"
+version = "0.1.0.dev0"
+description = "Film a web application made of several pages, then edit the rushes into videos and screenshots"
+readme = "README.md"
+requires-python = ">=3.12"
+# ffmpeg is needed too, on the PATH: it is not a Python package
+dependencies = ["pillow", "ruamel.yaml>=0.19.1"]
+
+[project.optional-dependencies]
+# only a driver shoots; editing reads the rushes and needs no browser
+shoot = ["playwright>=1.63.0"]
+
+[project.scripts]
+nakyma = "nakyma.cli:main"
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.package-data]
+nakyma = ["editor.html"]

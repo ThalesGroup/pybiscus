@@ -1,0 +1,37 @@
+# Cut of the task list example (shoot.py): the page of the one acting fills the image, the other's
+# page beside it, in an inset or as a tile, follows. Paths are relative to the directory edit is
+# run in; without output, the video goes into the rushes (<rushes>/video.mp4).
+#   nakyma edit <rushes> todo.cut.yml
+#   nakyma ui <rushes> todo.cut.yml
+
+formats: [mp4, webp]
+timing: {round_frame: 0.3}
+
+scenes:
+  open:
+    main: "page:alice"
+    inset: "page:bob"
+    caption: "Alice and Bob share a task list, each on a page"
+  add:
+    main: "page:{who}"
+    inset: "page:{other}@list"
+    caption: "{who} adds “{text}”: the other page follows"
+    pace: progress
+  done:
+    main: "page:{who}"
+    tiles: ["page:*"]
+    highlight: "page:{other}"
+    caption: "{who} checks “{text}”"
+    pace: progress
+  end:
+    main: "page:bob"
+    inset: "page:alice@stats"
+    caption: "{done} of {total} tasks done"
+    pace: final
+
+mosaic: {side: right, slots: 3}
+
+shots_dir: shots
+shots:
+  - {file: todo-activity.png, take: activity}
+  - {file: todo-alice-list.png, view: "page:alice", at: end, panel: list}

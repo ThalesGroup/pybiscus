@@ -1,12 +1,16 @@
 # /// script
 # requires-python = ">=3.12"
-# dependencies = ["playwright==1.63.0", "pyyaml", "pillow", "ruamel.yaml>=0.19.1"]
+# dependencies = ["playwright==1.63.0", "pyyaml", "nakyma"]
+#
+# [tool.uv.sources]
+# # the package of this repository, editable: a change to it is seen without reinstalling
+# nakyma = { path = "../../../nakyma", editable = true }
 # ///
 """Shoot a demonstration of the rushes editor (edit --ui) at work on rushes, then edit it into a video.
 
     uv run launch/doc/demos/editor_demo.py <rushes of the MNIST scenario>
 
-The editor is a web application like another: this driver uses the shooting of launch/doc/rushes and
+The editor is a web application like another: this driver uses the shooting of Näkymä (nakyma/) and
 nothing of Pybiscus. Events: open, play, caption, mosaic, skip, shot, save, export, done."""
 
 import argparse
@@ -15,7 +19,6 @@ import shutil
 import signal
 import socket
 import subprocess
-import sys
 import tempfile
 import time
 import urllib.request
@@ -24,9 +27,9 @@ from pathlib import Path
 import yaml
 from playwright.sync_api import sync_playwright
 
+from nakyma import Shooting, edit, log
+
 DOC = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(DOC))
-from rushes import Shooting, edit, log  # noqa: E402
 
 # wide enough for the header to hold on one line
 VIEWPORT = {"width": 1600, "height": 900}

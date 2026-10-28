@@ -28,13 +28,13 @@ the video.
                      pages, which moments)      log)
                           │
                           ▼
-                    launch/doc/rushes/  (knows nothing of Pybiscus: captures named pages,
-                                         notes events, composes)
+                    nakyma/  (Näkymä, knows nothing of Pybiscus: captures named pages,
+                             notes events, composes)
 ```
 
-- **`launch/doc/rushes/`** is generic: it captures the pages it is given by name, notes the events
-  it is told about, then composes the video. Any web application can be shot with it
-  ([Shooting another web application](#shooting-another-web-application)).
+- **`nakyma/`** (Näkymä, a project of its own at the repository's root) is generic: it captures the pages it is given by name, notes
+  the events it is told about, then composes the video. Any web application can be shot with it;
+  its [README](../nakyma/README.md) describes the cut, the interactive editor and how to write a driver.
 - **`launch/doc/record_session.py`** is the Pybiscus driver: it decides which processes to start,
   which pages to open, how to name them and which moments to signal.
 
@@ -159,8 +159,9 @@ follow a renaming in the scenario, unlike `agent:{name}`.
   uv run --with playwright==1.63.0 playwright install chromium
   ```
 
-  The script declares its own dependencies (Playwright, requests, PyYAML, Pillow) in its header:
-  `uv run` installs them in a separate environment, not in the project's.
+  The script declares its own dependencies (Playwright, requests, PyYAML, and Näkymä from the
+  repository's `nakyma/`) in its header: `uv run` installs them in a separate environment, not in
+  the project's.
 
 ## Shooting
 
@@ -229,52 +230,14 @@ uv run launch/doc/record_session.py edit <rushes> my.cut.yml --output docs/video
 uv run launch/doc/record_session.py edit <rushes> my.cut.yml --ui
 ```
 
-opens a page of this machine only (`127.0.0.1`, a free port; `--port` to choose it, `--no-browser`
-to only print its address):
-
-- the **image** of the cut, as the export composes it, with ⏮ ◀ ▶ ▶| (or Home, ←, space, →): *play*
-  shows each image of the video for its time, without the fade the export adds;
-- the **video bar**: the scenes in the video's time, a click goes to one;
-- the **timeline** of the rushes in their own time: the scenes (hatched when an override leaves one
-  out), the events (large: they start a scene; small: no rule), and a track per view, a mark per
-  capture (bright when the page changed). A click shows the cut's image at that moment, or on a
-  view's track that view alone; a click on a scene selects it; the wheel zooms, a drag moves;
-- the **scene** selected: its time in the rushes and in the video, its images, its main view, inset,
-  tiles, outlined tile, caption, pace and the event's fields, in yellow what an override of that scene sets.
+opens Näkymä's editor on a page of this machine only: the cut's image at any moment, the rushes on
+a timeline, a scene's settings changed for that scene or its kind, screenshots taken from the moment
+shown, the cut saved with its comments, the export. It is described in
+[Näkymä's README](../nakyma/README.md#the-interactive-editor).
 
 ![edit --ui: the round scenes in mosaic, set for every round](images/recording_editor.png)
 
-The scene's settings are changed in the page, for **this scene** (an override: also its `offset`,
-`duration`, the inset's `corner` and `width`, the tiles' `side` and `slots`) or for **every** scene of its kind (the rule). Each
-change is checked by computing the plan again: a refused one (an offset reversing two scenes, an
-unknown view…) shows its message and changes nothing. ↺ removes an override's value; *Leave out
-this scene* skips it, *Bring it back* on its hatched mark undoes it. Tiles are typed as a list
-separated by commas (`agent:*, manager@geo`); given to a scene having an inset, they replace it.
-
-**Screenshots** (`shots`): *Capture here* adds the view shown, whole or one of its panels, at the
-moment shown (in the plan: the scene's main view at that image; on a view's track: that view), under
-the file name proposed or typed; a take of the rushes is added under its name. The shot is written
-from the event before that moment (`at`, `index`, `after`), so that it designates the same moment in
-another shooting of the scenario. Each screenshot is listed with its image, renamed in place, removed
-with ✕, and marked ◆ on the timeline; the directory (`shots_dir`) is set there too. A cut of
-screenshots only, without scenes, opens as well: the page shows the views and the screenshots.
-
-![edit --ui: two screenshots taken, the second shown, its mark on the timeline](images/recording_editor_screenshots.png)
-
-*Save* (or Ctrl+S) writes the cut's file with its comments and layout kept, the previous one in
-`<cut>.bak`; *Revert* drops the unsaved changes. The header says whether the page is saved, has
-unsaved changes, or the file changed on disk: saving then asks first.
-
-**Export** writes the video and the screenshots as `edit` does with the saved cut: the same files,
-byte for byte (it waits for the cut to be saved). The *Export* section sets the video's path
-(`output`, relative to the directory the editor was started in) and its formats; a bar follows the
-images, then the encodings. The files written are listed at the end, the video playable in the page;
-a failed export says why.
-
-![edit --ui: the export done, its files and the video](images/recording_editor_export.png)
-
-Without unsaved changes, the page reads the cut's file every 2 seconds: edit it elsewhere, save, the
-page follows. A wrong cut is shown with its message, and the last plan stays.
+`record_session.py edit` is `nakyma edit` (and `ui`), kept for the commands of this page.
 
 ### The cut
 
@@ -305,65 +268,9 @@ shots:
   - {file: hier_cycles.png, take: core-cycles}
 ```
 
-**Scenes.** Each kind of event having a rule in `scenes` starts a scene, which lasts until the next
-such event; an event without a rule belongs to the scene in progress. A scene shows, for each
-capture of its main view in that time:
-
-| key | meaning |
-|---|---|
-| `main` | the view filling the image (required) |
-| `inset` | a view shown in a corner, with a tab naming it; never enlarged, so that its text stays readable |
-| `tiles` | instead of an inset, a **mosaic**: the main view smaller, and beside it one tile per view of the list (`*` matches several: `["agent:*"]`), in the order the views appeared, the main view left out; a view gets its tile once it has been captured. A pattern's panel (`"agent:*@console"`) is taken where the capture has it |
-| `highlight` | the tile outlined, as `"agent:{turn}"`: the agent whose turn it is |
-| `caption` | drawn at the bottom of the image (with tiles on the right: in the band under the main view) |
-| `pace` | `event` (the scene lasts about `timing.caption` seconds), `progress` (its images scroll by: `timing.round_frame` each), `final` (`timing.last_caption`, then the last image stays) |
-
-**Mosaic** (`mosaic:`, the cut's layout of the tiles): `side: right` (default) puts them in a
-column on the right, `side: bottom` in a row at the bottom; `slots` is how many the column or the
-row holds before the tiles shrink (default 4 on the right, 6 at the bottom). A tile has the image's
-proportions, so that `slots` tiles fill the column or the row: the main view keeps the rest
-(three quarters of the width with 4 slots). A tile's label is cut to its width.
-
-```yaml
-mosaic: {side: right, slots: 4}
-scenes:
-  round:
-    main: manager
-    tiles: ["agent:*"]                     # the server and each client, as they appear
-    highlight: "agent:{turn}"
-    caption: "5 · Federated training: round {round} / {rounds}"
-    pace: progress
-```
-
-A scene has an inset or tiles, not both.
-
-| `side: right` (default) | `side: bottom` |
-|---|---|
-| ![tiles on the right](images/recording_mosaic_right.png) | ![tiles at the bottom](images/recording_mosaic_bottom.png) |
-
-**One scene** (`overrides:`): a rule applies to every scene of its kind; an override changes one,
-the `index`-th scene of its kind (0 the first, in the order of the rushes):
-
-```yaml
-overrides:
-  - {kind: configured, index: 0, duration: 6}          # lasts 6 seconds, whatever its pace
-  - {kind: launched, index: 1, skip: true}             # left out, its time too
-  - {kind: round, index: 0, offset: 1.5, inset: "agent:client-lille@console", corner: top-right, width: 0.35}
-```
-
-| key | meaning |
-|---|---|
-| `main`, `inset`, `caption`, `pace`, `tiles`, `highlight` | instead of the rule's (`inset: null`: no inset, `tiles: null`: no mosaic) |
-| `offset` | seconds added to the scene's start (negative: earlier); the scene before ends there; scenes keep their order |
-| `duration` | the scene's time in the video, shared by its images (at least one video frame each, 0.04 s) |
-| `corner`, `width` | the inset's corner (`top-left`, `top-right`, `bottom-left`, `bottom-right`) and width, a share of the image's |
-| `side`, `slots` | the mosaic's layout for this scene |
-| `skip` | the scene is left out with its time; the scene before still ends where it began |
-
-An unknown key, a kind without a rule, an index beyond the rushes' scenes or two overrides of one
-scene stop the editing with a message.
-
-`{field}` in a view or a caption is replaced by the event's field. The views:
+The cut's keys (scenes, insets and tiles, overrides of one scene, screenshots, timing) are those of
+Näkymä: [README](../nakyma/README.md#the-cut). The views and the events' fields (`{field}`
+in a view or a caption) are those `record_session.py` gives. The views:
 
 | view | what it shows |
 |---|---|
@@ -380,26 +287,19 @@ The events, and their fields:
 | `--attach` | `attached` or `joined` (`count`: agents registered); `registered` (`name`, `role`, `location`); `started`; `validated`, `executing` (`name`); `round` (`round`, `rounds`, `of_rounds`: " / 5", or empty when unknown); `failed` (`name`, `state`); `finished` (`accuracy`); `dropped`; `interrupted`; `lost` (the manager no longer answers: the shooting stops, what it has is edited) |
 | a hierarchical scenario | `registered`; `relays`; `session-form` (`bouquet`); `form` (`name`); `round` (`round`, `rounds`, `turn`: the lower bouquet whose turn it is); `end`; `tab` (`tab`) |
 
-**Screenshots** (`shots`, written into `shots_dir`): `{file, take: <name>}` copies a take of the
-rushes; `{file, view, at: <kind of event>, index, after, panel}` extracts the view as it was just
-after the `index`-th event of that kind (default 0), `after` seconds later (default 0), or one of its
-panels.
+The defaults of `timing` give a 1-minute video for the bundled scenario; `timing: {caption: 2.2,
+round_frame: 0.12, last_caption: 4, blend: 0}` a brisker 40-second one. With tiles, the round scenes
+show the server and each client beside the manager, the client whose turn it is outlined:
 
-**Timing** (`timing:`, seconds)
-
-| key | meaning | default |
-|---|---|---|
-| `caption` | time an `event` scene lasts, shared by its images | `3.5` |
-| `last_caption` | the same, for a `final` scene | `5.0` |
-| `min_frame` | shortest time of one image | `0.25` |
-| `round_frame` | time of one image in a `progress` scene | `0.25` |
-| `progress_max` | longest time of a `progress` scene, however many its images: a long wait is squeezed | `8.0` |
-| `end_hold` | extra time on the last image | `2.5` |
-| `webp_width` | width of the WebP, in pixels (the MP4 keeps the captures' size) | `1080` |
-| `blend` | share of each image's time spent fading into the next one: `0` cuts from image to image; images fade only within a scene, a new scene starts on a cut | `0.4` |
-
-The defaults give a 1-minute video for the bundled scenario; `timing: {caption: 2.2, round_frame: 0.12,
-last_caption: 4, blend: 0}` a brisker 40-second one.
+```yaml
+scenes:
+  round:
+    main: manager
+    tiles: ["agent:*"]
+    highlight: "agent:{turn}"
+    caption: "5 · Federated training: round {round} / {rounds}"
+    pace: progress
+```
 
 ## Scenarios
 
@@ -503,15 +403,8 @@ repository's history forever, so only short ones should be versioned, once chose
 
 ## Shooting another web application
 
-`launch/doc/rushes/` shoots any page Playwright opens. A driver declares its views
-(`Shooting.add_view(name, page, panels, label)`), says which are in focus, signals its events and
-ticks; a cut then edits the rushes as above. A view's **panels** are given as:
-
-- an element's `id` (`"console"`): the element itself;
-- `(name, CSS selector)`: the first element matching it;
-- `(name, CSS selector, container)`: the closest ancestor of that element matching `container`,
-  for a panel shown with its frame and title. Pybiscus' pages give `"section"`
-  (`("geo", "#geo", "section")`).
+Näkymä shoots any page Playwright opens: its [README](../nakyma/README.md) shows how, with an example (a task
+list shared by two pages) and a prompt to have a driver written by a coding agent.
 
 `launch/doc/demos/editor_demo.py` is such a driver: it shoots `edit --ui` at work on the rushes
 of the MNIST scenario (play, a caption changed, the round scenes put in mosaic, a scene left out
@@ -528,67 +421,6 @@ uv run launch/doc/demos/editor_demo.py experiments/recordings/rushes-mnist-sessi
 
 The editor is started from a neutral directory under `/tmp` (the export shows the paths it
 writes), on a free port, in its own process group, stopped at the end.
-
-### Having a driver written by a coding agent
-
-Each application needs its own driver, but the driver follows a pattern: a coding agent that can
-read this repository can write it. Give it the prompt below, its placeholders filled; it reads the
-rushes package and the editor's driver, writes a driver and a cut, shoots, looks at the images and
-corrects until the video tells the story.
-
-```text
-Write a driver that films a web application with the shooting tool of this repository, and the
-cut that edits its rushes into a video.
-
-The application: <WHAT IT IS>
-How to start it: <COMMAND, PORT OR URL, DATA IT NEEDS, HOW TO STOP IT>
-The story to film, step by step: <e.g. "an empty list; add three tasks; mark one done; filter the
-done tasks; delete one">
-Video: <LENGTH, e.g. about 60 s>, captions in <LANGUAGE>, written to <OUTPUT BASENAME, e.g.
-docs/videos/my-app>.
-Driver and cut: <e.g. launch/doc/demos/my_app_demo.py and launch/doc/demos/my-app.cut.yml>.
-
-Read first:
-- docs/recording.md, sections "Overview", "The cut" and "Shooting another web application";
-- launch/doc/rushes/shooting.py (Shooting: add_view, set_focus, event, tick, capture, take;
-  panel_spec) and the docstring of launch/doc/rushes/editing.py (the cut's keys);
-- launch/doc/demos/editor_demo.py and launch/doc/demos/editor-demo.cut.yml: a complete driver of
-  the same kind, to follow.
-
-The driver:
-- a script with a PEP 723 header (playwright==1.63.0, pyyaml, pillow, ruamel.yaml>=0.19.1), run by
-  `uv run`, importing launch/doc/rushes (Shooting, edit, log) and nothing of Pybiscus;
-- starts the application itself if it is local: a free port, its own process group
-  (start_new_session=True), stopped by os.killpg in a finally; never look processes up by name;
-- works in a directory with a neutral name under /tmp when the application shows paths;
-- declares a view per page (a short name: "app", "admin"…), with panels for the parts a cut may
-  show alone: an element's id, (name, CSS selector), or (name, CSS selector, container) to take
-  the element with its frame and title;
-- emits an event at the start of each step of the story, with fields the captions can use (a
-  name, a count…), then acts and ticks: about 3 ticks to let a change be seen, more on a moment to
-  dwell on;
-- draws a cursor in the page (a headless browser shows none) that moves to what is clicked, and
-  types text by a few letters per tick;
-- choose an option of a <select> with select_option without clicking it (a click shows its native
-  list over the page in the captures);
-- if the page is taller than the window, scroll to what is used (smoothly) and back, as a person
-  would; mind elements scrolling on their own (scrollIntoView also scrolls the window);
-- after an action that reaches a server, wait for the page to be drawn again before the next one;
-  before following a long operation, wait until it has really started.
-
-The cut: one rule per kind of event (main view, caption, pace: progress plays the images about as
-shot, event shows a step in about 3.5 s, final ends on a longer caption); timing to keep the pace
-close to the shooting (round_frame 0.3); overrides to shorten a long wait (duration).
-
-Validate:
-1. shoot with the cut "none", read events.jsonl, and look at images taken at the key moments of
-   each step (captures.jsonl gives each image's time): the cursor where expected, every action
-   visible, nothing hidden under the fold or a popup;
-2. correct the driver and shoot again until every step reads right;
-3. edit, then look at frames taken in the middle of each scene of the video: each caption over the
-   step it describes;
-4. report the length of the video, its events, and what was corrected on the way.
-```
 
 ## When something goes wrong
 

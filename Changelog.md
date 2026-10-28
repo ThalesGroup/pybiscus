@@ -2,6 +2,25 @@
 
 ## Unreleased
 
+### Recording
+
+* The shooting and editing package `launch/doc/rushes/` becomes **Näkymä**, a project of its own at
+  the repository's root (`nakyma/`: `pyproject.toml`, `src/nakyma/`, `README.md`, `examples/`), a
+  first step towards a repository of its own; it still imports nothing of Pybiscus. The scripts
+  using it (`launch/doc/record_session.py`, `launch/doc/demos/editor_demo.py`) declare it in their
+  PEP 723 header as a local editable source; their commands are unchanged (the same video, byte for
+  byte), and so is `session_manager --record`.
+* The `nakyma` command (`nakyma edit <rushes> <cut>`, `nakyma ui <rushes> <cut>`, or
+  `python -m nakyma`): the editing and the interactive editor without `record_session.py`, whose
+  `edit` now calls them. A cut is read by the same YAML reader as the editor's (`ruamel.yaml`): the
+  bundled cuts read the same.
+* `nakyma/README.md`: the cut, the interactive editor, the rushes and how to write a driver, moved
+  from `docs/recording.md`, which keeps Pybiscus' scenarios, views and events.
+  `nakyma/examples/todo/`: a task list shared by two pages, its driver and its cut, the example of
+  a driver for another application.
+* The editor's write header is `X-Nakyma-Editor` (it was `X-Rushes-Editor`); missing caption fonts
+  (DejaVu, Liberation) are reported once instead of falling back silently.
+
 ### Configuration
 
 * The forms show the bounds of the numbers (`Field(ge=…, le=…)`, `PositiveInt`) ahead of their

@@ -1,0 +1,8 @@
+.venv/
+*.egg-info/
+build/
+__pycache__/
+# what the example's driver writes when run from here
+rushes-*/
+shots/
+uv.lock

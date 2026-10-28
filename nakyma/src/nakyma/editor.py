@@ -31,7 +31,7 @@ SETTING_KEYS = ("output", "formats", "shots_dir")
 FORMATS = ("mp4", "webp", "png")
 MEDIA_TYPES = {".mp4": "video/mp4", ".webp": "image/webp", ".png": "image/png"}
 # the header a write must carry: a page of another site cannot send it without the browser asking first
-HEADER = "X-Rushes-Editor"
+HEADER = "X-Nakyma-Editor"
 
 
 def round_trip():
@@ -51,7 +51,7 @@ def plain(document):
 
 
 def flow(value):
-    # a list written on one line, as the cuts write [mp4, webp] or ["agent:*"]
+    # a list written on one line, as the cuts write [mp4, webp] or ["page:*"]
     if isinstance(value, list):
         value = CommentedSeq(value)
         value.fa.set_flow_style()

@@ -20,6 +20,7 @@ You can find here a short documentation on how to use and adapt Pybiscus. The to
 * [Containers](containers.md)
 * [Logging and Tensorboard](logging.md)
 * [Recording a session: rushes, videos and screenshots](recording.md)
+  - [Näkymä](../nakyma/README.md), the shooting and editing tool it uses: the cut, the editor, filming another application
 
 ### Extending Pybiscus
 

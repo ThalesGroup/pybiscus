@@ -1,4 +1,4 @@
-"""Rushes of a web application's pages, shot while a driver plays it, then edited into a video and
+"""Näkymä: rushes of a web application's pages, shot while a driver plays it, then edited into a video and
 screenshots. Nothing here knows the application: the driver names the views, their panels and the
 events; the cut names the scenes and the screenshots."""
 

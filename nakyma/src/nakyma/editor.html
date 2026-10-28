@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Rushes editor</title>
+<title>Näkymä · rushes editor</title>
 <style>
   :root{
     --bg:#0e1117; --panel:#161b24; --panel2:#1c2230; --line:#2a3242; --text:#e6e9ef; --muted:#8a93a6;
@@ -280,8 +280,8 @@ function renderScene(){
   const number = (k, step, ph) => `<input id="f-${k}" data-key="${k}" type="number" step="${step}" value="${ov[k] ?? ''}" placeholder="${esc(ph)}">`;
   let form = field('main', 'main', text('main')) +
     field('inset', 'inset', text('inset', 'none')) +
-    field('tiles', 'tiles', text('tiles', 'none · instead of the inset, e.g. agent:*')) +
-    field('highlight', 'outlined', text('highlight', 'none · a tile, e.g. agent:{turn}')) +
+    field('tiles', 'tiles', text('tiles', 'none · instead of the inset, e.g. page:*')) +
+    field('highlight', 'outlined', text('highlight', 'none · a tile, e.g. page:{name}')) +
     field('caption', 'caption', text('caption', 'none')) +
     field('pace', 'pace', select('pace', ['event', 'progress', 'final']));
   if(onScene){
@@ -340,7 +340,7 @@ function fieldChanged(s, el){
   change(op);
 }
 async function post(url, body){
-  const r = await fetch(url, {method: 'POST', headers: {'Content-Type': 'application/json', 'X-Rushes-Editor': '1'}, body: JSON.stringify(body || {})});
+  const r = await fetch(url, {method: 'POST', headers: {'Content-Type': 'application/json', 'X-Nakyma-Editor': '1'}, body: JSON.stringify(body || {})});
   return {ok: r.ok, data: await r.json()};
 }
 async function change(op){
@@ -684,7 +684,7 @@ async function init(){
   const options = new Set();
   Object.entries(rushes.views).forEach(([name, v]) => { options.add(name); v.panels.forEach(p => options.add(`${name}@${p}`)); });
   $('views-list').innerHTML = [...options].map(o => `<option value="${esc(o)}">`).join('');
-  // the views of a family (agent:server, agent:client-lyon…) in one tile pattern
+  // the views of a family (page:alice, page:bob…) in one tile pattern
   const families = new Set(Object.keys(rushes.views).filter(v => v.includes(':')).map(v => v.split(':')[0] + ':*'));
   $('tiles-list').innerHTML = [...families, ...Object.keys(rushes.views)].map(o => `<option value="${esc(o)}">`).join('');
   view0 = 0; view1 = rushes.span;

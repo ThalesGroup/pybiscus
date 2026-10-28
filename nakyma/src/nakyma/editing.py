@@ -10,8 +10,8 @@ A cut (YAML):
         inset: <view>                     # optional
         caption: "text with {fields} of the event"
         pace: event | progress | final    # event: about timing.caption seconds; progress: scrolls by
-        tiles: ["agent:*"]                # instead of an inset: the main view smaller, beside it a tile
-        highlight: "agent:{turn}"         # per view (* matches), in order of appearance; one outlined
+        tiles: ["page:*"]                 # instead of an inset: the main view smaller, beside it a tile
+        highlight: "page:{name}"          # per view (* matches), in order of appearance; one outlined
     mosaic: {side: right, slots: 4}       # the tiles in a column on the right, or a row at the bottom
     overrides:                            # one scene: the index-th scene of its kind (0 the first)
       - {kind: <kind>, index: 0, offset: 1.5, duration: 4, caption: ..., main: ..., inset: ..., pace: ...,
@@ -25,7 +25,6 @@ Fields and views are written with {name} placeholders, filled from the event's f
 
 import bisect
 import fnmatch
-import io
 import json
 import math
 import shutil
@@ -48,13 +47,23 @@ MOSAIC_BACKGROUND, TILE_BORDER = (14, 17, 23, 255), (60, 68, 84, 255)
 CAPTION_BACKGROUND, CAPTION_TEXT, INSET_BORDER = (20, 24, 40, 225), (255, 255, 255, 255), (78, 205, 196, 255)
 
 
+FONTS = ("DejaVuSans-Bold.ttf", "LiberationSans-Bold.ttf")
+font_warned = False
+
+
 def font(size):
     # Pillow looks the name up in the system's font directories; any machine without it gets the default
-    for name in ("DejaVuSans-Bold.ttf", "LiberationSans-Bold.ttf"):
+    global font_warned
+    for name in FONTS:
         try:
             return ImageFont.truetype(name, size)
         except OSError:
             continue
+    if not font_warned:
+        # the video is made all the same, its captions in a thinner font than the docs' videos
+        log(f"none of the fonts {', '.join(FONTS)} found: captions in Pillow's default font "
+            "(Debian, Ubuntu: sudo apt install fonts-dejavu-core)")
+        font_warned = True
     return ImageFont.load_default(size)
 
 
@@ -272,7 +281,7 @@ def check_rule(kind, rule):
     where = f"the cut's scene {kind!r}"
     tiles = rule.get("tiles")
     if tiles is not None and (not isinstance(tiles, list) or not all(isinstance(v, str) and v for v in tiles)):
-        raise SystemExit(f"{where}: tiles is a list of views (* matches several), as [\"agent:*\"]")
+        raise SystemExit(f"{where}: tiles is a list of views (* matches several), as [\"page:*\"]")
     if tiles and rule.get("inset"):
         raise SystemExit(f"{where}: an inset or tiles, not both")
 

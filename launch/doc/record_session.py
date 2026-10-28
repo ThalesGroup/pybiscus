@@ -1,6 +1,10 @@
 # /// script
 # requires-python = ">=3.12"
-# dependencies = ["playwright==1.63.0", "requests", "pyyaml", "pillow", "ruamel.yaml>=0.19.1"]
+# dependencies = ["playwright==1.63.0", "requests", "pyyaml", "nakyma"]
+#
+# [tool.uv.sources]
+# # the package of this repository, editable: a change to it is seen without reinstalling
+# nakyma = { path = "../../nakyma", editable = true }
 # ///
 """Shoot a Pybiscus session (its manager's and agents' pages), then edit the rushes into a video or
 screenshots for the docs.
@@ -15,8 +19,8 @@ the session) or, with --attach, follows a session someone runs, and captures eve
 events it goes through. edit composes the scenes of a cut (main view, inset, caption, pace) and
 the screenshots it names; it can be run again on the same rushes with another cut. A scenario
 naming its cut is edited right after it is shot. The rushes, the scenario and the cut are
-described in docs/recording.md; the shooting and the editing themselves are in launch/doc/rushes/,
-which knows nothing of Pybiscus.
+described in docs/recording.md; the shooting and the editing themselves are Näkymä's (nakyma/ at the
+repository's root), which knows nothing of Pybiscus.
 
 Playwright is pinned to the version of the Chromium in ~/.cache/ms-playwright; another version
 asks for its own (uv run --with playwright==<version> playwright install chromium).
@@ -41,7 +45,8 @@ import requests
 import yaml
 from playwright.sync_api import Error as PlaywrightError, TimeoutError as PlaywrightTimeout, sync_playwright
 
-from rushes import Shooting, edit, log
+from nakyma import Shooting, log
+from nakyma.cli import add_edit_arguments, edit_file, run as run_edit
 
 REPO = Path(__file__).resolve().parents[2]
 SCENARIOS = Path(__file__).resolve().parent / "scenarios"
@@ -791,15 +796,6 @@ def shoot_attached(url, sc, rushes, max_duration, agent_pages=4, agent_tokens=No
 
 # ............................................................................................ CLI
 
-def edit_with(rushes, cut_file, output):
-    cut = yaml.safe_load(Path(cut_file).read_text())
-    if output and cut.get("shots") and not cut.get("scenes"):
-        # a cut of screenshots only: --output is their directory
-        cut["shots_dir"] = str(output)
-        output = None
-    edit(rushes, cut, output)
-
-
 def use_tls(cert, key, ca):
     global SCHEME
     SCHEME = "https"
@@ -837,22 +833,12 @@ def main():
     shoot.add_argument("--tls-cert", type=Path, help="scenario: the managers and agents serve HTTPS with this certificate (certificates/gen_component_cert.sh)")
     shoot.add_argument("--tls-key", type=Path, help="with --tls-cert: its private key")
     shoot.add_argument("--tls-ca", type=Path, help="with --tls-cert: the CA that signed it")
-    edit_parser = sub.add_parser("edit", help="edit rushes with a cut: the scenes into a video, the screenshots")
-    edit_parser.add_argument("rushes", type=Path)
-    edit_parser.add_argument("cut", type=Path)
-    edit_parser.add_argument("--output", type=Path, help="basename of the video, or directory of the screenshots, instead of the cut's")
-    edit_parser.add_argument("--ui", action="store_true", help="open a local page: the rushes on a timeline, the cut's images, the video played")
-    edit_parser.add_argument("--port", type=int, default=0, help="with --ui: port of the page (default: a free one)")
-    edit_parser.add_argument("--no-browser", action="store_true", help="with --ui: give the page's address without opening it")
+    # the same as nakyma edit, kept here for the commands of the docs
+    add_edit_arguments(sub.add_parser("edit", help="edit rushes with a cut: the scenes into a video, the screenshots"))
     args = parser.parse_args()
 
-    if args.command == "edit" and args.ui:
-        from rushes.editor import serve
-        return serve(args.rushes, args.cut, args.port, not args.no_browser)
     if args.command == "edit":
-        if shutil.which("ffmpeg") is None:
-            raise SystemExit("ffmpeg is needed to edit the video: install it first (Debian: apt install ffmpeg)")
-        return edit_with(args.rushes, args.cut, args.output)
+        return run_edit(args)
 
     if not args.scenario and not args.attach:
         parser.error("shoot: a scenario, or --attach")
@@ -897,7 +883,7 @@ def main():
                 shutil.rmtree(work, ignore_errors=True)
     log(f"rushes in {rushes}")
     if cut_file:
-        edit_with(rushes, cut_file, args.output)
+        edit_file(rushes, cut_file, args.output)
 
 
 if __name__ == "__main__":
