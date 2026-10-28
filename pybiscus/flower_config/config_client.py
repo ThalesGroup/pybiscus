@@ -3,7 +3,7 @@ from typing import Optional, ClassVar
 from typing_extensions import Annotated
 
 import torch
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from pybiscus.flower_config.config_computecontext import ConfigClientComputeContext
 from pybiscus.plugin.registries.client_registry import ClientConfig
@@ -113,6 +113,30 @@ class ConfigClient(BaseModel):
     client_run:             ConfigClientRun= Field(description='identity and behaviour of the client during the session')
     client_compute_context: ConfigClientComputeContext= Field(description='hardware the client trains on')
     model:                  ModelConfig() # pyright: ignore[reportInvalidTypeForm]
-    data:                   DataConfig() # pyright: ignore[reportInvalidTypeForm]
+    # Optional without a default: the form opens with a data section, only a relay unsets it
+    data:                   Optional[DataConfig()] = Field(description="the client's data; none for a client that trains nothing (the relay of a hierarchical session)") # pyright: ignore[reportInvalidTypeForm]
 
     model_config = ConfigDict(extra="forbid")
+
+    # the form leaves an unset Optional out: the after-validator, not Pydantic's "field required",
+    # tells a client that trains from one that does not
+    @model_validator(mode="before")
+    @classmethod
+    def data_left_out(cls, values):
+        if isinstance(values, dict) and "data" not in values:
+            values = {**values, "data": None}
+        return values
+
+    @model_validator(mode="after")
+    def data_unless_nothing_trained(self):
+        if self.data is None and client_needs_data(self.flower_client.alternate_client_class):
+            raise ValueError("data is required: only a client that trains nothing (the relay of a hierarchical session) goes without")
+        return self
+
+
+def client_needs_data(alternate_client_class) -> bool:
+    if alternate_client_class is None:
+        return True
+    from pybiscus.plugin.registries.client_registry import client_registry
+    factory = client_registry().get(alternate_client_class.name)
+    return getattr(factory, "NEEDS_DATA", True)

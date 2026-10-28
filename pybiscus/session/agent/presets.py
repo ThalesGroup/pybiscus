@@ -58,7 +58,8 @@ def _is_optional(tp) -> bool:
 def _members(tp) -> list:
     tp = _strip(tp)
     if get_origin(tp) is Union:
-        return [_strip(arg) for arg in get_args(tp) if arg is not type(None)]
+        # Optional[Annotated[Union[...]]] (a client's data): the plugins' union nested in the Optional
+        return [member for arg in get_args(tp) if arg is not type(None) for member in _members(arg)]
     return [tp]
 
 
@@ -83,7 +84,8 @@ def fresh(model) -> dict:
     whose fields all have defaults, has none itself), with their first option"""
     sections = {"name": option_name(model)} if option_name(model) else {}
     for key, field in model.model_fields.items():
-        if key == "name" or not field.is_required() or _is_optional(field.annotation):
+        # an Optional without a default opens set in the form (a client's data), as a required section
+        if key == "name" or not field.is_required():
             continue
         models = [m for m in _members(field.annotation) if _is_model(m)]
         if models:

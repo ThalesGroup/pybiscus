@@ -265,7 +265,7 @@
     "flower_client.alternate_client_class"
    ],
    "options_set": {
-    "data": "Mnist",
+    "data": "  ",
     "flower_client.alternate_client_class": "Relay",
     "flower_client.ssl": "  ",
     "flower_server.ssl": "  ",
@@ -302,6 +302,9 @@
     "model.config.lr": "0.001",
     "model.config.n_classes": "10"
    }
+  },
+  "expect": {
+   "data": null
   }
  },
  "server-repeat": {

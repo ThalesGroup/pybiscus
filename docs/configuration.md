@@ -111,6 +111,9 @@ data:
 ...
 ```
 
+A client's `data` is required, except for a client that trains nothing, the relay of a
+[hierarchical session](hierarchical-session.md), which goes without (`data` left out or `null`).
+
 Each of `train`, `val` and `test` also takes `shuffle` and `drop_last` (defaults: the training
 set is shuffled and drops its last incomplete batch, the evaluation sets do neither); `train`
 takes a `seed` (order of the batches) and an `indices` file (example indices to train on);

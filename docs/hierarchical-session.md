@@ -91,7 +91,8 @@ stays the edge's own.
 
 **4. Launch the servers, then the clients.** The edge server's form holds the link to the core,
 locked (`server_strategy.upper_level_link`), which adds the `upperlevellink` decorator last to its
-pipeline. The relay's form holds the relay plugin and the same link, locked.
+pipeline. The relay's form holds the relay plugin and the same link, locked, and its Data section
+unset, locked too: a relay trains nothing and loads no data.
 
 ![Edge server: link to the core](images/hier_edge_server_form.png "Edge server: link to the core")
 

@@ -2,6 +2,21 @@
 
 ## Unreleased
 
+### Hierarchical sessions
+
+* A relay no longer needs a data section: a client's `data` is now optional for a client that
+  trains nothing (`NEEDS_DATA = False`, the relay), left out or `null`; required otherwise, with
+  a clear message (`data is required: only a client that trains nothing…`). The form still opens
+  with a data section (an Optional without a default); the manager's presets unset it on a
+  relay and lock it, as they set its relay plugin, so the relay's form no longer carries the
+  session's dataset. `pybiscus/session/agent/presets.py` follows the form: an Optional without a
+  default starts set, and an Optional around the plugins' union (`Optional[Annotated[Union]]`) is
+  unfolded. `launch/ci/presets_cases.json` (`hierarchical-relay`: data unset, expected `null`);
+  `docs/configuration.md`, `docs/hierarchical-session.md`.
+* The forms' side menu no longer copies an Optional section's unset | set switch (the client's
+  data, the first such section): its copy showed no state and acted on no section; the switch
+  stays in the section. `docs/images/hier_relay_form.png` taken again.
+
 ### Plugins
 
 * The client watermarking (`client watermarking` result modifier, in `personalizeclientsfitin`)

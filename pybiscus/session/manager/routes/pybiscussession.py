@@ -478,6 +478,10 @@ def pybiscus_manager_get_session_params():
         # named, not only Some: another client plugin loaded (byzantine...) could be the first tab
         custom_presets["options_set"]["flower_client.alternate_client_class"] = RELAY_OPTION
         custom_presets["options_lock"].append("flower_client.alternate_client_class")
+        # it loads no data: its section unset (the session's data option and values then ignored)
+        from pybiscus.session.agent.presets import NONE
+        custom_presets["options_set"]["data"] = NONE
+        custom_presets["options_lock"].append("data")
         link_presets(custom_presets, RELAY_LINK, session.session_links[relayed])
         logm.console.log(f"🔁 {agent} relays the lower level {relayed}")
     else:

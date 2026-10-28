@@ -576,8 +576,11 @@
                 menuItem.className = `menu-item-level-1 ${firstSection ? 'active' : ''}`;
                 menuItem.setAttribute('data-target', fieldset.id);
                 menuItem.innerHTML = legend.innerHTML;
-                // the section's YAML key stays in its legend: the menu is kept short
-                menuItem.querySelectorAll('.pybiscus-key').forEach(key => key.remove());
+                // the section's YAML key stays in its legend: the menu is kept short; so does an
+                // Optional's switch (a client's data), whose copy here would show no state and act on
+                // no section
+                menuItem.querySelectorAll('.pybiscus-key, .pybiscus-option-switch, .pybiscus-option-cb, .pybiscus-option-hint')
+                        .forEach(element => element.remove());
 
                 menuContainer.appendChild(menuItem);
 
