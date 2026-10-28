@@ -54,7 +54,10 @@ would hide the GPU that WSL exposes (`/dev/dxg`, `/usr/lib/wsl/lib`). `SMOKE_GPU
 launch/ci/smoke.sh container-run` runs the smoke session in containers on the GPU.
 
 `launch/agent/container/500{0,1,2}.sh` start the agents in containers, for a session driven by
-the session manager (see [Session using the manager](sessionmanager.md)).
+the session manager (see [Session using the manager](sessionmanager.md)). Run them from the
+repository root: they mount its `datasets/` and `experiments/`, where the runs the agent launches
+read their data and write their reports. Each agent keeps its tokens and settings in
+`.pybiscus-cache/container-agent-<port>/`, so that a new container keeps its registration link.
 
 ## In a Kubernetes cluster
 

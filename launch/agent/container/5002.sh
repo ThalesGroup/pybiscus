@@ -20,6 +20,14 @@ DOCKER_REST_PORT="5000"
 PUBLIC_REST_PORT="5002"
 echo "[container] agent listening on internet on : ${PUBLIC_REST_PORT}"
 
+# the runs the agent launches read the data and write their reports there; podman refuses to mount
+# a missing directory
+mkdir -p experiments
+# the agent's tokens and settings survive the container; one cache per container, since inside
+# every agent listens on 5000 and the cache names its files by that port
+AGENT_CACHE="${PWD}/.pybiscus-cache/container-agent-${PUBLIC_REST_PORT}"
+mkdir -p "$AGENT_CACHE"
+
 uid=$(id -u)  # current user
 gid=$(id -g)  # current group
     # --user $uid:$gid                         \
@@ -29,6 +37,9 @@ $CONTAINER_ENGINE run \
     --rm \
     --name "pybiscus-agent-$PUBLIC_REST_PORT" \
     $(container_gpu)                         \
+    -v ${PWD}/datasets/:/app/datasets/       \
+    -v ${PWD}/experiments:/app/experiments   \
+    -v "$AGENT_CACHE":/app/.pybiscus-cache   \
     -e SERVICE="$DOCKER_SERVER_INTERFACE"    \
     -e no_proxy=$no_proxy                    \
     -e NO_PROXY=$NO_PROXY                    \

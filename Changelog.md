@@ -12,6 +12,12 @@
   server not authenticating its clients outside a session; `stop.sh` removes the namespace. Tested
   on k3s (one node, CPU). `docs/containers.md` (In a Kubernetes cluster), `docs/usage-scenarios.md`,
   `docs/security.md`.
+* `launch/agent/container/500{0,1,2}.sh` mount the repository's `datasets/` and `experiments/`
+  (created if missing, podman refusing a missing directory): the runs an agent in a container
+  launched found no data, and their reports went with the container.
+  Each also mounts its own cache, `.pybiscus-cache/container-agent-<port>/` (inside, every agent
+  listens on 5000 and the cache names its files by that port): its token and settings survive the
+  container, its registration link stays valid.
 
 ## [Version 0.16.0]
 
