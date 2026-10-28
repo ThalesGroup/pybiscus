@@ -86,8 +86,8 @@ model:
     num_candidates: '9'
     window_size: '10'
 #client_configs:
-#  - ./configs/deeplog_watermarking/setting_5_clients/cortaix-labs-01.yml
-#  - ./configs/deeplog_watermarking/setting_5_clients/cortaix-labs-02.yml
-#  - ./configs/deeplog_watermarking/setting_5_clients/cortaix-labs-03.yml
-#  - ./configs/deeplog_watermarking/setting_5_clients/cortaix-labs-04.yml
-#  - ./configs/deeplog_watermarking/setting_5_clients/cortaix-labs-05.yml
+#  - ./configs/watermarking_5_clients/cortaix-labs-01.yml
+#  - ./configs/watermarking_5_clients/cortaix-labs-02.yml
+#  - ./configs/watermarking_5_clients/cortaix-labs-03.yml
+#  - ./configs/watermarking_5_clients/cortaix-labs-04.yml
+#  - ./configs/watermarking_5_clients/cortaix-labs-05.yml

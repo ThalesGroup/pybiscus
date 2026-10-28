@@ -7,7 +7,7 @@ import torch.nn
 import pybiscus.core.pybiscus_logger as logm
 
 from pybiscus.interfaces.flower.resultmodifier import ResultModifier
-from pybiscus.flower.utils_server import get_params
+from pybiscus.flower.utils_server import get_params, set_params
 from pybiscus.core.ensure_filesystem import ensure_file_dir_exists
 from pybiscus.core.reportingoutputs import TAG, TaggedReportingOutputs, output_dir, output_file
 
@@ -25,11 +25,13 @@ class ConfigResultClientWatermarkingData(TaggedReportingOutputs):
     client_watermaked_model_prefix: str = Field(default="client_watermarked_model", description="prefix of the watermarked models' files")
 
     client_watermaking_traces_path: str = Field(default="client_watermarking_traces.txt", description='file of the watermarking traces (WSR of every client)')
+    client_fingerprints_path: str = Field(default="client_fingerprints.csv", description="file matching each Flower client (cid) with its fingerprint, to find which client a leaked model came from")
 
     model_config = ConfigDict(extra="forbid")
 
     def reporting_outputs(self):
         return {"traces": output_file(TAG, self.client_watermaking_traces_path),
+                "fingerprints": output_file(TAG, self.client_fingerprints_path),
                 "checkpoints": output_dir(TAG, "watermarked_checkpoints")}
 
 class ConfigResultClientWatermarking(BaseModel):
@@ -94,31 +96,27 @@ def watermark_key_generation(nb_clients: int, size_layer: int, size_fingerprint:
     Q, R = torch.linalg.qr(A)
     fingerprints = [torch.where(Q[:, i] >= 0, 1, -1) for i in range(Q.shape[1])]
 
-    for fingerprint in fingerprints:
-        fingerprint.require_grad = True
-
-    sk = torch.randn((size_fingerprint,size_layer), device=device, requires_grad=True)
+    # the key is fixed: only the layer is optimized
+    sk = torch.randn((size_fingerprint,size_layer), device=device)
 
     return fingerprints, sk
 
-def traitor_tracing(nb_clients: int, fingerprints = list[torch.tensor], secret_keys = list[torch.tensor]):
-    max = -1
-    max_i = -1
-    for i in range(nb_clients):
-        reconstructed_fingerprint = extract_fingerprint(0,secret_keys[i])
-        WSR = watermark_detection_rate_fingerprint(reconstructed_fingerprint, fingerprints[i])
-        if WSR > max:
-            max = WSR
-            max_i = i
-    return max_i, max
+def traitor_tracing(weight: torch.Tensor, secret_key: torch.Tensor, fingerprints: list[torch.Tensor]) -> tuple[int, float]:
+    """the index of the fingerprint best read in this layer of a leaked model, and its WSR (match it
+    with a client through the client_fingerprints file)"""
+    reconstructed_fingerprint = extract_fingerprint(weight, secret_key)
+    rates = [watermark_detection_rate_fingerprint(reconstructed_fingerprint, f) for f in fingerprints]
+    best = max(range(len(rates)), key=rates.__getitem__)
+    return best, rates[best]
 
 # --------------------------------------------------------
 
 class ResultClientWatermarking(ResultModifier):
-    """Embeds a fingerprint of each client in the weights it is sent (one layer carries the watermark),
-    and traces how well each fingerprint can be read back. Not to be relied on yet: known defects
-    remain (an early stop, weights ignored, a duplicated step, the match between clients and
-    fingerprints)."""
+    """Embeds a fingerprint of each client in the global weights it is sent (the model's `fc` layer
+    carries the watermark), and traces how well each fingerprint can be read back. The match between
+    Flower clients and fingerprints is written to `client_fingerprints_path`, the secret key and
+    each fingerprint to the checkpoints, so that `traitor_tracing` finds which client a leaked model
+    came from. A Flower client that reconnects gets a new cid, hence a new fingerprint."""
 
     # instantiated with its config's fields as keywords (personalizeclientsfitin): the config is
     # rebuilt, its outputs giving the paths
@@ -153,6 +151,35 @@ class ResultClientWatermarking(ResultModifier):
         self.clients_weights = pybiscus_context.get("clients_weights", {} )
         logm.console.log(f"context has {len(self.clients_weights)} clients_weights")
 
+    def register_client(self, round: int, cid: str):
+        """gives the next fingerprint to a client seen for the first time, and records the match on
+        disk: the logs alone did not tell which client a leaked model came from"""
+
+        index = self.client_index
+        if index >= self.total_clients:
+            logm.console.log(f"⚠️ watermarking: client {cid} beyond the {self.total_clients} clients configured (nb_clients), "
+                             f"fingerprint {index} given; a client reconnecting gets a new cid")
+        self.client_hash[cid] = index
+        self.client_index += 1
+
+        checkpoints = self.conf.output_path("checkpoints")
+        if index == 0:
+            ensure_file_dir_exists(checkpoints / "secret_key.pth")
+            self.fabric.save(checkpoints / "secret_key.pth", {"secret_key": self.secret_keys})
+            logm.console.log(f"[fabric] save 💧 Secret Key 💾📍🗄️to : {checkpoints / 'secret_key.pth'}")
+
+        fingerprint_path = checkpoints / f"fingerprint_{cid}.pth"
+        ensure_file_dir_exists(fingerprint_path)
+        self.fabric.save(fingerprint_path, {"fingerprint": self.fingerprints[index], "index": index, "cid": cid})
+        logm.console.log(f"[fabric] save 💧 Fingerprint {index} of client {cid} 💾📍🗄️to : {fingerprint_path}")
+
+        matches = self.conf.output_path("fingerprints")
+        new_file = not matches.exists()
+        with open(matches, "a", encoding="utf-8") as f:
+            if new_file:
+                f.write("cid,fingerprint,first_round\n")
+            f.write(f"{cid},{index},{round}\n")
+
     def modify(
         self,
         round: int,
@@ -176,10 +203,12 @@ round,client,cid,wsr_before,wsr_after
 
         logm.interactiveConsole.log( f"WM modify( round={round} cid={cid}) w_sizes = {[len(w) for w in weights]}" )
 
+        # the weights sent this round, not the server's model as it stands: that one holds the global
+        # weights only when the server evaluated them
+        set_params(self.model, weights)
+
         if cid not in self.client_hash:
-            self.client_hash[cid] = self.client_index
-            logm.interactiveConsole.log( f"cid={cid} <=> {self.client_hash[cid]}" )
-            self.client_index += 1
+            self.register_client(round, cid)
 
         watermarking_traces_path = self.conf.output_path("traces")
 
@@ -218,7 +247,7 @@ round,client,cid,wsr_before,wsr_after
                     wsr = watermark_detection_rate_fingerprint(
                         extract_fingerprint(self.model.model.fc.weight,
                                             self.secret_keys),
-                        self.fingerprints[i]
+                        self.fingerprints[current_client]
                     )
 
                     if wsr >= 0.98:
@@ -242,23 +271,6 @@ round,client,cid,wsr_before,wsr_after
             ensure_file_dir_exists(checkpoint_client_path)
             self.fabric.save(checkpoint_client_path, state)
             logm.console.log(f"[fabric] save 💧 watermarked client {cid} checkpoint 💾📍🗄️to : {checkpoint_client_path}")
-
-        if round==1:
-            checkpoint_path = self.conf.output_path("checkpoints") / "secret_key.pth"
-
-            state = {"secret_key": self.secret_keys}
-
-            ensure_file_dir_exists(checkpoint_path)
-            self.fabric.save(checkpoint_path, state)
-            logm.console.log(f"[fabric] save 💧 Secret Key 💾📍🗄️to : {checkpoint_path}")
-
-            checkpoint_client_path = self.conf.output_path("checkpoints") / f"fingerprint_{cid}.pth"
-
-            state = {"fingerprint": self.fingerprints[current_client]}
-
-            ensure_file_dir_exists(checkpoint_client_path)
-            self.fabric.save(checkpoint_client_path, state)
-            logm.console.log(f"[fabric] save 💧 Fingerprint of client {cid} 💾📍🗄️to : {checkpoint_client_path}")
 
         logm.console.log(f"using module 💧 ResultClientWatermarking")
 

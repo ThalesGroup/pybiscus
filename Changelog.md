@@ -2,6 +2,21 @@
 
 ## Unreleased
 
+### Plugins
+
+* The client watermarking (`client watermarking` result modifier, in `personalizeclientsfitin`)
+  fixed: it watermarks the global weights it is given (it marked the server's model as it stood,
+  the global weights only when the server had evaluated them); its early stop reads the client's
+  own fingerprint (it read the fingerprint of the iteration's number, stopping at the wrong
+  moment); the match between Flower clients and fingerprints is written to
+  `client_fingerprints.csv` (new field `client_fingerprints_path`) and each client's fingerprint
+  saved when it first comes, whatever the round (before: round 1 only, the match in the logs
+  only), so that a leaked model can be traced back; `traitor_tracing(weight, secret_key,
+  fingerprints)` gives the fingerprint best read in a model (it could not run). On synthetic HDFS
+  data, 5 clients: each reads its own fingerprint at a WSR of 0.98 to 1.0, the others' near 0.5,
+  and the 5 clients' models are traced back to them. `configs/watermarking_5_clients/clients.sh`
+  pointed at a directory that no longer exists.
+
 ### Containers
 
 * A Kubernetes example, in the CLI mode: `launch/k8s/mnist_cnn/run.sh` runs the mnist demo

@@ -852,7 +852,7 @@ Multiplies every weight by `factor`: a simple modification, to try personalizecl
 
 *plugin, `pybiscus-plugins/resultmodifier/clientwatermarking`*
 
-Embeds a fingerprint of each client in the weights it is sent (one layer carries the watermark), and traces how well each fingerprint can be read back. Not to be relied on yet: known defects remain (an early stop, weights ignored, a duplicated step, the match between clients and fingerprints).
+Embeds a fingerprint of each client in the global weights it is sent (the model's `fc` layer carries the watermark), and traces how well each fingerprint can be read back. The match between Flower clients and fingerprints is written to `client_fingerprints_path`, the secret key and each fingerprint to the checkpoints, so that `traitor_tracing` finds which client a leaked model came from. A Flower client that reconnects gets a new cid, hence a new fingerprint.
 
 | field (under `config`) | type | default | description |
 |---|---|---|---|
@@ -864,6 +864,7 @@ Embeds a fingerprint of each client in the weights it is sent (one layer carries
 | `reporting_sub_dir` | str | `'rounds'` | subdirectory of the reporting directory, one round_<n> directory per round inside |
 | `client_watermaked_model_prefix` | str | `'client_watermarked_model'` | prefix of the watermarked models' files |
 | `client_watermaking_traces_path` | str | `'client_watermarking_traces.txt'` | file of the watermarking traces (WSR of every client) |
+| `client_fingerprints_path` | str | `'client_fingerprints.csv'` | file matching each Flower client (cid) with its fingerprint, to find which client a leaked model came from |
 
 Used by: [`configs/watermarking_5_clients/config_server1.yml`](../configs/watermarking_5_clients/config_server1.yml)
 
