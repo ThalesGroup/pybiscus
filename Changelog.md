@@ -1,5 +1,18 @@
 # Changelog
 
+## Unreleased
+
+### Containers
+
+* A Kubernetes example, in the CLI mode: `launch/k8s/mnist_cnn/run.sh` runs the mnist demo
+  (`configs/mnist_cnn/distributed/`) in a cluster, the Flower server and two clients as Jobs, the
+  server behind the Service `flower-server:3333`, the configurations in a ConfigMap, the
+  repository's `datasets/` and `experiments/` mounted (`hostPath`, one node), the reports given
+  back to the user; a NetworkPolicy lets only the clients' pods reach the server's port, the Flower
+  server not authenticating its clients outside a session; `stop.sh` removes the namespace. Tested
+  on k3s (one node, CPU). `docs/containers.md` (In a Kubernetes cluster), `docs/usage-scenarios.md`,
+  `docs/security.md`.
+
 ## [Version 0.16.0]
 
 Since `version0.15.0` (2026-10-26): plugins that describe and check themselves, lighter images. Each

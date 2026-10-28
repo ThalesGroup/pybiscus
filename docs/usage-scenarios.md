@@ -181,8 +181,9 @@ a closed network of this kind, its network policies limiting the flows to
 [who calls whom](multi-machine.md#who-calls-whom). The CLI suits it: the Flower server as a service,
 the clients as jobs, the configurations and each client's data mounted. A session of the manager
 fits less: the tokens must outlast a restart (a persistent volume), and the session form needs a
-browser (agents started with `--register --accept-launch` register and launch without one). No manifest
-is provided or tested yet.
+browser (agents started with `--register --accept-launch` register and launch without one). An
+example in the CLI mode, tested on k3s, with a NetworkPolicy keeping the Flower server's port to its
+clients: [In a Kubernetes cluster](containers.md#in-a-kubernetes-cluster).
 
 **Security**: [checklist](security.md#several-machines-on-a-closed-network).
 

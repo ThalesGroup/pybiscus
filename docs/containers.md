@@ -56,6 +56,48 @@ launch/ci/smoke.sh container-run` runs the smoke session in containers on the GP
 `launch/agent/container/500{0,1,2}.sh` start the agents in containers, for a session driven by
 the session manager (see [Session using the manager](sessionmanager.md)).
 
+## In a Kubernetes cluster
+
+`launch/k8s/mnist_cnn/` runs the mnist demo (`configs/mnist_cnn/distributed/`) in a cluster, in
+the CLI mode: the Flower server and two clients as Jobs. Tested on k3s, one node, on CPU.
+
+Once, import the image into the cluster: k3s runs its own containerd, which does not see the images
+of podman or docker (the manifests use `imagePullPolicy: Never`). k3s's `kubectl` reads
+`/etc/rancher/k3s/k3s.yaml`, readable by root only: give yourself a copy.
+
+```bash
+podman save localhost/pybiscus:0.16.0 | sudo k3s ctr images import -
+sudo cp /etc/rancher/k3s/k3s.yaml ~/.kube/config && sudo chown $USER ~/.kube/config
+```
+
+Then, from anywhere:
+
+```bash
+NUM_ROUNDS=2 ./launch/k8s/mnist_cnn/run.sh            # NUM_ROUNDS: 10 by default
+kubectl -n pybiscus logs -f job/flower-server
+./launch/k8s/mnist_cnn/stop.sh                        # removes the namespace, keeps the reports
+```
+
+- `run.sh` creates the namespace `pybiscus` (`NAMESPACE`), a ConfigMap from the three
+  configurations, then `server.yaml` and `client.yaml` (once per client), whose placeholders it
+  fills: paths of the repository, image (`K8S_IMAGE`, `localhost/pybiscus:<version>` by default),
+  rounds, user. Running it again replaces the Jobs of the previous run.
+- The server is a Job, not a Deployment, which would restart it after its last round. The clients
+  reach it at the Service `flower-server:3333`; each waits for it (an init container) since a
+  Flower client finding no server stops at once.
+- The repository's `datasets/` and `experiments/` are mounted (`hostPath`, one node; on several
+  nodes, a PersistentVolumeClaim). The reports land in `experiments/` as with the other launches,
+  given back to the user who ran `run.sh` (the image runs as root).
+- **A NetworkPolicy lets only the clients' pods reach the server's port**: in the CLI mode the
+  Flower server does not authenticate its clients ([known limits](security.md#known-limits)).
+  It selects the pods by their label `pybiscus.role: flower-client`, so whoever may create pods in
+  the namespace may join a round: restrict that right (RBAC). k3s enforces NetworkPolicies; another
+  cluster needs a network plugin that does (Calico, Cilium...).
+
+A session of the manager in a cluster is possible but heavier (see
+[usage scenarios](usage-scenarios.md#several-machines-on-a-closed-network)); no manifest is provided
+for it.
+
 ## Behind a proxy
 
 Define and export, according to your system, `no_proxy`, `http_proxy`, `https_proxy` or

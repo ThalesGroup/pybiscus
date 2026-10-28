@@ -1,0 +1,47 @@
+# Applied by run.sh once per client: @CLIENT@ is the client's configuration (client_1, client_2).
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: flower-@CLIENT_DNS@
+  labels:
+    app.kubernetes.io/part-of: pybiscus-mnist
+spec:
+  backoffLimit: 0
+  activeDeadlineSeconds: 3600
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/part-of: pybiscus-mnist
+        # the label the NetworkPolicy of server.yaml lets through to the Flower server
+        pybiscus.role: flower-client
+    spec:
+      restartPolicy: Never
+      # a Flower client that finds no server stops at once
+      initContainers:
+      - name: wait-for-server
+        image: @IMAGE@
+        imagePullPolicy: Never
+        command: ["/bin/bash", "-c", "until (exec 3<>/dev/tcp/flower-server/3333) 2>/dev/null; do sleep 2; done"]
+      containers:
+      - name: client
+        image: @IMAGE@
+        imagePullPolicy: Never
+        workingDir: /app
+        args: [client, launch, k8s-configs/@CLIENT@.yml, --server-address, "flower-server:3333"]
+        env:
+        - name: PWD
+          value: /app
+        volumeMounts:
+        - name: configs
+          mountPath: /app/k8s-configs
+          readOnly: true
+        - name: datasets
+          mountPath: /app/datasets
+      volumes:
+      - name: configs
+        configMap:
+          name: pybiscus-mnist-configs
+      - name: datasets
+        hostPath:
+          path: @REPO@/datasets
+          type: Directory

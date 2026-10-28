@@ -159,7 +159,7 @@ They are why the guarantees are those of a closed network:
 | limit | meanwhile |
 |---|---|
 | the session token is shared by every participant, without expiry or revocation: whoever holds it may register an agent under any name not invited | [invite the agents](sessionmanager.md#agents-invitations) (`--require-agent-invitation`): a token per agent, bound to its name and role, expiring, revocable; between the managers of a hierarchical session, [invite the sites](sessionmanager.md#invitations). Otherwise give it to the participants only, and restart the manager with a new token (`--session-token`) to revoke it |
-| outside a session of the manager (CLI, campaigns), the Flower server does not authenticate its clients (its TLS authenticates the server only): whoever reaches its port may join a round | restrict its port with a firewall to the clients' addresses. In a session, [the clients are authenticated](#flower-clients) |
+| outside a session of the manager (CLI, campaigns), the Flower server does not authenticate its clients (its TLS authenticates the server only): whoever reaches its port may join a round | restrict its port with a firewall to the clients' addresses; in a Kubernetes cluster, with a NetworkPolicy ([example](containers.md#in-a-kubernetes-cluster)). In a session, [the clients are authenticated](#flower-clients) |
 | in a session, a Flower client's token travels in clear without Flower's TLS: whoever reads the traffic may replay it | [Flower's TLS](multi-machine.md#flower) beyond one machine |
 | an SSH tunnel to a component on 127.0.0.1 cannot be told from a local access | start it with `--require-token` |
 
@@ -175,7 +175,8 @@ user accounts, `--require-token` on the manager and the agents: every account re
 
 ### Automated runs without a browser
 
-No web component: Flower's [TLS](multi-machine.md#flower) for its traffic, a firewall on its port;
+No web component: Flower's [TLS](multi-machine.md#flower) for its traffic, a firewall on its port (a
+NetworkPolicy in a Kubernetes cluster);
 one machine or a closed network. [Scenario](usage-scenarios.md#automated-runs-without-a-browser).
 
 ### Attack and defence studies
