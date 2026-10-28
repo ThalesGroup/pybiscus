@@ -1,6 +1,14 @@
 # Changelog
 
-## Unreleased
+## [Version 0.17.0]
+
+Since `version0.16.0` (2026-10-28): forms that know their bounds, relays without data, and the
+recording tool on its own. The agents' forms show the bounds of the numbers and outline a value out
+of them as it is typed, for every plugin; the core's types made precise (seeds, `devices`, SSL
+paths, `opset`, ports). A hierarchical session's relay needs no data section. The client
+watermarking fixed and its traitor tracing working. A Kubernetes example (k3s) in the CLI mode; an
+agent in a container finds the repository's data. The shooting and editing tool becomes Näkymä
+(`nakyma/`), a project of its own with its command, its README and an example.
 
 ### Recording
 

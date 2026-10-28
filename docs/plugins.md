@@ -125,7 +125,7 @@ into a running container (a site may have no network, and its versions would not
 
 ```bash
 container/build_container_with_plugins.sh path/to/myplugins             # image myplugins:<version>
-PYBISCUS_IMAGE=pybiscus-agent:0.16.0 container/build_container_with_plugins.sh path/to/myplugins myagent:1
+PYBISCUS_IMAGE=pybiscus-agent:0.17.0 container/build_container_with_plugins.sh path/to/myplugins myagent:1
 ```
 
 `path/to/myplugins` holds its manifest `plugins-conf.yml` (paths relative to it) and the plugins,

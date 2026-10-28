@@ -69,7 +69,7 @@ of podman or docker (the manifests use `imagePullPolicy: Never`). k3s's `kubectl
 `/etc/rancher/k3s/k3s.yaml`, readable by root only: give yourself a copy.
 
 ```bash
-podman save localhost/pybiscus:0.16.0 | sudo k3s ctr images import -
+podman save localhost/pybiscus:0.17.0 | sudo k3s ctr images import -
 sudo cp /etc/rancher/k3s/k3s.yaml ~/.kube/config && sudo chown $USER ~/.kube/config
 ```
 
