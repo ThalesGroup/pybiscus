@@ -85,7 +85,10 @@ a new `link_id`.
 
 **3. Configure each edge session.** Its form opens with the core's model, hyperparameters, data and
 number of rounds set and locked; the rest (data partition between its clients, holdout, robustness…)
-stays the edge's own.
+stays the edge's own. Only the hyperparameters that are plain values (numbers, text, booleans,
+choices) are imposed: a list or a dict field of the model's configuration is left to each level,
+which must then give it the same value (`pybiscus plugins lint` warns of such a field,
+`model-hyperparameters`).
 
 ![Edge session form: the core's choices locked](images/hier_edge_session_form.png "Edge session form: the core's choices locked")
 

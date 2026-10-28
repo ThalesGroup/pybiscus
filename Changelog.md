@@ -16,6 +16,10 @@
 * The forms' side menu no longer copies an Optional section's unset | set switch (the client's
   data, the first such section): its copy showed no state and acted on no section; the switch
   stays in the section. `docs/images/hier_relay_form.png` taken again.
+* `pybiscus plugins lint` warns of a model's hyperparameter that is not a plain value (a list, a
+  dict, a section; rule `model-hyperparameters`): a session sets and locks only plain values in
+  every form and every lower level, the others being left to each. No bundled model has one.
+  `docs/plugins.md`, `docs/hierarchical-session.md`.
 
 ### Plugins
 

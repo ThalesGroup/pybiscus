@@ -1,10 +1,12 @@
 import ast
 import inspect
 import re
+from enum import Enum
 from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
-from typing import Annotated, Literal, get_args, get_origin
+from types import UnionType
+from typing import Annotated, Literal, Union, get_args, get_origin
 
 from pydantic import BaseModel
 
@@ -24,6 +26,7 @@ RULES = {
     "strategy": (ERROR, "a strategy derives from FlowerStrategyFactory; an aggregate_fit it overrides calls super().aggregate_fit"),
     "data-sections": (ERROR, "a data configuration is in train / val / test sections"),
     "reporting-outputs": (ERROR, "a plugin writing into the reporting directory declares its outputs (ReportingOutputs)"),
+    "model-hyperparameters": (WARNING, "a model's hyperparameters are plain values: a session imposes only those on every form and lower level (a list, a dict or a section is left to each)"),
 }
 
 IGNORE = re.compile(r"#\s*pybiscus-lint:\s*ignore=([\w,-]+)")
@@ -32,6 +35,8 @@ IGNORE = re.compile(r"#\s*pybiscus-lint:\s*ignore=([\w,-]+)")
 FAMILY_FIELDS = {"name", "config", "empty_configuration"}
 
 DATA_SECTIONS = ("train", "val", "test")
+
+SCALARS = (str, int, float, bool, type(None))
 
 
 @dataclass
@@ -152,9 +157,39 @@ def config_rules(category: str, configs, implementations, location: Path) -> lis
             findings.append(Finding("group", file, line, f"{config.__name__} has no PYBISCUS_GROUP"))
         if category == "data":
             findings += data_rules(config, file, line)
+        if category == "model":
+            findings += model_rules(config, location)
 
     if category == "strategy":
         findings += strategy_rules(implementations, location)
+    return findings
+
+
+def is_scalar(annotation) -> bool:
+    origin = get_origin(annotation)
+    if origin is Annotated:
+        return is_scalar(get_args(annotation)[0])
+    if origin is Literal:
+        return True
+    if origin in (Union, UnionType):
+        # Optional[int], int | str: plain if every member is
+        return all(is_scalar(arg) for arg in get_args(annotation))
+    if origin is not None:
+        return False
+    return annotation in SCALARS or (inspect.isclass(annotation) and issubclass(annotation, (Enum, *SCALARS)))
+
+
+def model_rules(config, location: Path) -> list[Finding]:
+    inner = next(nested_models(config.model_fields["config"].annotation), None) if "config" in config.model_fields else None
+    if inner is None:
+        return []
+    findings = []
+    for name, field in inner.model_fields.items():
+        owner = defining_class(inner, name)
+        if name in FAMILY_FIELDS or not inside(owner, location) or is_scalar(field.annotation):
+            continue
+        findings.append(Finding("model-hyperparameters", class_place(owner)[0], field_line(owner, name),
+                                f"{owner.__name__}.{name} is not a plain value: a session leaves it to each form and lower level"))
     return findings
 
 

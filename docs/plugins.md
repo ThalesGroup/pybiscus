@@ -104,6 +104,7 @@ reference and the sessions rely on (`--rules` lists them); it imports the plugin
 | `strategy` | error | a strategy derives from `FlowerStrategyFactory`; an `aggregate_fit` it overrides calls `super().aggregate_fit` (Flower's checks and metrics) |
 | `data-sections` | error | a data configuration has `train`, `val` and `test` sections |
 | `reporting-outputs` | error | a plugin reading the reporting directory (`reporting_path`, `REPORTING_PATH`) has a configuration deriving from `ReportingOutputs` |
+| `model-hyperparameters` | warning | a model's hyperparameters are plain values (numbers, text, booleans, choices): a session sets and locks only those in every form and every lower level, a list, a dict or a section being left to each |
 
 The sections of the core a plugin's configuration uses (`ConfigPartition`) are not its own: they
 are not checked with it. A justified exception is silenced on its line, the rule named:
