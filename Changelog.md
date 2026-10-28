@@ -2,6 +2,33 @@
 
 ## Unreleased
 
+### Configuration
+
+* The forms show the bounds of the numbers (`Field(ge=…, le=…)`, `PositiveInt`) ahead of their
+  description (`≥ 1`, `0 … 1`) and outline in red a value out of them, or a text not matching its
+  `pattern`, as it is typed: the bounds were only known to the check. A float takes any number of
+  decimals (a step of 0.001 marked a learning rate of 1e-4 invalid). A constrained scalar
+  (`Annotated[int, Field(ge=1)]`) is rendered as a scalar, not a union of one type. For every
+  plugin, without any change to it.
+* The server's `ssl` section requires its three paths (they defaulted to None, which the check let
+  through: an incomplete section stopped the server only at launch); an ONNX axis requires its
+  name.
+* Seeds are integers from 0 to 2³²−1 (`server_run.seed`, `client_run.seed`, the data's seeds,
+  the session's): NumPy refused a negative one at launch, Lightning replaced a larger one with a
+  random seed. `opset` is 18 or more, as its description said (`configs/watermarking_5_clients/
+  config_server1.yml` had 13, refused by the exporter); `client_run.cid` 0 or more.
+* `hardware.devices` is an integer, 1 or more, or `auto`, or GPU ids (`0,1`): any text passed the
+  check, a typo reaching Fabric only at launch.
+* The session form's `server_port` is a port, 1 to 65535.
+* An Optional section's style no longer reaches the unions nested in its value: a client's data
+  (an Optional since the relays need none) showed its plugins' tabs out of place, and its last
+  plugin (HDFS) could not be chosen, the rule hiding the Optional's None tab hiding it too. A
+  value without a label (an Optional's) keeps its bounds under it.
+* `docs/agent.md`, `docs/plugins.md`, `docs/configuration.md`, `docs/multi-machine.md`; the forms'
+  screenshots taken again (`session_*` and `hier_*` of `docs/images`).
+* `launch/doc/session_shots.py` takes the `session_*` screenshots of the forms from a real session
+  (`docs/recording.md`).
+
 ### Docs
 
 * The network view's screenshots taken again (`docs/images/network_machines.png`,

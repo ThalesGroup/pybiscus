@@ -1,6 +1,6 @@
 from enum import Enum
-from typing import ClassVar, Union
-from pydantic import BaseModel, ConfigDict
+from typing import Annotated, ClassVar, Union
+from pydantic import BaseModel, ConfigDict, Field, PositiveInt
 
 class ConfigHardware(BaseModel):
     """A Pydantic Model to validate the hardware configuration given by the user.
@@ -74,9 +74,9 @@ class ConfigHardware(BaseModel):
 
     accelerator: Accelerator = "auto"
 
-    # TODO: check devices
-    # devices: Union[int, list[int], str] = "auto"
-    # NB: int means the requested number of devices
-    devices: Union[int, str] = "auto"
+    # Fabric also takes a list of ids; the form has no list of integers in a union, "0,1" stands for it.
+    # Any text passed before: a typo reached Fabric only at launch
+    devices: Union[PositiveInt, Annotated[str, Field(pattern=r"^(auto|\d+(,\d+)*)$")]] = Field(
+        default="auto", description='"auto", a number of devices, or the ids of the GPUs to use, e.g. 0,1')
 
     model_config = ConfigDict(extra="forbid")

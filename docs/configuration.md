@@ -37,8 +37,8 @@ clients. Two of the [Fabric API](https://lightning.ai/docs/fabric/stable/api/gen
 arguments are exposed:
 
 - `accelerator`: `cpu`, `gpu` or `auto` (a GPU when there is one);
-- `devices`: an integer (the number of devices), or a string: `auto`, or the ids of the devices as
-  Fabric reads them (`"0"`, `"0,1"`).
+- `devices`: an integer, 1 or more (the number of devices), or a string: `auto`, or the ids of the
+  devices as Fabric reads them (`"0"`, `"0,1"`); anything else is refused by the check.
 
 The precision stays Fabric's default (32 bits). On a GPU, convolutions use TF32 by default, which
 moves the outputs by about 1e-4: compare models on CPU when the last digits matter.
@@ -381,7 +381,8 @@ same order. Two runs with the same seeds start identical and differ only by floa
 rounding (the aggregation sums the updates in their order of arrival, several CPU threads sum in no
 fixed order), but training amplifies it: after 5 rounds of 3 local epochs on cifar10, the same run
 twice differed by up to 1 point of accuracy. Seeds make runs comparable, not bit for bit
-identical.
+identical. A seed is an integer from 0 to 2³²−1 (NumPy refuses a negative one, and Lightning
+replaces a larger one with a random seed), as are the data's seeds (`partition.seed`, `train.seed`…).
 
 ### Ending a session before its last round
 

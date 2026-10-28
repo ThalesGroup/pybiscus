@@ -5,6 +5,7 @@ from typing import List, Optional, ClassVar, get_args
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from pybiscus.core.schedule import ConfigSchedule
+from pybiscus.core.seed import Seed
 from pybiscus.flower.sessionlink import ConfigSessionLink
 from pybiscus.flower_config.config_computecontext import ConfigServerComputeContext
 from pybiscus.plugin.registries.logger_registry import LoggerConfig
@@ -30,9 +31,11 @@ class ConfigSslServer(BaseModel):
 
     PYBISCUS_ALIAS: ClassVar[str] = "SSL configuration"
 
-    root_certificate_path:   str = None
-    server_certificate_path: str = None
-    server_private_key_path: str = None
+    # required: a default of None passed the check (Pydantic does not validate defaults), and an SSL
+    # section left incomplete stopped the server only at launch
+    root_certificate_path:   str = Field(description="certificate of the authority that signed the server's and the clients' certificates")
+    server_certificate_path: str = Field(description="the server's certificate")
+    server_private_key_path: str = Field(description="the server's private key")
 
     model_config = ConfigDict(extra="forbid")
 
@@ -50,8 +53,8 @@ class AxeKind(str, Enum):
 
 class OnnxAxe(BaseModel):
 
-    name: str = Field(default="", description="name of the input or output in the ONNX model")
-    kind: AxeKind = Field(default=AxeKind.input.value, description='whether the axis belongs to an input or an output of the model')
+    name: str = Field(min_length=1, description="name of the input or output in the ONNX model")
+    kind: AxeKind = Field(default=AxeKind.input, description='whether the axis belongs to an input or an output of the model')
     dynamic: bool = Field(default=True, description='the size of this axis may change (the batch size, for instance)')
 
     model_config = ConfigDict(extra="forbid")
@@ -62,7 +65,7 @@ class ConfigServerOnnxExport(BaseModel):
     axes: List[OnnxAxe] = Field(default=[], description='names and dynamic axes of the inputs and outputs; deduced from the model and the data if empty')
     # >= 18 requis avec l'exporteur torch dynamo (produit de l'opset 18 ; la reconversion
     # vers un opset inférieur, ex. 13, échoue)
-    opset: int = Field(default=18, description='ONNX operator set: 18 or more with the dynamo exporter')
+    opset: int = Field(default=18, ge=18, description='ONNX operator set: 18 or more with the dynamo exporter')
     post_validation: bool = Field(default=False, description="check the exported model with onnx and compare its outputs with PyTorch's on a sample (logged)")
 
     model_config = ConfigDict(extra="forbid")
@@ -118,7 +121,7 @@ class ConfigServerRun(BaseModel):
         "--weights-path overrides it")
     clients_fit_local_epochs: int = Field(default=1, ge=1, title="Local epochs per round")
     client_configs:    list[str] = Field(default=[], description='configuration files of the clients, saved with the reports (command line sessions)')
-    seed:              Optional[int] = None
+    seed:              Optional[Seed] = None
     loggers:           list[LoggerConfig()] = Field(description="where the server's log lines go (console, the session manager's webhook...)")# pyright: ignore[reportInvalidTypeForm]
     reporting:         ConfigServerReporting= Field(description='where and what the server saves')
     model_config = ConfigDict(extra="forbid")

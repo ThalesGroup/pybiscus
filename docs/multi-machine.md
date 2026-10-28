@@ -164,7 +164,7 @@ fill, on each agent's machine:
 
 - server agent: `root_certificate_path` = `ca/ca.crt`, `server_certificate_path` and
   `server_private_key_path` = the certificate and the key of its machine, the same files as its
-  `--tls-cert` and `--tls-key`;
+  `--tls-cert` and `--tls-key` (all three required: the check refuses a section left incomplete);
 - each client agent: `secure_cnx` on, `root_certificate` = `ca/ca.crt`;
 - `server_host`, in the session form, is the name the clients reach the server at: one of the names
   of the server machine's certificate (`localhost` only for a session on one machine).

@@ -6,6 +6,7 @@ import torch
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from pybiscus.flower_config.config_computecontext import ConfigClientComputeContext
+from pybiscus.core.seed import Seed
 from pybiscus.plugin.registries.client_registry import ClientConfig
 from pybiscus.plugin.registries.model_registry import ModelConfig
 from pybiscus.plugin.registries.data_registry import DataConfig
@@ -57,12 +58,12 @@ class ConfigClientRun(BaseModel):
 
     PYBISCUS_CONFIG: ClassVar[str] = "client_run"
 
-    cid: int            = 1
+    cid: int            = Field(default=1, ge=0)
     pre_train_val: bool = Field(title="Validation before training", default=False, description='evaluate the global model received at each round before training on it (*_pre_train_val metrics)')
     optimizer_state: OptimizerState = OptimizerState.reset
     # new examples arriving between rounds: a data module reads them only in setup() otherwise, once
     refresh_data: bool = Field(default=False, description='read the data again before each round, to train on the examples arrived since (a data module may read only the new ones)')
-    seed: Optional[int] = None
+    seed: Optional[Seed] = None
 
     model_config = ConfigDict(extra="forbid")
 

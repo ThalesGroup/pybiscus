@@ -57,6 +57,9 @@ On each form:
 - Each field's description (`Field(description=...)`) shows under its value, a block's under its
   title. A field's width follows its type: narrow for a number, wide for a path, a directory, a
   file or a URL (from its name or its default value).
+- A number's bounds (`Field(ge=…, le=…)`, `PositiveInt`) show ahead of its description (`≥ 1`,
+  `0 … 1`), and a value out of them, or a text not matching its `pattern`, is outlined in red as
+  it is typed, before the check refuses it.
 - An optional field shows *unset | set* next to its name: *set* shows its value to fill; *unset*
   leaves it unset (None) and folds it, with its description to say what that means (from
   `Field(description=...)`). A field the session locks shows its choice, without changing it.

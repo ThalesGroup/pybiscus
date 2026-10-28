@@ -158,6 +158,8 @@ messages.
 
 Describe every field with `Field(description=...)`: it is shown under the field in the forms (see the
 [integration guide](pybiscus_model_guide.md)), and in the [plugins reference](plugins-reference.md).
+Bound the numbers (`Field(ge=1)`, `Field(gt=0, lt=1)`, `PositiveInt`) and give a text its
+`pattern`: the forms show the bounds and outline a value out of them as it is typed.
 
 ## The plugins reference
 

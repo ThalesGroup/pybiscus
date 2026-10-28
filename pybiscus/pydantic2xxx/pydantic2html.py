@@ -76,10 +76,44 @@ def text_width_class(field_name: str, default) -> str:
     wide = bool(WIDE_TEXT_NAME.search(field_name.lower())) or (isinstance(default, str) and ("/" in default or "${" in default))
     return "pybiscus-w-wide" if wide else "pybiscus-w-text"
 
-def html_description(description, cls: str = "pybiscus-desc") -> str:
-    if description is None or description is PydanticUndefined:
+def html_description(description, cls: str = "pybiscus-desc", bounds: str = "") -> str:
+    has_text = description is not None and description is not PydanticUndefined
+    if not has_text and not bounds:
         return ""
-    return f'  <div class="{cls}">{html_module.escape(description)}</div>\n'
+    bounds_html = f'<span class="pybiscus-bounds">{html_module.escape(bounds)}</span>' if bounds else ""
+    text = html_module.escape(description) if has_text else ""
+    return f'  <div class="{cls}">{bounds_html}{" · " if bounds and text else ""}{text}</div>\n'
+
+def constraints_of(metadata) -> dict:
+    """the bounds and pattern of a scalar field, from Field(ge=…) or an Annotated[int, Gt(0)]"""
+    found = {}
+    for item in metadata:
+        if isinstance(item, FieldInfo):
+            found.update(constraints_of(item.metadata))
+            continue
+        for key in ("ge", "gt", "le", "lt", "pattern"):
+            value = getattr(item, key, None)
+            if value is not None:
+                found[key] = value
+    return found
+
+def number_bounds(constraints: dict, is_int: bool) -> tuple[str, str]:
+    """the input's min and max attributes, and the bounds as the form shows them"""
+    low, high = constraints.get("ge"), constraints.get("le")
+    # HTML has no exclusive bound: a float's gt keeps min at the bound itself, the check refusing it
+    if "gt" in constraints:
+        low = constraints["gt"] + 1 if is_int else constraints["gt"]
+    if "lt" in constraints:
+        high = constraints["lt"] - 1 if is_int else constraints["lt"]
+    attrs = (f' min="{low}"' if low is not None else "") + (f' max="{high}"' if high is not None else "")
+    # an integer's bounds are inclusive (PositiveInt reads ≥ 1), a float's as declared
+    inclusive_low = is_int or "gt" not in constraints
+    inclusive_high = is_int or "lt" not in constraints
+    if low is not None and high is not None and inclusive_low and inclusive_high:
+        return attrs, f"{low} … {high}"
+    lower = "" if low is None else f"{'≥' if inclusive_low else '>'} {low}"
+    upper = "" if high is None else f"{'≤' if inclusive_high else '<'} {high}"
+    return attrs, ", ".join(part for part in (lower, upper) if part)
 
 def index_generator():
     counter = 1
@@ -95,6 +129,7 @@ def new_index():
     return next(index_generator_instance)
 
 def generate_tab_name(field_type, default) -> str:
+    field_type = unwrap_annotated(field_type)
     if field_type is str:
         return 'string'
     elif field_type is int:
@@ -167,10 +202,18 @@ def option_rules_attrs(option_type) -> str:
     return attrs + (' data-pybiscus-last="true"' if getattr(option_type, "PYBISCUS_LAST", False) else "")
 
 def generate_field_html(field_name: str, field_type, field_default, field_description, inFieldSet: bool, prefix: str,
-                        field_title: Optional[str] = None, field_chain: Optional[dict] = None) -> str:
+                        field_title: Optional[str] = None, field_chain: Optional[dict] = None,
+                        constraints: Optional[dict] = None) -> str:
 
     if log_htmlgen:
         print( f"generate_field_html({field_name})" )
+
+    constraints = constraints or {}
+    # a constrained scalar (Annotated[int, Field(ge=1)], PositiveInt) is a scalar: the Annotated branch
+    # would render it as a union of one type
+    if is_annotated_type(field_type) and get_args(field_type)[0] in (str, int, float):
+        constraints = {**constraints_of(get_args(field_type)[1:]), **constraints}
+        field_type = get_args(field_type)[0]
 
     field_html = ''
 
@@ -187,18 +230,22 @@ def generate_field_html(field_name: str, field_type, field_default, field_descri
     if field_type is str:
         opt_value = '' if (field_default is PydanticUndefined or field_default is None ) else f' value="{html_module.escape(field_default)}" '
         field_html += html_label( field_name, True, opt_title, field_title )
-        field_html += f'  <input type="text" class="{text_width_class(field_name, field_default)}" {opt_title} {opt_value} placeholder="string" {pybiscus_marker}>\n'
+        opt_pattern = f' pattern="{html_module.escape(constraints["pattern"], quote=True)}" ' if "pattern" in constraints else ""
+        field_html += f'  <input type="text" class="{text_width_class(field_name, field_default)}" {opt_title} {opt_value}{opt_pattern} placeholder="string" {pybiscus_marker}>\n'
         field_html += html_description(field_description)
 
     elif field_type is int:
+        bounds_attrs, bounds = number_bounds(constraints, is_int=True)
         field_html += html_label( field_name, True, opt_title, field_title )
-        field_html += f'  <input type="number" class="pybiscus-w-int" {opt_title} {opt_value} placeholder="integer" {pybiscus_marker}>\n'
-        field_html += html_description(field_description)
+        field_html += f'  <input type="number" class="pybiscus-w-int" {opt_title} {opt_value}{bounds_attrs} placeholder="integer" {pybiscus_marker}>\n'
+        field_html += html_description(field_description, bounds=bounds)
 
     elif field_type is float:
+        bounds_attrs, bounds = number_bounds(constraints, is_int=False)
         field_html += html_label( field_name, True, opt_title, field_title )
-        field_html += f'  <input type="number" class="pybiscus-w-float" {opt_title} {opt_value} placeholder="float" step="0.001" {pybiscus_marker}>\n'
-        field_html += html_description(field_description)
+        # step any: with a step, a learning rate of 1e-4 would show as invalid
+        field_html += f'  <input type="number" class="pybiscus-w-float" {opt_title} {opt_value}{bounds_attrs} placeholder="float" step="any" {pybiscus_marker}>\n'
+        field_html += html_description(field_description, bounds=bounds)
 
     elif field_type is bool:
         opt_checked = "checked" if True == field_default else ""
@@ -497,7 +544,8 @@ def generate_field_html(field_name: str, field_type, field_default, field_descri
                 if field_default is not PydanticUndefined:
                     field_default_type = type( field_default )
                     for index, sub_type in enumerate( field_type.__args__, 1 ):
-                        if sub_type is field_default_type:
+                        # a constrained member (Annotated[str, Field(pattern=…)]) holds its type's values
+                        if unwrap_annotated(sub_type) is field_default_type:
                             active_index = index
                             propagate_default = True
                             break
@@ -625,6 +673,7 @@ def generate_field_html(field_name: str, field_type, field_default, field_descri
                                     field_description = PydanticUndefined,
                                     inFieldSet        = False,
                                     prefix            = prefix,
+                                    constraints       = constraints,
                                     )
                     field_html += '</div>\n'
 
@@ -732,6 +781,7 @@ def generate_model_html(model: BaseModel, inFieldSet: bool, prefix: str, model_c
                                     prefix             = prefix,
                                     field_title        = field_info.title,
                                     field_chain        = getattr(model, "PYBISCUS_CHAINS", {}).get(field_name),
+                                    constraints        = constraints_of(field_info.metadata),
                                     )
    
     if inFieldSet:

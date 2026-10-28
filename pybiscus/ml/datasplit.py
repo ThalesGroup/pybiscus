@@ -10,6 +10,7 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 from torch.utils.data import DataLoader, Dataset, Subset
 
 import pybiscus.core.pybiscus_logger as logm
+from pybiscus.core.seed import Seed
 
 # Configuration of the train / val / test sets of the data plugins that load official train and
 # test splits (cifar10, mnist): where each set comes from, which examples a client uses, how its
@@ -38,7 +39,7 @@ class ConfigPartitionScheme(BaseModel):
     """how the training data is shared, the same for every client"""
 
     scheme: PartitionScheme = Field(default=PartitionScheme.iid, description="how the examples are shared between the clients")
-    seed: int = Field(default=42, description="the same for every client, so that the shares are disjoint without any coordination")
+    seed: Seed = Field(default=42, description="the same for every client, so that the shares are disjoint without any coordination")
     alpha: float = Field(default=0.5, gt=0, description="dirichlet: the smaller, the more each client is dominated by a few classes")
     min_partition_size: int = Field(default=10, ge=0, description="dirichlet: draws are repeated until every share has at least this many examples")
     shards_per_partition: int = Field(default=2, ge=1, description="shards: shards given to each client, roughly the classes it sees")
@@ -83,7 +84,7 @@ class ConfigTrainSet(BaseModel):
     shuffle: bool = Field(default=True, description=SET_FIELDS["shuffle"])
     # a tiny last batch destabilizes BatchNorm
     drop_last: bool = Field(default=True, description=SET_FIELDS["drop_last"])
-    seed: Optional[int] = Field(default=None, description=SET_FIELDS["train_seed"])
+    seed: Optional[Seed] = Field(default=None, description=SET_FIELDS["train_seed"])
     indices: Optional[str] = Field(default=None, description=
         "file of the indices of the examples to train on (whitespace-separated); exclusive with partition")
     partition: Optional[ConfigPartition] = Field(default=None, description=SET_FIELDS["partition"])
@@ -119,7 +120,7 @@ class ConfigValSet(BaseModel):
     source: ValSource = Field(default=ValSource.official, description="where the validation examples come from")
     dir: str = Field(description="directory of the official test split (source: official)")
     fraction: float = Field(default=0.1, gt=0, lt=1, description="share of the client's training examples held out (source: holdout)")
-    seed: int = Field(default=42, description="draw of the held-out examples (source: holdout)")
+    seed: Seed = Field(default=42, description="draw of the held-out examples (source: holdout)")
     indices: Optional[str] = Field(default=None, description="file of the indices of the validation examples (source: indices)")
     batch_size: int = Field(default=32, ge=1, description=SET_FIELDS["batch_size"])
     shuffle: bool = Field(default=False, description=SET_FIELDS["shuffle"])
@@ -177,7 +178,7 @@ class ConfigTrustedSet(BaseModel):
     dir: str = Field(description="directory of the official train split, from which the trusted examples are drawn")
     # 500 and not the paper's 100: measured steadier (cifar10_fltrust_trusted_size.yml), 2000 no better
     max_samples: int = Field(default=500, ge=1, description="number of trusted examples, drawn at random from the train split")
-    seed: int = Field(default=0, description="draw of the trusted examples and order of their batches, reproducible")
+    seed: Seed = Field(default=0, description="draw of the trusted examples and order of their batches, reproducible")
     batch_size: int = Field(default=32, ge=1, description=SET_FIELDS["batch_size"])
     shuffle: bool = Field(default=True, description=SET_FIELDS["shuffle"])
     drop_last: bool = Field(default=False, description=SET_FIELDS["drop_last"])

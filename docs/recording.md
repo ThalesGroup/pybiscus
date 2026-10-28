@@ -472,6 +472,19 @@ machine; run it alone.
 `launch/doc/scenarios/hierarchical-tree.yml` runs the tree of four sessions of the second experiment
 (10 agents; `film: [core, south]`), and its cut writes the `hier3_*` screenshots.
 
+### The forms of a simple session
+
+`launch/doc/session_shots.py` takes the 7 `session_*` screenshots of the forms in `docs/images`
+(or into the directory it is given): a manager and three agents registered by themselves, the
+session form in the manager's page (model, partition, holdout, repeated session), then the server's
+and a client's forms the session filled. Nothing is trained, and it needs no cut:
+
+```bash
+uv run launch/doc/session_shots.py
+```
+
+Take them again after a change to the forms' look; check them with `git diff` before committing.
+
 ## Outputs
 
 - `<output>.mp4`: H.264, readable everywhere (about 2 MB for the bundled scenario at

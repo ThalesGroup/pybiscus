@@ -407,7 +407,9 @@ body > div > fieldset > legend::before {
     display: block;
 }
 
-.pybiscus-option-fs:not(.pybiscus-camouflaged-fieldset) .pybiscus-tab-container {
+/* child selectors only: a union nested in the Optional's value (a client's data plugins) keeps its own
+   layout, and its last option, which the rule hiding the None tab hid too */
+.pybiscus-option-fs:not(.pybiscus-camouflaged-fieldset) > .pybiscus-tab-container {
     display: flex;
     flex-wrap: nowrap;
     gap: var(--spacing-sm);
@@ -417,7 +419,7 @@ body > div > fieldset > legend::before {
     box-shadow: none;
 }
 
-.pybiscus-option-fs:not(.pybiscus-camouflaged-fieldset) .pybiscus-tab-buttons {
+.pybiscus-option-fs:not(.pybiscus-camouflaged-fieldset) > .pybiscus-tab-container > .pybiscus-tab-buttons {
     display: inline-flex;
     border-bottom: initial;
     align-items: center;
@@ -425,7 +427,7 @@ body > div > fieldset > legend::before {
     padding: 0;
 }
 
-.pybiscus-option-fs:not(.pybiscus-camouflaged-fieldset) .pybiscus-tab-button {
+.pybiscus-option-fs:not(.pybiscus-camouflaged-fieldset) > .pybiscus-tab-container > .pybiscus-tab-buttons > .pybiscus-tab-button {
     border: initial;
     padding: initial;
     cursor: auto;
@@ -436,13 +438,13 @@ body > div > fieldset > legend::before {
     background: none;
 }
 
-.pybiscus-option-fs:not(.pybiscus-camouflaged-fieldset) .pybiscus-tab-content {
+.pybiscus-option-fs:not(.pybiscus-camouflaged-fieldset) > .pybiscus-tab-container > .pybiscus-tab-content {
     padding: initial;
     border-top: initial;
     background: none;
 }
 
-.pybiscus-option-fs:not(.pybiscus-camouflaged-fieldset) .pybiscus-tab-button:last-of-type {
+.pybiscus-option-fs:not(.pybiscus-camouflaged-fieldset) > .pybiscus-tab-container > .pybiscus-tab-buttons > .pybiscus-tab-button:last-of-type {
     display: none;
 }
 
@@ -1924,6 +1926,12 @@ body > div > fieldset > legend {
 #top-div input.pybiscus-w-wide { width: 32rem; }
 #top-div input.pybiscus-w-fit { field-sizing: content; min-width: 4rem; }
 #top-div input[class*="pybiscus-w-"] { max-width: 100%; box-sizing: border-box; }
+/* the bounds of a number, ahead of its description; a value out of them (or not matching a
+   text's pattern) is outlined at once, before the check refuses it */
+.pybiscus-bounds { color: var(--text-soft); font-weight: 600; white-space: nowrap; }
+#top-div input:invalid { outline: 2px solid var(--danger-hover); outline-offset: 1px; }
+/* a value without a label (an Optional's value tab) keeps its bounds under it, not in the names' column */
+.pybiscus-field:not(:has(> label)):has(> .pybiscus-desc) { grid-template-columns: auto; row-gap: 2px; }
 /* the label (name and key, often two lines) spans the value's row and the description's: the
    description then sits right under its input, not under the whole label */
 .pybiscus-field:has(> label):has(> .pybiscus-desc) { align-items: start; }

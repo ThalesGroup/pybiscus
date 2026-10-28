@@ -4,6 +4,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from typing import Annotated, ClassVar, Optional, Union, get_args
 
 from pybiscus.core.schedule import ConfigSchedule
+from pybiscus.core.seed import Seed
 from pybiscus.flower_config.config_server import Robustness
 from pybiscus.ml.datasplit import ConfigPartitionScheme
 from pybiscus.plugin.registryloader import get_name_value_if_literal
@@ -22,7 +23,7 @@ class FlowerServerConfiguration(BaseModel):
     PYBISCUS_CONFIG: ClassVar[str]  = "flower_server"
 
     server_host: str                 = Field(default="localhost", description="host name or address the clients reach the Flower server at")
-    server_port: int                 = Field(default=3333, description="port of the Flower server")
+    server_port: int                 = Field(default=3333, ge=1, le=65535, description="port of the Flower server")
     server_listen_to: ServerListenTo = Field(default=ServerListenTo.localhost, description="network the Flower server accepts clients from")
     server_protocol: ServerProtocol  = Field(default=ServerProtocol.http, description="https: the server and the clients get an ssl section to fill")
     
@@ -33,7 +34,7 @@ class ConfigSessionHoldout(BaseModel):
     plugins with a holdout: cifar, mnist, hdfs)"""
 
     fraction: float = Field(default=0.1, gt=0, lt=1, description="fraction of each client's training share held out for its validation")
-    seed: int = Field(default=42, description="seed of the draw of the held-out examples")
+    seed: Seed = Field(default=42, description="seed of the draw of the held-out examples")
 
     model_config = ConfigDict(extra="forbid")
 

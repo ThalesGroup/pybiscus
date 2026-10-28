@@ -20,7 +20,7 @@ server_run:
       filename: final_checkpoint.pt
     onnx_export:
       filename: model.onnx
-      opset: '13'
+      opset: '18'
       post_validation: false
 server_compute_context:
   hardware:
