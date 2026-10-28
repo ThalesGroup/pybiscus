@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+### Docs
+
+* The network view's screenshots taken again (`docs/images/network_machines.png`,
+  `network_session.png`): they still showed the flows from the manager to the agents removed on
+  2026-10-26 (ping, launch and stop of a run), so firewall openings no longer needed; 16 flows on
+  four machines instead of 23, each client site with outgoing flows only.
+
 ### Hierarchical sessions
 
 * A relay no longer needs a data section: a client's `data` is now optional for a client that
