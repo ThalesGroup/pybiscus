@@ -52,6 +52,7 @@ def exit_if_port_in_use(listen_address: str) -> None:
 
 def exit_on_invalid_config(error: ValidationError) -> NoReturn:
     from pybiscus.plugin.pluginmanager import get_skipped_plugins
+    from pybiscus.plugin.registryloader import get_rejected_classes
 
     message = f"This is not a valid config!\n{error}"
     # a config naming a skipped plugin only gets "tag '...' does not match": give the cause
@@ -59,6 +60,11 @@ def exit_on_invalid_config(error: ValidationError) -> NoReturn:
     if skipped:
         message += "\nSkipped plugins (missing dependency): " + ", ".join(
             f"{category}/{module} (needs '{dependency}')" for category, module, dependency in skipped
+        )
+    rejected = get_rejected_classes()
+    if rejected:
+        message += "\nSkipped plugin classes (not their category's interface): " + ", ".join(
+            f"'{key}' of {module} ({cls} is not a {expected})" for module, key, cls, expected in rejected
         )
     logm.console.log(message)
     write_check_errors(error)

@@ -10,6 +10,13 @@ import pkgutil
 from pybiscus.core.pybiscusexception import PybiscusPluginError
 from pybiscus.plugin.pluginmanager import import_plugin, is_plugin, plugins_verbose
 
+# (module, registry key, class, expected interface) of the classes the registries refused
+_rejected_classes = []
+
+
+def get_rejected_classes():
+    return list(_rejected_classes)
+
 
 def get_name_value_if_literal(cls):
     annotation = cls.__annotations__.get('name')
@@ -155,9 +162,14 @@ class RegistryLoader(Generic[T]):
                     )
 
                 for key, cls in sub_registry.items():
-                    if not issubclass(cls, self.expected_class):
-                        if self.verbose:
-                            print(f"  ⚠️ Skipped '{key}'->'{cls.__name__}': Not a subclass of {self.expected_class.__name__}")
+                    if not (inspect.isclass(cls) and issubclass(cls, self.expected_class)):
+                        # its config is dropped too: it passed the check and failed at launch on a
+                        # KeyError of the registry; a quiet loader hid the cause
+                        cls_name = getattr(cls, "__name__", repr(cls))
+                        _rejected_classes.append((full_module_name, key, cls_name, self.expected_class.__name__))
+                        print(f"  ⚠️ 🧩 '{key}' of {full_module_name} skipped: {cls_name} is not a "
+                              f"{self.expected_class.__name__}, the interface of its category")
+                        configs_ok = [c for c in configs_ok if get_name_value_if_literal(c) != key]
                         continue
                     # a second module with the same key replaced the first one silently
                     if key in registry:

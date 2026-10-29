@@ -51,6 +51,9 @@ under its config's `name` `Literal`, written once. The former `({"cifar": LitCNN
   (`⚠️ 🧩 Plugin '…' skipped: missing dependency '…'`): the other plugins keep working, and a
   configuration that names the skipped one is refused with the list of skipped plugins.
   `PYBISCUS_PLUGINS_STRICT=1` turns this into an error.
+- A registered class that is **not the interface of its category** (a model that is not a
+  `LightningModule`) is skipped with a warning, and its configuration with it: a configuration
+  naming it is refused at `check`, the skipped class named.
 - Everything else is an error that stops the command (exit code 78) with its cause: a manifest
   that cannot be read, a path that does not exist, a plugin not found or failing to import, a
   plugin **shadowed** by another module of the same name (plugins are top-level modules: name
@@ -95,6 +98,7 @@ reference and the sessions rely on (`--rules` lists them); it imports the plugin
 | rule | severity | checks |
 |---|---|---|
 | `import` | error | the plugin imports and declares its `(class, config)` pairs |
+| `interface` | error | each class it registers implements the interface of its category (the table above: a model a `LightningModule`...) |
 | `manifest` | error | a plugin package beside the manifest's modules (its `__init__.py` has `get_modules_and_configs`) is listed in it |
 | `print` | error | no `print`: `pybiscus.core.pybiscus_logger`, whose output reaches the session's pages |
 | `extra-forbid` | error | each configuration model the plugin defines has `model_config = ConfigDict(extra="forbid")` |
@@ -104,6 +108,7 @@ reference and the sessions rely on (`--rules` lists them); it imports the plugin
 | `strategy` | error | a strategy derives from `FlowerStrategyFactory`; an `aggregate_fit` it overrides calls `super().aggregate_fit` (Flower's checks and metrics) |
 | `data-sections` | error | a data configuration has `train`, `val` and `test` sections |
 | `reporting-outputs` | error | a plugin reading the reporting directory (`reporting_path`, `REPORTING_PATH`) has a configuration deriving from `ReportingOutputs` |
+| `model-signature` | error | a model exposes `signature` (or `signatures(mode)`), a `TypedDict` with a `loss` key: the keys the training and test loops average and report; read from the source (a module-level name, or an attribute of `self` assigned one), anything else is left unchecked |
 | `model-hyperparameters` | warning | a model's hyperparameters are plain values (numbers, text, booleans, choices): a session sets and locks only those in every form and every lower level, a list, a dict or a section being left to each |
 
 The sections of the core a plugin's configuration uses (`ConfigPartition`) are not its own: they
@@ -115,6 +120,12 @@ def get_modules_and_configs():  # pybiscus-lint: ignore=manifest (a test plugin:
 
 `launch/ci/smoke.sh check` runs it on the bundled and the hierarchical plugins, `smoke.sh new` on
 the plugins `pybiscus plugins new` creates; the privacy evaluation's (not finalized) are left out.
+
+The linter has its own regression check: `launch/ci/lint-probes/` holds probe plugins, each breaking
+rules marked `# expect: <rule>` on the line the finding must name, and `launch/ci/lint_probes_check.py`
+(run by `smoke.sh check`) requires exactly those findings, a probe for every rule, and a configuration
+naming a class that is not its category's interface refused at `check`. A new rule comes with its
+probe: the check fails otherwise.
 
 ## Plugins in a container
 

@@ -1,5 +1,25 @@
 # Changelog
 
+## Unreleased
+
+### Plugins
+
+* `pybiscus plugins lint` checks two more rules (errors): `interface`, each class a plugin registers
+  implements the interface of its category (a model a `LightningModule`, a strategy a
+  `FabricStrategyFactory`...); `model-signature`, a model exposes `signature` (or
+  `signatures(mode)`), a `TypedDict` with a `loss` key, read from the source (a module-level name or
+  an attribute of `self` assigned one). No bundled or hierarchical plugin breaks them.
+* A class that is not its category's interface is no longer dropped silently by the loader: a
+  warning names it, whatever `PYBISCUS_PLUGINS_VERBOSE`, and its configuration is dropped too, so
+  that `check` refuses a configuration naming it and gives the cause (it passed the check and failed
+  at launch on a `KeyError` of the registry).
+* The interface of each category is written once (`pybiscus/plugin/families.py`), read by the
+  registries and the linter.
+* The linter's regression check (`smoke.sh check`): probe plugins in `launch/ci/lint-probes/`, one
+  or more broken rules each, marked `# expect: <rule>` on the line of the finding;
+  `launch/ci/lint_probes_check.py` requires exactly those findings (15 today), a probe for each of
+  the 13 rules, and the `check` refusal of a class not of its category's interface.
+
 ## [Version 0.17.0]
 
 Since `version0.16.0` (2026-10-28): forms that know their bounds, relays without data, and the

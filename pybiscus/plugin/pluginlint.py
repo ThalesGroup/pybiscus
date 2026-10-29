@@ -1,12 +1,14 @@
 import ast
 import inspect
 import re
+import sys
+import textwrap
 from enum import Enum
 from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
 from types import UnionType
-from typing import Annotated, Literal, Union, get_args, get_origin
+from typing import Annotated, Literal, Union, get_args, get_origin, is_typeddict
 
 from pydantic import BaseModel
 
@@ -17,6 +19,7 @@ ERROR, WARNING = "error", "warning"
 # rule -> (severity, what it asks)
 RULES = {
     "import": (ERROR, "the plugin imports and declares its (class, config) pairs: the other rules read them"),
+    "interface": (ERROR, "each class it registers implements the interface of its category (a model a LightningModule...): the loader skips it otherwise"),
     "manifest": (ERROR, "a plugin package beside the manifest's modules is listed in it"),
     "print": (ERROR, "no print: pybiscus.core.pybiscus_logger, so that the output reaches the session's pages"),
     "extra-forbid": (ERROR, "each configuration model refuses unknown fields: model_config = ConfigDict(extra=\"forbid\")"),
@@ -26,6 +29,7 @@ RULES = {
     "strategy": (ERROR, "a strategy derives from FlowerStrategyFactory; an aggregate_fit it overrides calls super().aggregate_fit"),
     "data-sections": (ERROR, "a data configuration is in train / val / test sections"),
     "reporting-outputs": (ERROR, "a plugin writing into the reporting directory declares its outputs (ReportingOutputs)"),
+    "model-signature": (ERROR, "a model exposes signature (or signatures(mode)), a TypedDict with a loss key: the keys the training and test loops average and report"),
     "model-hyperparameters": (WARNING, "a model's hyperparameters are plain values: a session imposes only those on every form and lower level (a list, a dict or a section is left to each)"),
 }
 
@@ -233,6 +237,88 @@ def strategy_rules(implementations, location: Path) -> list[Finding]:
     return findings
 
 
+def conforms(cls, category: str) -> bool:
+    from pybiscus.plugin.families import FAMILY_INTERFACES, family_interface
+
+    return category not in FAMILY_INTERFACES or (inspect.isclass(cls) and issubclass(cls, family_interface(category)))
+
+
+def interface_rules(category: str, implementations, location: Path, init: Path) -> list[Finding]:
+    from pybiscus.plugin.families import family_interface
+
+    findings = []
+    for cls in implementations:
+        if conforms(cls, category):
+            continue
+        file, line = class_place(cls)[:2] if inspect.isclass(cls) and inside(cls, location) else (init, 1)
+        findings.append(Finding("interface", file, line, f"{getattr(cls, '__name__', cls)!s} is not a "
+                                f"{family_interface(category).__name__}, the interface of the {category} plugins"))
+    return findings
+
+
+def self_assigned(cls, attribute: str) -> list:
+    """the module-level objects a method of cls (or of a base class) assigns to self.<attribute>"""
+    values = []
+    for klass in cls.__mro__:
+        try:
+            _, _, node = class_place(klass)
+        except (TypeError, OSError):
+            continue
+        namespace = vars(sys.modules.get(klass.__module__, object))
+        for statement in ast.walk(node) if node else ():
+            if isinstance(statement, ast.Assign) and isinstance(statement.value, ast.Name) and any(
+                    isinstance(t, ast.Attribute) and t.attr == attribute and getattr(t.value, "id", None) == "self"
+                    for t in statement.targets) and statement.value.id in namespace:
+                values.append(namespace[statement.value.id])
+    return values
+
+
+def returned_signatures(function, cls) -> list:
+    """what the signature's code returns, as far as reading it tells: a module-level name, or an
+    attribute of self assigned one; anything else is left unchecked"""
+    try:
+        tree = ast.parse(textwrap.dedent(inspect.getsource(function)))
+    except (TypeError, OSError, SyntaxError):
+        return []
+    values = []
+    for node in ast.walk(tree):
+        if not (isinstance(node, ast.Return) and node.value is not None):
+            continue
+        if isinstance(node.value, ast.Name) and node.value.id in function.__globals__:
+            values.append(function.__globals__[node.value.id])
+        elif isinstance(node.value, ast.Attribute) and getattr(node.value.value, "id", None) == "self":
+            values += self_assigned(cls, node.value.attr)
+    return values
+
+
+def model_signature_rules(implementations, location: Path) -> list[Finding]:
+    findings = []
+    for cls in implementations:
+        if not inside(cls, location):
+            continue
+        # the loops' own choice (signature_of_mode): signatures(mode) when callable, else signature
+        attribute = inspect.getattr_static(cls, "signatures", None)
+        if not callable(attribute):
+            attribute = inspect.getattr_static(cls, "signature", None)
+        if attribute is None:
+            file, line, _ = class_place(cls)
+            findings.append(Finding("model-signature", file, line, f"{cls.__name__} has no signature: the loops fail on it"))
+            continue
+        function = attribute.fget if isinstance(attribute, property) else attribute
+        if inspect.isfunction(function):
+            candidates, file, line = returned_signatures(function, cls), Path(inspect.getsourcefile(function)), inspect.getsourcelines(function)[1]
+        else:
+            candidates, (file, line, _) = [function], class_place(cls)
+        for signature in candidates:
+            name = getattr(signature, "__name__", repr(signature))
+            if not is_typeddict(signature):
+                findings.append(Finding("model-signature", file, line, f"{cls.__name__}'s signature {name} is not a TypedDict"))
+            elif "loss" not in signature.__required_keys__:
+                findings.append(Finding("model-signature", file, line,
+                                        f"{cls.__name__}'s signature {name} has no loss key: the loss is not reported"))
+    return findings
+
+
 def source_rules(location: Path, configs) -> list[Finding]:
     from pybiscus.core.reportingoutputs import ReportingOutputs
 
@@ -286,7 +372,13 @@ def lint_plugin(category: str, path: str, module: str) -> list[Finding]:
         registry, configs = registry_and_configs(imported.get_modules_and_configs(), module)
     except Exception as e:
         return [Finding("import", init, 1, f"{type(e).__name__}: {e}")]
-    return config_rules(category, configs, list(registry.values()), location) + source_rules(location, configs)
+    implementations = list(registry.values())
+    # the other rules read classes of the expected interface: a stray object would fail them
+    conforming = [cls for cls in implementations if conforms(cls, category)]
+    findings = interface_rules(category, implementations, location, init) + config_rules(category, configs, conforming, location)
+    if category == "model":
+        findings += model_signature_rules(conforming, location)
+    return findings + source_rules(location, configs)
 
 
 def lint(modules: dict) -> list[Finding]:

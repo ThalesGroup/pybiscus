@@ -7,7 +7,8 @@
 #   check          every configuration of configs/ passes `server check` / `client check`, with the
 #                  manifests of every plugin directory; docs/plugins-reference.md is up to date; the
 #                  plugins' requirements (plugins deps) and conventions (plugins lint, bundled and
-#                  hierarchical plugins);
+#                  hierarchical plugins); the linter still finds what its probes break
+#                  (launch/ci/lint_probes_check.py);
 #                  the configurations of every run of launch/campaign/ are valid (campaign --check)
 #   run            a short federated run (mnist demo, server + 2 clients, CPU)
 #   session        the same run in a session of the manager, without a browser: agents started with
@@ -130,6 +131,14 @@ step_check() {
         echo "  ok       the plugins' conventions (pybiscus plugins lint)"
     else
         echo "  FAILED   the plugins' conventions (pybiscus plugins lint, see $log)"
+        failed=$((failed + 1))
+    fi
+    # the linter's own regression: each rule still fires on its probe, and only there
+    log="$logs/lint-probes.log"
+    if (cd "$REPO" && $PYTHON launch/ci/lint_probes_check.py) >"$log" 2>&1; then
+        echo "  ok       the linter's probes (launch/ci/lint_probes_check.py)"
+    else
+        echo "  FAILED   the linter's probes (launch/ci/lint_probes_check.py, see $log)"
         failed=$((failed + 1))
     fi
     # the campaigns with the manifests their runs load (the default one and their plugin_manifests),

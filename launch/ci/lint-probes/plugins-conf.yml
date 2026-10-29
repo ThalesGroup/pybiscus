@@ -1,0 +1,26 @@
+# Probes of `pybiscus plugins lint`, used by launch/ci/lint_probes_check.py only (smoke.sh check): each
+# breaks the rules marked `# expect: <rule>` on the line the finding must name. Never in a default
+# manifest. lintprobe_unlisted is left out on purpose (rule manifest). Paths are relative to this file.
+model:
+  - path: "./model"
+    modules:
+      - lintprobe_ok
+      - lintprobe_interface
+      - lintprobe_nosignature
+      - lintprobe_signature
+      - lintprobe_hyperparameters
+      - lintprobe_conventions
+      - lintprobe_import
+data:
+  - path: "./data"
+    modules:
+      - lintprobe_flatdata
+strategydecorator:
+  - path: "./strategydecorator"
+    modules:
+      - lintprobe_nogroup
+strategy:
+  - path: "./strategy"
+    modules:
+      - lintprobe_notflower
+      - lintprobe_nosuper

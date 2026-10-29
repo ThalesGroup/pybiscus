@@ -1,0 +1,48 @@
+import lightning.pytorch as pl
+import torch
+from torch.utils.data import Dataset, TensorDataset
+
+from pybiscus.ml.datasplit import limit, make_loader, partition_subset
+
+from lintprobe_flatdata.lintprobe_flatdata_dataconfig import LintprobeFlatdataTestSet, LintprobeFlatdataTrainSet, LintprobeFlatdataValSet
+
+
+def generated(num_samples: int, feature_dim: int, seed: int, weights: torch.Tensor) -> Dataset:
+    # a generator of its own: torch.manual_seed would also fix the model's initialization
+    generator = torch.Generator().manual_seed(seed)
+    x = torch.randn(num_samples, feature_dim, generator=generator)
+    return TensorDataset(x, x @ weights)
+
+
+class LintprobeFlatdataDataModule(pl.LightningDataModule):
+    """TODO: what the lintprobe_flatdata data is and where it comes from, in one paragraph: the plugins reference
+    shows it. As generated: examples drawn at random with a linear target."""
+
+    # the arguments are the fields of ConfigLintprobeFlatdata; the sections arrive as dicts
+    def __init__(self, feature_dim=4, seed=42, train=None, val=None, test=None):
+        super().__init__()
+        self.feature_dim = feature_dim
+        self.seed = seed
+        self.train = LintprobeFlatdataTrainSet.model_validate(train or {})
+        self.val = LintprobeFlatdataValSet.model_validate(val or {})
+        self.test = LintprobeFlatdataTestSet.model_validate(test or {})
+        self.weights = torch.randn(feature_dim, 1, generator=torch.Generator().manual_seed(seed))
+
+    # all the training examples, in which the partition picks this client's share (also read by
+    # `pybiscus data partition`)
+    def train_source(self):
+        return generated(self.train.num_samples, self.feature_dim, self.seed, self.weights)
+
+    def setup(self, stage=None):
+        self.train_dataset = limit(partition_subset(self.train_source(), self.train.partition), self.train.max_samples)
+        self.val_dataset = limit(generated(self.val.num_samples, self.feature_dim, self.seed + 1, self.weights), self.val.max_samples)
+        self.test_dataset = limit(generated(self.test.num_samples, self.feature_dim, self.seed + 2, self.weights), self.test.max_samples)
+
+    def train_dataloader(self):
+        return make_loader(self.train_dataset, self.train, order_seed=self.train.seed)
+
+    def val_dataloader(self):
+        return make_loader(self.val_dataset, self.val)
+
+    def test_dataloader(self):
+        return make_loader(self.test_dataset, self.test)
