@@ -53,6 +53,16 @@
   *registered* to the end in the topology, and it was not listed among the agents started before
   registering. A source without a bouquet is now the agent's name.
 
+### Docs and checks
+
+* `docs/evaluation.md`: the federated evaluation of an ONNX model, its roles, a quick start, the
+  configuration, the report, the session of the manager, what leaves a site, the limits and the
+  related work (MedPerf, NVIDIA FLARE, OpenFL and FeTS, Flower, Wang et al., model-to-data).
+* `launch/ci/smoke.sh evaluation`: the short MNIST run, then its exported model evaluated by the
+  sites (`configs/onnx_eval`); `launch/ci/evaluation_check.py` requires the trained session's
+  metrics on the server and on each site (within 1e-4), the model's hash in the report, no training,
+  and a wrong hash refused at launch.
+
 ### Configuration
 
 * `server_run.reporting.onnx_export.external_data` (default `true`, the former behaviour): `false`

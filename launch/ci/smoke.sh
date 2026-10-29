@@ -2,7 +2,7 @@
 
 # Smoke checks of a Pybiscus checkout, each step failing with a non-zero exit code:
 #
-#   launch/ci/smoke.sh [check] [run] [session] [presets] [new] [build] [container-run]     (default: check run)
+#   launch/ci/smoke.sh [check] [run] [evaluation] [session] [presets] [new] [build] [container-run]     (default: check run)
 #
 #   check          every configuration of configs/ passes `server check` / `client check`, with the
 #                  manifests of every plugin directory; docs/plugins-reference.md is up to date; the
@@ -11,6 +11,9 @@
 #                  (launch/ci/lint_probes_check.py);
 #                  the configurations of every run of launch/campaign/ are valid (campaign --check)
 #   run            a short federated run (mnist demo, server + 2 clients, CPU)
+#   evaluation     the same run, then its exported model evaluated by the sites (configs/onnx_eval:
+#                  onnxmodel, evaluateonly): the metrics of the trained session, a wrong hash refused
+#                  (launch/ci/evaluation_check.py)
 #   session        the same run in a session of the manager, without a browser: agents started with
 #                  --register --accept-launch before their manager, the session launched through its
 #                  API (launch/ci/session_check.py)
@@ -157,11 +160,11 @@ step_check() {
 
 # the experiments and logs of a run go to its own directory, never to the repository's
 prepare_run_dir() {
-    local dir="$1"
+    local dir="$1" demo="${2:-$DEMO}"
     mkdir -p "$dir/configs" "$dir/experiments" "$REPO/datasets"
     ln -sfn "$REPO/pybiscus-plugins" "$dir/pybiscus-plugins"
     ln -sfn "$REPO/datasets" "$dir/datasets"
-    $PYTHON "$REPO/launch/ci/smoke_configs.py" "$REPO/$DEMO" "$dir/configs" "$MAX_SAMPLES" "$THREADS"
+    $PYTHON "$REPO/launch/ci/smoke_configs.py" "$REPO/$demo" "$dir/configs" "$MAX_SAMPLES" "$THREADS"
 }
 
 judge_run() {
@@ -182,8 +185,9 @@ judge_run() {
         echo "  FAILED   the server did not reach round $ROUNDS (see $dir/server.log)"
         failed=1
     fi
-    if [ -z "$(find "$dir/experiments" -name final_checkpoint.pt)" ]; then
-        echo "  FAILED   no final checkpoint under $dir/experiments"
+    # an evaluation session writes its report, no checkpoint
+    if [ -z "$(find "$dir/experiments" -name "${EXPECTED_REPORT:-final_checkpoint.pt}")" ]; then
+        echo "  FAILED   no ${EXPECTED_REPORT:-final_checkpoint.pt} under $dir/experiments"
         failed=1
     fi
     [ "$failed" -eq 0 ] && echo "  ok       $ROUNDS rounds, server and 2 clients, logs in $dir"
@@ -301,6 +305,28 @@ step_run() {
     judge_run "$dir" "${codes[@]}"
 }
 
+step_evaluation() {
+    local dir="$WORK/evaluation" trained evaluated model status=0
+    prepare_run_dir "$dir/train" || return 1
+    # not in a subshell: the processes it starts must reach the cleanup's GROUPS_TO_KILL
+    cd "$dir/train" || return 1
+    run_three configs || { cd "$REPO"; return 1; }
+    trained="$(realpath "$dir/train/experiments/current")"
+    prepare_run_dir "$dir/eval" configs/onnx_eval || return 1
+    model="$dir/eval/experiments/published/mnist_cnn.onnx"
+    mkdir -p "$(dirname "$model")" && cp "$trained/model.onnx" "$model" || return 1
+    export PYBISCUS_ONNX_MODEL="$model"
+    PYBISCUS_ONNX_SHA256="$(sha256sum "$model" | cut -d' ' -f1)"
+    export PYBISCUS_ONNX_SHA256
+    cd "$dir/eval" || return 1
+    EXPECTED_REPORT=evaluation.json run_three configs || status=1
+    cd "$REPO" || return 1
+    unset PYBISCUS_ONNX_MODEL PYBISCUS_ONNX_SHA256
+    [ "$status" -eq 0 ] || return 1
+    evaluated="$(realpath "$dir/eval/experiments/current")"
+    $PYTHON "$REPO/launch/ci/evaluation_check.py" "$trained" "$evaluated" "$dir/eval" $PYTHON "$REPO/pybiscus/main.py"
+}
+
 step_session() {
     local dir="$WORK/session"
     prepare_run_dir "$dir" || return 1
@@ -370,6 +396,7 @@ for step in "$@"; do
     case "$step" in
         check)         step_check ;;
         run)           step_run ;;
+        evaluation)    step_evaluation ;;
         session)       step_session ;;
         presets)       step_presets ;;
         new)           step_new ;;

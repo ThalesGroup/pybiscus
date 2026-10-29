@@ -138,7 +138,8 @@ channel (`pybiscus/flower/clientauth.py`).
 - **What leaves a site**: the model updates, each client's metrics (its number of examples
   included), the logs of its runs, and its whole run configuration (its local paths too), which the
   server's reports keep ([details](usage-scenarios.md#what-the-scenario-decides)). The training data
-  never leaves it.
+  never leaves it. In a [federated evaluation](evaluation.md), no update either: the site's metrics
+  on its validation data and its logs.
 
 ## Against the participants
 
