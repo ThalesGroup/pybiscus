@@ -200,6 +200,15 @@
   .grid.charts-empty .no-data:not([hidden]){display:block}
   .grid.charts-empty #accChart, .grid.charts-empty #lossCurves, .grid.charts-empty #lossChart{display:none}
   .grid.charts-empty .col-mid{grid-template-rows:auto auto; align-content:start}
+  /* a session where clients evaluate and none trains: a curve per round has a point, the per-site bars take their column */
+  .panel.mode-off{display:none}
+  .grid .col-mid.eval-mode{grid-template-rows:1fr; align-content:stretch}
+  .eval-body{overflow-y:auto}
+  .eval-body .chart{flex:none}
+  .chart .ebar{fill:var(--eval); opacity:.55} .chart .ebar.old{opacity:.25}
+  .chart text.elabel{fill:var(--text); font-size:11px}
+  .chart text.evalue{fill:var(--text); font-size:10.5px; font-family:var(--mono); paint-order:stroke; stroke:var(--panel); stroke-width:3px}
+  .chart .eref{stroke-width:2} .chart .eref.mean{stroke-dasharray:5 3}
   .geolabels .lbl{position:absolute; transform:translate(7px,-50%); font-size:10px; color:var(--text);
     white-space:nowrap; text-shadow:0 1px 3px var(--bg),0 0 2px var(--bg); pointer-events:auto; cursor:default}
   .geolabels .lbl.unplaced{visibility:hidden}
@@ -408,6 +417,18 @@
           <div class="cons" id="constraintsView" hidden></div>
           <div class="no-data" id="loss-no-data">the curves start with the first round</div></div>
       </section>
+      <section class="panel mode-off" data-panel="evaluation">
+        <header><span class="eyebrow" title="each site evaluates the model on its own data">Evaluation</span>
+          <span id="eval-tabs"><button class="tool active" data-view="metric" id="eval-metric-btn" title="the main metric of each site on its own data">metric</button> <button class="tool" data-view="loss" title="the loss of each site on its own data">loss</button></span>
+          <span class="acc-legend">
+            <span class="it"><span class="sw" style="background:var(--test)"></span>Server test <span class="v num" id="eval-test">—</span></span>
+            <span class="it"><span class="sw" style="background:var(--eval)"></span>Weighted mean <span class="v num" id="eval-mean">—</span></span>
+          </span>
+          <span class="acc-tools"><button class="tool" id="eval-full-btn" title="the bars from 0, on the whole 0–1 scale for values within it; off: the scale fits the values">0–1</button></span>
+        </header>
+        <div class="body eval-body"><svg class="chart" id="evalChart" viewBox="0 0 600 140" preserveAspectRatio="none"></svg>
+          <div class="empty" id="eval-empty">no site has evaluated yet</div></div>
+      </section>
     </div>
 
     <div class="vsplit vsplit-2" id="vsplit2" title="glisser pour redimensionner"></div>
@@ -480,7 +501,7 @@
   const SESSION_TOKEN = {{ session_token | tojson }};
   const MANAGER_BOUQUET = {{ bouquet | tojson }};
   // the panels a window can show alone (?panel=…): a detached window, on another screen
-  const PANEL_LABELS = {topology: 'topology', geo: 'map', accuracy: 'accuracy', loss: 'loss', vignettes: 'vignettes',
+  const PANEL_LABELS = {topology: 'topology', geo: 'map', accuracy: 'accuracy', loss: 'loss', evaluation: 'evaluation', vignettes: 'vignettes',
                         'agents-log': 'agents log', 'server-log': 'server log', metrics: 'metrics'};
   const DETACHED_PANEL = (p => p in PANEL_LABELS ? p : null)(new URLSearchParams(location.search).get('panel'));
   const SESSION_COLOR = {{ bouquet_color | tojson }} || (MANAGER_BOUQUET ? bouquetColor(MANAGER_BOUQUET) : null);
@@ -648,7 +669,7 @@
     // read first: the reports directory, known from these lines, shortens them
     fetchFeed(LOGS_URL, data=>{ checkLogs(data); addEntries(logList, displayedLogs, data, true); renderCharts(); }); }
   function fetchMetrics(){ if(metricsPaused) return;
-    fetchFeed(METRICS_URL, data=>{ addEntries(metricsList, displayedMetrics, data); addMetrics(data); renderMetricsTable(); }); }
+    fetchFeed(METRICS_URL, data=>{ addEntries(metricsList, displayedMetrics, data); addMetrics(data); renderMetricsTable(); renderEvaluation(); }); }
 
   // ============ metrics table ============
   // keys built by pybiscus.core.gui_events (client_metric_key, server_test_metric_key): prefix_metric_cid
@@ -973,6 +994,87 @@
     setTxt('loss-fit', lossFmt(latest(lossSeries.fit))); setTxt('loss-test', lossFmt(latest(lossSeries.test))); setTxt('loss-eval', lossFmt(latest(lossSeries.evaluate)));
   }
   const lossFmt = v => v == null ? '—' : fmtMetric(v);
+
+  // read from the data, not from the strategy's name: any session whose clients evaluate without training
+  // (evaluateonly, a relay only evaluating...) has one point per curve and its sites to compare
+  let evaluationOnly = false;
+  function isEvaluationOnly(){
+    const fitted = Object.keys(roundSeries.fit).length || Object.keys(lossSeries.fit).length
+                   || Object.values(clientMetrics).some(byPhase => byPhase.fit);
+    const evaluated = Object.keys(clientRounds.evaluate || {}).length;
+    return !fitted && evaluated > 0;
+  }
+  function renderEvaluationMode(){
+    const mode = isEvaluationOnly();
+    if(mode === evaluationOnly) return;
+    evaluationOnly = mode;
+    if(window.applyLayout) window.applyLayout();
+  }
+
+  const EVAL_KEY = `pybiscus-manager-evaluation:${location.host}`;
+  // as the curves: the scale fits the values by default, sites at 0.987 and 0.992 being one length on 0–1
+  let evalView = 'metric', evalFull = false;
+  try { const s = JSON.parse(localStorage.getItem(EVAL_KEY) || '{}'); evalView = s.view === 'loss' ? 'loss' : 'metric'; evalFull = !!s.full; } catch(e) { /* defaults */ }
+  const saveEval = () => { try { localStorage.setItem(EVAL_KEY, JSON.stringify({view: evalView, full: evalFull})); } catch(e) { /* not kept */ } };
+  document.querySelectorAll('#eval-tabs [data-view]').forEach(b => b.onclick = () => { evalView = b.dataset.view; saveEval(); renderEvaluation(); });
+  document.getElementById('eval-full-btn').onclick = () => { evalFull = !evalFull; saveEval(); renderEvaluation(); };
+
+  function renderEvaluation(){
+    renderEvaluationMode();
+    // without the server's log lines (its loggers do not reach this manager) the main metric is not named:
+    // the first one the sites returned
+    const returned = Object.keys(clientRounds.evaluate || {}).filter(n => n !== 'loss').sort();
+    const metric = evalView === 'loss' ? 'loss' : (mainMetricName || returned[0] || 'loss');
+    document.querySelectorAll('#eval-tabs [data-view]').forEach(b => b.classList.toggle('active', b.dataset.view === evalView));
+    document.getElementById('eval-full-btn').classList.toggle('active', evalFull);
+    document.getElementById('eval-metric-btn').textContent = mainMetricName || returned[0] || 'metric';
+    const svg = document.getElementById('evalChart'), empty = document.getElementById('eval-empty');
+    const byRound = metric ? ((clientRounds.evaluate || {})[metric] || {}) : {};
+    const rounds = Object.keys(byRound).map(Number);
+    const series = evalView === 'loss' ? lossSeries : roundSeries;
+    // the weighted mean needs the examples, which only the server's log line carries
+    const serverTest = ((clientMetrics[METRIC_KEYS.server_test_id] || {}).evaluate || {})[metric];
+    const test = latestOf(series.test) ?? (serverTest ? serverTest.value : null), mean = latestOf(series.evaluate);
+    setTxt('eval-test', lossFmt(test)); setTxt('eval-mean', lossFmt(mean));
+    if(!rounds.length){ svg.innerHTML = ''; svg.style.height = '0px'; empty.hidden = false; return; }
+    empty.hidden = true;
+    const latest = Math.max(...rounds);
+    // each site's last value; one from an earlier round (a site that failed since) is dimmed
+    const sites = {};
+    rounds.sort((a, b) => a - b).forEach(r => Object.entries(byRound[r]).forEach(([cid, v]) => { sites[cid] = {value: v, round: r}; }));
+    // the highest first, whatever the view: the direction of a metric is not known (an mae is better low)
+    const rows = Object.entries(sites).sort((a, b) => b[1].value - a[1].value);
+    const isLoss = evalView === 'loss';
+    const values = rows.map(([, s]) => s.value).concat([test, mean].filter(v => v != null));
+    let lo = 0, hi = Math.max(...values);
+    if(evalFull) hi = (hi <= 1 && Math.min(...values) >= 0) ? 1 : (hi * 1.05 || 1);
+    else { const mn = Math.min(...values), span = (hi - mn) || Math.max(Math.abs(hi) * 0.1, 0.001); lo = mn - span * 0.25; hi = hi + span * 0.1; }
+    const padT = 6, padB = 20;
+    // bars as tall as the panel allows, up to 36 px; past that the panel scrolls (22 px a site)
+    const room = svg.parentElement.clientHeight - padT - padB - 8;
+    const rowH = Math.max(22, Math.min(36, Math.floor(room / rows.length) || 22)), height = padT + rows.length * rowH + padB;
+    svg.style.height = height + 'px';
+    const [W] = chartSize(svg, 600, height);
+    const names = rows.map(([cid]) => metricRowName(cid));
+    const padL = Math.min(W * 0.35, 14 + 6.5 * Math.max(...names.map(n => n.length))), padR = 58;
+    const x = v => padL + (W - padL - padR) * Math.max(0, (v - lo) / (hi - lo || 1));
+    const {step, digits} = niceStep((hi - lo) / 5);
+    let s = '';
+    for(let v = Math.ceil(lo / step - 1e-9) * step; v <= hi + step * 1e-9; v += step)
+      s += `<line class="grid-l" x1="${x(v)}" y1="${padT}" x2="${x(v)}" y2="${height - padB}"/><text class="axis" x="${x(v)}" y="${height - 5}" text-anchor="middle">${v.toFixed(digits)}</text>`;
+    const ref = (v, cls, colour, what) => v == null ? '' :
+      `<g><title>${esc(`${what}: ${metric} ${fmtMetric(v)}`)}</title><line class="eref ${cls}" x1="${x(v)}" y1="${padT}" x2="${x(v)}" y2="${height - padB}" stroke="${tok(colour)}"/></g>`;
+    // under the bars and their figures, which a line through them made hard to read
+    s += ref(test, 'test', '--test', "the server's test on its own data") + ref(mean, 'mean', '--eval', "the sites' mean weighted by their examples");
+    rows.forEach(([cid, site], i) => {
+      const y = padT + i * rowH, old = site.round < latest;
+      const tip = `${metricRowName(cid)} (cid ${cid}): ${metric} ${fmtMetric(site.value)}, round ${site.round}` + (old ? ` (no value at round ${latest})` : '');
+      s += `<g><title>${esc(tip)}</title><text class="elabel" x="${padL - 8}" y="${y + rowH / 2 + 4}" text-anchor="end">${esc(names[i])}</text>` +
+           `<rect class="ebar${old ? ' old' : ''}" x="${padL}" y="${y + 4}" width="${Math.max(1, x(site.value) - padL)}" height="${rowH - 8}" rx="2"/>` +
+           `<text class="evalue" x="${x(site.value) + 5}" y="${y + rowH / 2 + 4}">${esc(fmtMetric(site.value))}</text></g>`;
+    });
+    svg.innerHTML = s;
+  }
   function renderAccuracy(){
     if(mainMetricName) setTxt('main-metric-name', mainMetricName);
     charts.accuracy.render();
@@ -1090,7 +1192,7 @@
     });
     svg.innerHTML = s;
   }
-  function renderCharts(){ renderChartsEmpty(); renderAccuracy(); renderLossCurves(); renderLoss(); renderDround(); renderCycles(); renderConstraints(); renderRound(); renderSessionState(); renderSummary(); }
+  function renderCharts(){ renderChartsEmpty(); renderEvaluation(); renderAccuracy(); renderLossCurves(); renderLoss(); renderDround(); renderCycles(); renderConstraints(); renderRound(); renderSessionState(); renderSummary(); }
   let chartsEmpty = false;
   function renderChartsEmpty(){
     const empty = !sessionEnd && ![roundSeries, lossSeries].some(s => Object.values(s).some(o => Object.keys(o).length));
@@ -1863,8 +1965,12 @@
 
   window.applyLayout = function(){
     Object.keys(PANEL_LABELS).forEach(n => panelEl(n).classList.toggle('away', away.has(n)));
-    const shown = n => !away.has(n);
-    const left = shown('topology') || shown('geo'), mid = shown('accuracy') || shown('loss'), right = shown('vignettes');
+    // a window showing one panel shows it whatever the mode
+    const outOfMode = n => !DETACHED_PANEL && (n === 'evaluation' ? !evaluationOnly : (evaluationOnly && (n === 'accuracy' || n === 'loss')));
+    ['accuracy', 'loss', 'evaluation'].forEach(n => panelEl(n).classList.toggle('mode-off', outOfMode(n)));
+    document.querySelector('.col-mid').classList.toggle('eval-mode', evaluationOnly && !DETACHED_PANEL);
+    const shown = n => !away.has(n) && !outOfMode(n);
+    const left = shown('topology') || shown('geo'), mid = shown('accuracy') || shown('loss') || shown('evaluation'), right = shown('vignettes');
     const feeds = FEED_PANELS.filter(shown).length, top = left || mid || right;
     // a dragged width (--cw1, --cw2) holds only beside the column it was dragged against
     const leftW = !left ? '0px' : (mid ? 'var(--cw1,1fr)' : '1fr');

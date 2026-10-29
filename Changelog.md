@@ -41,6 +41,14 @@
   exports it to ONNX as one file) evaluated by a server and two clients with `onnxmodel` and
   `evaluateonly`; the file and its hash come from `PYBISCUS_ONNX_MODEL` and `PYBISCUS_ONNX_SHA256`.
 
+### Session manager
+
+* The *evaluation* panel: in a session where the clients evaluate and none trains, a bar per site
+  (its last main metric, or its loss), sorted, with the server's test and the sites' weighted mean
+  across them, in place of the two charts (one point per round there); its scale fits the values,
+  *0–1* for the whole scale; detachable (`?panel=evaluation`). The mode is read from the data, not
+  from the strategy: a training session keeps its charts.
+
 ### Configuration
 
 * `server_run.reporting.onnx_export.external_data` (default `true`, the former behaviour): `false`

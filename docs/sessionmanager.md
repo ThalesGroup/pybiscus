@@ -203,6 +203,14 @@ The manager shows, live:
   `metricdiffcompute` decorator of the server's pipeline), its last 40 rounds, with the same
   fitted scale and round numbers, and in a
   hierarchical session *cycles* and *constraints* follow;
+- in a session where the clients evaluate and none trains (the `evaluateonly` decorator, an ONNX
+  model evaluated by each site), the *evaluation* panel takes the place of the two charts, which
+  would have a point per round: a bar per site, its last value of the main metric (*loss* for the
+  loss), sorted from the highest, a dimmed bar for a site without a value at the last round; the
+  server's test (solid line) and the sites' mean weighted by their examples (dashed line) cross the
+  bars. The scale fits the values (*0–1*: the bars from 0, on the whole scale for values within it);
+  past the panel's height it scrolls; hovering a bar gives the site, its cid and its round; the
+  choices are kept by the browser. The panel is detachable as the others (`?panel=evaluation`);
 - the vignettes of the model's layers per round (from the `VisualizeModelLayers` decorator of the
   server's pipeline), folded by default into a strip on the right that counts the rounds received
   (a dot when new ones came while folded): a click shows them, *hide* folds them again, and the
@@ -223,7 +231,7 @@ The manager shows, live:
   `pybiscus.core.gui_events`).
 
 With several screens, the ⧉ of a panel opens it alone in a window of its own (the same page with
-`?panel=<name>`: `topology`, `geo`, `accuracy`, `loss`, `vignettes`, `agents-log`, `server-log`,
+`?panel=<name>`: `topology`, `geo`, `accuracy`, `loss`, `evaluation`, `vignettes`, `agents-log`, `server-log`,
 `metrics`), to put on another screen; the vignettes folded into their strip have their ⧉ under it.
 The main page gives the panel's place to the others of its column or row (a column left empty goes,
 the charts take the height when no log is left) and shows a *⧉ name* mark in its top bar: a click on
