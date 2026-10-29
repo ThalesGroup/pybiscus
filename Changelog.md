@@ -48,6 +48,10 @@
   across them, in place of the two charts (one point per round there); its scale fits the values,
   *0–1* for the whole scale; detachable (`?panel=evaluation`). The mode is read from the data, not
   from the strategy: a training session keeps its charts.
+* Fixed: an agent registered without a bouquet (`--config` without one) had its states dropped by
+  the manager and its page, which expected `<bouquet>:<name>`: its runs launched by order stayed
+  *registered* to the end in the topology, and it was not listed among the agents started before
+  registering. A source without a bouquet is now the agent's name.
 
 ### Configuration
 

@@ -897,9 +897,11 @@ agent_feed = Feed()
 def pybiscus_manager_receive_agents():
     data = request.json
     message = data.get('content', '')
-    source = data.get('source', 'unknown')
-    # the source is "<bouquet>:<agent name>"
-    problem = agent_problem(str(source).split(":", 1)[-1])
+    source = str(data.get('source', 'unknown'))
+    # the source is "<bouquet>:<agent name>", or the name alone for an agent registered without a bouquet
+    # (--config without one): its states were dropped, its runs launched by order shown registered to the end
+    bouquet, name = source.split(":", 1) if ":" in source else (None, source)
+    problem = agent_problem(name)
     if problem:
         return jsonify({"status": "error", "message": problem}), 403
 
@@ -910,15 +912,13 @@ def pybiscus_manager_receive_agents():
     agent_feed.append({'source': source, 'message': message, 'state': state, 'time': time.time()})
 
     started = data.get('started')
-    if isinstance(started, dict) and ":" in source:
-        bouquet, name = source.split(":", 1)
+    if isinstance(started, dict):
         pybiscus.session.manager.session_manager.started_agents[name] = {
             "url": started.get("url") if is_web_url(started.get("url")) else None,
             "role": started.get("role"), "bouquet": bouquet, "time": time.time()}
 
-    # the source is "<bouquet>:<agent name>", as the page reads it (checkAgentLogs)
-    if state and ":" in source:
-        pybiscus.session.manager.session_manager.agent_states[source.split(":", 1)[1]] = state
+    if state:
+        pybiscus.session.manager.session_manager.agent_states[name] = state
 
     return jsonify({"status": "success"}), 200
 

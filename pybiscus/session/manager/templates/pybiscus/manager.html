@@ -584,7 +584,8 @@
   // ============ log parsing (préservé) ============
   function checkAgentLogs(newItems){
     newItems.forEach(item=>{
-      const match = item.source && item.source.match(/.*?:(.*)$/);
+      // "<bouquet>:<agent name>", or the name alone (an agent registered without a bouquet)
+      const match = item.source && item.source.match(/^(?:[^:]*:)?(.*)$/);
       if(match){
         const agentName = match[1];
 
