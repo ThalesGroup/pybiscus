@@ -1,6 +1,14 @@
 # Changelog
 
-## Unreleased
+## [Version 0.18.0]
+
+Since `version0.17.0` (2026-10-29): federated evaluation. A trained model shipped as an ONNX file,
+verified by its SHA-256, is evaluated on each site's data without its code nor any training
+(`onnxmodel`, `evaluateonly`): a report per site, an exact macro F1 from per-class rates, the
+validation or the test section, at fixed times to follow a deployed model. The session form's
+`purpose: evaluation` sets it up on every participant, and the manager shows an evaluation panel.
+The plugin linter checks the interfaces, the models' signatures and the choices a form cannot offer.
+Fixes in the session presets (lists, optional hyperparameters) and the agents' states.
 
 ### Plugins
 
