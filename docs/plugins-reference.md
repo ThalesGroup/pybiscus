@@ -752,9 +752,11 @@ FoolsGold: clients weighed down when their history of updates looks like another
 
 *plugin, `pybiscus-plugins/strategydecorator/evaluateonly`*
 
-No client trains: each round only evaluates the server's model, on the server's test data and on each client's validation data (federated evaluation, with the onnxmodel model for instance). Not with server_run.schedule nor stop_without_new_data: a round in which no client trained is not counted there.
+No client trains: each round only evaluates the server's model, on the server's test data and on each client's validation data (federated evaluation, with the onnxmodel model for instance), and writes the per-site report: the server, each site and the sites' mean weighted by their examples. Not with server_run.schedule nor stop_without_new_data: a round in which no client trained is not counted there.
 
-No configuration (`config: {empty_configuration: true}`).
+| field (under `config`) | type | default | description |
+|---|---|---|---|
+| `report_name` | str | `'evaluation'` | the per-site report, <name>.json and <name>.csv in the reporting directory, written at each round |
 
 Used by: [`configs/onnx_eval/server.yml`](../configs/onnx_eval/server.yml)
 

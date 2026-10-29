@@ -25,7 +25,7 @@ server_strategy:
   pipeline:
   - name: evaluateonly
     config:
-      empty_configuration: true
+      report_name: evaluation
   strategy:
     name: fedavg
     config:

@@ -32,6 +32,10 @@
   evaluates the server's model on the server's test data and on each client's validation data. Not
   with `server_run.schedule` nor `stop_without_new_data`, where a round no client trained in is not
   counted.
+  It writes the per-site report at each round, `evaluation.json` and `evaluation.csv` in the
+  reporting directory (`report_name`): the model evaluated (its configuration, its hash), and for
+  each round the server's test, each site (cid, examples, loss, metrics), the sites' mean weighted
+  by their examples and the number of failures.
 * `configs/onnx_eval/` and `launch/uv/onnx_eval/` (`prepare.sh`, `server.sh`, `client1.sh`,
   `client2.sh`): the model of the MNIST session (`launch/uv/mnist_cnn/distributed`, which now
   exports it to ONNX as one file) evaluated by a server and two clients with `onnxmodel` and
