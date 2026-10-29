@@ -52,3 +52,5 @@ model:
     path: ${oc.env:PYBISCUS_ONNX_MODEL,${root_dir}/experiments/published/mnist_cnn.onnx}
     sha256: ${oc.env:PYBISCUS_ONNX_SHA256,'0000000000000000000000000000000000000000000000000000000000000000'}
     output_kind: logits
+    num_classes: 10
+    class_rates: per_class        # exact F1 in the report; tells each site its share of each class

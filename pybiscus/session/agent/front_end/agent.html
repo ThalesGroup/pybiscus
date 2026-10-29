@@ -327,6 +327,11 @@
     function set_option(prefix, value) {
 
         const fieldsets = presetTargets(`.pybiscus-fieldset-container[data-pybiscus-prefix="${prefix}"]`);
+        // a list's item one past its end: added, as presets.py does (an empty list the item is imposed in)
+        const item = prefix.match(/^(.*)\.(\d+)$/);
+        if (!fieldsets.length && item && typeof appendListItem === 'function' && appendListItem(item[1], Number(item[2]))) {
+            return set_option(prefix, value);
+        }
         if (!fieldsets.length) {
             console.error('fieldset not found : ', prefix)
             return;

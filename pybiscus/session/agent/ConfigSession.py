@@ -29,6 +29,19 @@ class FlowerServerConfiguration(BaseModel):
     
     model_config = ConfigDict(extra="forbid")
     
+class SessionPurpose(str, Enum):
+    # an Enum and not a Literal: the agent's form offers an Enum's values, a Literal's first only
+    training = "training"
+    evaluation = "evaluation"
+
+
+SessionPurpose.PYBISCUS_DESCRIPTIONS = {
+    "training": "the clients train the model, the server aggregates their updates",
+    "evaluation": "no client trains: the model (an ONNX model, or the server's weights_path) is evaluated on the server's "
+                  "test data and on each site's validation data, a report per site (docs/evaluation.md)",
+}
+
+
 class ConfigSessionHoldout(BaseModel):
     """validation examples held out of each client's own training share (val.source: holdout; data
     plugins with a holdout: cifar, mnist, hdfs)"""
@@ -68,6 +81,9 @@ def make_session_model(models_confs, data: list[str], data_confs):
         PYBISCUS_ALIAS: ClassVar[str] = "Pybiscus session configuration"
 
         flower_server: FlowerServerConfiguration = Field(description="where the clients reach the Flower server")
+        purpose: SessionPurpose = Field(default=SessionPurpose.training, description=
+            "evaluation: the server's pipeline starts with the EvaluateOnly decorator, set and locked, and the session "
+            "runs one round unless num_rounds says otherwise; not with repeat nor in a hierarchical session")
         # the whole model and not only its plugin: models of different sizes cannot be averaged
         model:         models_confs = Field(description="model and hyperparameters of every participant, locked in their forms")  # pyright: ignore[reportInvalidTypeForm]
         data:          enum_data  = Field(default=next(iter(enum_data)), description="data plugin of every participant, locked in their forms")   # pyright: ignore[reportInvalidTypeForm]

@@ -57,6 +57,8 @@ model:
     path: experiments/published/mnist_cnn.onnx
     sha256: 28b030bd…                     # 64 hexadecimal digits: another file is refused
     output_kind: logits                   # logits, probabilities, labels or regression
+    num_classes: 10
+    class_rates: per_class                # none (default), per_class or confusion_matrix: an exact F1
     # input_name, output_name: the graph's only input and its first output by default
     # providers: [CUDAExecutionProvider, CPUExecutionProvider]   # each site its own
 ```
@@ -68,6 +70,12 @@ model:
 | `labels` (class indices) | `loss` (the error rate: no score to take a cross-entropy of), `accuracy` |
 | `regression` | `loss` (mean squared error), `mae` |
 
+An exact macro F1 for a classification: `num_classes` and `class_rates: per_class` (or
+`confusion_matrix`, every cell too). Each site then returns, for each class, its true positives,
+false positives and false negatives as shares of its examples; the report gives `f1_macro` per site
+and for the sites together, computed from their rates weighted by their examples, and the precision,
+recall and F1 of each class. Off by default: the rates tell each site's share of each class.
+
 The server's pipeline:
 
 ```yaml
@@ -78,7 +86,32 @@ server_strategy:
   - name: evaluateonly
     config:
       report_name: evaluation
+      section: val        # val (default) or test: the section of its data each site evaluates on
 ```
+
+`section: test` has each site evaluate on its `test` section, its own labelled test data (its
+`test.dir`, its `max_samples`), rather than on its validation data.
+
+### Following a deployed model
+
+A model in production evaluated on each site's new data at fixed times, every night for instance:
+the server's `schedule` gives the rounds, and the clients' `refresh_data` reads their data again
+before each one.
+
+```yaml
+server_run:
+  num_rounds: 30
+  schedule: {cron: "0 2 * * *"}    # every day at 02:00
+# each client
+client_run:
+  refresh_data: true                # its data read again before each evaluation
+```
+
+A round without training counts once a site has evaluated in it; a site without new data
+(an incremental module such as `hdfs` with `train.lots: new` and `val.source: holdout`) leaves it,
+and a round no site evaluated in does not count, or ends the session with
+`stop_without_new_data`. The report keeps a line per round: the model's metrics site by site, night
+after night.
 
 The file is refused, and the run stops at its launch, when its SHA-256 differs from the
 configuration's, when it is larger than `max_size_mb` (2 GB at most, the limit of a single ONNX
@@ -92,49 +125,54 @@ the weights). The bytes hashed are the bytes run, read once. To embed external d
 At each round, `evaluation.json` and `evaluation.csv` in the server's reporting directory:
 
 ```
-round,site,num_examples,loss,accuracy
-1,server,,0.031071,0.9899
-1,0,3000,0.039259,0.9873
-1,1,3000,0.028556,0.9917
-1,weighted_mean,6000,0.033907,0.9895
+round,site,num_examples,loss,accuracy,f1_macro
+1,server,,0.156289,0.9515,0.951585
+1,0,3000,0.180728,0.9453,0.944894
+1,1,3000,0.161902,0.9493,0.947857
+1,weighted_mean,6000,0.171315,0.9473,0.946380
 ```
 
 `evaluation.json` also names the model evaluated (its configuration, its hash) and the number of
-sites that failed. The weighted mean is Flower's own aggregate of the sites. The server does not
-report its number of examples.
+sites that failed; with `class_rates`, the rates, the scores of each class (`classes`) and the
+`confusion_matrix`, which the CSV leaves out (only `f1_macro` there). The weighted mean is Flower's
+own aggregate of the sites, its F1 derived from their rates. The server does not report its number
+of examples.
 
 ## In a session of the manager
 
-Choose the *ONNX model (evaluation only)* model in the session's configuration and set its path and
-hash: they are imposed and locked on every form, the providers left to each site. The server's form
-needs the `evaluateonly` decorator in its pipeline.
+In the session's configuration, set `purpose` to `evaluation`, choose the *ONNX model (evaluation
+only)* model and set its path and hash: they are imposed and locked on every form, the providers left
+to each site. The server's pipeline starts with the `EvaluateOnly` decorator, set and locked, and the
+session runs one round unless `num_rounds` says otherwise
+([details](sessionmanager.md#session-parameters)). Nothing in the agents' own configurations needs to
+say it is an evaluation. With `data_partition` and `data_holdout`, each site evaluates on examples
+held out of its own share. Another model is evaluated the same way from the server's `weights_path`.
 
 ![The evaluation panel](images/session_evaluation.png "The evaluation panel")
 
 The manager shows the *evaluation* panel in place of its two charts: a bar per site, sorted, the
 server's test and the sites' weighted mean across them, the scale fitted to the values (*0–1* for the
 whole scale) ([details](sessionmanager.md#7-follow-the-session)). The metrics table keeps its row per
-site.
+site. `launch/doc/evaluation_shot.py` replays such a session and takes this screenshot;
+`launch/doc/scenarios/evaluation-session.yml` films one ([Recording a session](recording.md#a-simple-session)).
 
 ## What leaves a site
 
 Its metrics on its validation data (loss, accuracy or mae, its number of examples) and the logs of its
-runs, as in any session. No prediction, no example, no update of the model: the parameters the
+runs, as in any session. With `class_rates`, its share of each class, of each class's errors (and of
+each cell of its confusion matrix). No prediction, no example, no update of the model: the parameters the
 server sends are empty.
 
 ## Limits
 
-- **Not with** `server_run.schedule` **nor** `stop_without_new_data`: a round in which no client
-  trained is not counted there, and the evaluation never ends.
 - **One file up to 2 GB**: a larger model needs external data, refused for now.
 - **Standard operators only**: no custom operator library is loaded.
-- **The `val` section**: a site evaluates on its validation data; choosing its `test` section is not
-  offered yet.
-- **Accuracy, loss, mae**: averaged over the batches, weighted by their examples; metrics that do not
-  add up that way (F1, AUC) are not computed exactly yet.
+- **Accuracy, loss, mae, macro F1**: the F1 from additive per-class rates (`class_rates`); an AUC,
+  which needs every score, is not computed.
 - **A wrong input contract gives plausible but wrong metrics**: check a new model once against the
   framework it was trained with (`launch/ci/smoke.sh evaluation` does it for the MNIST demo: ONNX and
   torch agree within 1e-4 on the server and on each site).
+- **A hierarchical session** cannot be an evaluation yet.
 
 ## Related work
 

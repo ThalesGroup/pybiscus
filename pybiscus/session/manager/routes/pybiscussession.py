@@ -78,6 +78,9 @@ def pybiscus_manager_run_session():
                 problems = repetition_refused(repeat)
                 if problems:
                     return refused(problems), 409
+            problems = purpose_refused(presets)
+            if problems:
+                return refused(problems), 409
             if presets.get("record"):
                 problems = recording_refused()
                 if problems:
@@ -143,6 +146,24 @@ def refused(problems: list):
     under its field, and as one message for a caller without the form"""
     message = "; ".join(f"{'.'.join(map(str, p['loc']))}: {p['msg']}" if p["loc"] else p["msg"] for p in problems)
     return jsonify({"status": "error", "message": message, "fields": problems})
+
+
+# the evaluateonly decorator's tab in the server's pipeline: a label, as presets.LIST_DEFAULTS'
+EVALUATION_OPTION = "EvaluateOnly"
+EVALUATION_STEP = "server_strategy.pipeline.0"
+
+
+def purpose_refused(presets: dict) -> list:
+    """why the session's purpose cannot be, as the check's errors; empty if it can"""
+    purpose = presets.get("purpose", "training")
+    if purpose not in ("training", "evaluation"):
+        return [{"loc": ["purpose"], "msg": f"training or evaluation, not {purpose!r}"}]
+    if purpose != "evaluation":
+        return []
+    session = pybiscus.session.manager.session_manager
+    if session.upper_link is not None or session.lower_levels:
+        return [{"loc": ["purpose"], "msg": "a hierarchical session cannot be an evaluation yet"}]
+    return []
 
 
 def recording_refused() -> list:
@@ -458,6 +479,10 @@ def pybiscus_manager_get_session_params():
     robustness = custom_presets.pop("robustness", None)
     num_rounds = custom_presets.pop("num_rounds", None)
     repeat = custom_presets.pop("repeat", None)
+    evaluation = custom_presets.pop("purpose", "training") == "evaluation"
+    if evaluation:
+        # the model does not change from one round to the next
+        num_rounds = num_rounds or 1
     custom_presets.pop("record", None)
 
     # each call used to take a new cid: the server's page and every reload consumed one, and the
@@ -495,6 +520,11 @@ def pybiscus_manager_get_session_params():
         for name in ("min_fit_clients", "min_evaluate_clients", "min_available_clients"):
             custom_presets["values_set"][f"server_strategy.strategy.config.{name}"] = min_clients
             custom_presets["values_lock"].append(f"server_strategy.strategy.config.{name}")
+    if agent in session.registered_servers and evaluation:
+        # the form's pipeline starts with default items (presets.LIST_DEFAULTS): the first one becomes the
+        # decorator. Should an operator take it out, onnxmodel refuses to train at the first fit
+        custom_presets["options_set"][EVALUATION_STEP] = EVALUATION_OPTION
+        custom_presets["options_lock"].append(EVALUATION_STEP)
     if agent in session.registered_servers and num_rounds:
         custom_presets["values_set"]["server_run.num_rounds"] = num_rounds
         custom_presets["values_lock"].append("server_run.num_rounds")

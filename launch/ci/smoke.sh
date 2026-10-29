@@ -320,11 +320,18 @@ step_evaluation() {
     export PYBISCUS_ONNX_SHA256
     cd "$dir/eval" || return 1
     EXPECTED_REPORT=evaluation.json run_three configs || status=1
+    # the same model on each site's test section, at scheduled rounds (evaluation_section_check.py)
+    prepare_run_dir "$dir/eval-test" configs/onnx_eval || return 1
+    $PYTHON "$REPO/launch/ci/evaluation_section_check.py" --prepare "$dir/eval-test/configs" || return 1
+    cd "$dir/eval-test" || return 1
+    [ "$status" -eq 0 ] && { EXPECTED_REPORT=evaluation.json run_three configs || status=1; }
     cd "$REPO" || return 1
     unset PYBISCUS_ONNX_MODEL PYBISCUS_ONNX_SHA256
     [ "$status" -eq 0 ] || return 1
     evaluated="$(realpath "$dir/eval/experiments/current")"
-    $PYTHON "$REPO/launch/ci/evaluation_check.py" "$trained" "$evaluated" "$dir/eval" $PYTHON "$REPO/pybiscus/main.py"
+    $PYTHON "$REPO/launch/ci/evaluation_check.py" "$trained" "$evaluated" "$dir/eval" $PYTHON "$REPO/pybiscus/main.py" || status=1
+    $PYTHON "$REPO/launch/ci/evaluation_section_check.py" "$dir/eval-test" || status=1
+    return "$status"
 }
 
 step_session() {

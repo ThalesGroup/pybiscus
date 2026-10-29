@@ -1,4 +1,5 @@
 import hashlib
+from enum import Enum
 from pathlib import Path
 from typing import ClassVar, Literal, Optional, TypedDict, override
 
@@ -8,12 +9,40 @@ import onnx
 import onnxruntime as ort
 import torch
 import torch.nn.functional as F
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 import pybiscus.core.pybiscus_logger as logm
 from pybiscus.core.pybiscusexception import PybiscusValueException
+from pybiscus.ml.classrates import class_rate_keys, class_rates
 
-OutputKind = Literal["logits", "probabilities", "labels", "regression"]
+
+# Enums and not Literals: the agent's form offers an Enum's values, a Literal's first only
+class OutputKind(str, Enum):
+    logits = "logits"
+    probabilities = "probabilities"
+    labels = "labels"
+    regression = "regression"
+
+
+OutputKind.PYBISCUS_DESCRIPTIONS = {
+    "logits": "scores before a softmax: loss (cross-entropy) and accuracy",
+    "probabilities": "a softmax's output: loss (cross-entropy of the probabilities) and accuracy",
+    "labels": "class indices: loss (the error rate) and accuracy",
+    "regression": "values: loss (mean squared error) and mae",
+}
+
+
+class ClassRates(str, Enum):
+    none = "none"
+    per_class = "per_class"
+    confusion_matrix = "confusion_matrix"
+
+
+ClassRates.PYBISCUS_DESCRIPTIONS = {
+    "none": "no per-class figure",
+    "per_class": "true and false positives, false negatives of each class, as shares of the examples: an exact F1",
+    "confusion_matrix": "those and every cell of the confusion matrix",
+}
 
 # onnxruntime's input types and the numpy arrays it accepts for them
 ONNX_TO_NUMPY = {
@@ -35,7 +64,7 @@ class ConfigOnnxModel(BaseModel):
     path: str = Field(description="the .onnx file, deposited by each site")
     sha256: str = Field(pattern=r"^[0-9a-f]{64}$",
                         description="SHA-256 of the file, given by the session's organiser: another file is refused")
-    output_kind: OutputKind = Field(default="logits",
+    output_kind: OutputKind = Field(default=OutputKind.logits,
                                     description="what the graph outputs: logits, probabilities, labels (class indices) or regression values")
     input_name: Optional[str] = Field(default=None, description="the graph's input to feed, its only input by default")
     output_name: Optional[str] = Field(default=None, description="the graph's output to read, its first output by default")
@@ -44,8 +73,21 @@ class ConfigOnnxModel(BaseModel):
                                  description="onnxruntime execution providers, by order of preference")
     max_size_mb: int = Field(default=2048, ge=1, le=2048,
                              description="a larger file is refused before being read (a single ONNX file stops at 2 GB)")
+    num_classes: Optional[int] = Field(default=None, ge=2, le=1000,
+                                       description="the number of classes, needed by class_rates")
+    class_rates: ClassRates = Field(default=ClassRates.none,
+                                    description="per-class figures for an exact F1; per_class and confusion_matrix tell the site's share of each class")
 
     model_config = ConfigDict(extra="forbid")
+
+    @model_validator(mode="after")
+    def rates_need_classes(self):
+        if self.class_rates != ClassRates.none:
+            if self.num_classes is None:
+                raise ValueError("class_rates needs num_classes")
+            if self.output_kind == OutputKind.regression:
+                raise ValueError("class_rates is for a classification, not with output_kind regression")
+        return self
 
 
 class ConfigModel_OnnxModel(BaseModel):
@@ -66,6 +108,10 @@ class OnnxClassificationSignature(TypedDict):
 class OnnxRegressionSignature(TypedDict):
     loss: torch.Tensor
     mae: torch.Tensor
+
+
+def with_rate_keys(signature, keys: list[str]):
+    return TypedDict(f"{signature.__name__}WithRates", {**signature.__annotations__, **{key: torch.Tensor for key in keys}})
 
 
 def verified_model_bytes(path: str, sha256: str, max_size_mb: int) -> bytes:
@@ -96,9 +142,10 @@ class LitOnnxModel(pl.LightningModule):
     The graph includes its preprocessing; the batch's inputs are given to it as they come from the data plugin."""
 
     @override
-    def __init__(self, path: str, sha256: str, output_kind: OutputKind = "logits",
+    def __init__(self, path: str, sha256: str, output_kind: OutputKind = OutputKind.logits,
                  input_name: Optional[str] = None, output_name: Optional[str] = None,
-                 providers: Optional[list[str]] = None, max_size_mb: int = 2048):
+                 providers: Optional[list[str]] = None, max_size_mb: int = 2048,
+                 num_classes: Optional[int] = None, class_rates: ClassRates = ClassRates.none):
         super().__init__()
         self.save_hyperparameters()
 
@@ -123,11 +170,17 @@ class LitOnnxModel(pl.LightningModule):
         self.input_name = graph_input.name
         self.input_dtype = ONNX_TO_NUMPY[graph_input.type]
         self.output_name = output_name or outputs[0]
-        self.output_kind = output_kind
+        # a plain str: the hyperparameters saved and the comparisons below read the value
+        self.output_kind = OutputKind(output_kind).value
         if output_kind == "regression":
             self._signature = OnnxRegressionSignature
         else:
             self._signature = OnnxClassificationSignature
+        self.num_classes = num_classes
+        self.confusion_matrix = ClassRates(class_rates) == ClassRates.confusion_matrix
+        self.with_rates = ClassRates(class_rates) != ClassRates.none
+        if self.with_rates:
+            self._signature = with_rate_keys(OnnxClassificationSignature, class_rate_keys(num_classes, self.confusion_matrix))
         logm.console.log(f"onnxmodel: {Path(path).name} (sha256 {sha256[:12]}…), input {self.input_name} {graph_input.shape}, "
                          f"output {self.output_name}, providers {self.session.get_providers()}")
 
@@ -151,13 +204,19 @@ class LitOnnxModel(pl.LightningModule):
             predicted = outputs.reshape(targets.shape)
             accuracy = (predicted == targets).float().mean()
             # no score to take a cross-entropy of: the error rate stands for the loss
-            return {"loss": 1 - accuracy, "accuracy": accuracy}
+            return self._with_rates({"loss": 1 - accuracy, "accuracy": accuracy}, predicted, targets)
         outputs = outputs.float()
         if self.output_kind == "logits":
             loss = F.cross_entropy(outputs, targets)
         else:
             loss = F.nll_loss(torch.log(outputs.clamp_min(1e-12)), targets)
-        return {"loss": loss, "accuracy": (outputs.argmax(dim=1) == targets).float().mean()}
+        predicted = outputs.argmax(dim=1)
+        return self._with_rates({"loss": loss, "accuracy": (predicted == targets).float().mean()}, predicted, targets)
+
+    def _with_rates(self, results, predicted, targets):
+        if self.with_rates:
+            results.update(class_rates(predicted, targets, self.num_classes, self.confusion_matrix))
+        return results
 
     @override
     def training_step(self, batch, batch_idx):

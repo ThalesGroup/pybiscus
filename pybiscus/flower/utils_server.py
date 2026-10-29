@@ -10,6 +10,7 @@ from lightning.pytorch import LightningModule
 
 import pybiscus.core.gui_events as gui_events
 import pybiscus.core.pybiscus_logger as logm
+from pybiscus.ml.classrates import with_derived_metrics
 from pybiscus.ml.loops_fabric import test_loop
 
 def set_params(model: torch.nn.ModuleList, params: list[np.ndarray]):
@@ -103,6 +104,8 @@ def weighted_average(metrics: list[tuple[int, Metrics]], context="", round_of=No
             key: sum(num * metric[key] / num_examples for num, metric in metrics)
             for key in _set_common_keys
         }
+        # a mean of the clients' F1 is not the F1 of their data: derived again from the averaged rates
+        outputs = with_derived_metrics(outputs)
 
     # print(f"Final outputs before logging: {outputs}")
     logm.console.log(f"Averaged {context} metrics: {outputs}")

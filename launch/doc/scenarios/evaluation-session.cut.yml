@@ -1,0 +1,35 @@
+# Cut of the evaluation session's rushes (launch/doc/scenarios/evaluation-session.yml). Edit again:
+#   uv run launch/doc/record_session.py edit <rushes> launch/doc/scenarios/evaluation-session.cut.yml
+
+output: docs/videos/evaluation-session    # .mp4 and .webp are added
+formats: [mp4, webp]
+inset: {width: 0.42, corner: bottom-right}
+
+scenes:
+  empty:
+    main: manager
+    caption: "1 · A model to evaluate on the data of each site, which stays there"
+  registered:
+    main: "agent:{name}"
+    inset: "manager@geo"
+    caption: "2 · {name} registers ({role}, {location})"
+  configured:
+    main: session-form
+    inset: "manager@nodes"
+    caption: "3 · Purpose evaluation: the ONNX model's file and SHA-256, imposed on every site"
+  started:
+    main: manager
+    caption: "4 · The session starts: the server's pipeline begins with EvaluateOnly, locked"
+  launched:
+    main: "agent:{name}"
+    inset: "manager@nodes"
+    caption: "4 · {name}: its form filled by the session, checked, run launched"
+  round:
+    main: manager
+    inset: "agent:{turn}@console"
+    caption: "5 · Each site evaluates the model on its own data, nobody trains"
+    pace: progress
+  finished:
+    main: manager
+    caption: "6 · One bar per site, the server's test and the sites' weighted mean"
+    pace: final

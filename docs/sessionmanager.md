@@ -97,7 +97,8 @@ upper-level session is configured: its tooltip says what is missing). Its header
 hyperparameters (set and locked in every agent's form; a dictionary field is left to each form) and the
 data, and the optional session settings (described in [Session parameters](#session-parameters)):
 how the training data is shared between the clients (`data_partition`), a validation set held out
-of each share (`data_holdout`), `num_rounds`, `min_clients`, `robustness`, `share_cpu_threads`.
+of each share (`data_holdout`), `num_rounds`, `min_clients`, `robustness`, `share_cpu_threads`,
+and the session's `purpose`: `training`, or `evaluation` of a model without training it.
 
 ![Session configuration](images/session_manager_config.png "Session configuration")
 
@@ -548,6 +549,15 @@ round for round.
 Its `robustness` choice (`none` by default, or `safeguard`) is set and locked in the server's form:
 `safeguard` adds a defense against malicious clients to the server's pipeline (see
 [Robust aggregation](robust-aggregation.md#the-robustness-setting)).
+
+Its `purpose` (`training` by default) set to `evaluation`, no client trains: the first item of the
+server's pipeline becomes the `EvaluateOnly` decorator, set and locked (neither removed nor moved),
+and the session runs one round unless `num_rounds` says otherwise. Each round evaluates the model on
+the server's test data and on each site's validation data, and the manager shows the
+[evaluation panel](#7-follow-the-session) in place of its charts. The model is an ONNX model (its file
+and hash set in the session form) or the server's `weights_path`
+([Federated evaluation](evaluation.md)). With `repeat`, each session of the repetition evaluates the
+model again on the sites' data. The manager refuses it in a hierarchical session.
 
 These session values are set in every option of the forms that has the field, not only in the
 selected one: switching the strategy or the data plugin afterwards keeps them.

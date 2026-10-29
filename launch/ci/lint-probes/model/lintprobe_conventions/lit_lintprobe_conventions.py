@@ -15,6 +15,7 @@ class ConfigLintprobeConventions(BaseModel):  # expect: extra-forbid
     hidden: int = Field(default=16, ge=1, description="units of the hidden layer")
     lr: float = Field(default=0.01, gt=0, description="learning rate of the Adam optimizer")
     momentum: float = 0.0  # expect: description
+    activation: Literal["relu", "tanh"] = Field(default="relu", description="the hidden layer's activation")  # expect: literal-choice
 
 
 class ConfigModel_LintprobeConventions(BaseModel):  # expect: alias

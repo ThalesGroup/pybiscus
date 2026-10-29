@@ -355,6 +355,8 @@ Evaluates an ONNX graph on the site's data: no torch parameter, nothing to train
 | `output_name` | str (optional) | `None` | the graph's output to read, its first output by default |
 | `providers` | list[str] | `['CPUExecutionProvider']` | onnxruntime execution providers, by order of preference |
 | `max_size_mb` | int | `2048` | a larger file is refused before being read (a single ONNX file stops at 2 GB) |
+| `num_classes` | int (optional) | `None` | the number of classes, needed by class_rates |
+| `class_rates` | 'none' \| 'per_class' \| 'confusion_matrix' | `'none'` | per-class figures for an exact F1; per_class and confusion_matrix tell the site's share of each class |
 
 Used by: [`configs/onnx_eval/client_1.yml`](../configs/onnx_eval/client_1.yml), [`configs/onnx_eval/client_2.yml`](../configs/onnx_eval/client_2.yml), [`configs/onnx_eval/server.yml`](../configs/onnx_eval/server.yml)
 
@@ -752,11 +754,12 @@ FoolsGold: clients weighed down when their history of updates looks like another
 
 *plugin, `pybiscus-plugins/strategydecorator/evaluateonly`*
 
-No client trains: each round only evaluates the server's model, on the server's test data and on each client's validation data (federated evaluation, with the onnxmodel model for instance), and writes the per-site report: the server, each site and the sites' mean weighted by their examples. Not with server_run.schedule nor stop_without_new_data: a round in which no client trained is not counted there.
+No client trains: each round only evaluates the server's model, on the server's test data and on each client's validation or test data (section), and writes the per-site report: the server, each site and the sites' mean weighted by their examples. Federated evaluation, with the onnxmodel model or the server's weights_path. With server_run.schedule (a deployed model followed every night) or stop_without_new_data, a round counts when a site evaluated: a site without new data does not.
 
 | field (under `config`) | type | default | description |
 |---|---|---|---|
 | `report_name` | str | `'evaluation'` | the per-site report, <name>.json and <name>.csv in the reporting directory, written at each round |
+| `section` | 'val' \| 'test' | `'val'` | the section of its data each site evaluates on |
 
 Used by: [`configs/onnx_eval/server.yml`](../configs/onnx_eval/server.yml)
 

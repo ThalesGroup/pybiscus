@@ -45,11 +45,14 @@ launch_session_button.addEventListener('click', function() {
     // a value of the server's form, not an option to select in every form
     const robustness_row = raw_data.find(row => row[0] === 'robustness');
     const robustness = robustness_row ? robustness_row[1] : null;
+    // the manager turns it into the server's pipeline and rounds: not an option of every form
+    const purpose_row = raw_data.find(row => row[0] === 'purpose');
+    const purpose = purpose_row ? purpose_row[1] : 'training';
     // the model: its plugin and its direct scalar fields, set and locked in every form (a dict's
     // entries cannot be recreated in another form)
     const is_model = row => row[0] === 'model.name' || row[0].startsWith('model.config.');
     const model_values = raw_data.filter(row => /^model\.config\.[^.]+$/.test(row[0]) && ! Array.isArray(row[1]));
-    const new_data = raw_data.filter(row => ! exclude.includes(row[0]) && ! is_model(row) && ! is_partition(row) && ! is_holdout(row) && ! is_repeat(row) && row !== share_row && row !== record_row && row !== min_clients_row && row !== num_rounds_row && row !== robustness_row);
+    const new_data = raw_data.filter(row => ! exclude.includes(row[0]) && ! is_model(row) && ! is_partition(row) && ! is_holdout(row) && ! is_repeat(row) && row !== share_row && row !== record_row && row !== min_clients_row && row !== num_rounds_row && row !== robustness_row && row !== purpose_row);
     const partition_rows = raw_data.filter(is_partition);
     const data_partition = partition_rows.length
         ? Object.fromEntries(partition_rows.map(([key, value]) => [key.slice('data_partition.'.length), value]))
@@ -99,6 +102,16 @@ launch_session_button.addEventListener('click', function() {
 
     options_set['model'] = selected_option('model');
     options_lock.push('model');
+    // an Optional hyperparameter (onnxmodel's num_classes): its tab too, else its value went into the
+    // agents' hidden None tab and their check refused the model
+    topDiv.querySelectorAll('.pybiscus-fieldset-container[data-pybiscus-prefix^="model.config."]').forEach(fieldset => {
+        const prefix = fieldset.dataset.pybiscusPrefix;
+        const optional = fieldset.querySelector(':scope > legend input.pybiscus-option-cb');
+        if (!/^model\.config\.[^.]+$/.test(prefix) || !optional || fieldset.closest('.pybiscus-tab-content:not(.active)')) return;
+        const active = fieldset.querySelector(':scope > .pybiscus-tab-container > .pybiscus-tab-buttons > .pybiscus-tab-button.active');
+        options_set[prefix] = active && active.textContent === ' ' ? ' ' : '  ';
+        options_lock.push(prefix);
+    });
     model_values.forEach(([key, value]) => {
         values_set[key] = value;
         values_lock.push(key);
@@ -119,6 +132,7 @@ launch_session_button.addEventListener('click', function() {
         num_rounds,
         robustness,
         repeat,
+        purpose,
     };    
 
     // console.log( server_data );

@@ -75,6 +75,26 @@ mean = last["weighted_mean"]
 judge(mean is not None and abs(mean["loss"] - sum(s["loss"] * s["num_examples"] for s in sites.values()) / mean["num_examples"]) < 1e-9,
       "the weighted mean of the sites")
 
+# class_rates: per_class in configs/onnx_eval: the true positives add up to the accuracy, and the mean's F1
+# comes from the sites' rates weighted by their examples, not from their F1
+def f1_from_rates(metrics: dict) -> float:
+    scores = []
+    for c in range(10):
+        tp, fp, fn = (metrics[f"rate_{kind}_{c}"] for kind in ("tp", "fp", "fn"))
+        if tp + fp + fn > 0:
+            scores.append(2 * tp / (2 * tp + fp + fn))
+    return sum(scores) / len(scores)
+
+
+for name, values in [("the server's test", server)] + [(f"site {cid}", site) for cid, site in sorted(sites.items())]:
+    metrics = values.get("metrics", {})
+    judge("f1_macro" in metrics and abs(sum(metrics.get(f"rate_tp_{c}", 0) for c in range(10)) - metrics.get("accuracy", -1)) < 1e-5
+          and len(values.get("classes", {})) == 10, f"{name}: per-class rates adding up to the accuracy, its F1 and its classes")
+rates = {key: sum(s["metrics"][key] * s["num_examples"] for s in sites.values()) / mean["num_examples"]
+         for key in next(iter(sites.values()))["metrics"] if key.startswith("rate_")}
+judge(abs(mean["metrics"].get("f1_macro", -1) - f1_from_rates(rates)) < 1e-9, "the weighted mean's F1, from the sites' rates",
+      f"{mean['metrics'].get('f1_macro')} vs {f1_from_rates(rates)}")
+
 env = {**os.environ, "PYBISCUS_ONNX_MODEL": str(model), "PYBISCUS_ONNX_SHA256": "f" * 64}
 refused = subprocess.run(sys.argv[4:] + ["server", "launch", "configs/server.yml", "--server-listen-address", "[::]:0"],
                          cwd=run_dir, env=env, capture_output=True, text=True, timeout=600)

@@ -471,7 +471,10 @@ data:
 
 - Without `refresh_data`, a client reads its data once, when it starts. With it, before each fit,
   the data module reads its data again: all of it by default (`setup("fit")` again), or only what
-  is new for a module that supports it, such as `hdfs` with `train.lots: new`.
+  is new for a module that supports it, such as `hdfs` with `train.lots: new`. In a round without
+  training (the `evaluateonly` decorator), it reads them before the evaluation, and the position of
+  an incremental module moves on once they are evaluated
+  ([following a deployed model](evaluation.md#following-a-deployed-model)).
 - An incremental module remembers, per client, the last data it trained on, in
   `.pybiscus-cache/data-cursors/` of the directory the client runs from, across sessions: a
   client restarted for a new session does not train on its old lots again. The position moves on
@@ -555,3 +558,11 @@ The training and evaluation metrics are means over the examples: each batch weig
 size comes from a `batch_size` key in the step's results if the model gives one, otherwise from
 the first dimension of the batch's inputs (or the length of a list of samples). These means are
 exact for additive metrics (a mean loss, an accuracy), not for an F1 or an AUC.
+
+An exact F1: the model returns, for each class, its true positives, false positives and false
+negatives divided by the batch's size (`pybiscus.ml.classrates.class_rates`, keys `rate_tp_<c>`,
+`rate_fp_<c>`, `rate_fn_<c>`, declared in its signature: `class_rate_keys`). These rates are
+additive: averaged over the examples, then by the server over the clients' examples, they are the
+rates of the whole data, and `f1_macro` is derived from them on the client, on the server's test and
+in the server's aggregate, never averaged (a mean of per-site F1 differs from the F1 of their data).
+The rates tell each site's share of each class, and stay out of the manager's charts and table.

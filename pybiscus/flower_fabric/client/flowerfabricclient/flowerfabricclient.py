@@ -6,7 +6,7 @@ import torch
 
 from pybiscus.core.pybiscusexception import PybiscusValueException
 from pybiscus.flower_config.config_computecontext import ConfigClientComputeContext
-from pybiscus.ml.datarefresh import NoNewData, commit_refresh, count_data, refresh_data
+from pybiscus.ml.datarefresh import NoNewData, commit_refresh, count_data, count_examples, refresh_data
 from pybiscus.ml.loops_fabric import (
     SchedulerConfig, check_schedulers_monitor, squared_distance, test_loop, trainable_params, train_loop,
 )
@@ -107,6 +107,8 @@ class FlowerFabricClient(fl.client.NumPyClient):
         self.pre_train_val = pre_train_val
         self.optimizer_state = str(getattr(optimizer_state, "value", optimizer_state))
         self.refresh_data = refresh_data
+        self.fit_round = None
+        self._test_dataloader, self._test_examples = None, 0
 
         self.optimizers, self.schedulers = self._configure_optimizers()
         check_schedulers_monitor(self.schedulers, model)
@@ -159,12 +161,8 @@ class FlowerFabricClient(fl.client.NumPyClient):
 
     def fit(self, parameters, config):
         logm.console.log(f"[Client {self.cid}] fit, config: {config}")
-        data_metrics = {}
-        if self.refresh_data:
-            data_metrics = refresh_data(self.data)
-            self.num_examples = count_data(self.data)
-            self._setup_dataloaders()
-            logm.console.log(f"[Client {self.cid}] data refreshed: {self.num_examples} {data_metrics}")
+        self.fit_round = config["server_round"]
+        data_metrics = self._refresh() if self.refresh_data else {}
         if self.num_examples["trainset"] == 0:
             raise NoNewData(f"client {self.cid} has no example to train on in round {config['server_round']}")
         self.set_parameters(parameters)
@@ -217,22 +215,44 @@ class FlowerFabricClient(fl.client.NumPyClient):
             metrics["weight_drift"] = float(drift)
         return self.get_parameters(config={}), self.num_examples["trainset"], metrics
 
+    def _refresh(self) -> dict:
+        data_metrics = refresh_data(self.data)
+        self.num_examples = count_data(self.data)
+        self._setup_dataloaders()
+        logm.console.log(f"[Client {self.cid}] data refreshed: {self.num_examples} {data_metrics}")
+        return data_metrics
+
     def evaluate(self, parameters, config):
         logm.console.log(f"[Client {self.cid}] evaluate, config: {config}")
-        if self.num_examples["valset"] == 0:
+        # a round without fit (a strategy that does not train, evaluateonly): the new data read here, as fit
+        # does, then committed once evaluated; a site without new data to evaluate does not
+        evaluates_new_data = self.refresh_data and self.fit_round != config["server_round"]
+        data_metrics = self._refresh() if evaluates_new_data else {}
+        # the section the server asks for (evaluateonly's section): the client's test data set up only then
+        section = config.get("section", "val")
+        if section == "test":
+            if self._test_dataloader is None or evaluates_new_data:
+                self.data.setup(stage="test")
+                self._test_dataloader = self.fabric.setup_dataloaders(self.data.test_dataloader())
+                self._test_examples = count_examples(self.data.test_dataloader())
+            loader, examples = self._test_dataloader, self._test_examples
+        else:
+            loader, examples = self._validation_dataloader, self.num_examples["valset"]
+        if examples == 0:
             raise NoNewData(f"client {self.cid} has no example to evaluate on in round {config['server_round']}")
         self.set_parameters(parameters)
         metrics = {}
         logm.console.log(f"Round {config['server_round']}, evaluation Started...")
         gui_events.log_client_phase("evaluate", config['server_round'])
-        results_evaluate = test_loop(
-            self.fabric, self.model, self._validation_dataloader
-        )
+        results_evaluate = test_loop(self.fabric, self.model, loader)
         logm.console.log(
             f"Evaluation finished! Loss is {results_evaluate['loss']}, metric {list(results_evaluate.keys())[0]} is {results_evaluate[list(results_evaluate.keys())[0]]}"
         )
         gui_events.log_client_metric("evaluate", results_evaluate, config['server_round'])
+        if evaluates_new_data:
+            commit_refresh(self.data)
+        metrics.update(data_metrics)
         metrics["cid"] = self.cid
         for key, val in results_evaluate.items():
             metrics[key] = val
-        return results_evaluate["loss"], self.num_examples["valset"], metrics
+        return results_evaluate["loss"], examples, metrics

@@ -44,6 +44,58 @@
    }
   }
  },
+ "session-server-evaluation": {
+  "role": "server",
+  "presets": {
+   "options_lock": [
+    "flower_server.ssl",
+    "flower_client.ssl",
+    "data",
+    "model",
+    "server_strategy.pipeline.0"
+   ],
+   "options_set": {
+    "data": "Mnist",
+    "flower_client.ssl": "  ",
+    "flower_server.ssl": "  ",
+    "model": "ONNX model (evaluation only)",
+    "server_strategy.pipeline.0": "EvaluateOnly",
+    "model.config.num_classes": " "
+   },
+   "values_lock": [
+    "root_dir",
+    "flower_server.listen_address",
+    "flower_client.server_address",
+    "server_strategy.strategy.config.min_fit_clients",
+    "server_strategy.strategy.config.min_evaluate_clients",
+    "server_strategy.strategy.config.min_available_clients",
+    "server_run.num_rounds",
+    "server_strategy.robustness",
+    "manager_url",
+    "model.config.path",
+    "model.config.sha256",
+    "model.config.output_kind",
+    "model.config.num_classes",
+    "model.config.class_rates"
+   ],
+   "values_set": {
+    "flower_client.server_address": "localhost:39091",
+    "flower_server.listen_address": "[::1]:39091",
+    "manager_url": "https://localhost:51843",
+    "server_run.num_rounds": 1,
+    "server_run.reporting.basedir": "${root_dir}/experiments/demo",
+    "server_strategy.robustness": "none",
+    "server_strategy.strategy.config.min_available_clients": 2,
+    "server_strategy.strategy.config.min_evaluate_clients": 2,
+    "server_strategy.strategy.config.min_fit_clients": 2,
+    "model.config.path": "experiments/published/mnist_cnn.onnx",
+    "model.config.sha256": "28b030bdeac2ac31ff22f63b799e7cec8c4889c6cfb86b5da80340c5f234d29e",
+    "model.config.output_kind": "logits",
+    "model.config.num_classes": "10",
+    "model.config.class_rates": "per_class"
+   }
+  }
+ },
  "session-client": {
   "role": "client",
   "presets": {
@@ -416,6 +468,19 @@
   },
   "expect": {
    "model.name": "noalias"
+  }
+ },
+ "server-pipeline-append": {
+  "role": "server",
+  "presets": {
+   "options_set": {
+    "server_strategy.pipeline.3": "EvaluateOnly"
+   },
+   "options_lock": [
+    "server_strategy.pipeline.3"
+   ],
+   "values_set": {},
+   "values_lock": []
   }
  }
 }

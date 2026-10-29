@@ -139,7 +139,8 @@ channel (`pybiscus/flower/clientauth.py`).
   included), the logs of its runs, and its whole run configuration (its local paths too), which the
   server's reports keep ([details](usage-scenarios.md#what-the-scenario-decides)). The training data
   never leaves it. In a [federated evaluation](evaluation.md), no update either: the site's metrics
-  on its validation data and its logs.
+  on its validation data and its logs. Per-class rates (`class_rates`, for an exact F1) and a
+  confusion matrix also tell the site's share of each class.
 
 ## Against the participants
 

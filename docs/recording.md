@@ -319,6 +319,7 @@ scenes:
 | `accept_launch`, `register` | as the agents' keys, for every agent without its own | none |
 | `session.options` | options chosen in the server's session form, by their labels (`model: MNIST CNN`); `" "` selects an optional section (`num_rounds`, `data_partition`) | required |
 | `session.values` | values of the form's fields; `num_rounds` is required | required |
+| `onnx_model` | an ONNX file of the repository, copied into the working directory, its path and SHA-256 set in the session form as the model's (`model.config.path`, `model.config.sha256`), as an organiser publishes them: `launch/doc/scenarios/evaluation-session.yml`, the [federated evaluation](evaluation.md) of the MNIST session's model (after `launch/uv/onnx_eval/prepare.sh`) | none |
 | `plugin_manifests` | manifests given to the agents, relative to the repository | the bundled one |
 | `agent_invitations` | `true`: the manager invites each agent (`session_manager invite --agent`), which starts with `--invitation`; `required`: the manager refuses the session token too (`--require-agent-invitation`), its page then opened with its administration token; needs `--tls-cert`, `--tls-key`, `--tls-ca` | none |
 | `repeat` | the session's repetition, as the manager takes it (`{every: 1min}`) | none |

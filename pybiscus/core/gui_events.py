@@ -34,8 +34,9 @@ def set_main_metric(name: Optional[str]) -> None:
     _main_metric = name
 
 
-# bookkeeping and derived keys: client id, per-epoch copies, pre-training validation
-UNCHARTED_KEY = r"^cid$|_epoch_|_pre_train_val$"
+# bookkeeping and derived keys: client id, per-epoch copies, pre-training validation, per-class
+# rates (pybiscus.ml.classrates: their f1_macro is charted)
+UNCHARTED_KEY = r"^cid$|_epoch_|_pre_train_val$|^rate_"
 
 # metrics logged per client by the server's strategy, read back by the manager's metrics table
 METRIC_KEY_PREFIXES = {"fit": "fit", "evaluate": "val"}

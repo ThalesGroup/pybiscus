@@ -1049,7 +1049,12 @@
     const values = rows.map(([, s]) => s.value).concat([test, mean].filter(v => v != null));
     let lo = 0, hi = Math.max(...values);
     if(evalFull) hi = (hi <= 1 && Math.min(...values) >= 0) ? 1 : (hi * 1.05 || 1);
-    else { const mn = Math.min(...values), span = (hi - mn) || Math.max(Math.abs(hi) * 0.1, 0.001); lo = mn - span * 0.25; hi = hi + span * 0.1; }
+    else {
+      // a spread below the labels' three digits is float noise (the same data evaluated twice): not zoomed into
+      const mn = Math.min(...values), spread = hi - mn;
+      const span = spread > Math.abs(hi) * 1e-3 ? spread : Math.max(Math.abs(hi) * 0.1, 0.001);
+      lo = mn - span * 0.25; hi = hi + span * 0.1;
+    }
     const padT = 6, padB = 20;
     // bars as tall as the panel allows, up to 36 px; past that the panel scrolls (22 px a site)
     const room = svg.parentElement.clientHeight - padT - padB - 8;

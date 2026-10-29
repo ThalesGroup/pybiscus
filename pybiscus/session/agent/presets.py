@@ -177,6 +177,8 @@ def set_option(model, config: dict, prefix: str, label: str) -> bool:
     if located is None:
         return False
     declared, node = located
+    if isinstance(node, list):
+        return _set_item_option(declared, node, keys[-1], label)
     holder = _model_of(declared, node)
     if holder is None or keys[-1] not in holder.model_fields:
         return False
@@ -196,6 +198,23 @@ def set_option(model, config: dict, prefix: str, label: str) -> bool:
         return label.strip() == "" or any(generate_tab_name(m, "") == label for m in _members(field_type))
     if _model_of(field_type, current) is not by_label[0]:
         node[key] = fresh(by_label[0])
+    return True
+
+
+def _set_item_option(declared, items: list, index: str, label: str) -> bool:
+    """a list's item set to an option, or added at the end of the list (as the form does: an operator's
+    configuration may start with an empty list, the item imposed is then missing)"""
+    elements = [get_args(m)[0] for m in _members(declared) if get_origin(m) is list and get_args(m)]
+    if not index.isdigit() or not elements:
+        return False
+    options = [m for m in _members(elements[0]) if _is_model(m) and generate_tab_name(m, "") == label]
+    position = int(index)
+    if not options or position > len(items):
+        return False
+    if position == len(items):
+        items.append(fresh(options[0]))
+    elif _model_of(elements[0], items[position]) is not options[0]:
+        items[position] = fresh(options[0])
     return True
 
 

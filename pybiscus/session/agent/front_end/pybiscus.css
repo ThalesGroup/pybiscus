@@ -1944,3 +1944,9 @@ body > div > fieldset > legend {
 /* a union's container is a flex row: its description takes a line of its own above the options */
 .pybiscus-fieldset-container:has(> .pybiscus-fieldset-desc) { flex-wrap: wrap; }
 .pybiscus-fieldset-container > .pybiscus-fieldset-desc { flex: 1 1 100%; }
+
+/* an item the session imposes in a list: neither removed nor moved (lists_management.js) */
+.pybiscus-list-content > .pybiscus-field > .pybiscus-fieldset-container.pybiscus-locked > legend .pybiscus-list-eraser,
+.pybiscus-list-content > .pybiscus-field > .pybiscus-fieldset-container.pybiscus-locked > legend .pybiscus-list-mover {
+  display: none;
+}

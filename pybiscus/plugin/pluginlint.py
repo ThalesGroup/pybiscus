@@ -24,6 +24,7 @@ RULES = {
     "print": (ERROR, "no print: pybiscus.core.pybiscus_logger, so that the output reaches the session's pages"),
     "extra-forbid": (ERROR, "each configuration model refuses unknown fields: model_config = ConfigDict(extra=\"forbid\")"),
     "description": (ERROR, "each configuration field has a description, shown by the forms and the reference"),
+    "literal-choice": (ERROR, "a field offering a choice is an Enum: the forms show a Literal's first value only, read-only"),
     "alias": (WARNING, "the configuration has a PYBISCUS_ALIAS, the label of the forms (its name otherwise)"),
     "group": (ERROR, "a strategy or a strategy decorator has a PYBISCUS_GROUP, its family in the forms"),
     "strategy": (ERROR, "a strategy derives from FlowerStrategyFactory; an aggregate_fit it overrides calls super().aggregate_fit"),
@@ -113,6 +114,15 @@ def nested_models(annotation):
         yield annotation
 
 
+def literal_choices(annotation):
+    origin = get_origin(annotation)
+    if origin is Literal:
+        yield get_args(annotation)
+    elif origin is not None:
+        for arg in get_args(annotation):
+            yield from literal_choices(arg)
+
+
 def own_models(configs, location: Path) -> list[type[BaseModel]]:
     """the configuration models the plugin defines, reached from its configurations; a section of
     the core (datasplit's partition) or of another plugin is checked there"""
@@ -136,7 +146,7 @@ def defining_class(model, name: str):
 def config_rules(category: str, configs, implementations, location: Path) -> list[Finding]:
     from pybiscus.pydantic2xxx.heredoc import get_basemodel_attribute_description
 
-    findings, undescribed = [], set()
+    findings, reported = [], set()
     for model in own_models(configs, location):
         file, line, _ = class_place(model)
         if model.model_config.get("extra") != "forbid":
@@ -144,12 +154,18 @@ def config_rules(category: str, configs, implementations, location: Path) -> lis
         for name, field in model.model_fields.items():
             # an inherited field is reported once, where it is written
             owner = defining_class(model, name)
-            if name in FAMILY_FIELDS or field.exclude or not inside(owner, location) or (owner, name) in undescribed:
+            if name in FAMILY_FIELDS or field.exclude or not inside(owner, location) or (owner, name) in reported:
                 continue
             if not get_basemodel_attribute_description(model, name):
-                undescribed.add((owner, name))
+                reported.add((owner, name))
                 findings.append(Finding("description", class_place(owner)[0], field_line(owner, name),
                                         f"{owner.__name__}.{name} has no description"))
+            choices = [values for values in literal_choices(field.annotation) if len(values) > 1]
+            if choices and (owner, name, "choice") not in reported:
+                reported.add((owner, name, "choice"))
+                findings.append(Finding("literal-choice", class_place(owner)[0], field_line(owner, name),
+                                        f"{owner.__name__}.{name} is a Literal of {len(choices[0])} values, "
+                                        f"an operator cannot choose in a form: make it an Enum"))
 
     for config in configs:
         if not inside(config, location):

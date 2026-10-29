@@ -1,10 +1,22 @@
-from typing import List, Tuple, Optional, Dict, Union
+from typing import ClassVar, List, Tuple, Optional, Dict, Union
 from flwr.server.strategy import Strategy
 from flwr.common import EvaluateIns, EvaluateRes, FitIns, FitRes, Parameters, Scalar
 from flwr.server.client_manager import ClientManager
 from flwr.server.client_proxy import ClientProxy
 
+def strategy_trains(strategy: Strategy) -> bool:
+    """False when a decorator of the pipeline declares that no client trains (TRAINS): the server then
+    counts a round by its evaluations, a scheduled round having no fit to count it by"""
+    while strategy is not None:
+        if getattr(type(strategy), "TRAINS", True) is False:
+            return False
+        strategy = getattr(strategy, "base_strategy", None)
+    return True
+
+
 class StrategyDecorator(Strategy):
+
+    TRAINS: ClassVar[bool] = True
 
     def __init__(self, base_strategy: Strategy):
         super().__init__()

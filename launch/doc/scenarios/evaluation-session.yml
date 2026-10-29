@@ -1,0 +1,24 @@
+# Scenario of launch/doc/record_session.py: the federated evaluation of an ONNX model, an organiser
+# and two sites, one round, nothing trained (about a minute); shot, then edited with its cut.
+#   launch/uv/onnx_eval/prepare.sh        (publishes experiments/published/mnist_cnn.onnx)
+#   uv run launch/doc/record_session.py shoot launch/doc/scenarios/evaluation-session.yml
+
+cut: launch/doc/scenarios/evaluation-session.cut.yml
+viewport: {width: 1440, height: 900}
+period: 0.35
+
+# copied into the working directory, its path and SHA-256 set in the session form
+onnx_model: experiments/published/mnist_cnn.onnx
+
+manager: {bouquet: evaluation, location: organiser, geo: [48.8566, 2.3522]}
+agents:
+  - {name: server, role: server, location: organiser, geo: [48.8566, 2.3522]}
+  - {name: site-lyon, role: client, location: lyon-hospital, geo: [45.7640, 4.8357]}
+  - {name: site-lille, role: client, location: lille-hospital, geo: [50.6292, 3.0573]}
+
+session:                              # applied to the server's session form
+  # ' ' sets an Optional; each site evaluates on examples held out of its own share
+  options: {model: "ONNX model (evaluation only)", model.config.num_classes: " ", num_rounds: " ",
+            data_partition: " ", data_holdout: " "}
+  values: {purpose: evaluation, data: Mnist, num_rounds: "1", model.config.num_classes: "10",
+           model.config.class_rates: per_class}

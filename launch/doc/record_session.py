@@ -27,6 +27,7 @@ asks for its own (uv run --with playwright==<version> playwright install chromiu
 """
 
 import argparse
+import hashlib
 import json
 import os
 import re
@@ -182,6 +183,21 @@ def check_and_launch(tab, name, work, shooting=None):
     tab.click("#execute-button"); tab.wait_for_timeout(1000)
 
 
+def session_values(sc, work) -> dict:
+    """the scenario's values for the session form; onnx_model (a file of the repository): copied into the
+    working directory, its path and SHA-256 set as the session's model, as an organiser publishes them"""
+    values = dict(sc["session"]["values"])
+    if sc.get("onnx_model"):
+        source = REPO / sc["onnx_model"]
+        if not source.is_file():
+            raise SystemExit(f"no {source}: launch/uv/onnx_eval/prepare.sh publishes the MNIST session's model")
+        published = work / "experiments/published" / source.name
+        published.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(source, published)
+        values.update({"model.config.path": str(published), "model.config.sha256": hashlib.sha256(published.read_bytes()).hexdigest()})
+    return values
+
+
 def fill_session_form(form, options, values, shooting=None):
     if options:
         form.evaluate("(o) => set_options(o)", options); form.wait_for_timeout(1200)
@@ -316,7 +332,7 @@ def shoot_scenario(sc, work, rushes):
             shooting.add_view("session-form", form, (), agent_label(server["name"]))
             shooting.set_focus("manager", "session-form")
             shooting.event("configured", rounds=rounds); shooting.tick(1)
-            fill_session_form(form, sc["session"]["options"], sc["session"]["values"], shooting)
+            fill_session_form(form, sc["session"]["options"], session_values(sc, work), shooting)
             config = session_config(form)
             shooting.remove_view("session-form"); form.close()
             # repeat: launched again at each deadline (the manager orders the agents to relaunch their runs)

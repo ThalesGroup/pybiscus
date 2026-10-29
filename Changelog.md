@@ -17,8 +17,10 @@
   registries and the linter.
 * The linter's regression check (`smoke.sh check`): probe plugins in `launch/ci/lint-probes/`, one
   or more broken rules each, marked `# expect: <rule>` on the line of the finding;
-  `launch/ci/lint_probes_check.py` requires exactly those findings (15 today), a probe for each of
-  the 13 rules, and the `check` refusal of a class not of its category's interface.
+  `launch/ci/lint_probes_check.py` requires exactly those findings (16 today), a probe for each of
+  the 14 rules, and the `check` refusal of a class not of its category's interface.
+* A lint rule more (error), `literal-choice`: a configuration field offering a choice is an Enum, the
+  forms showing a `Literal`'s first value only, read-only.
 * A new model plugin, `onnxmodel`: a trained model shipped as an ONNX file, evaluated on each
   site's data by `onnxruntime`, without its code (the first step of federated evaluation). The
   configuration names the file and its SHA-256, given by the session's organiser; the file is
@@ -29,9 +31,8 @@
   and refuses to train. A session imposes the file and its hash on every site and leaves the
   execution providers to each. `onnxruntime` becomes a dependency of Pybiscus.
 * A new strategy decorator, `evaluateonly` (group *Evaluation*): no client trains, each round only
-  evaluates the server's model on the server's test data and on each client's validation data. Not
-  with `server_run.schedule` nor `stop_without_new_data`, where a round no client trained in is not
-  counted.
+  evaluates the server's model on the server's test data and on each client's validation data, or
+  its test data (`section: test`).
   It writes the per-site report at each round, `evaluation.json` and `evaluation.csv` in the
   reporting directory (`report_name`): the model evaluated (its configuration, its hash), and for
   each round the server's test, each site (cid, examples, loss, metrics), the sites' mean weighted
@@ -41,8 +42,43 @@
   exports it to ONNX as one file) evaluated by a server and two clients with `onnxmodel` and
   `evaluateonly`; the file and its hash come from `PYBISCUS_ONNX_MODEL` and `PYBISCUS_ONNX_SHA256`.
 
+* An exact F1 for a classification: a model returns, for each class, its true positives, false
+  positives and false negatives divided by the batch's size (`pybiscus.ml.classrates`, keys
+  `rate_tp_<c>`, `rate_fp_<c>`, `rate_fn_<c>`); additive, these rates averaged over the examples
+  and then over the clients are those of the whole data, and `f1_macro` is derived from them on the
+  client, on the server's test and in the server's aggregate, never averaged. The rates stay out of
+  the manager's charts and table. `onnxmodel` returns them with `num_classes` and `class_rates:
+  per_class` (or `confusion_matrix`, every cell too; off by default, both telling each site's share
+  of each class); the report of `evaluateonly` gives `f1_macro` per site and for the sites
+  together, the precision, recall and F1 of each class and the confusion matrix (in the json; the
+  csv keeps `f1_macro`). `configs/onnx_eval` turns it on.
+* `onnxmodel`'s `output_kind` and `class_rates` are Enums: as `Literal`s, an agent's form offered
+  their first value only.
+
+* A federated evaluation at fixed times, a deployed model followed on each site's new data: a
+  strategy decorator declares that no client trains (`TRAINS = False`, `evaluateonly`), and the
+  server then counts a round once a site has evaluated in it. With `server_run.schedule` or
+  `stop_without_new_data`, a round no site evaluated in is not counted (it ends the session with
+  `stop_without_new_data`); they were refused in practice, a round without training never counting.
+  A client with `refresh_data` reads its data again before an evaluation in a round without
+  training, and an incremental module's position moves on once they are evaluated.
+* `evaluateonly`'s `section` (`val` by default, or `test`): each site evaluates on its own test
+  section; the client sets up its test data on the first evaluation that asks for it. The report
+  names the section.
+
 ### Session manager
 
+* The session's `purpose`, in the session form: `training` (the default) or `evaluation`, where no
+  client trains: the first item of the server's pipeline becomes `EvaluateOnly`, set and locked, and
+  the session runs one round unless `num_rounds` says otherwise. With `repeat`, each session of the
+  repetition evaluates the model again; refused in a hierarchical session. Nothing in the agents' own
+  configurations needs to say it.
+* Fixed: the session form imposed a model's `Optional` hyperparameter (`onnxmodel`'s `num_classes`)
+  by its value only: in the agents' forms the value went into the hidden *None* tab, and their check
+  refused the model. Its tab is now set and locked too.
+* The session's presets set a list's item to an option, or add it one past the list's end, in the
+  agent's form and in a run launched by order alike (a launch by order ignored such a preset); an
+  item locked by them can no longer be removed nor moved in the form.
 * The *evaluation* panel: in a session where the clients evaluate and none trains, a bar per site
   (its last main metric, or its loss), sorted, with the server's test and the sites' weighted mean
   across them, in place of the two charts (one point per round there); its scale fits the values,
@@ -52,6 +88,9 @@
   the manager and its page, which expected `<bouquet>:<name>`: its runs launched by order stayed
   *registered* to the end in the topology, and it was not listed among the agents started before
   registering. A source without a bouquet is now the agent's name.
+* Fixed: the evaluation panel's scale fitted to the float noise between equal values (sites
+  evaluating the same data: a scale from 0.95339995 to 0.95340000); a spread below the labels'
+  three digits now takes the scale of equal values.
 
 ### Docs and checks
 
@@ -62,6 +101,18 @@
   sites (`configs/onnx_eval`); `launch/ci/evaluation_check.py` requires the trained session's
   metrics on the server and on each site (within 1e-4), the model's hash in the report, no training,
   and a wrong hash refused at launch.
+  It also requires per-class rates adding up to the accuracy on the server and each site, and the
+  weighted mean's F1 computed from the sites' rates.
+* `launch/doc/evaluation_shot.py`: `docs/images/session_evaluation.png` from a real session of the
+  manager in evaluation mode, the agents' runs launched by order from their forms' defaults; it fails
+  when the session gives no per-site report.
+* `smoke.sh presets`: the cases of a session in evaluation mode and of an item added at a list's end.
+* `smoke.sh evaluation` evaluates the model a third time, on each site's test section at rounds every
+  5 s (`launch/ci/evaluation_section_check.py`): each site, with the server's test examples, gives
+  the server's test metrics (within 1e-6) at both scheduled rounds, and nobody trains.
+* `launch/doc/scenarios/evaluation-session.yml` (and its cut): a video of a federated evaluation in a
+  session of the manager, its form set to `purpose: evaluation`; the scenarios' `onnx_model` key
+  copies a model into the working directory and sets its path and hash in the session form.
 
 ### Configuration
 

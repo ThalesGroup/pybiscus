@@ -6,6 +6,7 @@ from rich.progress import track
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 
 from pybiscus.core.pybiscusexception import PybiscusValueException
+from pybiscus.ml.classrates import with_derived_metrics
 import pybiscus.core.pybiscus_logger as logm
 
 torch.backends.cudnn.enabled = True
@@ -86,7 +87,8 @@ class BatchMean:
     """means over the examples of metrics given per batch: an unweighted mean of the batch means
     gave the last, partial batch the weight of a full one (x2 for 10000 examples in batches of
     32, up to x31 with a one-example last batch). Additive metrics only (a mean loss, an
-    accuracy): an F1 or an AUC needs counts accumulated over the epoch"""
+    accuracy, per-class rates from which an exact F1 is derived: pybiscus.ml.classrates); an AUC
+    needs scores kept over the epoch"""
 
     def __init__(self, keys, device):
         self.device = device
@@ -125,8 +127,8 @@ class BatchMean:
 
     def means(self) -> dict:
         if self.sized and self.examples > 0:
-            return {key: (value / self.examples).item() for key, value in self.weighted.items()}
-        return {key: (value / max(1, self.batches)).item() for key, value in self.plain.items()}
+            return with_derived_metrics({key: (value / self.examples).item() for key, value in self.weighted.items()})
+        return with_derived_metrics({key: (value / max(1, self.batches)).item() for key, value in self.plain.items()})
 
 
 def trainable_params(net) -> list:

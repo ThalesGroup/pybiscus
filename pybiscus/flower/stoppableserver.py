@@ -14,6 +14,7 @@ import pybiscus.core.pybiscus_logger as logm
 from pybiscus.core.schedule import Schedule
 from pybiscus.core.stop_signal import STOP_SIGNAL
 from pybiscus.interfaces.flower.stoppingcriterion import EndSession, StoppingCriterion
+from pybiscus.interfaces.flower.strategydecorator import strategy_trains
 
 
 class StoppableServer(fl.server.Server):
@@ -25,6 +26,7 @@ class StoppableServer(fl.server.Server):
         self.criteria = list(criteria)
         self.schedule = schedule
         self.stop_without_new_data = stop_without_new_data
+        self.trains = strategy_trains(strategy)
         self.stop_reason: Optional[str] = None
         self.rounds_done = 0
         self.current_round = 0
@@ -99,8 +101,8 @@ class StoppableServer(fl.server.Server):
                 self.current_round = current_round - 1
                 self.request_stop(f"no client had new data in round {current_round}, which does not count")
             else:
-                logm.console.log(f"⏭️ round {current_round} skipped: no client had new data, it does not count "
-                                 f"({self.rounds_done}/{num_rounds} rounds run)")
+                logm.console.log(f"⏭️ round {current_round} skipped: no client {'had new data' if self.trains else 'evaluated'}, "
+                                 f"it does not count ({self.rounds_done}/{num_rounds} rounds run)")
             self._test_criteria(current_round, history, clock_only=not counted)
 
         gui_events.log_session_end(self.rounds_done, num_rounds, self.stop_reason)
@@ -132,13 +134,15 @@ class StoppableServer(fl.server.Server):
                 return
 
     def _run_round(self, current_round: int, timeout: Optional[float], history: History, start_time: float) -> bool:
-        """False: a scheduled round no client trained in, neither evaluated nor counted"""
+        """False: a scheduled round no client trained in, neither evaluated nor counted; for a strategy
+        that does not train, a scheduled round no client evaluated in, not counted"""
         log(INFO, "")
         log(INFO, "[ROUND %s]", current_round)
         res_fit = self.fit_round(server_round=current_round, timeout=timeout)
+        counts_by_sites = self.schedule is not None or self.stop_without_new_data
         # otherwise a round all clients failed still counts: num_rounds bounds a session whose
         # clients keep failing
-        if (self.schedule is not None or self.stop_without_new_data) and (res_fit is None or not res_fit[2][0]):
+        if self.trains and counts_by_sites and (res_fit is None or not res_fit[2][0]):
             return False
         if res_fit is not None:
             parameters_prime, fit_metrics, _ = res_fit
@@ -160,4 +164,7 @@ class StoppableServer(fl.server.Server):
             if loss_fed is not None:
                 history.add_loss_distributed(server_round=current_round, loss=loss_fed)
                 history.add_metrics_distributed(server_round=current_round, metrics=evaluate_metrics_fed)
+        if not self.trains and counts_by_sites:
+            # no fit to count the round by: its evaluations by the sites (none without new validation data)
+            return res_fed is not None and bool(res_fed[2][0])
         return True

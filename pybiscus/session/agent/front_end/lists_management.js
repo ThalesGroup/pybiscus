@@ -149,8 +149,12 @@
         eraser.classList.add('pybiscus-list-eraser');
         eraser.textContent = '➖📝';
 
+        // an item the session imposes (lock_option) stays, at its place
+        const locked = () => !!newContent.querySelector(':scope > .pybiscus-field > .pybiscus-locked') || !!newContent.closest('.pybiscus-locked');
+
         // 🔁 add suppress callback
         eraser.addEventListener('click', () => {
+          if (locked()) return;
           newContent.remove();
 
           renum_list_config( container );
@@ -162,6 +166,7 @@
         moveUp.classList.add('pybiscus-list-mover');
         moveUp.textContent = '⬆️';
         moveUp.addEventListener('click', () => {
+          if (locked()) return;
           const prev = newContent.previousElementSibling;
           if (prev) {
             contents.insertBefore(newContent, prev);
@@ -173,6 +178,7 @@
         moveDown.classList.add('pybiscus-list-mover');
         moveDown.textContent = '⬇️';
         moveDown.addEventListener('click', () => {
+          if (locked()) return;
           const next = newContent.nextElementSibling;
           if (next) {
             contents.insertBefore(next, newContent);
@@ -248,17 +254,33 @@
       .some(b => b.textContent.trim() === name);
   }
 
+  // la liste dont le gabarit porte directement les champs `${prefix}.#` : le premier élément
+  // trouvé par préfixe peut appartenir à une liste imbriquée dans une option (les `tags` du
+  // logger W&B, liste de metrics_loggers.#.config) — la pré-allocation visait alors `tags` et
+  // abandonnait faute d'y trouver l'option WebHook
+  function listContainer(prefix){
+    return [...document.querySelectorAll('.pybiscus-list-fs')].find(fs => {
+      const template = fs.querySelector(':scope > .pybiscus-list > .pybiscus-list-template');
+      return template && [...template.querySelectorAll(`[data-pybiscus-prefix^="${prefix}.#"], [data-pybiscus-name^="${prefix}.#"]`)]
+        .some(el => el.closest('.pybiscus-list-fs') === fs);
+    });
+  }
+
+  // an item added at the end of the list, for a preset naming the index one past it (agent.html set_option)
+  function appendListItem(prefix, index){
+    const container = listContainer(prefix);
+    const contents = container && ownContents(container);
+    const generator = container?.querySelector('.pybiscus-list-generator');
+    if (!contents || !generator || contents.children.length !== index) return false;
+    generator.click();
+    return true;
+  }
+  // this script runs inside agent.html's DOMContentLoaded listener: set_option reaches it through window
+  window.appendListItem = appendListItem;
+
   function preallocateListDefaults(){
     Object.entries(PYBISCUS_LIST_DEFAULTS).forEach(([prefix, options]) => {
-      // la liste dont le gabarit porte directement les champs `${prefix}.#` : le premier élément
-      // trouvé par préfixe peut appartenir à une liste imbriquée dans une option (les `tags` du
-      // logger W&B, liste de metrics_loggers.#.config) — la pré-allocation visait alors `tags` et
-      // abandonnait faute d'y trouver l'option WebHook
-      const container = [...document.querySelectorAll('.pybiscus-list-fs')].find(fs => {
-        const template = fs.querySelector(':scope > .pybiscus-list > .pybiscus-list-template');
-        return template && [...template.querySelectorAll(`[data-pybiscus-prefix^="${prefix}.#"], [data-pybiscus-name^="${prefix}.#"]`)]
-          .some(el => el.closest('.pybiscus-list-fs') === fs);
-      });
+      const container = listContainer(prefix);
       if (!container) return;                                        // liste absente (config/plugins)
       const contents   = ownContents(container);
       const generator  = container.querySelector('.pybiscus-list-generator');
