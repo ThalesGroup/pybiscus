@@ -539,7 +539,9 @@ server_run:
       - {name: logits, kind: output}
 ```
 
-- The weights go to `model.onnx.data` beside `model.onnx`: keep the two files together.
+- The weights go to `model.onnx.data` beside `model.onnx`: keep the two files together. With
+  `external_data: false` they are in `model.onnx` itself (up to 2 GB): the form the `onnxmodel`
+  model evaluates, its SHA-256 covering the weights.
 - Without `axes`, the names and the dynamic axes are deduced from the model and the data; the
   first axis (the batch) is dynamic either way.
 - `post_validation` runs `onnx.checker`, then the exported model through onnx's reference

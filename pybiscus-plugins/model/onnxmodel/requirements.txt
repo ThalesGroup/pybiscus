@@ -1,0 +1,6 @@
+lightning
+numpy
+onnx
+onnxruntime
+pydantic
+torch

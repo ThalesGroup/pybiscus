@@ -14,6 +14,10 @@ server_run:
     server_config_filename: config_server.yml
     save_on_train_end:
       filename: final_checkpoint.pt
+    # one file, weights inside: the model configs/onnx_eval evaluates
+    onnx_export:
+      filename: model.onnx
+      external_data: false
 server_compute_context:
   hardware:
     accelerator: auto

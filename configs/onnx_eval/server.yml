@@ -1,0 +1,54 @@
+root_dir: ${oc.env:PWD}
+flower_server:
+  listen_address: '[::1]:3333'
+server_run:
+  # one round is enough: the model does not change from one round to the next
+  num_rounds: '1'
+  clients_fit_local_epochs: '1'
+  loggers:
+  - name: rich
+    config:
+      empty_configuration: true
+  reporting:
+    basedir: ${root_dir}/experiments
+    add_timestamp_in_path: true
+    server_config_filename: config_server.yml
+server_compute_context:
+  hardware:
+    accelerator: auto
+    devices: auto
+  metrics_loggers:
+  - name: tensorboard
+    config:
+      subdir: tensorboard
+server_strategy:
+  pipeline:
+  - name: evaluateonly
+    config:
+      empty_configuration: true
+  strategy:
+    name: fedavg
+    config:
+      fraction_fit: '1'
+      fraction_evaluate: '1'
+      min_fit_clients: '2'
+      min_evaluate_clients: '2'
+      min_available_clients: '2'
+      accept_failures: true
+      inplace: true
+data:
+  name: mnist
+  config:
+    # the server only evaluates, on the whole official test split
+    test:
+      dir: ${root_dir}/datasets/mnist/test/
+      batch_size: 32
+    num_workers: 0
+model:
+  name: onnxmodel
+  config:
+    # the organiser's file and its SHA-256 (launch/uv/onnx_eval/common.sh sets them): the default
+    # hash refuses every file
+    path: ${oc.env:PYBISCUS_ONNX_MODEL,${root_dir}/experiments/published/mnist_cnn.onnx}
+    sha256: ${oc.env:PYBISCUS_ONNX_SHA256,'0000000000000000000000000000000000000000000000000000000000000000'}
+    output_kind: logits

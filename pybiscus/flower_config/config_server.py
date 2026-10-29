@@ -61,7 +61,9 @@ class OnnxAxe(BaseModel):
 
 class ConfigServerOnnxExport(BaseModel):
 
-    filename: str = Field(default="model.onnx", description='file of the exported model, in the reporting directory; the weights go to <file>.data beside it')
+    filename: str = Field(default="model.onnx", description='file of the exported model, in the reporting directory')
+    # a single file is what onnxmodel accepts (its SHA-256 covers the weights) but stops at 2 GB
+    external_data: bool = Field(default=True, description='the weights go to <file>.data beside it; false: in the file itself, up to 2 GB (what the onnxmodel model evaluates)')
     axes: List[OnnxAxe] = Field(default=[], description='names and dynamic axes of the inputs and outputs; deduced from the model and the data if empty')
     # >= 18 requis avec l'exporteur torch dynamo (produit de l'opset 18 ; la reconversion
     # vers un opset inférieur, ex. 13, échoue)
@@ -380,8 +382,9 @@ class ConfigServer(BaseModel):
         if reporting.save_on_train_end:
             core.append(("server_run.reporting.save_on_train_end", output_file(reporting.save_on_train_end.filename)))
         if reporting.onnx_export:
-            core += [("server_run.reporting.onnx_export", output_file(reporting.onnx_export.filename)),
-                     ("server_run.reporting.onnx_export (weights)", output_file(reporting.onnx_export.filename + ".data"))]
+            core.append(("server_run.reporting.onnx_export", output_file(reporting.onnx_export.filename)))
+            if reporting.onnx_export.external_data:
+                core.append(("server_run.reporting.onnx_export (weights)", output_file(reporting.onnx_export.filename + ".data")))
         outputs = [(writer, template_of(output, None), output.kind) for writer, output in core]
         problems = collisions(outputs + declared_outputs(self))
         if problems:

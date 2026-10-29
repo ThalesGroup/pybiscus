@@ -414,6 +414,7 @@ def to_onnx_with_datamodule(model, data_module, onnx_path: Path, configServerOnn
             input_names=input_names,
             output_names=output_names,
             dynamic_axes=dynamic_axes,
+            external_data=configServerOnnxExport.external_data,
             # extra parameters for robustness
             do_constant_folding=True,  # Optimization
             verbose=False,
@@ -435,7 +436,7 @@ def validate_onnx_export(onnx_path: Path, model, input_sample: torch.Tensor, rto
     from onnx.reference import ReferenceEvaluator
 
     try:
-        # the path, not the loaded model: the exporter keeps the weights in <file>.data beside it
+        # the path, not the loaded model: the exporter may keep the weights in <file>.data beside it
         onnx.checker.check_model(str(onnx_path))
         session = ReferenceEvaluator(str(onnx_path))
         # the reference computed on CPU in float64: on a GPU, cuDNN's TF32 convolutions put the model's

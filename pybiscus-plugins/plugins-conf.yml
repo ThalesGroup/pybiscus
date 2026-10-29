@@ -20,6 +20,7 @@ model:
       - lstm
       - noop
       - deeplog
+      - onnxmodel
 strategy:
   - path: "./strategy"
     modules:
@@ -38,6 +39,7 @@ strategydecorator:
       - clipping
       - fltrust
       - foolsgold
+      - evaluateonly
 resultmodifier:
   - path: "./resultmodifier"
     modules:

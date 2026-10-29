@@ -19,6 +19,28 @@
   or more broken rules each, marked `# expect: <rule>` on the line of the finding;
   `launch/ci/lint_probes_check.py` requires exactly those findings (15 today), a probe for each of
   the 13 rules, and the `check` refusal of a class not of its category's interface.
+* A new model plugin, `onnxmodel`: a trained model shipped as an ONNX file, evaluated on each
+  site's data by `onnxruntime`, without its code (the first step of federated evaluation). The
+  configuration names the file and its SHA-256, given by the session's organiser; the file is
+  refused if its hash differs, if it is larger than `max_size_mb`, or if it keeps tensors in
+  external data files (`.onnx.data`, which the hash would not cover). The graph's output is
+  `logits`, `probabilities`, `labels` or `regression`: `loss` and `accuracy` (cross-entropy, or the
+  error rate for labels), or `loss` and `mae` (mean squared error). The model has no torch parameter
+  and refuses to train. A session imposes the file and its hash on every site and leaves the
+  execution providers to each. `onnxruntime` becomes a dependency of Pybiscus.
+* A new strategy decorator, `evaluateonly` (group *Evaluation*): no client trains, each round only
+  evaluates the server's model on the server's test data and on each client's validation data. Not
+  with `server_run.schedule` nor `stop_without_new_data`, where a round no client trained in is not
+  counted.
+* `configs/onnx_eval/` and `launch/uv/onnx_eval/` (`prepare.sh`, `server.sh`, `client1.sh`,
+  `client2.sh`): the model of the MNIST session (`launch/uv/mnist_cnn/distributed`, which now
+  exports it to ONNX as one file) evaluated by a server and two clients with `onnxmodel` and
+  `evaluateonly`; the file and its hash come from `PYBISCUS_ONNX_MODEL` and `PYBISCUS_ONNX_SHA256`.
+
+### Configuration
+
+* `server_run.reporting.onnx_export.external_data` (default `true`, the former behaviour): `false`
+  writes the weights in the `.onnx` file itself (up to 2 GB), the form `onnxmodel` evaluates.
 
 ## [Version 0.17.0]
 

@@ -37,6 +37,7 @@ dependencies = [
     "filelock>=4.2.1",
     "cronsim>=2.7",
     "cheroot>=11",
+    "onnxruntime>=1.20",
 ]
 
 # the FedMIA analyser of pybiscus-plugins-privacy-evaluation, a script run by hand: none of the

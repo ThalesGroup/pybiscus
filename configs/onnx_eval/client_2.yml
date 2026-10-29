@@ -1,0 +1,38 @@
+root_dir: ${oc.env:PWD}
+flower_client:
+  server_address: localhost:3333
+client_run:
+  cid: '1'
+  pre_train_val: false
+client_compute_context:
+  hardware:
+    accelerator: auto
+    devices: auto
+model:
+  name: onnxmodel
+  config:
+    # the organiser's file and its SHA-256 (launch/uv/onnx_eval/common.sh sets them): the default
+    # hash refuses every file
+    path: ${oc.env:PYBISCUS_ONNX_MODEL,${root_dir}/experiments/published/mnist_cnn.onnx}
+    sha256: ${oc.env:PYBISCUS_ONNX_SHA256,'0000000000000000000000000000000000000000000000000000000000000000'}
+    output_kind: logits
+data:
+  name: mnist
+  config:
+    # the sections of configs/mnist_cnn/distributed, nothing trains: the client evaluates on its val
+    # section, a tenth of its half of the official train split; the server on the official test split
+    train:
+      dir: ${root_dir}/datasets/mnist/train/
+      batch_size: 32
+      partition:
+        num_partitions: 2
+        partition_id: 1
+        seed: 42
+    val:
+      source: holdout
+      dir: ${root_dir}/datasets/mnist/val/
+      fraction: 0.1
+      batch_size: 32
+    test:
+      dir: ${root_dir}/datasets/mnist/test/
+    num_workers: 0

@@ -10,9 +10,9 @@ PR #44 (`pybiscus-plugins-privacy-evaluation/`, not finalized) is not described 
 [privacy-evaluation.md](privacy-evaluation.md).
 
 - [Data](#data): `cifar`, `randomvector`, `turbofan`, `mnist`, `vector_`, `hdfs`
-- [Models](#models): `cifar`, `mnist_cnn`, `linearregression`, `lstm`, `noop`, `deeplog`
+- [Models](#models): `cifar`, `mnist_cnn`, `linearregression`, `lstm`, `noop`, `deeplog`, `onnxmodel`
 - [Strategies](#strategies): `fedavg`, `fedavgm`, `fedprox`, `fedadam`, `fedyogi`, `fedadagrad`, `fedmedian`, `fedtrimmedavg`, `krum`, `bulyan`, `qfedavg`, `faulttolerantfedavg`, `fedavgwithaggregator`
-- [Strategy decorators](#strategy-decorators): `metricdiffcompute`, `timediffcompute`, `visualizemodellayers`, `saveserverfitparams`, `saveclientsfitin`, `saveclientsfitres`, `personalizeclientsfitin`, `serverdpfixed`, `serverdpadaptive`, `clipping`, `fltrust`, `foolsgold`, `upperlevellink`
+- [Strategy decorators](#strategy-decorators): `metricdiffcompute`, `timediffcompute`, `visualizemodellayers`, `saveserverfitparams`, `saveclientsfitin`, `saveclientsfitres`, `personalizeclientsfitin`, `serverdpfixed`, `serverdpadaptive`, `clipping`, `fltrust`, `foolsgold`, `evaluateonly`, `upperlevellink`
 - [Clients](#clients): `relay`
 - [Loggers](#loggers): `rich`, `webhook`
 - [Metrics loggers](#metrics-loggers): `tensorboard`, `webhook`, `wandb`
@@ -185,7 +185,7 @@ MNIST from torchvision: 28 x 28 grey images of handwritten digits, 60,000 to tra
 | `trusted.drop_last` | bool | `False` | leave out the last, incomplete batch of every epoch |
 | `num_workers` | int | `0` | processes loading the batches; 0: the main process |
 
-Used by: [`configs/mnist_cnn/distributed/client_1.yml`](../configs/mnist_cnn/distributed/client_1.yml), [`configs/mnist_cnn/distributed/client_2.yml`](../configs/mnist_cnn/distributed/client_2.yml), [`configs/mnist_cnn/distributed/server.yml`](../configs/mnist_cnn/distributed/server.yml), [`configs/mnist_cnn/local/train.yml`](../configs/mnist_cnn/local/train.yml)
+Used by: [`configs/mnist_cnn/distributed/client_1.yml`](../configs/mnist_cnn/distributed/client_1.yml), [`configs/mnist_cnn/distributed/client_2.yml`](../configs/mnist_cnn/distributed/client_2.yml), [`configs/mnist_cnn/distributed/server.yml`](../configs/mnist_cnn/distributed/server.yml), [`configs/mnist_cnn/local/train.yml`](../configs/mnist_cnn/local/train.yml), [`configs/onnx_eval/client_1.yml`](../configs/onnx_eval/client_1.yml), [`configs/onnx_eval/client_2.yml`](../configs/onnx_eval/client_2.yml), [`configs/onnx_eval/server.yml`](../configs/onnx_eval/server.yml)
 
 ### `vector_` — Vector
 
@@ -340,6 +340,24 @@ DeepLog: an LSTM that predicts the next event of a log from the previous ones (d
 
 Used by: [`configs/watermarking_5_clients/config_server1.yml`](../configs/watermarking_5_clients/config_server1.yml), [`configs/watermarking_5_clients/cortaix-labs-01.yml`](../configs/watermarking_5_clients/cortaix-labs-01.yml), [`configs/watermarking_5_clients/cortaix-labs-02.yml`](../configs/watermarking_5_clients/cortaix-labs-02.yml), [`configs/watermarking_5_clients/cortaix-labs-03.yml`](../configs/watermarking_5_clients/cortaix-labs-03.yml), [`configs/watermarking_5_clients/cortaix-labs-04.yml`](../configs/watermarking_5_clients/cortaix-labs-04.yml), [`configs/watermarking_5_clients/cortaix-labs-05.yml`](../configs/watermarking_5_clients/cortaix-labs-05.yml)
 
+### `onnxmodel` — ONNX model (evaluation only)
+
+*plugin, `pybiscus-plugins/model/onnxmodel`*
+
+Evaluates an ONNX graph on the site's data: no torch parameter, nothing to train or aggregate. The graph includes its preprocessing; the batch's inputs are given to it as they come from the data plugin.
+
+| field (under `config`) | type | default | description |
+|---|---|---|---|
+| `path` | str | required | the .onnx file, deposited by each site |
+| `sha256` | str | required | SHA-256 of the file, given by the session's organiser: another file is refused |
+| `output_kind` | 'logits' \| 'probabilities' \| 'labels' \| 'regression' | `'logits'` | what the graph outputs: logits, probabilities, labels (class indices) or regression values |
+| `input_name` | str (optional) | `None` | the graph's input to feed, its only input by default |
+| `output_name` | str (optional) | `None` | the graph's output to read, its first output by default |
+| `providers` | list[str] | `['CPUExecutionProvider']` | onnxruntime execution providers, by order of preference |
+| `max_size_mb` | int | `2048` | a larger file is refused before being read (a single ONNX file stops at 2 GB) |
+
+Used by: [`configs/onnx_eval/client_1.yml`](../configs/onnx_eval/client_1.yml), [`configs/onnx_eval/client_2.yml`](../configs/onnx_eval/client_2.yml), [`configs/onnx_eval/server.yml`](../configs/onnx_eval/server.yml)
+
 ## Strategies
 
 How the server aggregates the clients' updates (`server_strategy.strategy`).
@@ -360,7 +378,7 @@ Parameters of Flower's FedAvg, see flwr.server.strategy.FedAvg.
 | `accept_failures` | bool | `True` | aggregate the round although some clients failed; refuse it otherwise |
 | `inplace` | bool | `True` | aggregate in place, saving memory; same result |
 
-Used by: [`configs/cifar10_cnn/distributed/ssl/server.yml`](../configs/cifar10_cnn/distributed/ssl/server.yml), [`configs/cifar10_cnn/distributed/without_ssl/server.yml`](../configs/cifar10_cnn/distributed/without_ssl/server.yml), [`configs/cifar10_cnn/distributed/without_ssl/server_safeguard.yml`](../configs/cifar10_cnn/distributed/without_ssl/server_safeguard.yml), [`configs/cifar10_cnn/distributed/without_ssl/with_privacy_eval_cpu/server.yml`](../configs/cifar10_cnn/distributed/without_ssl/with_privacy_eval_cpu/server.yml), [`configs/mnist_cnn/distributed/server.yml`](../configs/mnist_cnn/distributed/server.yml), [`configs/turbofan_lstm/server.yml`](../configs/turbofan_lstm/server.yml), [`configs/watermarking_5_clients/config_server1.yml`](../configs/watermarking_5_clients/config_server1.yml)
+Used by: [`configs/cifar10_cnn/distributed/ssl/server.yml`](../configs/cifar10_cnn/distributed/ssl/server.yml), [`configs/cifar10_cnn/distributed/without_ssl/server.yml`](../configs/cifar10_cnn/distributed/without_ssl/server.yml), [`configs/cifar10_cnn/distributed/without_ssl/server_safeguard.yml`](../configs/cifar10_cnn/distributed/without_ssl/server_safeguard.yml), [`configs/cifar10_cnn/distributed/without_ssl/with_privacy_eval_cpu/server.yml`](../configs/cifar10_cnn/distributed/without_ssl/with_privacy_eval_cpu/server.yml), [`configs/mnist_cnn/distributed/server.yml`](../configs/mnist_cnn/distributed/server.yml), [`configs/onnx_eval/server.yml`](../configs/onnx_eval/server.yml), [`configs/turbofan_lstm/server.yml`](../configs/turbofan_lstm/server.yml), [`configs/watermarking_5_clients/config_server1.yml`](../configs/watermarking_5_clients/config_server1.yml)
 
 ### `fedavgm` — FedAvgM
 
@@ -730,6 +748,16 @@ FoolsGold: clients weighed down when their history of updates looks like another
 |---|---|---|---|
 | `kappa` | float | `1.0` | confidence of the logit: larger, the weights go faster to 0 or 1 (the paper's 1) |
 
+### `evaluateonly` — EvaluateOnly
+
+*plugin, `pybiscus-plugins/strategydecorator/evaluateonly`*
+
+No client trains: each round only evaluates the server's model, on the server's test data and on each client's validation data (federated evaluation, with the onnxmodel model for instance). Not with server_run.schedule nor stop_without_new_data: a round in which no client trained is not counted there.
+
+No configuration (`config: {empty_configuration: true}`).
+
+Used by: [`configs/onnx_eval/server.yml`](../configs/onnx_eval/server.yml)
+
 ### `upperlevellink` — Upper level link
 
 *plugin, `pybiscus-plugins-hierarchical/strategydecorator/upperlevellink`*
@@ -776,7 +804,7 @@ The server's log lines on its console, formatted by Rich.
 
 No configuration (`config: {empty_configuration: true}`).
 
-Used by: [`configs/cifar10_cnn/distributed/ssl/server.yml`](../configs/cifar10_cnn/distributed/ssl/server.yml), [`configs/cifar10_cnn/distributed/without_ssl/server.yml`](../configs/cifar10_cnn/distributed/without_ssl/server.yml), [`configs/cifar10_cnn/distributed/without_ssl/server_safeguard.yml`](../configs/cifar10_cnn/distributed/without_ssl/server_safeguard.yml), [`configs/cifar10_cnn/distributed/without_ssl/with_privacy_eval_cpu/server.yml`](../configs/cifar10_cnn/distributed/without_ssl/with_privacy_eval_cpu/server.yml), [`configs/mnist_cnn/distributed/server.yml`](../configs/mnist_cnn/distributed/server.yml), [`configs/turbofan_lstm/server.yml`](../configs/turbofan_lstm/server.yml), [`configs/watermarking_5_clients/config_server1.yml`](../configs/watermarking_5_clients/config_server1.yml)
+Used by: [`configs/cifar10_cnn/distributed/ssl/server.yml`](../configs/cifar10_cnn/distributed/ssl/server.yml), [`configs/cifar10_cnn/distributed/without_ssl/server.yml`](../configs/cifar10_cnn/distributed/without_ssl/server.yml), [`configs/cifar10_cnn/distributed/without_ssl/server_safeguard.yml`](../configs/cifar10_cnn/distributed/without_ssl/server_safeguard.yml), [`configs/cifar10_cnn/distributed/without_ssl/with_privacy_eval_cpu/server.yml`](../configs/cifar10_cnn/distributed/without_ssl/with_privacy_eval_cpu/server.yml), [`configs/mnist_cnn/distributed/server.yml`](../configs/mnist_cnn/distributed/server.yml), [`configs/onnx_eval/server.yml`](../configs/onnx_eval/server.yml), [`configs/turbofan_lstm/server.yml`](../configs/turbofan_lstm/server.yml), [`configs/watermarking_5_clients/config_server1.yml`](../configs/watermarking_5_clients/config_server1.yml)
 
 ### `webhook` — WebHook
 
@@ -805,7 +833,7 @@ The metrics written for TensorBoard, in a subdirectory of the reports (server_ru
 |---|---|---|---|
 | `subdir` | str | `'tensorboard'` | subdirectory of the reporting directory holding the TensorBoard logs |
 
-Used by: [`configs/cifar10_cnn/distributed/ssl/server.yml`](../configs/cifar10_cnn/distributed/ssl/server.yml), [`configs/cifar10_cnn/distributed/without_ssl/server.yml`](../configs/cifar10_cnn/distributed/without_ssl/server.yml), [`configs/cifar10_cnn/distributed/without_ssl/server_safeguard.yml`](../configs/cifar10_cnn/distributed/without_ssl/server_safeguard.yml), [`configs/cifar10_cnn/distributed/without_ssl/with_privacy_eval_cpu/server.yml`](../configs/cifar10_cnn/distributed/without_ssl/with_privacy_eval_cpu/server.yml), [`configs/mnist_cnn/distributed/server.yml`](../configs/mnist_cnn/distributed/server.yml), [`configs/turbofan_lstm/server.yml`](../configs/turbofan_lstm/server.yml), [`configs/watermarking_5_clients/config_server1.yml`](../configs/watermarking_5_clients/config_server1.yml)
+Used by: [`configs/cifar10_cnn/distributed/ssl/server.yml`](../configs/cifar10_cnn/distributed/ssl/server.yml), [`configs/cifar10_cnn/distributed/without_ssl/server.yml`](../configs/cifar10_cnn/distributed/without_ssl/server.yml), [`configs/cifar10_cnn/distributed/without_ssl/server_safeguard.yml`](../configs/cifar10_cnn/distributed/without_ssl/server_safeguard.yml), [`configs/cifar10_cnn/distributed/without_ssl/with_privacy_eval_cpu/server.yml`](../configs/cifar10_cnn/distributed/without_ssl/with_privacy_eval_cpu/server.yml), [`configs/mnist_cnn/distributed/server.yml`](../configs/mnist_cnn/distributed/server.yml), [`configs/onnx_eval/server.yml`](../configs/onnx_eval/server.yml), [`configs/turbofan_lstm/server.yml`](../configs/turbofan_lstm/server.yml), [`configs/watermarking_5_clients/config_server1.yml`](../configs/watermarking_5_clients/config_server1.yml)
 
 ### `webhook` — WebHook
 
