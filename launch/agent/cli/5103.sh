@@ -14,4 +14,5 @@ invitation=()
 [ -n "$AGENT_INVITATION" ] && invitation=(--invitation "$AGENT_INVITATION")
 
 # Launch the Python app with the config path
-PYBISCUS_AGENT_INVITATION= uv run pybiscus_agent --port 5103 --config "$CONFIG_FILE" "${invitation[@]}" "$@"
+# 3frames.html, served by launch/agent/3frames.sh, shows this agent in a frame
+PYBISCUS_AGENT_INVITATION= uv run pybiscus_agent --port 5103 --config "$CONFIG_FILE" --frame-ancestor "http://localhost:${PYBISCUS_3FRAMES_PORT:-5550}" "${invitation[@]}" "$@"

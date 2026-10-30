@@ -272,9 +272,14 @@ level out of reach changes nothing: it may come back.
 
 ### All the agents in one page
 
-When testing a session on one machine, `3frames.html` (at the root of the repository, to open as a
-file in the browser) shows the server agent and 1 to 9 client agents in one page, each on its
-registration page: often handier than one tab per agent. Three layouts: grid (all side by side),
+When testing a session on one machine, `3frames.html` (at the root of the repository) shows the
+server agent and 1 to 9 client agents in one page, each on its registration page: often handier
+than one tab per agent. `launch/agent/3frames.sh` serves it on `http://localhost:5550/3frames.html`,
+the origin the agents of `launch/agent/cli/` allow to frame them (`--frame-ancestor`): opened as a
+file, the page has no origin an agent could allow, and each frame shows the browser's refusal
+(*localhost refused to connect*). Another port: `PYBISCUS_3FRAMES_PORT`, for the page's script and
+the agents' alike. An agent started otherwise needs `--frame-ancestor http://localhost:5550` (or
+`PYBISCUS_FRAME_ANCESTORS`). Three layouts: grid (all side by side),
 focus (one agent large, the others as live miniatures) and single. It expects the agents on
 `localhost`, the server on port 5000 and the clients from 5001; its ⚙ panel or URL parameters
 (`3frames.html?clients=3&mode=focus`) change that. Its labels are in French.
@@ -284,8 +289,8 @@ clients), so that two sessions can be followed side by side:
 
 | session | manager | page |
 |---|---|---|
-| `cortaixlabs-core` | `launch/session/run_manager.sh` (5555) | `3frames.html?server=5000&client=5001&clients=8&bouquet=cortaixlabs-core` |
-| `cortaixlabs-edge1` | `launch/session/run_lower_level_manager.sh` (5556) | `3frames.html?server=5100&client=5101&clients=8&bouquet=cortaixlabs-edge1` |
+| `cortaixlabs-core` | `launch/session/run_manager.sh` (5555) | `http://localhost:5550/3frames.html?server=5000&client=5001&clients=8&bouquet=cortaixlabs-core` |
+| `cortaixlabs-edge1` | `launch/session/run_lower_level_manager.sh` (5556) | `http://localhost:5550/3frames.html?server=5100&client=5101&clients=8&bouquet=cortaixlabs-edge1` |
 
 With `bouquet`, the page takes the colour of its manager's page (tab icon, band, pill); add
 `&color=…` when the manager was given `--color`.

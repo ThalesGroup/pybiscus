@@ -1,5 +1,19 @@
 # Changelog
 
+## Unreleased
+
+### Session
+
+* `3frames.html` showed no agent since 0.15.0's framing protection (`frame-ancestors`): opened as a
+  file, it has no origin the agents could allow, and each frame showed the browser's refusal
+  (*localhost refused to connect*). `launch/agent/3frames.sh` serves it on
+  `http://localhost:5550/3frames.html` (that page and its colour script only), and the agents allow
+  an origin to frame them with `--frame-ancestor ORIGIN` (repeatable, or `PYBISCUS_FRAME_ANCESTORS`),
+  which `launch/agent/cli/*.sh` pass (`PYBISCUS_3FRAMES_PORT` for another port). Opened as a file,
+  the page says so.
+* The agents' `frame-ancestors` header no longer names `http://[::1]:<port>`: CSP has no IPv6 literal,
+  and Chromium logged an error on each of an agent's pages.
+
 ## [Version 0.18.0]
 
 Since `version0.17.0` (2026-10-29): federated evaluation. A trained model shipped as an ONNX file,

@@ -8,7 +8,7 @@
 # It reports its bouquet's topology to the upper-level manager (PYBISCUS_UPPER_MANAGER_URL, default
 # http://localhost:5555), whose page then shows the bouquets' tree and the lower-level agents.
 # Its agents in one page, for a test on one machine:
-#   3frames.html?server=5100&client=5101&clients=8&bouquet=cortaixlabs-edge1
+#   http://localhost:5550/3frames.html?server=5100&client=5101&clients=8&bouquet=cortaixlabs-edge1 (launch/agent/3frames.sh)
 # With an invitation of the upper level (invitations/received/, or $PYBISCUS_INVITATION), it starts
 # with it: the invitation gives its bouquet, the upper level's URL and its token.
 

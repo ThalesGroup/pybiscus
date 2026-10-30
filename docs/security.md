@@ -54,8 +54,8 @@ the components, even on 127.0.0.1:
 - without tokens, a component answers only requests naming the loopback (`localhost`, `127.x`,
   `::1`): a site whose name points to 127.0.0.1 (DNS rebinding) is refused, and so is a reverse proxy
   passing its own name;
-- the manager's pages may be framed by their own origin only, an agent's by its own and by the
-  manager it registered with (`frame-ancestors`); the manager takes a session form's values only from
+- the manager's pages may be framed by their own origin only, an agent's by its own, by the
+  manager it registered with and by the origins of its `--frame-ancestor` (`frame-ancestors`); the manager takes a session form's values only from
   the frame of its ⚙ *Config* button, at the server agent's origin, and answers it at that origin.
 
 **What the components receive** from the others is checked:

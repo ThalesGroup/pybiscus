@@ -27,9 +27,11 @@ rest_server = Flask(__name__)
 require_pybiscus_header(rest_server)
 from pybiscus.session.limits import limit_request_size
 limit_request_size(rest_server)
-from pybiscus.session.framing import forbid_framing, manager_origins
+from pybiscus.session.framing import forbid_framing, frame_ancestor_origins, manager_origins
+# the origins of --frame-ancestor, as 3frames.html served on the loopback
+frame_ancestors = []
 # the manager frames the server agent's session form
-forbid_framing(rest_server, lambda: manager_origins(registration_parameters.get("manager_url")))
+forbid_framing(rest_server, lambda: manager_origins(registration_parameters.get("manager_url")) + frame_ancestors)
 pybiscus.session.theme.install(rest_server)
 
 agent_port  = None
@@ -539,9 +541,23 @@ def parse_args():
         help="register with the manager at the start, from the --config file (and the --invitation), without the "
              "registration page; asked again while the manager does not answer (default: $PYBISCUS_REGISTER=1)"
     )
+    # opt-in and named: allowing any loopback page would let any other local service frame the agent
+    parser.add_argument(
+        '--frame-ancestor',
+        action='append',
+        default=os.environ.get("PYBISCUS_FRAME_ANCESTORS", "").split(),
+        metavar="ORIGIN",
+        help="an origin whose pages may show this agent's pages in a frame, besides its manager's "
+             "(launch/agent/3frames.sh: http://localhost:5550); repeatable; default: $PYBISCUS_FRAME_ANCESTORS, "
+             "space-separated"
+    )
     from pybiscus.session import tls
     tls.add_tls_arguments(parser)
     args = parser.parse_args()
+    try:
+        args.frame_ancestors = [o for origin in args.frame_ancestor for o in frame_ancestor_origins(origin)]
+    except ValueError as e:
+        parser.error(f"--frame-ancestor {e}")
     if args.register and not (args.config or args.invitation):
         parser.error("--register needs the registration configuration: --config, or --invitation")
     if args.launch_config and not args.accept_launch:
@@ -571,6 +587,7 @@ def main():
     accept_launch = args.accept_launch
     launch_config = os.path.abspath(args.launch_config) if args.launch_config else None
     agent_port  = args.port
+    frame_ancestors.extend(args.frame_ancestors)
     from pybiscus.session import invitations
     if args.invitation:
         try:

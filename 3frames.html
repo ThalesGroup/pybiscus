@@ -188,6 +188,10 @@
 
     /* the iframes would swallow mousemove/mouseup during a drag */
     #drag-shield { position: fixed; inset: 0; z-index: 30; cursor: col-resize; display: none; }
+    #file-notice { position: fixed; top: 44px; left: 50%; transform: translateX(-50%); z-index: 25;
+      max-width: 46em; padding: 8px 12px; border-radius: 6px; background: var(--bar-bg);
+      border: 1px solid var(--down); box-shadow: 0 6px 20px rgba(0,0,0,.2); }
+    #file-notice code { font: 12px ui-monospace, monospace; }
     #stage.dragging ~ #drag-shield { display: block; }
   </style>
 </head>
@@ -221,6 +225,9 @@
 
   <div id="stage"><div id="side-handle"></div></div>
   <div id="drag-shield"></div>
+  <div id="file-notice" hidden>Ouverte comme fichier, cette page n'a pas d'origine que les agents
+    puissent autoriser : ils refusent d'y être affichés (« localhost a refusé de se connecter »).
+    Lancer <code>launch/agent/3frames.sh</code> puis ouvrir <code>http://localhost:5550/3frames.html</code>.</div>
 
   <script>
     const MAX_CLIENTS = 9;
@@ -279,6 +286,7 @@
       document.head.appendChild(icon);
     }
     applySessionColor();
+    if (location.protocol === "file:") document.getElementById("file-notice").hidden = false;
     function saveState() {
       try { localStorage.setItem(storeKey(state.host, state.serverPort), JSON.stringify(state)); } catch (e) { /* not remembered */ }
     }
