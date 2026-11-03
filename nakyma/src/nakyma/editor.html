@@ -73,6 +73,16 @@
   #shot-error{grid-column:1 / -1; display:none; padding:6px 8px; border:1px solid var(--warn); border-radius:5px; color:var(--warn); font:11px var(--mono); white-space:pre-wrap}
   #shot-add .at{grid-column:1 / -1; color:var(--muted); font:11px var(--mono)}
   #timeline .shotmark{fill:var(--head); stroke:var(--bg); cursor:pointer}
+  #timeline .cutev{stroke:var(--text); stroke-width:1.5; cursor:pointer}
+  #timeline .card{stroke:var(--text); stroke-width:1; stroke-dasharray:2 2; cursor:pointer}
+  #timeline .card.sel{stroke-width:2; stroke-dasharray:none}
+  #events-box{margin-top:18px; padding-top:12px; border-top:1px solid var(--line)}
+  .cutevent{display:grid; grid-template-columns:minmax(0,1fr) 80px auto; gap:4px 8px; align-items:center; padding:4px 0; border-bottom:1px solid var(--line); font:12px var(--mono)}
+  .cutevent a{color:var(--text); text-decoration:none; cursor:pointer}
+  .cutevent input{width:100%; background:var(--bg); color:var(--text); border:1px solid var(--line); border-radius:4px; padding:2px 5px; font:12px var(--mono)}
+  .cutevent button{padding:1px 7px; font-size:11px}
+  #event-error{grid-column:1 / -1; display:none; padding:6px 8px; border:1px solid var(--warn); border-radius:5px; color:var(--warn); font:11px var(--mono); white-space:pre-wrap}
+  #event-add .at{grid-column:1 / -1; color:var(--muted); font:11px var(--mono)}
   #timeline .shotmark.sel{stroke:var(--text); stroke-width:2}
   #export-box{margin-top:18px; padding-top:12px; border-top:1px solid var(--line)}
   #export-box .formats{display:flex; gap:10px; font:12px var(--mono)}
@@ -133,6 +143,10 @@
   <aside class="panel">
     <h2>Scene</h2>
     <div id="scene"><p class="empty">Click a scene on the timeline or on the video bar.</p></div>
+    <div id="events-box">
+      <h2>Events of the cut</h2>
+      <div id="cut-events"></div>
+    </div>
     <div id="shots-box">
       <h2>Screenshots</h2>
       <div id="shots"></div>
@@ -143,7 +157,7 @@
     </div>
   </aside>
   <section id="timeline-wrap" class="panel">
-    <div id="timeline-help">Timeline of the rushes · click: the cut's image at that moment (on a view's track: that view alone) · click a scene: select it · click a ◆: a screenshot · wheel: zoom · drag: move</div>
+    <div id="timeline-help">Timeline of the rushes · click: the cut's image at that moment (on a view's track: that view alone) · click a scene: select it · click a ◆: a screenshot · ■ an event of the cut · wheel: zoom · drag: move</div>
     <svg id="timeline"></svg>
   </section>
 </main>
@@ -158,7 +172,7 @@ let rushes = null, cut = null, planKey = '', kindColor = {};
 let index = 0, playing = false, timer = null, selected = null, cursor = null;   // cursor: {t, view} out of the plan
 let selectedKey = null;              // {kind, index} of the selected scene: its position changes when a scene is left out
 let scope = 'scene';                 // a change applies to this scene (an override) or to every scene of its kind (the rule)
-let sceneError = '', shotError = '';
+let sceneError = '', shotError = '', eventError = '';
 let starts = [];                     // video time at which each image of the plan starts
 // in the images' addresses: the browser does not load again an image whose address has not changed
 let planVersion = 0;
@@ -209,9 +223,15 @@ function showShot(i){
   updateTimes(); drawHeads(); drawTimeline(); renderShots();
 }
 function sceneAt(t){
+  // a card takes no time of the rushes: a moment belongs to the filmed scene in progress
   let found = null;
-  cut.scenes.forEach((s, i) => { if(s.start <= t) found = i; });
+  cut.scenes.forEach((s, i) => { if(s.start <= t && !s.card) found = i; });
   return found;
+}
+// the rushes' events and the cut's, in the order the editing counts them: at one moment, the rushes' first
+function allEvents(){
+  return [...rushes.events.map(e => ({...e, added: null})), ...cut.events.map((e, i) => ({...e, added: i}))]
+    .map((e, n) => ({e, n})).sort((a, b) => a.e.t - b.e.t || a.n - b.n).map(x => x.e);
 }
 function updateTimes(){
   const f = cut.frames[index];
@@ -278,13 +298,18 @@ function renderScene(){
   const select = (k, options, ph) => `<select id="f-${k}" data-key="${k}">${ph !== undefined ? `<option value="">${esc(ph)}</option>` : ''}` +
     options.map(o => `<option${(value(k) ?? '') === o ? ' selected' : ''}>${o}</option>`).join('') + '</select>';
   const number = (k, step, ph) => `<input id="f-${k}" data-key="${k}" type="number" step="${step}" value="${ov[k] ?? ''}" placeholder="${esc(ph)}">`;
-  let form = field('main', 'main', text('main')) +
+  let form = s.card ? field('card', 'card', text('card')) + field('subtitle', 'subtitle', text('subtitle', 'none')) :
+    field('main', 'main', text('main')) +
     field('inset', 'inset', text('inset', 'none')) +
     field('tiles', 'tiles', text('tiles', 'none · instead of the inset, e.g. page:*')) +
     field('highlight', 'outlined', text('highlight', 'none · a tile, e.g. page:{name}')) +
     field('caption', 'caption', text('caption', 'none')) +
     field('pace', 'pace', select('pace', ['event', 'progress', 'final']));
-  if(onScene){
+  if(onScene && s.card){
+    form += field('offset', 'offset s', number('offset', 0.1, '0')) +
+      field('duration', 'duration s', number('duration', 0.1, `${s.video_duration.toFixed(1)} (timing.card)`)) +
+      `<span class="note">A card takes no time of the rushes: it is shown after the scene in progress at its moment · {field}: a field of the event · yellow: this card only</span>`;
+  } else if(onScene){
     form += field('offset', 'offset s', number('offset', 0.1, '0')) +
       field('duration', 'duration s', number('duration', 0.1, `${s.video_duration.toFixed(1)} (its pace)`)) +
       field('corner', 'inset corner', select('corner', ['top-left', 'top-right', 'bottom-left', 'bottom-right'], `${cut.inset.corner} (the cut's)`)) +
@@ -296,13 +321,13 @@ function renderScene(){
     form += `<span class="note">Every ${esc(s.kind)} scene follows these, unless an override of the scene says otherwise. Start, duration and the inset's place are set scene by scene.</span>`;
   }
   const facts = `<table class="facts">
-      <tr><td>rushes</td><td class="v">${s.start.toFixed(2)} → ${s.end.toFixed(2)} s</td></tr>
+      <tr><td>rushes</td><td class="v">${s.card ? `a card at ${s.start.toFixed(2)} s, no time of the rushes` : `${s.start.toFixed(2)} → ${s.end.toFixed(2)} s`}</td></tr>
       <tr><td>video</td><td class="v">${s.video_start.toFixed(1)} → ${(s.video_start + s.video_duration).toFixed(1)} s (${s.video_duration.toFixed(1)} s)</td></tr>
       <tr><td>images</td><td class="v">${s.frames}</td></tr>
       ${Object.entries(s.fields).map(([k, v]) => `<tr><td>{${esc(k)}}</td><td class="v">${esc(v)}</td></tr>`).join('')}
     </table>`;
   box.innerHTML = `
-    <p><b style="color:${colorOf(s.kind)}">${esc(s.kind)}</b> #${s.index} <span class="time">· scene ${selected + 1}/${cut.scenes.length}</span></p>
+    <p><b style="color:${colorOf(s.kind)}">${esc(s.kind)}</b> #${s.index}${s.card ? ' · card' : ''} <span class="time">· scene ${selected + 1}/${cut.scenes.length}</span></p>
     <div class="scope"><button data-scope="scene" class="${onScene ? 'on' : ''}">this scene</button><button data-scope="rule" class="${onScene ? '' : 'on'}">every ${esc(s.kind)}</button></div>
     <div class="form">${form}</div>
     ${onScene ? '<p><button id="b-skip" title="leave this scene out of the video, its time too">Leave out this scene</button></p>' : ''}
@@ -331,7 +356,8 @@ function fieldChanged(s, el){
     else op.value = tiles.length ? tiles : null;
   } else if(numeric || key === 'corner' || key === 'side'){
     if(raw === '') op.remove = true; else op.value = numeric ? Number(raw) : raw;
-  } else if(key === 'main' && raw === ''){
+  } else if((key === 'main' || key === 'card') && raw === ''){
+    if(key === 'card'){ sceneError = 'A card needs its text.'; renderScene(); return; }
     sceneError = 'A scene needs a main view.'; renderScene(); return;
   } else {
     // emptied on a scene: none for it (inset, caption); on the rule: the key goes
@@ -346,12 +372,13 @@ async function post(url, body){
 async function change(op){
   stop();
   const {ok, data} = await post('/api/change', op);
-  const onShots = op.scope === 'shot' || op.scope === 'setting';
-  if(onShots) shotError = ok ? '' : data.error; else sceneError = ok ? '' : data.error;
-  if(!ok) return onShots ? renderShots() : renderScene();
+  const onShots = op.scope === 'shot' || op.scope === 'setting', onEvents = op.scope === 'event';
+  if(onEvents) eventError = ok ? '' : data.error;
+  else if(onShots) shotError = ok ? '' : data.error; else sceneError = ok ? '' : data.error;
+  if(!ok) return onEvents ? renderEvents() : onShots ? renderShots() : renderScene();
   applyPlan(data, !onShots);
   // the screenshot just taken is shown, as the export will write it
-  if(op.add) showShot(cut.shots.length - 1);
+  if(op.add && op.scope === 'shot') showShot(cut.shots.length - 1);
 }
 async function save(force = false){
   const {ok, data} = await post('/api/save', {force});
@@ -372,12 +399,52 @@ function renderState(){
   $('b-save').disabled = !cut.dirty; $('b-revert').disabled = !cut.dirty;
 }
 
+// ---------- events of the cut: a scene or a card starting at the moment shown
+function shownMoment(){
+  if(cursor) return cursor.t;
+  const f = cut.frames[index];
+  return f ? f.t : null;
+}
+function renderEvents(){
+  const box = $('cut-events'), t = shownMoment(), at = shownCapture();
+  const kinds = Object.keys(cut.rules);
+  const list = cut.events.map((e, i) => `<div class="cutevent">
+      <a data-goto="${i}" title="show this moment"><b style="color:${colorOf(e.kind)}">${esc(e.kind)}</b>${e.kind in cut.rules && cut.rules[e.kind].card != null ? ' · card' : ''}</a>
+      <input type="number" step="0.1" min="0" value="${e.t}" data-move="${i}" title="its moment, seconds of the rushes">
+      <button data-unevent="${i}" title="remove this event from the cut">✕</button></div>`).join('');
+  box.innerHTML = `<div id="event-add" class="form">
+      <span class="at">${t === null ? 'show a moment of the rushes' : `at the moment shown: ${t.toFixed(2)} s of the rushes`}</span>
+      <label for="e-kind">kind</label><input id="e-kind" list="kinds-list" placeholder="e.g. title, note"><span></span>
+      <label for="e-as">a new kind</label><select id="e-as"><option value="scene">a scene of the view shown</option><option value="card">a card</option></select><span></span>
+      <label for="e-text">its text</label><input id="e-text" placeholder="the caption, or the card's title"><span></span>
+      <span></span><button id="b-event" class="primary" title="add an event of this kind at the moment shown">Add here</button><span></span>
+      <div id="event-error"></div>
+      <span class="note">An event of a kind having a rule starts one of its scenes; a new kind gets a rule, set then in the scene's panel. A card takes no time of the rushes: it comes after the scene in progress.</span>
+    </div>
+    <datalist id="kinds-list">${kinds.map(k => `<option value="${esc(k)}">`).join('')}</datalist>
+    ${list || '<p class="empty">No event added in the cut.</p>'}`;
+  $('b-event').disabled = t === null;
+  $('b-event').onclick = () => {
+    const t = shownMoment(), at = shownCapture();
+    const kind = $('e-kind').value.trim(), as = $('e-as').value;
+    const main = at ? (at.panel ? `${at.view}@${at.panel}` : at.view) : null;
+    if(!kind){ eventError = 'An event needs a kind.'; return renderEvents(); }
+    if(!(kind in cut.rules) && as === 'scene' && !main){ eventError = 'Show a view to start a scene of it (a card shows none).'; return renderEvents(); }
+    change({scope: 'event', add: {t, kind, as, main, text: $('e-text').value.trim()}});
+  };
+  box.querySelectorAll('[data-goto]').forEach(a => a.onclick = () => showAt(cut.events[a.dataset.goto].t, null));
+  box.querySelectorAll('[data-move]').forEach(el => el.addEventListener('change', () => change({scope: 'event', index: Number(el.dataset.move), t: Number(el.value)})));
+  box.querySelectorAll('[data-unevent]').forEach(b => b.onclick = () => change({scope: 'event', index: Number(b.dataset.unevent), remove: true}));
+  $('event-error').style.display = eventError ? 'block' : 'none';
+  $('event-error').textContent = eventError;
+}
+
 // ---------- screenshots: taken from the moment shown, or a take
 function shownCapture(){
   // the view and the moment of the preview; in the plan, the scene's main view at that image
   if(cursor) return cursor.view ? {view: cursor.view, panel: '', t: cursor.t} : null;
   const f = cut.frames[index];
-  if(!f) return null;
+  if(!f || f.card != null) return null;
   const [view, panel] = f.main.split('@');
   return {view, panel: panel || '', t: f.t};
 }
@@ -439,6 +506,12 @@ function proposeFile(){
   if(!shotFileTyped) $('s-file').value = proposedFile($('s-view').value, $('s-panel').value);
 }
 function updateShotForm(force = false){
+  // the moment of the events' form follows the preview, unless it is being filled
+  if($('event-add') && !(document.activeElement && document.activeElement.closest('#cut-events'))){
+    const t = shownMoment();
+    $('event-add').querySelector('.at').textContent = t === null ? 'show a moment of the rushes' : `at the moment shown: ${t.toFixed(2)} s of the rushes`;
+    $('b-event').disabled = t === null;
+  }
   if(!$('s-view')) return;
   const at = shownCapture();
   $('shot-at').textContent = at ? `from the moment shown: ${at.t.toFixed(2)} s of the rushes` : 'show a view (click its track) to take it';
@@ -550,6 +623,12 @@ function drawTimeline(){
     if(row.kind === 'scenes'){
       s += `<text class="lbl" x="6" y="${y + 14}">scenes</text>`;
       cut.scenes.forEach((sc, i) => {
+        if(sc.card){
+          // no time of the rushes: a narrow mark at its moment
+          if(!visible(sc.start)) return;
+          s += `<rect class="card${i === selected ? ' sel' : ''}" data-scene="${i}" x="${x(sc.start) - 4}" y="${y + 2}" width="8" height="${ROW - 4}" rx="2" fill="${colorOf(sc.kind)}"><title>${esc(sc.kind)} #${sc.index}: a card at ${sc.start.toFixed(1)} s, ${sc.video_duration.toFixed(1)} s in the video</title></rect>`;
+          return;
+        }
         const a = Math.max(x(sc.start), LABEL_W), b = Math.min(x(sc.end), W - 10);
         if(b <= LABEL_W || a >= W - 10) return;
         s += `<rect class="scene${i === selected ? ' sel' : ''}" data-scene="${i}" x="${a}" y="${y + 2}" width="${Math.max(1, b - a)}" height="${ROW - 4}" rx="3" fill="${colorOf(sc.kind)}"><title>${esc(sc.kind)} #${sc.index}: ${sc.start.toFixed(1)}–${sc.end.toFixed(1)} s, ${sc.frames} images</title></rect>`;
@@ -557,10 +636,13 @@ function drawTimeline(){
       });
     } else if(row.kind === 'events'){
       s += `<text class="lbl" x="6" y="${y + 14}">events</text>`;
-      rushes.events.filter(e => visible(e.t)).forEach(e => {
-        const fields = Object.entries(e).filter(([k]) => k !== 't' && k !== 'kind').map(([k, v]) => `${k}=${v}`).join(' ');
-        const ruled = e.kind in cut.rules;
-        s += `<circle class="ev" cx="${x(e.t)}" cy="${y + ROW / 2}" r="${ruled ? 5 : 3}" fill="${ruled ? colorOf(e.kind) : '#8a93a6'}"><title>${esc(e.kind)} at ${e.t.toFixed(2)} s${fields ? ' · ' + esc(fields) : ''}${ruled ? '' : ' (no rule: part of the scene in progress)'}</title></circle>`;
+      allEvents().filter(e => visible(e.t)).forEach(e => {
+        const fields = Object.entries(e).filter(([k]) => !['t', 'kind', 'added'].includes(k)).map(([k, v]) => `${k}=${v}`).join(' ');
+        const ruled = e.kind in cut.rules, tip = `${esc(e.kind)} at ${e.t.toFixed(2)} s${fields ? ' · ' + esc(fields) : ''}${ruled ? '' : ' (no rule: part of the scene in progress)'}`;
+        if(e.added !== null)
+          s += `<rect class="cutev" data-cutevent="${e.added}" x="${x(e.t) - 5}" y="${y + ROW / 2 - 5}" width="10" height="10" fill="${ruled ? colorOf(e.kind) : '#8a93a6'}"><title>${tip} · added in the cut</title></rect>`;
+        else
+          s += `<circle class="ev" cx="${x(e.t)}" cy="${y + ROW / 2}" r="${ruled ? 5 : 3}" fill="${ruled ? colorOf(e.kind) : '#8a93a6'}"><title>${tip}</title></circle>`;
       });
     } else if(row.kind === 'shots'){
       s += `<text class="lbl" x="6" y="${y + 14}">screenshots</text>`;
@@ -581,9 +663,9 @@ function drawTimeline(){
   });
   // left out by an override: hatched on the scenes' row, from its event to the next scene
   cut.skipped.forEach(k => {
-    const ev = rushes.events.filter(e => e.kind === k.kind)[k.index];
+    const ev = allEvents().filter(e => e.kind === k.kind)[k.index];
     if(!ev) return;
-    const next = cut.scenes.find(sc => sc.start > ev.t);
+    const next = cut.scenes.find(sc => sc.start > ev.t && !sc.card);
     const a = Math.max(x(ev.t), LABEL_W), b = Math.min(x(next ? next.start : rushes.end), W - 10);
     if(b > a) s += `<rect class="skipped" data-skipped-kind="${esc(k.kind)}" data-skipped-index="${k.index}" x="${a}" y="${RULER + 2}" width="${b - a}" height="${ROW - 4}"><title>${esc(k.kind)} #${k.index}: left out (skip)</title></rect>`;
   });
@@ -624,12 +706,14 @@ window.addEventListener('mouseup', e => {
   if(!target || !target.closest('#timeline')) return;
   const skippedEl = target.closest('[data-skipped-kind]');
   if(skippedEl){ stop(); selected = null; selectedKey = {kind: skippedEl.dataset.skippedKind, index: Number(skippedEl.dataset.skippedIndex)}; sceneError = ''; renderScene(); drawTimeline(); drawVideobar(); return; }
+  const cutEventEl = target.closest('[data-cutevent]');
+  if(cutEventEl){ showAt(cut.events[cutEventEl.dataset.cutevent].t, null); return; }
   const markEl = target.closest('[data-shotmark]');
   if(markEl){ showShot(Number(markEl.dataset.shotmark)); return; }
   const sceneEl = target.closest('[data-scene]');
   if(sceneEl){ stop(); selectScene(Number(sceneEl.dataset.scene)); return; }
   const t = timeAt(e.clientX);
-  if(t < 0 || t > rushes.span) return;
+  if(t < 0 || t > spanEnd()) return;
   const rowEl = target.closest('[data-row]');
   const row = rowEl ? rows()[Number(rowEl.dataset.row)] : null;
   showAt(t, row && row.kind === 'view' ? row.name : null);
@@ -640,8 +724,12 @@ $('timeline').addEventListener('wheel', e => {
   view0 = t - (t - view0) * k; view1 = t + (view1 - t) * k;
   clampView(); drawTimeline();
 }, {passive: false});
+// an event of the cut can be placed after the rushes' end (a closing card): the timeline goes as far
+function spanEnd(){
+  return Math.max(rushes.span, ...(cut ? cut.events.map(e => e.t) : []));
+}
 function clampView(){
-  const end = rushes.span, span = Math.min(Math.max(view1 - view0, 2), end);
+  const end = spanEnd(), span = Math.min(Math.max(view1 - view0, 2), end);
   view0 = Math.max(0, Math.min(view0, end - span)); view1 = view0 + span;
 }
 
@@ -652,8 +740,9 @@ function applyPlan(data, fromChange = false){
   $('error').style.display = data.error ? 'block' : 'none';
   $('error').textContent = data.error ? `The cut has an error; the last plan is kept.\n${data.error}` : '';
   if(key === planKey) return;
-  const first = !planKey;
+  const first = !planKey, wholeView = cut && view0 <= 0 && view1 >= spanEnd() - 1e-9;
   planKey = key; cut = data; planVersion++;
+  if(wholeView) view1 = spanEnd();
   starts = []; let acc = 0; cut.frames.forEach(f => { starts.push(acc); acc += f.duration; });
   $('h-cut').textContent = cut.cut;
   $('h-video').textContent = `${cut.video_duration.toFixed(1)} s`;
@@ -670,7 +759,7 @@ function applyPlan(data, fromChange = false){
   else if(fromChange && selected !== null) show(firstFrameOf(selected));
   // a scene just left out stays selected, to be brought back
   else show(Math.min(index, cut.frames.length - 1), !(fromChange && selectedKey));
-  renderScene(); renderShots(); renderExportForm(); drawVideobar(); drawTimeline();
+  renderScene(); renderEvents(); renderShots(); renderExportForm(); drawVideobar(); drawTimeline();
 }
 async function loadPlan(){
   applyPlan(await getJSON('/api/plan'));

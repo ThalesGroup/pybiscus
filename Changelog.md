@@ -9,6 +9,14 @@
   pages loaded without side effects, a state a newcomer can read again, an access of its own), and
   its example and driver guide are for Pybiscus' pages. It stays in this repository; no separate
   repository nor package is planned.
+* The editing adds what a presentation needs to a recorded session, without shooting again:
+  **events of the cut** (`events:`, `{t, kind, …fields}` in seconds of the rushes) start scenes the
+  shooting did not mark, and **cards** (`card:` and `subtitle:` in a rule) show a text on a plain
+  background (a title, an intertitle, a closing card), taking no time of the rushes, `timing.card`
+  seconds long (4.0) or an override's `duration`. The editor (`nakyma ui`, `record_session.py edit
+  --ui`) adds an event at the moment shown, of a kind having a rule or of a new one (a scene of the
+  view shown, or a card), moves and removes them, sets a card like any scene, and marks them on the
+  timeline.
 
 ### Session
 

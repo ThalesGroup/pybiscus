@@ -172,6 +172,35 @@ of whoever acts, whatever their name. A given scene is designated by its **kind 
 `index`), a screenshot by an **event and an offset** (`at`, `after`): both stay valid when the same
 story is shot again.
 
+**Events of the cut** (`events:`): events written in the cut, beside those of the rushes, for a
+scene the shooting did not mark or for a card. `t` is in seconds of the rushes (the editor's
+timeline), the other keys are the event's fields; at one moment, the rushes' event comes first.
+
+```yaml
+events:
+  - {t: 0, kind: title}
+  - {t: 120, kind: note}
+  - {t: 400, kind: thanks, accuracy: "0.60"}   # after the rushes' end: a closing card
+```
+
+Such an event counts among the scenes of its kind (`index` of an override): a kind of its own
+(`title`, `note`) leaves the indexes of the rushes' scenes unchanged.
+
+**Cards** (`card:` in a rule): a text on a plain background, without any view, for a title, a
+presentation or a conclusion. A card takes no time of the rushes: it is shown after the scene in
+progress at its moment, before the next one (and before a scene starting at that same moment); it
+lasts `timing.card` seconds, or an override's `duration`. `card` and `subtitle` take the event's
+fields and line breaks (`\n`); a card has no `main`, `inset`, `tiles`, `highlight` nor `caption`.
+
+```yaml
+scenes:
+  title:
+    card: "Pybiscus"
+    subtitle: "Federated learning between three labs"
+  thanks:
+    card: "Test accuracy {accuracy}"
+```
+
 **Mosaic** (`mosaic:`, the cut's layout of the tiles): `side: right` (default) puts them in a
 column on the right, `side: bottom` in a row at the bottom; `slots` is how many the column or the
 row holds before the tiles shrink (default 4 on the right, 6 at the bottom). A tile has the image's
@@ -195,7 +224,7 @@ overrides:
 
 | key | meaning |
 |---|---|
-| `main`, `inset`, `caption`, `pace`, `tiles`, `highlight` | instead of the rule's (`inset: null`: no inset, `tiles: null`: no mosaic) |
+| `main`, `inset`, `caption`, `pace`, `tiles`, `highlight`, `card`, `subtitle` | instead of the rule's (`inset: null`: no inset, `tiles: null`: no mosaic) |
 | `offset` | seconds added to the scene's start (negative: earlier); the scene before ends there; scenes keep their order |
 | `duration` | the scene's time in the video, shared by its images (at least one video frame each, 0.04 s) |
 | `corner`, `width` | the inset's corner (`top-left`, `top-right`, `bottom-left`, `bottom-right`) and width, a share of the image's |
@@ -222,6 +251,7 @@ one of its panels.
 | `end_hold` | extra time on the last image | `2.5` |
 | `webp_width` | width of the WebP, in pixels (the MP4 keeps the captures' size) | `1080` |
 | `blend` | share of each image's time spent fading into the next one: `0` cuts from image to image; images fade only within a scene, a new scene starts on a cut | `0.4` |
+| `card` | time a card lasts | `4.0` |
 
 **The names are a convention between the driver and its cuts**: the views, the panels, the kinds
 of events and their fields. A cut naming a view or a panel the rushes do not have stops with a
@@ -236,7 +266,8 @@ message listing those they have.
   shows each image of the video for its time, without the fade the export adds;
 - the **video bar**: the scenes in the video's time, a click goes to one;
 - the **timeline** of the rushes in their own time: the scenes (hatched when an override leaves one
-  out), the events (large: they start a scene; small: no rule), and a track per view, a mark per
+  out, a narrow dashed mark for a card), the events (large: they start a scene; small: no rule; a
+  square: an event of the cut), and a track per view, a mark per
   capture (bright when the page changed). A click shows the cut's image at that moment, or on a
   view's track that view alone; a click on a scene selects it; the wheel zooms, a drag moves;
 - the **scene** selected: its time in the rushes and in the video, its images, its main view, inset,
@@ -251,6 +282,14 @@ reversing two scenes, an unknown view…) shows its message and changes nothing.
 override's value; *Leave out this scene* skips it, *Bring it back* on its hatched mark undoes it.
 Tiles are typed as a list separated by commas (`page:*, page:bob@stats`); given to a scene having
 an inset, they replace it.
+
+**Events of the cut**: *Add here* adds an event of the kind typed at the moment shown. A kind
+having a rule starts one of its scenes; a new kind gets a rule, a **scene of the view shown** (its
+main view, the text as its caption) or a **card** (the text as its title), set then in the scene's
+panel like any other (a card's text and subtitle, its offset and duration). Each event of the cut is
+listed, moved by typing its moment, removed with ✕, and marked ■ on the timeline. Recording then
+editing is enough for a presented video: the title, the intertitles and the end, and the scenes
+the shooting did not mark, are added there.
 
 **Screenshots**: *Capture here* adds the view shown, whole or one of its panels, at the moment shown
 (in the plan: the scene's main view at that image; on a view's track: that view), under the file

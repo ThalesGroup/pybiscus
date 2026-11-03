@@ -232,9 +232,16 @@ uv run launch/doc/record_session.py edit <rushes> my.cut.yml --ui
 ```
 
 opens Näkymä's editor on a page of this machine only: the cut's image at any moment, the rushes on
-a timeline, a scene's settings changed for that scene or its kind, screenshots taken from the moment
-shown, the cut saved with its comments, the export. It is described in
-[Näkymä's README](../nakyma/README.md#the-interactive-editor).
+a timeline, a scene's settings changed for that scene or its kind, events and cards added at a
+moment, screenshots taken from the moment shown, the cut saved with its comments, the export. It is
+described in [Näkymä's README](../nakyma/README.md#the-interactive-editor).
+
+**Recording, then editing**: a session filmed as it goes (`--attach`, `--record`, the ⏺ button)
+gives its scenes by itself (registrations, launch, rounds, end); the editing adds what a
+presentation needs, without shooting again: a title card at the start, intertitles, a closing card,
+a scene the shooting did not mark (the map, a curve), as events and cards of the cut
+([Näkymä's README](../nakyma/README.md#the-cut): `events:` and `card:`). Copy
+`launch/doc/scenarios/attach.cut.yml` and open it with `--ui`.
 
 ![edit --ui: the round scenes in mosaic, set for every round](images/recording_editor.png)
 

@@ -4,6 +4,8 @@ A cut (YAML):
     output: docs/videos/my-video          # .mp4, .webp added (default: <rushes>/video); formats: [mp4, webp, png]
     timing: {...}                         # see TIMING
     inset: {width: 0.42, corner: bottom-right}
+    events:                               # events of the cut, beside the rushes' (seconds of the rushes)
+      - {t: 0, kind: title}               # other keys: the event's fields
     scenes:                               # one rule per kind of event; an event starts a scene, which
       <kind>:                             # lasts until the next event having a rule
         main: <view>                      # a view, or a panel of one: "<view>@<panel id>"
@@ -12,6 +14,9 @@ A cut (YAML):
         pace: event | progress | final    # event: about timing.caption seconds; progress: scrolls by
         tiles: ["page:*"]                 # instead of an inset: the main view smaller, beside it a tile
         highlight: "page:{name}"          # per view (* matches), in order of appearance; one outlined
+      <kind>:                             # a card: a text on a plain background, no view; it takes no
+        card: "A title"                   # time of the rushes: shown after the scene in progress
+        subtitle: "a second line"         # optional; duration: timing.card, or an override's
     mosaic: {side: right, slots: 4}       # the tiles in a column on the right, or a row at the bottom
     overrides:                            # one scene: the index-th scene of its kind (0 the first)
       - {kind: <kind>, index: 0, offset: 1.5, duration: 4, caption: ..., main: ..., inset: ..., pace: ...,
@@ -36,7 +41,7 @@ from PIL import Image, ImageDraw, ImageFont
 from .shooting import log
 
 TIMING = {"caption": 3.5, "last_caption": 5.0, "min_frame": 0.25, "round_frame": 0.25,
-          "progress_max": 8.0, "end_hold": 2.5, "webp_width": 1080, "blend": 0.4}
+          "progress_max": 8.0, "end_hold": 2.5, "webp_width": 1080, "blend": 0.4, "card": 4.0}
 SHOT_KEYS = ("file", "take", "view", "at", "index", "after", "panel")
 INSET = {"width": 0.42, "corner": "bottom-right"}
 # slots: the tiles a column or a row holds before they shrink; the main view takes the rest
@@ -45,6 +50,7 @@ SLOTS = {"right": 4, "bottom": 6}
 SIDES = tuple(SLOTS)
 MOSAIC_BACKGROUND, TILE_BORDER = (14, 17, 23, 255), (60, 68, 84, 255)
 CAPTION_BACKGROUND, CAPTION_TEXT, INSET_BORDER = (20, 24, 40, 225), (255, 255, 255, 255), (78, 205, 196, 255)
+CARD_SUBTITLE = (170, 180, 198, 255)
 
 
 FONTS = ("DejaVuSans-Bold.ttf", "LiberationSans-Bold.ttf")
@@ -110,6 +116,7 @@ class Composer:
         self.first_seen = sorted(rushes.by_view, key=lambda v: (rushes.by_view[v][0]["t"], v))
         s = rushes.scale
         self.caption_font, self.label_font = font(round(22 * s)), font(round(14 * s))
+        self.card_font, self.subtitle_font = font(round(46 * s)), font(round(24 * s))
 
     def view(self, spec, t):
         name, _, panel = spec.partition("@")
@@ -117,6 +124,8 @@ class Composer:
         return self.rushes.image(capture, panel or None), capture["label"] + (f" · {panel}" if panel else "")
 
     def frame(self, frame, t=None):
+        if frame.get("card") is not None:
+            return self.card(frame["card"], frame.get("subtitle"))
         return self.compose(frame["t"] if t is None else t, frame["main"], frame["inset"], frame["caption"], frame["inset_style"],
                             frame.get("tiles"), frame.get("highlight"), frame.get("mosaic_style"))
 
@@ -158,6 +167,19 @@ class Composer:
         if caption_box:
             self.caption(draw, caption, caption_box)
         return image.convert("RGB")
+
+    def card(self, title, subtitle=None):
+        s, (width, height) = self.rushes.scale, self.rushes.size
+        image = Image.new("RGB", self.rushes.size, MOSAIC_BACKGROUND[:3])
+        draw = ImageDraw.Draw(image)
+        blocks = [(title, self.card_font, CAPTION_TEXT)] + ([(subtitle, self.subtitle_font, CARD_SUBTITLE)] if subtitle else [])
+        boxes = [draw.multiline_textbbox((0, 0), text, font=f, align="center", spacing=round(8 * s)) for text, f, _ in blocks]
+        gap = round(28 * s)
+        y = (height - sum(b[3] - b[1] for b in boxes) - gap * (len(blocks) - 1)) / 2
+        for (text, f, colour), (l, t_, r, b) in zip(blocks, boxes):
+            draw.multiline_text(((width - (r - l)) / 2 - l, y - t_), text, font=f, fill=colour, align="center", spacing=round(8 * s))
+            y += b - t_ + gap
+        return image
 
     def caption(self, draw, caption, box):
         s = self.rushes.scale
@@ -242,7 +264,8 @@ def fill(text, fields):
     return text.format(**fields) if text else text
 
 
-RULE_KEYS = ("main", "inset", "caption", "pace", "tiles", "highlight")
+RULE_KEYS = ("main", "inset", "caption", "pace", "tiles", "highlight", "card", "subtitle")
+CARD_KEYS = ("card", "subtitle")
 OVERRIDE_KEYS = {"kind", "index", "offset", "duration", "skip", "corner", "width", "side", "slots", *RULE_KEYS}
 PACES, CORNERS = ("event", "progress", "final"), ("top-left", "top-right", "bottom-left", "bottom-right")
 SHORTEST = 0.04   # one frame of the video at 25 images per second
@@ -279,6 +302,11 @@ def check_mosaic(keys, where):
 
 def check_rule(kind, rule):
     where = f"the cut's scene {kind!r}"
+    if rule.get("card") is not None:
+        shown = [k for k in ("main", "inset", "tiles", "highlight", "caption") if rule.get(k)]
+        if shown:
+            raise SystemExit(f"{where}: a card shows its text alone, without {', '.join(shown)}")
+        return
     tiles = rule.get("tiles")
     if tiles is not None and (not isinstance(tiles, list) or not all(isinstance(v, str) and v for v in tiles)):
         raise SystemExit(f"{where}: tiles is a list of views (* matches several), as [\"page:*\"]")
@@ -286,14 +314,35 @@ def check_rule(kind, rule):
         raise SystemExit(f"{where}: an inset or tiles, not both")
 
 
+def cut_events(cut: dict):
+    """the events the cut adds to the rushes', checked"""
+    listed = cut.get("events") or []
+    if not isinstance(listed, list):
+        raise SystemExit("events: a list of events, as [{t: 0, kind: title}]")
+    for i, event in enumerate(listed):
+        where = f"the cut's event {i}"
+        if not isinstance(event, dict) or not isinstance(event.get("kind"), str) or not event["kind"]:
+            raise SystemExit(f"{where}: an event has a kind, as {{t: 12.5, kind: intro}}")
+        t = event.get("t")
+        if not isinstance(t, (int, float)) or isinstance(t, bool) or t < 0:
+            raise SystemExit(f"{where} ({event['kind']}): t is in seconds of the rushes, 0 or more")
+    return [{**event, "t": float(event["t"])} for event in listed]
+
+
+def events(rushes: Rushes, cut: dict):
+    # sorted on t only: at the same moment, the rushes' event comes first (the sort keeps the order)
+    return sorted(rushes.events + cut_events(cut), key=lambda e: e["t"])
+
+
 def scenes(rushes: Rushes, cut: dict):
     """an event with a rule starts a scene, which lasts until the next one; an override changes one
     scene: its start (offset), its rule's keys, its inset's corner and width, its duration, or leaves
-    it out (skip: its time is left out too, the scene before it still ending where it began)"""
+    it out (skip: its time is left out too, the scene before it still ending where it began). A card
+    takes no time of the rushes: the scene before it goes on to the next scene"""
     rules = cut["scenes"]
     check_mosaic(cut.get("mosaic") or {}, "mosaic")
     found, counts = [], {}
-    for event in rushes.events:
+    for event in events(rushes, cut):
         if event["kind"] in rules:
             found.append((event, counts.get(event["kind"], 0)))
             counts[event["kind"]] = counts.get(event["kind"], 0) + 1
@@ -307,16 +356,23 @@ def scenes(rushes: Rushes, cut: dict):
     listed = []
     for event, index in found:
         override = overrides.get((event["kind"], index), {})
-        listed.append({"event": event, "kind": event["kind"], "index": index, "override": override,
-                       "start": event["t"] + override.get("offset", 0)})
-    for before, after in zip(listed, listed[1:]):
+        rule = {**rules[event["kind"]], **{k: override[k] for k in RULE_KEYS if k in override}}
+        listed.append({"event": event, "kind": event["kind"], "index": index, "override": override, "rule": rule,
+                       "card": rule.get("card") is not None, "start": event["t"] + override.get("offset", 0)})
+    filmed = [scene for scene in listed if not scene["card"]]
+    for before, after in zip(filmed, filmed[1:]):
         if after["start"] <= before["start"]:
-            raise SystemExit(f"the offsets put the scene {after['kind']!r} index {after['index']} at or before "
-                             f"the scene {before['kind']!r} index {before['index']}: scenes keep their order")
-    for i, scene in enumerate(listed):
-        scene["end"] = listed[i + 1]["start"] if i + 1 < len(listed) else rushes.end + 1e-3
+            raise SystemExit(f"the scene {after['kind']!r} index {after['index']} starts at or before the scene "
+                             f"{before['kind']!r} index {before['index']} (an offset, or two events at one moment): "
+                             "scenes keep their order")
+    for i, scene in enumerate(filmed):
+        scene["end"] = filmed[i + 1]["start"] if i + 1 < len(filmed) else rushes.end + 1e-3
+    # a card goes after the scene in progress at its moment, before a scene starting at that same moment
+    listed.sort(key=lambda scene: (scene["start"], not scene["card"]))
+    for scene in listed:
         override = scene["override"]
-        scene["rule"] = {**rules[scene["kind"]], **{k: override[k] for k in RULE_KEYS if k in override}}
+        if scene["card"]:
+            scene["end"] = scene["start"]
         scene["inset_style"] = {k: override[k] for k in ("corner", "width") if k in override}
         scene["mosaic_style"] = {k: override[k] for k in ("side", "slots") if k in override}
         check_rule(scene["kind"], scene["rule"])
@@ -331,6 +387,12 @@ def plan(rushes: Rushes, cut: dict):
     for scene, listed in enumerate(scenes(rushes, cut)):
         event, rule, start, end = listed["event"], listed["rule"], listed["start"], listed["end"]
         fields = {k: v for k, v in event.items() if k not in ("t", "kind")}
+        if listed["card"]:
+            frames.append({"t": start, "card": fill(rule["card"], fields), "subtitle": fill(rule.get("subtitle"), fields),
+                           "main": None, "inset": None, "caption": "", "inset_style": {},
+                           "duration": max(SHORTEST, listed["override"].get("duration", timing["card"])),
+                           "scene": scene, "kind": listed["kind"], "index": listed["index"]})
+            continue
         if "main" not in rule:
             raise SystemExit(f"the cut's scene {event['kind']!r} has no main view")
         main, inset = fill(rule["main"], fields), fill(rule.get("inset"), fields)
@@ -430,7 +492,7 @@ def check_shots(rushes: Rushes, cut):
             raise SystemExit(f"{where}: a shot has a take, or a view and an event (at)")
         if shot["view"] not in rushes.by_view:
             raise SystemExit(f"{where}: no capture of the view {shot['view']!r} (views: {', '.join(rushes.by_view)})")
-        matching = [e for e in rushes.events if e["kind"] == shot["at"]]
+        matching = [e for e in events(rushes, cut) if e["kind"] == shot["at"]]
         index = shot.get("index", 0)
         if not matching:
             raise SystemExit(f"{where}: no event {shot['at']!r} in {rushes.dir}")
@@ -456,7 +518,8 @@ def shot_image(rushes: Rushes, shot):
 
 def shot_anchor(rushes: Rushes, view, t):
     """the shot of the view's capture shown at t, written from the event before it, so that it
-    designates the same moment in another shooting of the scenario"""
+    designates the same moment in another shooting of the scenario (an event of the rushes: one of the
+    cut may be moved or removed)"""
     capture = rushes.at(view, t)
     if not rushes.events:
         raise SystemExit("no event in the rushes: a shot is placed after one")

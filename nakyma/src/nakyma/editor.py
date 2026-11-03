@@ -1,7 +1,7 @@
 """Interactive editing: a local page showing the rushes on a timeline, with the composed image of the
 cut at any moment and the video played from its plan; a scene's settings are changed there, for that
 scene (an override) or for every scene of its kind (the rule); screenshots are taken from the
-moment shown. All is saved into the cut's file with its comments, and exported from the page as edit
+moment shown; events are added to the cut (a scene or a card from a moment). All is saved into the cut's file with its comments, and exported from the page as edit
 does it."""
 
 import copy
@@ -20,7 +20,8 @@ from ruamel.yaml import YAML
 from ruamel.yaml.comments import CommentedMap, CommentedSeq
 from ruamel.yaml.error import YAMLError
 
-from .editing import MOSAIC, RULE_KEYS, SLOTS, Composer, Rushes, TIMING, check_shots, edit, plan, scenes, shot_anchor, shot_image
+from .editing import (MOSAIC, RULE_KEYS, SLOTS, Composer, Rushes, TIMING, check_shots, cut_events, edit, plan, scenes,
+                      shot_anchor, shot_image)
 from .shooting import log
 
 PAGE = Path(__file__).with_name("editor.html")
@@ -127,6 +128,8 @@ class Session:
             values = op.get("values") or {key: value}
             if op.get("scope") == "shot":
                 self.change_shot(document, op)
+            elif op.get("scope") == "event":
+                self.change_event(document, op)
             elif op.get("scope") == "setting":
                 self.change_setting(document, key, value)
             elif kind not in (document.get("scenes") or {}):
@@ -148,7 +151,7 @@ class Session:
                         raise Refused(f"an override sets {', '.join(RULE_KEYS + SCENE_KEYS)}, not {key!r}")
                     self.set_override(document, kind, op.get("index"), key, flow(value), op.get("remove", False))
             else:
-                raise Refused("scope is rule, scene, shot or setting")
+                raise Refused("scope is rule, scene, event, shot or setting")
             try:
                 self.compute(plain(document))
             except SystemExit as error:
@@ -223,6 +226,50 @@ class Session:
             shots[index]["file"] = op["file"]
         else:
             raise Refused("a shot is added, removed or renamed")
+
+    @staticmethod
+    def change_event(document, op):
+        listed = document.get("events")
+        if listed is None:
+            listed = document["events"] = CommentedSeq()
+        if "add" in op:
+            add = op["add"]
+            kind = (add.get("kind") or "").strip()
+            if not kind:
+                raise Refused("an event needs a kind")
+            try:
+                t = round(float(add["t"]), 2)
+            except (KeyError, TypeError, ValueError):
+                raise Refused("an event needs a moment (t, seconds of the rushes)")
+            event = CommentedMap([("t", t), ("kind", kind)])
+            event.fa.set_flow_style()
+            listed.append(event)
+            rules = document.get("scenes")
+            if rules is None:
+                rules = document["scenes"] = CommentedMap()
+            if kind not in rules:
+                # a kind of its own: the event starts a scene the page then sets, from the view shown
+                if add.get("as") == "card":
+                    rules[kind] = CommentedMap([("card", add.get("text") or kind)])
+                elif add.get("main"):
+                    rules[kind] = CommentedMap([("main", add["main"]), ("caption", add.get("text") or kind)])
+                else:
+                    raise Refused(f"no rule for the kind {kind!r}: a card, or a scene showing a view")
+            return
+        index = op.get("index")
+        if not isinstance(index, int) or not 0 <= index < len(listed):
+            raise Refused(f"no event {index} in the cut")
+        if op.get("remove"):
+            del listed[index]
+        elif "t" in op:
+            try:
+                listed[index]["t"] = round(float(op["t"]), 2)
+            except (TypeError, ValueError):
+                raise Refused("t is in seconds of the rushes")
+        else:
+            raise Refused("an event of the cut is added, moved or removed")
+        if not listed:
+            del document["events"]
 
     def revert(self):
         with self.lock:
@@ -300,6 +347,7 @@ class Session:
             frames = [f for f in self.frames if f["scene"] == i]
             duration = sum(f["duration"] for f in frames)
             listed.append({"kind": scene["kind"], "index": scene["index"], "start": scene["start"], "end": scene["end"],
+                           "card": scene["card"],
                            "fields": {k: v for k, v in scene["event"].items() if k not in ("t", "kind")},
                            "rule": scene["rule"], "override": scene["override"], "inset_style": scene["inset_style"],
                            "frames": len(frames), "video_start": video_t, "video_duration": duration})
@@ -307,7 +355,11 @@ class Session:
         skipped = [{"kind": o["kind"], "index": o["index"]} for o in self.cut.get("overrides") or [] if o.get("skip")]
         written = self.cut.get("shots") or []
         shots = [{**{k: v for k, v in shot.items() if k != "capture"}, "written": written[i]} for i, shot in enumerate(self.shots)]
-        return {"cut": self.cut_file.name, "error": self.error, "frames": self.frames, "scenes": listed,
+        try:
+            added = cut_events(self.cut)
+        except SystemExit:
+            added = []
+        return {"cut": self.cut_file.name, "error": self.error, "frames": self.frames, "scenes": listed, "events": added,
                 "skipped": skipped, "video_duration": video_t + timing["end_hold"] if self.frames else 0,
                 "rules": self.cut.get("scenes") or {}, "shots": shots, "shots_dir": self.cut.get("shots_dir"),
                 "output": self.cut.get("output"), "formats": self.cut.get("formats", ["mp4", "webp"]),
@@ -345,7 +397,8 @@ class Session:
         """the image of the cut at a moment of the rushes: the scene in progress then, composed at t"""
         current = None
         for i, scene in enumerate(self.scenes):
-            if scene["start"] <= t:
+            # a card takes no time of the rushes: the moment belongs to the filmed scene in progress
+            if scene["start"] <= t and not scene["card"]:
                 current = i
         index = next((n for n, f in enumerate(self.frames) if f["scene"] == (current or 0)), None)
         if index is None:
