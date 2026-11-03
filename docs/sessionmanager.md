@@ -274,7 +274,22 @@ level out of reach changes nothing: it may come back.
 
 When testing a session on one machine, `3frames.html` (at the root of the repository) shows the
 server agent and 1 to 9 client agents in one page, each on its registration page: often handier
-than one tab per agent. `launch/agent/3frames.sh` serves it on `http://localhost:5550/3frames.html`,
+than one tab per agent. The page only shows the agents: start them yourself, each in its terminal,
+from the repository's root (the manager too, [step 1](#1-start-the-manager)):
+
+```bash
+./launch/agent/3frames.sh       # the page, on http://localhost:5550/3frames.html
+./launch/agent/cli/5000.sh      # the server agent, in another terminal
+./launch/agent/cli/5001.sh      # a client agent per terminal, from 5001
+./launch/agent/cli/5002.sh
+```
+
+The order does not matter: a frame whose agent is not started yet shows the browser's refusal,
+reload the page once it is. For the agents of another session, give the page their ports:
+`./launch/agent/3frames.sh "server=5100&client=5101&clients=3"` and `launch/agent/cli/5100.sh`,
+`5101.sh`…
+
+`launch/agent/3frames.sh` serves it on `http://localhost:5550/3frames.html`,
 the origin the agents of `launch/agent/cli/` allow to frame them (`--frame-ancestor`): opened as a
 file, the page has no origin an agent could allow, and each frame shows the browser's refusal
 (*localhost refused to connect*). Another port: `PYBISCUS_3FRAMES_PORT`, for the page's script and
