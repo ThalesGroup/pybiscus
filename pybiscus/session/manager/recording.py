@@ -77,7 +77,7 @@ class Recording:
     def stop_current(self) -> bool:
         """the page's stop button: the recording going ends and is edited; False if none is going"""
         with self.lock:
-            if not self.recording():
+            if not self.recording() or self._shot():
                 return False
             self.hold = True
             os.killpg(self.proc.pid, signal.SIGINT)
@@ -92,8 +92,7 @@ class Recording:
     def state(self) -> dict:
         if self.proc is not None:
             # ended but not yet taken in hand by the loop (its video still to be copied): still editing
-            log = self._log()
-            shot = not self.recording() or (log.exists() and SHOT_LINE in log.read_text(errors="replace"))
+            shot = not self.recording() or self._shot()
             return {"state": "editing" if shot else "recording", "rushes": str(self.rushes), "automatic": self.automatic}
         if self.launched_unrecorded:
             return {"state": "starting", "automatic": self.automatic}
@@ -101,6 +100,10 @@ class Recording:
 
     def _log(self) -> Path:
         return self.rushes.with_name(self.rushes.name + ".log")
+
+    def _shot(self) -> bool:
+        log = self._log()
+        return log.exists() and SHOT_LINE in log.read_text(errors="replace")
 
     def _loop(self) -> None:
         while not self.stopping.wait(self.poll):
@@ -170,6 +173,9 @@ class Recording:
         """the manager stops: the recorder ends its shooting and edits it, on its own"""
         self.stopping.set()
         with self.lock:
-            if self.recording():
+            # the shooting over, the signal would reach only ffmpeg, in the recorder's group, and cut the video short
+            if self.recording() and self._shot():
+                logm.console.log(f"🎬 the recorder goes on editing the video into {self.rushes / VIDEOS[0]}")
+            elif self.recording():
                 os.killpg(self.proc.pid, signal.SIGINT)
                 logm.console.log(f"🎬 the recording ends; its video is being edited into {self.rushes / VIDEOS[0]}")

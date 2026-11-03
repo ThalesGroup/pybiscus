@@ -13,6 +13,11 @@
   the page says so.
 * The agents' `frame-ancestors` header no longer names `http://[::1]:<port>`: CSP has no IPv6 literal,
   and Chromium logged an error on each of an agent's pages.
+* A session's video could be cut short (`ffmpeg` exit 255, a truncated `video.mp4`): the manager's
+  page stopped reading once the runs ended, before its recorder noticed it, and kept *⏹ stop
+  recording* while the video was being edited; that stop, or the manager's Ctrl+C, signalled the
+  recorder's whole process group, `ffmpeg` included. The page now follows a recording until its video
+  is made, and the manager no longer signals a recorder whose shooting is over.
 
 ## [Version 0.18.0]
 

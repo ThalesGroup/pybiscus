@@ -1730,8 +1730,13 @@
     done:      ['🎬 video', r => `the session's video: ${r.kept || r.video || r.rushes}`],
     failed:    ['🎬 failed', r => `the recording failed: see ${r.log}`],
   };
+  let recordingFollowUp = null;
   function renderRecording(recording){
     renderRecordButton(recording);
+    // the page stops reading once the runs end, before the recorder notices it: the button stayed on
+    // "stop recording" while the video was edited, and its signal cut the encoding short
+    if(['starting', 'recording', 'editing'].includes(recording?.state) && !session.intervalIds.length && !recordingFollowUp)
+      recordingFollowUp = setTimeout(()=>{ recordingFollowUp = null; updateGraph(); }, 2000);
     const kv = document.getElementById('rec-kv'), view = recording && RECORDING_VIEW[recording.state];
     kv.hidden = !view;
     if(!view) return;
