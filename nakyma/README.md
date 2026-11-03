@@ -1,23 +1,35 @@
 # Näkymä
 
-*Näkymä* (Finnish: a view) films a web application made of several pages, and edits what it
-filmed into videos and screenshots. It works in two times, as a film does:
+*Näkymä* (Finnish: a view) is Pybiscus' recording tool: it films the pages of a session (the
+manager's, the agents') and edits what it filmed into videos and screenshots
+([docs/recording.md](../docs/recording.md)). It works in two times, as a film does:
 
-1. **shoot**: a **driver** (a Python script using Playwright) plays the application; Näkymä
+1. **shoot**: a **driver** (a Python script using Playwright) plays or follows the session; Näkymä
    captures each page it is given, by name, as a **view**, and notes the **events** the driver
-   reports (someone joins, a task is added, round 3…). The result is a directory of **rushes**.
+   reports (an agent registers, a run is launched, round 3…). The result is a directory of **rushes**.
 2. **edit**: a **cut** (YAML) says what to make of the rushes: the scenes of a video (for each kind
    of event, the main view, an inset or tiles, a caption, a pace) and the screenshots to extract.
    Editing takes seconds and can be done again with another cut, without shooting again.
 
-What it is made for: **several pages followed together** (one per person, per machine, per role),
-composed in one image, the scenes cut **on the application's events** rather than on the steps of a
-script. One shooting gives the video and the screenshots of the docs.
+What it is made for: **several pages followed together** (one per participant), composed in one
+image, the scenes cut **on the session's events** rather than on the steps of a script. One shooting
+gives the video and the screenshots of the docs.
 
-> Näkymä lives in the Pybiscus repository for now (`nakyma/`, a project of its own with its
-> `pyproject.toml`), which films its federated learning sessions with it
-> ([docs/recording.md](../docs/recording.md)); it imports nothing of Pybiscus and is meant to move
-> to a repository of its own.
+> **Made for Pybiscus, not a general tool.** Its code imports nothing of Pybiscus and keeps its own
+> `pyproject.toml`, but it is only made and tested for Pybiscus' pages, which meet what it needs:
+>
+> - **a driver that knows the events**: a scripted story it plays itself, or a state it can read
+>   (the manager's `/pybiscus-session/agents`); nothing is inferred from the images, and a step shorter
+>   than a capture gives no event;
+> - **pages loaded without side effects**: the recorder is one more reader, opening the same pages
+>   as the people following the session and reading them every few tenths of a second; a page whose
+>   loading or reading changes or consumes something (a feed emptied when read, a "mark as read", a
+>   single tab allowed) breaks either side;
+> - **a state a newcomer can read again**: a recorder joining late shows only what the page can rebuild
+>   from the server (Pybiscus' feeds keep a cursor per reader for that);
+> - **an access of its own**: the manager's administration token, the agents' tokens.
+>
+> Another application meeting these conditions could be filmed the same way, but none is supported.
 
 ## Prerequisites
 
@@ -27,7 +39,7 @@ script. One shooting gives the video and the screenshots of the docs.
   without them, the captions use Pillow's default font, with a warning.
 - The Chromium of the Playwright the driver pins (`uv run --with playwright==1.63.0 playwright install chromium`).
 
-Until it is published, Näkymä is installed from this directory:
+Näkymä is not published; it is installed from this directory:
 
 - the `nakyma` command: `uv tool install --editable <repo>/nakyma`, or
   `uv run --project <repo>/nakyma nakyma …` without installing it;
@@ -44,7 +56,8 @@ Until it is published, Näkymä is installed from this directory:
 
 ## An example: a shared task list
 
-`examples/todo/` holds a small application (`app.py`: a task list shared by everyone who opens it,
+The smallest complete case, to see how a driver, its rushes and its cut fit together, away from a
+session. `examples/todo/` holds a small application (`app.py`: a task list shared by everyone who opens it,
 each page following the others' changes), its driver (`shoot.py`) and its cut (`todo.cut.yml`).
 Alice and Bob each have a page; one adds or checks a task, the other's page follows:
 
@@ -273,12 +286,13 @@ page follows. A wrong cut is shown with its message, and the last plan stays.
 
 ## Writing a driver
 
-Each application needs its own driver, but every driver follows the pattern of
-`examples/todo/shoot.py`:
+A new driver (another way to shoot a session, another of Pybiscus' pages, as
+`launch/doc/demos/editor_demo.py` shoots the editor) follows the pattern of `examples/todo/shoot.py`
+and of `launch/doc/record_session.py`:
 
-- start the application if it is local: a free port, its own process group
+- start the components if it shoots a scenario: a free port, its own process group
   (`start_new_session=True`), stopped by `os.killpg` in a `finally`; never look processes up by name;
-- work in a directory with a neutral name when the application shows paths;
+- work in a directory with a neutral name: the pages show paths;
 - declare a view per page, with a short name (`app`, `admin`, `page:alice`…), and panels for the
   parts a cut may show alone;
 - report an event at the start of each step of the story, with fields the captions can use, then act
@@ -291,18 +305,18 @@ Each application needs its own driver, but every driver follows the pattern of
 
 ### Having a driver written by a coding agent
 
-A coding agent that can read this directory can write the driver. Give it the prompt below, its
+A coding agent that can read the repository can write the driver. Give it the prompt below, its
 placeholders filled; it writes a driver and a cut, shoots, looks at the images and corrects until
 the video tells the story.
 
 ```text
-Write a driver that films a web application with Näkymä (nakyma/), and the cut that
+Write a driver that films pages of Pybiscus with Näkymä (nakyma/), and the cut that
 edits its rushes into a video.
 
-The application: <WHAT IT IS>
-How to start it: <COMMAND, PORT OR URL, DATA IT NEEDS, HOW TO STOP IT>
-The story to film, step by step: <e.g. "an empty list; add three tasks; mark one done; filter the
-done tasks; delete one">
+The pages: <WHICH ONES: THE MANAGER'S, AN AGENT'S, A FORM…>
+How to start them: <A SCENARIO OF launch/doc/scenarios/, OR THE MANAGER AND AGENTS TO START>
+The story to film, step by step: <e.g. "three agents register; the session is configured with 5
+rounds; the runs are launched; round 3 fails on one client; the session ends">
 Video: <LENGTH, e.g. about 60 s>, captions in <LANGUAGE>, written to <OUTPUT BASENAME>.
 Driver and cut: <PATHS>.
 
@@ -310,7 +324,8 @@ Read first:
 - nakyma/README.md;
 - nakyma/src/nakyma/shooting.py (Shooting: add_view, set_focus, event, tick, capture, take;
   panel_spec) and the docstring of nakyma/src/nakyma/editing.py (the cut's keys);
-- nakyma/examples/todo/shoot.py and todo.cut.yml: a complete driver to follow.
+- launch/doc/record_session.py (Pybiscus' driver: its views, panels and events) and
+  nakyma/examples/todo/shoot.py with todo.cut.yml (the smallest complete driver).
 
 The driver: a script with a PEP 723 header (playwright==1.63.0 and nakyma as a local editable
 source, see "Prerequisites" in the README), run by `uv run`, importing nakyma (Shooting, log; nakyma.cli.edit_file to edit after the shooting) and

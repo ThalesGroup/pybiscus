@@ -1,7 +1,7 @@
 [project]
 name = "nakyma"
 version = "0.1.0.dev0"
-description = "Film a web application made of several pages, then edit the rushes into videos and screenshots"
+description = "Pybiscus' recording tool: film the pages of a session, then edit the rushes into videos and screenshots"
 readme = "README.md"
 requires-python = ">=3.12"
 # ffmpeg is needed too, on the PATH: it is not a Python package

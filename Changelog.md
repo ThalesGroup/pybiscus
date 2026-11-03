@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+### Recording
+
+* Näkymä (`nakyma/`) is presented as Pybiscus' recording tool, no longer as a tool for any web
+  application: its README says what it needs of the pages it films (a driver knowing the events,
+  pages loaded without side effects, a state a newcomer can read again, an access of its own), and
+  its example and driver guide are for Pybiscus' pages. It stays in this repository; no separate
+  repository nor package is planned.
+
 ### Session
 
 * `3frames.html` showed no agent since 0.15.0's framing protection (`frame-ancestors`): opened as a

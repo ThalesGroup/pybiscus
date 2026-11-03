@@ -32,9 +32,10 @@ the video.
                              notes events, composes)
 ```
 
-- **`nakyma/`** (Näkymä, a project of its own at the repository's root) is generic: it captures the pages it is given by name, notes
-  the events it is told about, then composes the video. Any web application can be shot with it;
-  its [README](../nakyma/README.md) describes the cut, the interactive editor and how to write a driver.
+- **`nakyma/`** (Näkymä, a project of its own at the repository's root) knows nothing of the session: it captures the pages it is given by name, notes
+  the events it is told about, then composes the video. It is made for Pybiscus' pages only (its
+  [README](../nakyma/README.md) says what a page must allow, and describes the cut, the interactive
+  editor and how to write a driver).
 - **`launch/doc/record_session.py`** is the Pybiscus driver: it decides which processes to start,
   which pages to open, how to name them and which moments to signal.
 
@@ -402,10 +403,11 @@ it; `scale: 2` is for a large screen or a presentation.
 `docs/videos/` is kept out of git for now (its `.gitignore`): every video weighs in the
 repository's history forever, so only short ones should be versioned, once chosen.
 
-## Shooting another web application
+## Shooting other pages
 
-Näkymä shoots any page Playwright opens: its [README](../nakyma/README.md) shows how, with an example (a task
-list shared by two pages) and a prompt to have a driver written by a coding agent.
+Another driver can shoot other pages of Pybiscus: Näkymä's [README](../nakyma/README.md) shows how,
+with the smallest complete example (a task list shared by two pages) and a prompt to have a driver
+written by a coding agent.
 
 `launch/doc/demos/editor_demo.py` is such a driver: it shoots `edit --ui` at work on the rushes
 of the MNIST scenario (play, a caption changed, the round scenes put in mosaic, a scene left out
