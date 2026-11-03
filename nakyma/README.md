@@ -291,6 +291,8 @@ listed, moved by typing its moment, removed with ✕, and marked ■ on the time
 editing is enough for a presented video: the title, the intertitles and the end, and the scenes
 the shooting did not mark, are added there.
 
+![the editor: a title card selected, the events of the cut listed, their marks on the timeline](../docs/images/recording_editor_cards.png)
+
 **Screenshots**: *Capture here* adds the view shown, whole or one of its panels, at the moment shown
 (in the plan: the scene's main view at that image; on a view's track: that view), under the file
 name proposed or typed; a take of the rushes is added under its name. The shot is written from the

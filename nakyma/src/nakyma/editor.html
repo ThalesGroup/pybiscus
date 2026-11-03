@@ -318,7 +318,8 @@ function renderScene(){
       field('slots', 'tiles slots', number('slots', 1, `${cut.mosaic.slots} (the cut's)`)) +
       `<span class="note">{field}: a field of the event · yellow: set for this scene only · ↺ back to the rule</span>`;
   } else {
-    form += `<span class="note">Every ${esc(s.kind)} scene follows these, unless an override of the scene says otherwise. Start, duration and the inset's place are set scene by scene.</span>`;
+    form += s.card ? `<span class="note">Every ${esc(s.kind)} card shows these, unless an override of the card says otherwise. Its moment and duration are set card by card.</span>`
+      : `<span class="note">Every ${esc(s.kind)} scene follows these, unless an override of the scene says otherwise. Start, duration and the inset's place are set scene by scene.</span>`;
   }
   const facts = `<table class="facts">
       <tr><td>rushes</td><td class="v">${s.card ? `a card at ${s.start.toFixed(2)} s, no time of the rushes` : `${s.start.toFixed(2)} → ${s.end.toFixed(2)} s`}</td></tr>
